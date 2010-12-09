@@ -309,10 +309,14 @@ static AVInputFormat *av_probe_input_format2(AVProbeData *pd, int is_opened, int
         score = 0;
         if (fmt1->read_probe) {
             score = fmt1->read_probe(pd);
-        } else if (fmt1->extensions) {
-            if (match_ext(pd->filename, fmt1->extensions)) {
-                score = 50;
-            }
+        } //else if (fmt1->extensions) {
+        if(score < AVPROBE_SCORE_MAX/2)
+        {
+	        if (fmt1->extensions) {
+	            if (match_ext(pd->filename, fmt1->extensions)) {
+	                score = 50;
+	            }
+	        }
         }
         if (score > *score_max) {
             *score_max = score;
@@ -442,7 +446,7 @@ int av_open_input_stream(AVFormatContext **ic_ptr,
 }
 
 /** size of probe buffer, for guessing file type from file contents */
-#define PROBE_BUF_MIN 2048
+#define PROBE_BUF_MIN 2048		//0x800
 #define PROBE_BUF_MAX (1<<20)   //1M
 
 int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
@@ -484,7 +488,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
             /* read probe data */
             pd->buf= av_realloc(pd->buf, probe_size + AVPROBE_PADDING_SIZE);
             #if 1
-            av_log(NULL, AV_LOG_INFO, "[av_open_input_file] read probe data!!probe_size=%x\n",probe_size);
+            av_log(NULL, AV_LOG_INFO, "[av_open_input_file] read probe data!!probe_size=0x%x(%d)\n",probe_size,probe_size);
             do
             {
                 pd->buf_size = get_buffer(pb, pd->buf, probe_size); //get data from pb to pd->buf
@@ -495,7 +499,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
                         continue; 
                     else
                     {
-           	            av_log(NULL, AV_LOG_INFO, "[av_open_input_file] read probe data failed!!err=%d\n",err);
+           	            av_log(NULL, AV_LOG_ERROR, "[av_open_input_file] read probe data failed!!err=%d\n",err);
                     	goto fail;
                     }
                 }
@@ -515,22 +519,22 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
                 if (url_fopen(&pb, filename, URL_RDONLY) < 0) {
                     pb = NULL;
                     err = AVERROR(EIO);
-					av_log(logctx, AV_LOG_DEBUG, "av_open_input_file,failed,line=%d\n",__LINE__);
+					av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d\n",__LINE__);
                     goto fail;
                 }
             }
             /* guess file format */
-            fmt = av_probe_input_format2(pd, 1, &score);
-            if(fmt){
+            fmt = av_probe_input_format2(pd, 1, &score);			
+			if(fmt){
                 if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
                     av_log(logctx, AV_LOG_WARNING, "Format detected only with low score of %d, misdetection possible!\n", score);
                 }else
-                    av_log(logctx, AV_LOG_DEBUG, "Probed with size=%d and score=%d\n", probe_size, score);
+                    av_log(logctx, AV_LOG_WARNING, "Probed with size=%d and score=%d\n", probe_size, score);
             }
         }
         av_freep(&pd->buf);
     }
-
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]guess format=%s\n",__FUNCTION__,__LINE__,fmt->name);
     /* if still no format found, error */
     if (!fmt) {
         err = AVERROR_NOFMT;
