@@ -27,7 +27,7 @@ static int stream_rm_init(play_para_t *p_para)
     
     if (codec_init_cntl(codec) != CODEC_ERROR_NONE)
         goto error1;
-
+     codec->noblock=!!p_para->buffering_enable;
     if(vinfo->has_video)
     {
         codec->has_video = 1;

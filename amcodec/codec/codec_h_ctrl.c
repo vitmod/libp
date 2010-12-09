@@ -18,10 +18,10 @@
 #include <codec.h>
 #include "codec_h_ctrl.h"
 
-CODEC_HANDLE codec_h_open(const char *port_addr)
+CODEC_HANDLE codec_h_open(const char *port_addr,int flags)
 {
 	int r;
-    r=open(port_addr,O_WRONLY);
+    r=open(port_addr,flags);
 	if(r<0)
 		{
 			CODEC_PRINT("Init [%s] failed,ret = %d\n",port_addr,r);

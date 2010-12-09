@@ -28,6 +28,7 @@ static int stream_video_init(play_para_t *p_para)
 		codec->video_pid = vinfo->video_pid;		
 	}	
 	codec->stream_type= stream_type_convert(p_para->stream_type, codec->has_video, codec->has_audio);
+	codec->noblock=!!p_para->buffering_enable;
     ret = codec_init(codec);
 	if(ret != CODEC_ERROR_NONE)
 	{

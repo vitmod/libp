@@ -19,6 +19,7 @@ static int stream_audio_init(play_para_t *p_para)
 	if(!codec)
 		return PLAYER_EMPTY_P;
 	MEMSET(codec, 0, sizeof(codec_para_t));    	
+	codec->noblock=!!p_para->buffering_enable;
 	if(ainfo->has_audio)
 	{
 		codec->has_audio = 1;

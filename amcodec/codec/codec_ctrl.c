@@ -174,11 +174,13 @@ static inline int codec_video_es_init(codec_para_t *pcodec)
 {
 	CODEC_HANDLE handle;
 	int r;
-    int codec_r;
+    	int codec_r;
+	int flags=O_WRONLY;
 	if(!pcodec->has_video)
 		return CODEC_ERROR_NONE;
-	
-	handle=codec_h_open(CODEC_VIDEO_ES_DEVICE);	
+
+	flags|=pcodec->noblock?O_NONBLOCK:0;
+	handle=codec_h_open(CODEC_VIDEO_ES_DEVICE,flags);	
 	if(handle<0)
 	{   
         codec_r = system_error_to_codec_error(handle);
@@ -210,11 +212,13 @@ static inline int codec_audio_es_init(codec_para_t *pcodec)
 {
 	CODEC_HANDLE handle;
 	int r;
-    int codec_r;
+	int flags=O_WRONLY;
+  	int codec_r;
 	if(!pcodec->has_audio)
 		return CODEC_ERROR_NONE;
-		
-	handle=codec_h_open(CODEC_AUDIO_ES_DEVICE);
+
+	flags|=pcodec->noblock?O_NONBLOCK:0;
+	handle=codec_h_open(CODEC_AUDIO_ES_DEVICE,flags);
 	if(handle<0)
 	{
 		codec_r = system_error_to_codec_error(handle);
@@ -283,12 +287,14 @@ static inline int codec_ps_init(codec_para_t *pcodec)
 {
 	CODEC_HANDLE handle;
 	int r;
-    int codec_r;
+	int flags=O_WRONLY;
+    	int codec_r;
 	if(!((pcodec->has_video && IS_VALID_PID(pcodec->video_pid)) ||
 	     (pcodec->has_audio&& IS_VALID_PID(pcodec->audio_pid))))
 	     return -CODEC_ERROR_PARAMETER;
-	
-	handle=codec_h_open(CODEC_PS_DEVICE);
+
+	flags|=pcodec->noblock?O_NONBLOCK:0;
+	handle=codec_h_open(CODEC_PS_DEVICE,flags);
 	if(handle<0)
 	{
 		codec_r = system_error_to_codec_error(handle);
@@ -359,12 +365,14 @@ static inline int codec_ts_init(codec_para_t *pcodec)
 {
 	CODEC_HANDLE handle;
 	int r;
-    int codec_r;
+	int flags=O_WRONLY;
+   	int codec_r;
 	if(!((pcodec->has_video && IS_VALID_PID(pcodec->video_pid)) ||
 	     (pcodec->has_audio&& IS_VALID_PID(pcodec->audio_pid))))
 	     return -CODEC_ERROR_PARAMETER;
-	
-	handle=codec_h_open(CODEC_TS_DEVICE);
+
+	flags|=pcodec->noblock?O_NONBLOCK:0;
+	handle=codec_h_open(CODEC_TS_DEVICE,flags);
 	if(handle<0)
 	{
 		codec_r = system_error_to_codec_error(handle);
@@ -439,6 +447,7 @@ static inline int codec_rm_init(codec_para_t *pcodec)
 {
     CODEC_HANDLE handle;
     int r;
+    int flags=O_WRONLY;
     int codec_r;
     if(!((pcodec->has_video && IS_VALID_PID(pcodec->video_pid)) ||
         (pcodec->has_audio&& IS_VALID_PID(pcodec->audio_pid))))
@@ -446,8 +455,8 @@ static inline int codec_rm_init(codec_para_t *pcodec)
         CODEC_PRINT("codec_rm_init failed! video=%d vpid=%d audio=%d apid=%d\n",pcodec->has_video,pcodec->video_pid,pcodec->has_audio,pcodec->audio_pid);
         return -CODEC_ERROR_PARAMETER;
     }
-
-    handle=codec_h_open(CODEC_RM_DEVICE);
+    flags|=pcodec->noblock?O_NONBLOCK:0;
+    handle=codec_h_open(CODEC_RM_DEVICE,flags);
     if(handle<0)
     {
         codec_r = system_error_to_codec_error(handle);
@@ -673,8 +682,9 @@ int codec_reset(codec_para_t *p)
 int codec_init_sub(codec_para_t *pcodec)
 {
     CODEC_HANDLE sub_handle;
-
-    sub_handle = codec_h_open(CODEC_SUB_DEVICE);
+	int flags=O_WRONLY;
+    flags|=pcodec->noblock?O_NONBLOCK:0;
+    sub_handle = codec_h_open(CODEC_SUB_DEVICE,flags);
     if (sub_handle < 0)
     {
         CODEC_PRINT("get %s failed\n", CODEC_SUB_DEVICE);
@@ -840,7 +850,7 @@ int codec_init_cntl(codec_para_t *pcodec)
 {
     CODEC_HANDLE cntl;
 
-    cntl = codec_h_open(CODEC_CNTL_DEVICE);
+    cntl = codec_h_open(CODEC_CNTL_DEVICE,O_WRONLY);
     if (cntl < 0)
     {
         CODEC_PRINT("get %s failed\n", CODEC_CNTL_DEVICE);

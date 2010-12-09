@@ -35,6 +35,7 @@ static int stream_ps_init(play_para_t *p_para)
 		if(codec->video_type == VFORMAT_H264)
 			codec->am_sysinfo.format = vinfo->video_codec_type;
 	}
+	codec->noblock=!!p_para->buffering_enable;
 	if(ainfo->has_audio)
 	{
 		codec->has_audio = 1;

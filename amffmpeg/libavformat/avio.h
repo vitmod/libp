@@ -223,6 +223,7 @@ typedef struct {
     int is_streamed;
     int is_slowmedia;  /**For slow media,maybe  remote playing,not used seek,if not needed*/
     int enabled_lp_buffer;
+    int lp_buffer_size;
     int max_packet_size;
     unsigned long checksum;
     unsigned char *checksum_ptr;

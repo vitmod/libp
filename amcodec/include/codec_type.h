@@ -45,25 +45,26 @@ typedef struct
 typedef struct 
 {
 	CODEC_HANDLE handle;
-    CODEC_HANDLE cntl_handle;
-    CODEC_HANDLE sub_handle;
+	CODEC_HANDLE cntl_handle;
+	CODEC_HANDLE sub_handle;
 	stream_type_t stream_type;
 	unsigned int has_video:1;
 	unsigned int  has_audio:1;
-    unsigned int has_sub:1;    
+	unsigned int has_sub:1;    
+	unsigned int noblock:1;   
 	int video_type;
 	int audio_type;
-    int sub_type;
+	int sub_type;
 	int video_pid;
 	int audio_pid;
-    int sub_pid;
+	int sub_pid;
 	int audio_channels;
 	int audio_samplerate;
 	int vbuf_size;
 	int abuf_size;
 	dec_sysinfo_t am_sysinfo;
-    audio_info_t audio_info; // pass to audiodsp
-    int packet_size;
+	audio_info_t audio_info; // pass to audiodsp
+	int packet_size;
 }codec_para_t;
 
 

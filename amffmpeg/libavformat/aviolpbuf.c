@@ -54,7 +54,7 @@ Can seek back size:
 
 */
 //#define LP_BUFFER_DEBUG
-//#define LP_SKDEBUG
+#define LP_SK_DEBUG
 //#define LP_RD_DEBUG
 #ifdef LP_SK_DEBUG
 #define lp_sprint(level,fmt...) av_log(NULL,level,##fmt)
@@ -291,7 +291,7 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 			lp->rp+=lp->buffer_size;
 		
 	}else if(offset1>0 && (s->is_streamed || s->is_slowmedia) && 
-			offset1<lp->buffer_size)
+			(offset1<lp->buffer_size-lp->block_read_size))
 	{/*seek to buffer end,but buffer is not full,do read seek*/
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer read seek forward offset=%lld offset1=%lld  whence=%d\n",offset,offset1,whence);
 		lp->rp+=valid_data_can_seek_forward;
