@@ -1,0 +1,12 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}
+includedir=/.local/android/ndk/amplayer/jni/amffmpeg
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 52.42.0
+Requires: libavutil = 50.5.0
+Conflicts:
+Libs: ${libdir}/libavcodec.a  
+Cflags: -I${includedir}

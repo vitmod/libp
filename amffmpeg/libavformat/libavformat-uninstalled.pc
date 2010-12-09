@@ -1,0 +1,12 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}
+includedir=/.local/android/ndk/amplayer/jni/amffmpeg
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 52.39.2
+Requires: libavcodec = 52.42.0
+Conflicts:
+Libs: ${libdir}/libavformat.a  
+Cflags: -I${includedir}
