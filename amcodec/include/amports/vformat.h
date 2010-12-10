@@ -90,5 +90,6 @@ typedef enum {
 #define CODEC_TAG_WMV3		(0x33564d57)
 #define CODEC_TAG_WVC1		(0x31435657)
 #define CODEC_TAG_WMVA		(0x41564d57)
+#define CODEC_TAG_FMP4		(0x34504d46)
 
 #endif /* VFORMAT_H */

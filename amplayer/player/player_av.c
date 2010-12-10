@@ -224,6 +224,7 @@ vdec_type_t video_codec_type_convert(unsigned int id)
         case CODEC_TAG_DIV5:
         case CODEC_TAG_DX50:  
         case CODEC_TAG_M4S2:
+	case CODEC_TAG_FMP4:
             log_print("VIDEO_TYPE_DIVX 5\n");
             dec_type = VIDEO_DEC_FORMAT_MPEG4_5;
             break;
