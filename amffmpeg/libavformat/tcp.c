@@ -125,7 +125,7 @@ static int tcp_read(URLContext *h, uint8_t *buf, int size)
         FD_ZERO(&rfds);
         FD_SET(s->fd, &rfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 100 * 1000;       
+        tv.tv_usec = 800 * 1000;       
         ret = select(fd_max + 1, &rfds, NULL, NULL, &tv);          
         if (ret > 0 && FD_ISSET(s->fd, &rfds)) {            
             len = recv(s->fd, buf, size, 0);              
