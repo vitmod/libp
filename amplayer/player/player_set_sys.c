@@ -95,6 +95,23 @@ int av_get_subtitle_curr()
 	return subtitle_cur;   
 }
 
+int set_subtitle_startpts(int pts)
+{
+    int fd;
+    char *path = "/sys/class/subtitle/startpts";    
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",pts);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;
+    
+}
+
 int set_fb0_blank(int blank)
 {
     int fd;

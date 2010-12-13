@@ -483,6 +483,16 @@ void *player_thread(play_para_t *player)
     
     ret = set_media_info(player);
 	set_subtitle_num(player->sstream_num);
+	if(player->astream_info.start_time != -1){
+		set_subtitle_startpts(player->astream_info.start_time);
+		log_print("player set startpts is %x\n\n",player->astream_info.start_time);
+	}
+	else if(player->vstream_info.start_time != -1){
+		set_subtitle_startpts(player->vstream_info.start_time);
+		log_print("player set startpts is %x\n\n",player->vstream_info.start_time);
+	}
+	else
+		set_subtitle_startpts(0);
     if(ret != PLAYER_SUCCESS)
     {
         log_error("pid[%d::player_set_media_info failed!\n",player->player_id);

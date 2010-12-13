@@ -8,5 +8,5 @@ int set_fb0_blank(int blank);
 int set_fb1_blank(int blank);
 int set_subtitle_num(int num);
 int av_get_subtitle_curr();
-
+int set_subtitle_startpts(int pts);
 #endif

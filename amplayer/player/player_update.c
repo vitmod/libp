@@ -515,6 +515,7 @@ static void update_current_time(play_para_t *p_para)
 	       
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n",time/PTS_FREQ,p_para->state.current_time,p_para->state.last_time);
 			p_para->state.current_ms = time / PTS_FREQ_MS;
+			p_para->state.current_pts = time;
 	        time /= PTS_FREQ;        
 	    }
 		if(p_para->state.current_time < p_para->state.full_time)
