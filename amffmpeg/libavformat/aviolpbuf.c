@@ -100,6 +100,7 @@ int url_lpopen(URLContext *s,int size)
 	lp->pos=0;
 	lp->block_read_size=64*1024;
 	lp_lock_init(&lp->mutex,NULL);
+	lp->file_size=url_lpseek(s,0,AVSEEK_SIZE);
 	return 0;
 }
 
@@ -291,7 +292,8 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 			lp->rp+=lp->buffer_size;
 		
 	}else if(offset1>0 && (s->is_streamed || s->is_slowmedia) && 
-			(offset1<lp->buffer_size-lp->block_read_size))
+			(offset1<lp->buffer_size-lp->block_read_size) && 
+			(lp->file_size<=0 || (lp->file_size>0 && offset1<lp->file_size-1024*64)))/*if offset1>filesize-64*1024,then do first seek end,don't buffer*/
 	{/*seek to buffer end,but buffer is not full,do read seek*/
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer read seek forward offset=%lld offset1=%lld  whence=%d\n",offset,offset1,whence);
 		lp->rp+=valid_data_can_seek_forward;

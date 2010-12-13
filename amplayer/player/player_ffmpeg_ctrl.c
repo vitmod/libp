@@ -72,17 +72,20 @@ int ffmpeg_parse_file(play_para_t *am_p)
 {
 	AVFormatContext *pFCtx ;
 	int ret = -1;
-    
+    	int byteiosize=FILE_BUFFER_SIZE;
 	// Open video file
 	if(am_p == NULL)
 	{
 		log_print("[ffmpeg_open_file] Empty pointer!\n");
-        return FFMPEG_EMP_POINTER;
+		return FFMPEG_EMP_POINTER;
 	}
+	am_p->byteiobufsize=1024;
+	if(am_p->byteiobufsize>0)
+		byteiosize=am_p->byteiobufsize;
 	if(am_p->file_name != NULL)
 	{	
 Retry_open:	
-        ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, FILE_BUFFER_SIZE, NULL);
+        ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL);
 	    if(ret!=0)
 	    {       
 	    	if(ret==AVERROR(EAGAIN))

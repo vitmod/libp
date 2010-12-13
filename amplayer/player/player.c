@@ -357,42 +357,44 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
 	p_para->state.name = p_para->file_name;
 	p_para->vstream_info.video_index = c_para->video_index;
 	p_para->astream_info.audio_index = c_para->audio_index;
-    p_para->sstream_info.sub_index = c_para->sub_index;
+	p_para->sstream_info.sub_index = c_para->sub_index;
 	p_para->playctrl_info.no_audio_flag = c_para->nosound;
 	p_para->playctrl_info.no_video_flag = c_para->novideo;
-    p_para->playctrl_info.has_sub_flag = c_para->hassub;
+	p_para->playctrl_info.has_sub_flag = c_para->hassub;
 	p_para->playctrl_info.loop_flag = c_para->loop_mode;
 	p_para->playctrl_info.time_point = c_para->t_pos;
-    //if(!p_para->playctrl_info.no_audio_flag)
-    //    p_para->playctrl_info.audio_mute= codec_get_mutesta(NULL);
-    p_para->update_state = c_para->callback_fn;
-    p_para->playctrl_info.black_out = get_black_policy();   
+	//if(!p_para->playctrl_info.no_audio_flag)
+	//    p_para->playctrl_info.audio_mute= codec_get_mutesta(NULL);
+	p_para->update_state = c_para->callback_fn;
+	p_para->playctrl_info.black_out = get_black_policy();   
 	p_para->buffering_enable=c_para->auto_buffing_enable;
+	p_para->byteiobufsize=c_para->byteiobufsize;
+	p_para->loopbufsize=c_para->loopbufsize;
 	if(p_para->buffering_enable)
 	{/*check threshhold is valid*/
-		if(c_para->buffing_min<c_para->buffing_middle &&
-			c_para->buffing_middle<c_para->buffing_max)
-		{
-			p_para->buffering_threshhold_min=c_para->buffing_min;
-			p_para->buffering_threshhold_middle=c_para->buffing_middle;
-			p_para->buffering_threshhold_max=c_para->buffing_max;
-		}
-		else
-		{
-			log_print("not a valid threadhold settings for buffering(must min=%f<middle=%f<max=%f)\n",
-						c_para->buffing_min,
-						c_para->buffing_middle,
-						c_para->buffing_max
-						);
-			p_para->buffering_enable=0;
-		}
+	if(c_para->buffing_min<c_para->buffing_middle &&
+		c_para->buffing_middle<c_para->buffing_max)
+	{
+		p_para->buffering_threshhold_min=c_para->buffing_min;
+		p_para->buffering_threshhold_middle=c_para->buffing_middle;
+		p_para->buffering_threshhold_max=c_para->buffing_max;
 	}
-	
-    log_print("%s:pid[%d]::Init State: mute_on=%d black=%d t_pos:%ds\n",	p_para->file_name,
-																p_para->player_id,
-																p_para->playctrl_info.audio_mute,
-																p_para->playctrl_info.black_out,
-																p_para->playctrl_info.time_point);
+	else
+	{
+		log_print("not a valid threadhold settings for buffering(must min=%f<middle=%f<max=%f)\n",
+					c_para->buffing_min,
+					c_para->buffing_middle,
+					c_para->buffing_max
+					);
+		p_para->buffering_enable=0;
+	}
+	}
+
+	log_print("%s:pid[%d]::Init State: mute_on=%d black=%d t_pos:%ds\n",	p_para->file_name,
+															p_para->player_id,
+															p_para->playctrl_info.audio_mute,
+															p_para->playctrl_info.black_out,
+															p_para->playctrl_info.time_point);
 	log_print("file::::[%s],len=%d\n",c_para->file_name,strlen(c_para->file_name));
 }
 static int check_start_cmd(play_para_t *player)

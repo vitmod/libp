@@ -139,7 +139,8 @@ typedef struct play_para
 	player_thread_mgt_t thread_mgt;
 	unsigned long extern_priv;/*used for uper level controler*/
 
-
+	int byteiobufsize;
+	int loopbufsize;
 	/*
 	if (data%<min && data%<buffering_threshhold_max) 
 		pause

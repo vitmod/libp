@@ -184,20 +184,22 @@ typedef struct
 	//List  *play_list;
 	int	video_index;
 	int	audio_index;
-    int sub_index;
+	int sub_index;
 	int t_pos;	
-    union
-    {     
-        struct{
-    	unsigned int loop_mode:1;
-    	unsigned int nosound:1;	
-    	unsigned int novideo:1;	
-        unsigned int hassub:1;
-        unsigned int need_start:1;       
-        };
-        int mode;
-    };  
-    callback_t callback_fn;
+	union
+	{     
+		struct{
+			unsigned int loop_mode:1;
+			unsigned int nosound:1;	
+			unsigned int novideo:1;	
+			unsigned int hassub:1;
+			unsigned int need_start:1;       
+		};
+		int mode;
+	};  
+	callback_t callback_fn;
+	int byteiobufsize;
+	int loopbufsize;
 
 	/*
 	data%<min && data% <max  enter buffering;

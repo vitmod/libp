@@ -17,6 +17,7 @@ typedef struct  url_lpbuf{
 	int valid_data_size;
 	int64_t pos;
 	int block_read_size;
+	int64_t file_size;
 	lock_t mutex;
 }url_lpbuf_t;
 #define IO_LP_BUFFER_SIZE (1024*1024*6)
