@@ -366,14 +366,12 @@ int set_file_type(const char *name, pfile_type *ftype, pstream_type *stype)
     log_info("[set_file_type]file_type=%d stream_type=%d\n",*ftype, *stype);
 	return PLAYER_SUCCESS;
 }
-
-#define MAX_TRY_READ_COUNT  (50)
 static int raw_read(play_para_t *para, am_packet_t *pkt)
 {
     int rev_byte = -1; 			
     ByteIOContext *pb = para->pFormatCtx->pb;
     unsigned char *pbuf ;    
-    static int try_count = MAX_TRY_READ_COUNT;
+    static int try_count = 0;
     #if DUMP_READ
     if(fdr==-1)
     {
@@ -407,7 +405,7 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
     	rev_byte = get_buffer(pb,pbuf,para->max_raw_size);
         if(rev_byte > 0)
     	{	
-            try_count = MAX_TRY_READ_COUNT;
+            try_count = 0;
     		pkt->data_size = rev_byte;		
     		para->read_size.total_bytes += rev_byte;
             pkt->avpkt_newflag = 1;
@@ -444,8 +442,8 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
             } 
             else
             {
-                try_count --;
-                if(! try_count)
+                try_count ++;
+                if(try_count >= para->playctrl_info.read_max_retry_cnt)
                 {
                     log_print("raw_read buffer try too more counts,exit!\n");              
                     return PLAYER_RD_TIMEOUT;
@@ -486,7 +484,7 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
 
 static int non_raw_read(play_para_t *para, am_packet_t *pkt)
 {		
-    static int try_count = MAX_TRY_READ_COUNT;
+    static int try_count = 0;
 	signed short video_idx = para->vstream_info.video_index;
 	signed short audio_idx = para->astream_info.audio_index;
     signed short sub_idx = para->sstream_info.sub_index;
@@ -543,10 +541,10 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
 			}
             else
             {
-                try_count --;
-                if(!try_count)
+                try_count ++;
+                if(try_count >= para->playctrl_info.read_max_retry_cnt)
                 {
-                    log_print("try %d counts, can't get packet,exit!\n",MAX_TRY_READ_COUNT);
+                    log_print("try %d counts, can't get packet,exit!\n",para->playctrl_info.read_max_retry_cnt);
                     return PLAYER_RD_TIMEOUT;
                 }
                 else
@@ -558,7 +556,7 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
 		}
         else //read success
         {            
-            try_count = MAX_TRY_READ_COUNT;              
+            try_count = 0;              
         	#if DUMP_READ
             if(fdr==-1)
             {

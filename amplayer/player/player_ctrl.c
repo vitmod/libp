@@ -515,21 +515,21 @@ char * player_status2str(player_status status)
 {
 	switch(status)
 	{        
-    	case PLAYER_INITING:		return "player begin  initialization";
-    	case PLAYER_INITOK:			return "player parse file successfully";
-    	case PLAYER_RUNNING:	 	return "player playback";
-        case PLAYER_BUFFERING:	 	return "player buffer data";
-    	case PLAYER_PAUSE:			return "player pause";
-    	case PLAYER_SEARCHING:		return "player doing search or ff/fb";
-    	case PLAYER_SEARCHOK:		return "player finish search or ff/fb and begin playback";
-    	case PLAYER_START:			return "player start playback";
-    	case PLAYER_FF_END:			return "player ff reach stream end";
-    	case PLAYER_FB_END:			return "player fb reach stream head";
-        case PLAYER_ERROR:   		return "player meet some error";
-        case PLAYER_PLAYEND:      	return "player finish playback";   	
-    	case PLAYER_STOPED:			return "player stopped";         
+    	case PLAYER_INITING:		return "BEGIN_INIT";
+    	case PLAYER_INITOK:			return "INIT_OK";
+    	case PLAYER_RUNNING:	 	return "PLAYING";
+        case PLAYER_BUFFERING:	 	return "BUFFERING";
+    	case PLAYER_PAUSE:			return "PAUSE";
+    	case PLAYER_SEARCHING:		return "SEARCH_FFFB";
+    	case PLAYER_SEARCHOK:		return "SEARCH_OK";
+    	case PLAYER_START:			return "START_PLAY";
+    	case PLAYER_FF_END:			return "FF_END";
+    	case PLAYER_FB_END:			return "FB_END";
+        case PLAYER_ERROR:   		return "ERROR";
+        case PLAYER_PLAYEND:      	return "PLAY_END";   	
+    	case PLAYER_STOPED:			return "STOPED";         
     	default:
-    			return "error:unknown player status";
+    			return "UNKNOW_STATE";
 	}
 }
 

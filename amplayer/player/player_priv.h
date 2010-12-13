@@ -10,6 +10,7 @@
  /* ffmpeg headers */
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavformat/avio.h>
 
 #include <codec_type.h> 
 
@@ -18,8 +19,6 @@
 
 #include "player_id.h"
 #include "player_para.h"
-
-
 
 
 struct stream_decoder;
@@ -43,6 +42,7 @@ struct stream_decoder;
 #define FILE_BUFFER_SIZE	(1024*128)//(1024*512)	
 #define CHECK_END_COUNT     (10)
 #define CHECK_END_INTERVAL  (100)   //ms
+#define MAX_TRY_READ_COUNT  (50)
 
 #define SEARCH_INVALID		(0)
 #define SEARCH_SEND_CMD		(1)
@@ -113,7 +113,7 @@ typedef struct play_para
     int             astream_num;
     int             sstream_num;   
     int             first_index;
-    int             max_raw_size;
+    int             max_raw_size;	
     check_end_info_t check_end;
 
     read_write_size read_size;

@@ -102,6 +102,7 @@ typedef  struct
     unsigned int switch_sub_id;    
 	int time_point;
 	int f_step;
+	int	read_max_retry_cnt;
 }p_ctrl_info_t;
 
 //void player_para_init(struct play_para *p_para);

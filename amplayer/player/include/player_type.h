@@ -140,7 +140,7 @@ typedef struct
 typedef struct player_info
 {
 	char *name;
-    int last_sta;
+    player_status last_sta;
 	player_status status;		   /*stop,pause	*/
 	int full_time;	   /*Seconds	*/
 	int current_time;  /*Seconds	*/
@@ -186,6 +186,7 @@ typedef struct
 	int	audio_index;
 	int sub_index;
 	int t_pos;	
+	int	read_max_cnt;
 	union
 	{     
 		struct{

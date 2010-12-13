@@ -353,48 +353,52 @@ void set_player_error_no(play_para_t *player,int error_no)
 
 void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
 {
-	p_para->file_name = c_para->file_name;	
-	p_para->state.name = p_para->file_name;
-	p_para->vstream_info.video_index = c_para->video_index;
-	p_para->astream_info.audio_index = c_para->audio_index;
-	p_para->sstream_info.sub_index = c_para->sub_index;
+	p_para->file_name 					= c_para->file_name;	
+	p_para->state.name 					= p_para->file_name;
+	p_para->vstream_info.video_index 	= c_para->video_index;
+	p_para->astream_info.audio_index 	= c_para->audio_index;
+    p_para->sstream_info.sub_index 		= c_para->sub_index;
 	p_para->playctrl_info.no_audio_flag = c_para->nosound;
 	p_para->playctrl_info.no_video_flag = c_para->novideo;
-	p_para->playctrl_info.has_sub_flag = c_para->hassub;
-	p_para->playctrl_info.loop_flag = c_para->loop_mode;
-	p_para->playctrl_info.time_point = c_para->t_pos;
-	//if(!p_para->playctrl_info.no_audio_flag)
-	//    p_para->playctrl_info.audio_mute= codec_get_mutesta(NULL);
-	p_para->update_state = c_para->callback_fn;
-	p_para->playctrl_info.black_out = get_black_policy();   
-	p_para->buffering_enable=c_para->auto_buffing_enable;
+    p_para->playctrl_info.has_sub_flag 	= c_para->hassub;
+	p_para->playctrl_info.loop_flag 	= c_para->loop_mode;
+	p_para->playctrl_info.time_point 	= c_para->t_pos;
+	p_para->playctrl_info.read_max_retry_cnt = c_para->read_max_cnt;
+	if(p_para->playctrl_info.read_max_retry_cnt <= 0)
+		p_para->playctrl_info.read_max_retry_cnt = MAX_TRY_READ_COUNT;
+    //if(!p_para->playctrl_info.no_audio_flag)
+    //    p_para->playctrl_info.audio_mute= codec_get_mutesta(NULL);
+    p_para->update_state 				= c_para->callback_fn;
+    p_para->playctrl_info.black_out 	= get_black_policy();   
+	p_para->buffering_enable			= c_para->auto_buffing_enable;
 	p_para->byteiobufsize=c_para->byteiobufsize;
 	p_para->loopbufsize=c_para->loopbufsize;
 	if(p_para->buffering_enable)
 	{/*check threshhold is valid*/
-	if(c_para->buffing_min<c_para->buffing_middle &&
-		c_para->buffing_middle<c_para->buffing_max)
-	{
-		p_para->buffering_threshhold_min=c_para->buffing_min;
-		p_para->buffering_threshhold_middle=c_para->buffing_middle;
-		p_para->buffering_threshhold_max=c_para->buffing_max;
+		if(c_para->buffing_min<c_para->buffing_middle &&
+			c_para->buffing_middle<c_para->buffing_max)
+		{
+			p_para->buffering_threshhold_min=c_para->buffing_min;
+			p_para->buffering_threshhold_middle=c_para->buffing_middle;
+			p_para->buffering_threshhold_max=c_para->buffing_max;
+		}
+		else
+		{
+			log_print("not a valid threadhold settings for buffering(must min=%f<middle=%f<max=%f)\n",
+						c_para->buffing_min,
+						c_para->buffing_middle,
+						c_para->buffing_max
+						);
+			p_para->buffering_enable=0;
+		}
 	}
-	else
-	{
-		log_print("not a valid threadhold settings for buffering(must min=%f<middle=%f<max=%f)\n",
-					c_para->buffing_min,
-					c_para->buffing_middle,
-					c_para->buffing_max
-					);
-		p_para->buffering_enable=0;
-	}
-	}
-
-	log_print("%s:pid[%d]::Init State: mute_on=%d black=%d t_pos:%ds\n",	p_para->file_name,
-															p_para->player_id,
-															p_para->playctrl_info.audio_mute,
-															p_para->playctrl_info.black_out,
-															p_para->playctrl_info.time_point);
+	
+    log_print("pid[%d]::Init State: mute_on=%d black=%d t_pos:%ds read_max_cnt=%d\n",	
+											p_para->player_id,
+											p_para->playctrl_info.audio_mute,
+											p_para->playctrl_info.black_out,
+											p_para->playctrl_info.time_point,
+											p_para->playctrl_info.read_max_retry_cnt);
 	log_print("file::::[%s],len=%d\n",c_para->file_name,strlen(c_para->file_name));
 }
 static int check_start_cmd(play_para_t *player)
@@ -630,19 +634,19 @@ void *player_thread(play_para_t *player)
             }
 			if(!pkt->avpkt_isvalid)
 			{
-	            		ret = read_av_packet(player, pkt);      
+	            ret = read_av_packet(player, pkt);      
 				if(ret!= PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN)							
 				{
 					log_error("pid[%d]::read_av_packet failed!\n",player->player_id);
-	               	 	set_player_state(player,PLAYER_ERROR);
-				    	goto release;
+					set_player_state(player,PLAYER_ERROR);
+					goto release;
 				}
-	            		ret = set_header_info(player, pkt);
+	            ret = set_header_info(player, pkt);
 				if(ret!= PLAYER_SUCCESS)
 				{
-			                log_error("pid[%d]::set_header_info failed! ret=%x\n",player->player_id,-ret);
-			                set_player_state(player,PLAYER_ERROR);
-			                goto release;
+	                log_error("pid[%d]::set_header_info failed! ret=%x\n",player->player_id,-ret);
+	                set_player_state(player,PLAYER_ERROR);
+	                goto release;
 				}
 				if( (player->playctrl_info.f_step == 0) && 
 					(ret == PLAYER_SUCCESS) &&
@@ -650,10 +654,10 @@ void *player_thread(play_para_t *player)
 					(get_player_state(player)!= PLAYER_BUFFERING) &&
 					(get_player_state(player)!= PLAYER_PAUSE))	
 				{    
-		                    set_player_state(player,PLAYER_RUNNING);
-		                    update_playing_info(player); 
-		                    update_player_states(player,1);
-	                	}
+                    set_player_state(player,PLAYER_RUNNING);
+                    update_playing_info(player); 
+                    update_player_states(player,1);
+            	}
 			}else
 			{/*packet is full ,do buffering only*/
 					ffmpeg_buffering_data(player);
@@ -661,7 +665,7 @@ void *player_thread(play_para_t *player)
 write_packet:
 			if ( (player->vstream_info.video_format == VFORMAT_SW) && (pkt->type == CODEC_VIDEO) )
 			{
-        			avcodec_decode_video2(ic, picture, &got_picture, pkt->avpkt);
+    			avcodec_decode_video2(ic, picture, &got_picture, pkt->avpkt);
 				pkt->data_size = 0;
         		
         		if ( got_picture )
@@ -692,8 +696,8 @@ write_packet:
 				else if( ret != PLAYER_SUCCESS)                                     
 				{
 					log_print("pid[%d]::write_av_packet failed!\n",player->player_id);
-	                		set_player_state(player,PLAYER_ERROR);
-				    	goto release;
+            		set_player_state(player,PLAYER_ERROR);
+			    	goto release;
 				}           
 			}
             update_playing_info(player); 
@@ -734,6 +738,7 @@ write_packet:
 	                else
 	                {
 	                    player->playctrl_info.end_flag = 1;
+						player_thread_wait(player, (32 >> player->playctrl_info.f_step)*10 * 1000);//(32 >> player->playctrl_info.f_step)*10 ms
 	                    break;
 	                }
 	            } 
