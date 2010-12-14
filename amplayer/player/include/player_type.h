@@ -140,20 +140,22 @@ typedef struct
 typedef struct player_info
 {
 	char *name;
-    player_status last_sta;
+	player_status last_sta;
 	player_status status;		   /*stop,pause	*/
 	int full_time;	   /*Seconds	*/
 	int current_time;  /*Seconds	*/
 	int current_ms;	/*ms*/
-    int last_time;		
-    int error_no;  
+	int last_time;		
+	int error_no;  
 	int start_time;
-    int pts_video;
-    int pts_pcrscr;
+	int pts_video;
+	int pts_pcrscr;
 	int current_pts;
-    long curtime_old_time;    
+	long curtime_old_time;    
 	unsigned int video_error_cnt;
 	unsigned int audio_error_cnt;
+	float		    audio_bufferlevel;
+	float		    video_bufferlevel;
 }player_info_t;
 
 typedef struct pid_info
@@ -201,7 +203,7 @@ typedef struct
 	callback_t callback_fn;
 	int byteiobufsize;
 	int loopbufsize;
-
+	int enable_rw_on_pause;
 	/*
 	data%<min && data% <max  enter buffering;
 	data% >middle exit buffering;

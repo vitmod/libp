@@ -671,45 +671,49 @@ static int  update_buffering_states(play_para_t *p_para,
 	
 	alevel=(float)abuf->data_len/abuf->size;
 	vlevel=(float)vbuf->data_len/vbuf->size;
+	p_para->state.audio_bufferlevel=alevel;
+	p_para->state.video_bufferlevel=vlevel;
 	if(p_para->astream_info.has_audio && 0)
 		log_print("update_buffering_states,alevel=%d,asize=%d,level=%f,status=%d\n",
 			abuf->data_len,abuf->size,alevel,get_player_state(p_para));
 	if(p_para->vstream_info.has_video && 0)
 		log_print("update_buffering_states,vlevel=%d,vsize=%d,level=%f,status=%d\n",
 			vbuf->data_len,vbuf->size,vlevel,get_player_state(p_para));
-	
-	if(p_para->astream_info.has_audio && p_para->vstream_info.has_video)
+	if(p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE)
 	{
-		minlevel=MIN(alevel,vlevel);
-		maxlevel=MAX(alevel,vlevel);
-	}
-	else if(p_para->astream_info.has_audio)
-	{
-		minlevel=alevel;
-		maxlevel=alevel;
-	}
-	else
-	{	
-		minlevel=vlevel;
-		maxlevel=vlevel;
-	}
-	if(	(get_player_state(p_para) == PLAYER_RUNNING) &&
-		(minlevel< p_para->buffering_threshhold_min)  && 
-		 (maxlevel< p_para->buffering_threshhold_max))
-	{
-		codec_pause(p_para->codec);
-		set_player_state(p_para,PLAYER_BUFFERING);
-		update_player_states(p_para,1);   
-		log_print("enter buffering!!!\n");
-	}
-	else if((get_player_state(p_para) == PLAYER_BUFFERING) &&
-		 ((minlevel> p_para->buffering_threshhold_middle)  ||
-		 (maxlevel> p_para->buffering_threshhold_max)))
-	{
-		codec_resume(p_para->codec);
-		set_player_state(p_para,PLAYER_RUNNING);
-		update_player_states(p_para,1);  
-		log_print("leave buffering!!!\n");
+		if(p_para->astream_info.has_audio && p_para->vstream_info.has_video)
+		{
+			minlevel=MIN(alevel,vlevel);
+			maxlevel=MAX(alevel,vlevel);
+		}
+		else if(p_para->astream_info.has_audio)
+		{
+			minlevel=alevel;
+			maxlevel=alevel;
+		}
+		else
+		{	
+			minlevel=vlevel;
+			maxlevel=vlevel;
+		}
+		if(	(get_player_state(p_para) == PLAYER_RUNNING) &&
+			(minlevel< p_para->buffering_threshhold_min)  && 
+			 (maxlevel< p_para->buffering_threshhold_max))
+		{
+			codec_pause(p_para->codec);
+			set_player_state(p_para,PLAYER_BUFFERING);
+			update_player_states(p_para,1);   
+			log_print("enter buffering!!!\n");
+		}
+		else if((get_player_state(p_para) == PLAYER_BUFFERING) &&
+			 ((minlevel> p_para->buffering_threshhold_middle)  ||
+			 (maxlevel> p_para->buffering_threshhold_max)))
+		{
+			codec_resume(p_para->codec);
+			set_player_state(p_para,PLAYER_RUNNING);
+			update_player_states(p_para,1);  
+			log_print("leave buffering!!!\n");
+		}
 	}
 	return 0;
 }
@@ -742,8 +746,8 @@ int update_playing_info(play_para_t *p_para)
         
         check_force_end(p_para, &vbuf, &abuf);
 	}
-	if(p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE)
-		update_buffering_states(p_para,&vbuf,&abuf);
+	
+	update_buffering_states(p_para,&vbuf,&abuf);
 	return PLAYER_SUCCESS;
 }
 

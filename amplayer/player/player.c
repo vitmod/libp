@@ -373,6 +373,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
 	p_para->buffering_enable			= c_para->auto_buffing_enable;
 	p_para->byteiobufsize=c_para->byteiobufsize;
 	p_para->loopbufsize=c_para->loopbufsize;
+	p_para->enable_rw_on_pause=c_para->enable_rw_on_pause;
 	if(p_para->buffering_enable)
 	{/*check threshhold is valid*/
 		if(c_para->buffing_min<c_para->buffing_middle &&
@@ -629,8 +630,14 @@ void *player_thread(play_para_t *player)
             }
             else if (ret == CONTINUE_FLAG)
             {
-                player_thread_wait(player,100*1000);  //100ms
-                //continue;
+			if(!player->enable_rw_on_pause)/*break for rw*/
+			{
+				if(ffmpeg_buffering_data(player)<0)
+				{
+					player_thread_wait(player,100*1000);  //100ms
+					continue;
+				}
+			}
             }
 			if(!pkt->avpkt_isvalid)
 			{

@@ -141,6 +141,7 @@ typedef struct play_para
 
 	int byteiobufsize;
 	int loopbufsize;
+	int enable_rw_on_pause;
 	/*
 	if (data%<min && data%<buffering_threshhold_max) 
 		pause
