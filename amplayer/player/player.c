@@ -255,11 +255,13 @@ static void check_msg(play_para_t *para,player_cmd_t *msg)
         para->playctrl_info.audio_switch_flag = 1;
         para->playctrl_info.switch_audio_id = msg->param;
     }
+	#if 0
     else if(msg->ctrl_cmd & CMD_SWITCH_SID)
     {
         para->playctrl_info.switch_sub_id = msg->param;
         player_switch_sub(para);
     }
+	#endif
 }
 
 int check_flag(play_para_t *p_para)
@@ -342,7 +344,37 @@ int check_flag(play_para_t *p_para)
     {
         player_switch_audio(p_para);
         p_para->playctrl_info.audio_switch_flag = 0;
-    }    
+    }  
+
+	int subtitle_curr = av_get_subtitle_curr();
+	if(subtitle_curr >=0 && subtitle_curr < p_para->sstream_num && \
+		subtitle_curr != p_para->sstream_info.sub_index)
+    {
+    	log_print("start change subtitle from %d to %d \n", p_para->sstream_info.sub_index,subtitle_curr);
+		//first clear subtitle buffer
+    	codec_reset_subtile(p_para->codec);
+		//find new stream match subtitle_curr
+		AVFormatContext *pFormat = p_para->pFormatCtx;
+	    AVStream *pStream;
+	    AVCodecContext *pCodec;
+		int find_subtitle_index = 0;
+		int i=0;
+		for (i=0; i<pFormat->nb_streams; i++)
+    	{
+    		pStream = pFormat->streams[i];
+       		pCodec = pStream->codec;
+			if(pCodec->codec_type == CODEC_TYPE_SUBTITLE)
+				find_subtitle_index ++;
+			if(find_subtitle_index == subtitle_curr+1){
+				p_para->playctrl_info.switch_sub_id = pStream->id;
+				break;
+			}
+		}
+		if(i == pFormat->nb_streams)
+			log_print("can not find subtitle curr\n\n");
+		else
+        	player_switch_sub(p_para);
+    }
     return NONO_FLAG;
 }
 
