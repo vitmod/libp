@@ -534,13 +534,13 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
         }
         av_freep(&pd->buf);
     }
-	av_log(NULL, AV_LOG_INFO, "[%s:%d]guess format=%s\n",__FUNCTION__,__LINE__,fmt->name);
+	
     /* if still no format found, error */
     if (!fmt) {
         err = AVERROR_NOFMT;
         goto fail;
     }
-
+   av_log(NULL, AV_LOG_INFO, "[%s:%d]guess format=%s\n",__FUNCTION__,__LINE__,fmt->name);	
     /* check filename in case an image number is expected */
     if (fmt->flags & AVFMT_NEEDNUMBER) {
         if (!av_filename_number_test(filename)) {
