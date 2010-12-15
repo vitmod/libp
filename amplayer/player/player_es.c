@@ -179,7 +179,9 @@ static int stream_es_init(play_para_t *p_para)
         }
 
         MEMSET(s_codec, 0, sizeof(codec_para_t));
-        
+		if (codec_init_cntl(s_codec) != 0)        	
+            goto error2;
+        scodec_info_init(p_para,s_codec);
         if(codec_init(s_codec) != 0)
 			goto error3;
         p_para->scodec = s_codec;
@@ -234,6 +236,23 @@ static int stream_es_release(play_para_t *p_para)
         }
     	codec_free(p_para->vcodec);
         p_para->vcodec=NULL;
+	}
+	if(p_para->scodec)
+	{
+		r = codec_close_cntl(p_para->scodec);
+        if(r < 0)
+        {
+            log_error("[stream_es_release]close scodec control handle failed, r= %x\n",r);
+            return r;
+        }
+    	r = codec_close(p_para->scodec);
+        if(r < 0)
+        {
+            log_error("[stream_es_release]close scodec failed, r= %x\n",r);
+            return r;
+        }
+    	codec_free(p_para->scodec);
+        p_para->scodec=NULL;
 	}
 	p_para->codec = NULL;
 	return 0;
