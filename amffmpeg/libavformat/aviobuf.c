@@ -416,7 +416,10 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
                     /* do not modify buffer if errot getso that a seek back can
                     be done without rereading data */
                     if(len<0)
-                        s->error= len;                    
+                        s->error= len; 
+					else
+						s->eof_reached = 1;
+					av_log(NULL,AV_LOG_ERROR,"get_buffer ret len: %d\n",len);
                     break;
                 } else {
                     s->pos += len;
@@ -427,7 +430,9 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
                 }
             }else{
                 fill_buffer(s);
-                len = s->buf_end - s->buf_ptr;               
+                len = s->buf_end - s->buf_ptr;  
+				if(s->error)
+					av_log(NULL,AV_LOG_ERROR,"fill_buffer error: %d\n",s->error);
                 if (len == 0)                   
                     break;                 
             }
