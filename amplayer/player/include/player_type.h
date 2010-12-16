@@ -212,6 +212,7 @@ typedef struct
 	float buffing_min;
 	float buffing_middle;
 	float buffing_max;
+	int is_playlist;
  }play_control_t; 
 
 #endif

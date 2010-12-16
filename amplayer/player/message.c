@@ -7,6 +7,7 @@
 
 #include "player_priv.h"
 #include "player_update.h"
+#include "play_list.h"
 #include "thread_mgt.h"
 
 
@@ -136,6 +137,8 @@ int update_player_states(play_para_t *para,int force)
             para->state.pts_pcrscr = get_pts_pcrscr();
 	  		player_info_t state;
 			MEMCPY(&state,&para->state,sizeof(state)); 
+			if(para->playctrl_info.is_playlist)
+				play_list_update_state(para->player_id,&state);
             if(force == 1)
                 log_print("**[update_player_states]pid:%d status=%s(last:%s) error=0x%x\n",para->player_id,player_status2str(state.status),player_status2str(state.last_sta),(-state.error_no));
 	  		fn(para->player_id,&state); 

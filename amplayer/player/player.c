@@ -89,7 +89,12 @@ static int player_para_release(play_para_t *para)
 	{
     	para->decoder->release(para);
     	para->decoder=NULL;
-	}      
+	}  
+	if(para->file_name)
+	{
+		FREE(para->file_name);
+		para->file_name = NULL;
+	}
     return PLAYER_SUCCESS;
 }
 
@@ -385,7 +390,10 @@ void set_player_error_no(play_para_t *player,int error_no)
 
 void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
 {
-	p_para->file_name 					= c_para->file_name;	
+	//p_para->file_name 					= c_para->file_name;	
+	p_para->file_name = MALLOC(strlen(c_para->file_name)+1);
+	strcpy(p_para->file_name,c_para->file_name);
+	p_para->file_name[strlen(c_para->file_name)] = '\0';
 	p_para->state.name 					= p_para->file_name;
 	p_para->vstream_info.video_index 	= c_para->video_index;
 	p_para->astream_info.audio_index 	= c_para->audio_index;
@@ -400,6 +408,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
 		p_para->playctrl_info.read_max_retry_cnt = MAX_TRY_READ_COUNT;
     //if(!p_para->playctrl_info.no_audio_flag)
     //    p_para->playctrl_info.audio_mute= codec_get_mutesta(NULL);
+    p_para->playctrl_info.is_playlist	= c_para->is_playlist;
     p_para->update_state 				= c_para->callback_fn;
     p_para->playctrl_info.black_out 	= get_black_policy();   
 	p_para->buffering_enable			= c_para->auto_buffing_enable;

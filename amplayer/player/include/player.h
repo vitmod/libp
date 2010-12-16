@@ -51,7 +51,8 @@ char * player_status2str(player_status status);
 int         player_loop(int pid);
 int         player_noloop(int pid);
 
-
+int check_url_type(char *filename);
+int play_list_player(play_control_t *pctrl,unsigned long priv);
 
 #ifdef  __cplusplus
 }

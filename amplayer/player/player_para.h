@@ -99,7 +99,8 @@ typedef  struct
     unsigned int audio_switch_flag:1;
     unsigned int audio_mute:1;        
     unsigned int switch_audio_id;
-    unsigned int switch_sub_id;    
+    unsigned int switch_sub_id;  
+	unsigned int is_playlist;
 	int time_point;
 	int f_step;
 	int	read_max_retry_cnt;
