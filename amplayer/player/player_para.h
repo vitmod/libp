@@ -70,6 +70,7 @@ typedef struct
     float		    sub_duration;
     float		    sub_pts;
     int             check_first_pts;
+	int				cur_subindex; //for change subtitle
 }s_stream_info_t;
 
 typedef  struct
