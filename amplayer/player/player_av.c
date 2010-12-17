@@ -1782,7 +1782,7 @@ void player_switch_sub(play_para_t *para)
     }
     else
         pcodec = para->codec;
-
+	codec_reset_subtile(para->codec);
     /* first set an invalid sub id */
     pcodec->sub_pid = 0xffff;
     if (codec_set_sub_id(pcodec))

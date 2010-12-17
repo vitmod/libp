@@ -51,6 +51,11 @@ typedef enum
 	* player already exit	
 	******************************/
 	PLAYER_EXIT   		= 0x40001, 
+	/******************************
+	* 0x5000x: 
+	* player list status	
+	******************************/
+	PLAYER_PLAY_NEXT	= 0x50001,	
 }player_status;
 
 

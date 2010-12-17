@@ -31,6 +31,7 @@
 static void player_release(int pid)
 {    
     play_para_t *para;
+	log_print("[player_release:enter]pid=%d\n", pid); 
     para=player_open_pid_data(pid);    
     if(NULL == para)
         return;   
@@ -40,11 +41,13 @@ static void player_release(int pid)
     log_print("pid[%d]player release ok \n",pid);   
     player_close_pid_data(pid);
     player_release_pid(pid);
+	log_print("[player_release:enter]exit=%d\n", pid); 
 }
  
 int player_init()
 {
 	// Register all formats and codecs
+	DEBUG_PN();
 	ffmpeg_init();
 	player_id_pool_init();
 	ts_register_stream_decoder();
@@ -93,7 +96,7 @@ int player_start(play_control_t *thead_p,unsigned long  priv)
     int ret;    	
     int pid = -1;  
     play_para_t *p_para;
-    log_print("[player_start:%d]p=%p \n",__LINE__,thead_p);
+    log_print("[player_start:enter]p=%p \n",thead_p);
     if(thead_p == NULL)
         return PLAYER_EMPTY_P;
     pid = player_request_pid();    
@@ -118,7 +121,8 @@ int player_start(play_control_t *thead_p,unsigned long  priv)
         FREE(p_para);
         player_release_pid(pid);		
         return PLAYER_CAN_NOT_CREAT_THREADS;
-    }      
+    }   
+	log_print("[player_start:exit]pid=%d \n",pid);
     return pid;
 }
 int player_start_play(int pid)
@@ -126,6 +130,7 @@ int player_start_play(int pid)
 	player_cmd_t *cmd;
     int r=PLAYER_SUCCESS;
     play_para_t *player_para;
+	log_print("[player_start_play:enter]pid=%d\n", pid); 
     player_para=player_open_pid_data(pid);
     
     if(player_para==NULL)
@@ -141,7 +146,8 @@ int player_start_play(int pid)
     {
         r= PLAYER_NOMEM;
     }      
-    player_close_pid_data(pid);      
+    player_close_pid_data(pid);    
+	log_print("[player_start_play:exit]pid=%d\n", pid); 
     return r;
 }
 
@@ -178,6 +184,7 @@ int player_stop(int pid)
     player_cmd_t *cmd;
     int r=PLAYER_SUCCESS;
     play_para_t *player_para;
+	log_print("[player_stop:enter]pid=%d\n", pid); 
     player_para=player_open_pid_data(pid);
     
     if(player_para==NULL)
@@ -201,13 +208,14 @@ int player_stop(int pid)
     {
         r= PLAYER_NOMEM;
     }      
-    player_close_pid_data(pid);      
+    player_close_pid_data(pid);    
+	log_print("[player_stop:exit]pid=%d\n", pid); 
     return r;
 }
 
 int player_exit(int pid)
 {   
-    log_print("[player_exit:%d]pid=%d\n",__LINE__, pid);   
+    log_print("[player_exit:enter]pid=%d\n", pid);   
     int ret=PLAYER_SUCCESS;
     play_para_t *para;
     para=player_open_pid_data(pid);
@@ -222,86 +230,122 @@ int player_exit(int pid)
 	}
     player_close_pid_data(pid);
     player_release(pid);
+	log_print("[player_exit:exit]pid=%d\n", pid);   
     return ret;
 }
 
 int player_pause(int pid)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_pause:enter]pid=%d\n", pid);   
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.ctrl_cmd = CMD_PAUSE;
-    return player_send_message(pid,&cmd);    	
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_pause:exit]pid=%d ret=%d\n", pid,ret);
+    return ret;    	
 }
 
 int player_resume(int pid)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_resume:enter]pid=%d\n", pid); 
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.ctrl_cmd = CMD_RESUME;
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_resume:exit]pid=%d ret=%d\n", pid,ret);
+    return ret;
 }
 
 int player_loop(int pid)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_loop:enter]pid=%d\n", pid); 
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.set_mode = CMD_LOOP;
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_loop:exit]pid=%d ret=%d\n", pid,ret); 
+    return ret;
 }
 
 int player_noloop(int pid)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_loop:enter]pid=%d\n", pid);
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.set_mode = CMD_NOLOOP;
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_loop:exit]pid=%d ret=%d\n", pid,ret);
+    return ret;
 }
 
 int player_timesearch(int pid,int s_time)
 {	
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_timesearch:enter]pid=%d s_time=%d\n", pid,s_time);
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.ctrl_cmd = CMD_SEARCH;
     cmd.param=s_time;
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_timesearch:exit]pid=%d ret=%d\n", pid,ret);
+    return ret;
 }
 
 int player_forward(int pid,int speed)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_forward:enter]pid=%d speed=%d\n", pid,speed);
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.ctrl_cmd = CMD_FF;
     cmd.param= speed;
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_forward:exit]pid=%d ret=%d\n", pid,ret);
+    return ret;
 }
 
 int player_backward(int pid,int speed)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_backward:enter]pid=%d speed=%d\n", pid,speed);
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.ctrl_cmd = CMD_FB;
     cmd.param=speed;
-    log_print("[player_backward]cmd=%x param=%d \n",cmd.ctrl_cmd, cmd.param);
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+    log_print("[player_backward]cmd=%x param=%d ret=%d\n",cmd.ctrl_cmd, cmd.param,ret);
+    return ret;
 }
 
 int player_aid(int pid,int audio_id)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_aid:enter]pid=%d aid=%d\n", pid,audio_id);
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.ctrl_cmd = CMD_SWITCH_AID;
     cmd.param=audio_id;
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_aid:exit]pid=%d ret=%d\n", pid,ret);
+    return ret;
 
 }
 
 int player_sid(int pid,int sub_id)
 {
     player_cmd_t cmd;
+	int ret;
+	log_print("[player_sid:enter]pid=%d sub_id=%d\n", pid,sub_id);
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
     cmd.ctrl_cmd = CMD_SWITCH_SID;
     cmd.param=sub_id;
-    return player_send_message(pid,&cmd);
+	ret = player_send_message(pid,&cmd);
+	log_print("[player_sid:enter]pid=%d sub_id=%d\n", pid,sub_id);
+    return ret;
 
 }
 
@@ -349,6 +393,7 @@ int player_get_media_info(int pid,media_info_t *minfo)
         return PLAYER_FAILED;/*this data is 0 for default!*/
     MEMSET(minfo, 0, sizeof(media_info_t));
     MEMCPY(minfo, &player_para->media_info, sizeof(media_info_t));	
+	log_print("[player_get_media_info]video_num=%d vidx=%d\n",minfo->stream_info.total_video_num,minfo->stream_info.cur_video_index);
     player_close_pid_data(pid);  
     return PLAYER_SUCCESS;
 }

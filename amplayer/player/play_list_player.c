@@ -33,6 +33,7 @@ static int play_list_play_file(char *filename,unsigned long args)
 	play_control_t *plist_ctrl;
 	unsigned long priv;	
 	play_list_thread_para_t *plist_thread_para = (play_list_thread_para_t *)args;
+	
 	if(plist_thread_para)
 	{		
 		plist_ctrl = &plist_thread_para->play_ctrl_para;
@@ -48,21 +49,33 @@ static int play_list_play_file(char *filename,unsigned long args)
 	log_print("try play file=%s\n",filename);	
 
 	if(plist_ctrl->callback_fn.update_statue_callback)
-		up_callback_fn=plist_ctrl->callback_fn.update_statue_callback;
+		up_callback_fn=plist_ctrl->callback_fn.update_statue_callback;	
+	if(plist_ctrl->file_name)
+	{
+		FREE(plist_ctrl->file_name);
+		plist_ctrl->file_name = NULL;
+	}
+	plist_ctrl->file_name = MALLOC(strlen(filename)+2);
 	plist_ctrl->file_name[0]='s';
-	strcpy(plist_ctrl->file_name+1,filename);	
+	strcpy(plist_ctrl->file_name+1,filename);
 	plist_ctrl->file_name[strlen(filename)+1]='\0';
-	log_print("[%s]ctrl->filename=%s\n",__FUNCTION__,plist_ctrl->file_name);	
+	log_print("[%s]list->filename=%s\n",__FUNCTION__,plist_ctrl->file_name);
 	return player_start(plist_ctrl,priv);	
 }
 int play_list_update_state(int pid,player_info_t *info) 
 {
+	play_list_t *list = player_get_playlist();	
 	if(info->status != info->last_sta)
 		log_print("play_list_update_status:0x%x last:0x%x",info->status,info->last_sta);
 	if(info->status == PLAYER_STOPED)
 		play_list_play_status = PLAY_LIST_STOPED;
 	else if(info->status == PLAYER_PLAYEND || info->status == PLAYER_ERROR)
-		play_list_play_status = PLAY_LIST_FILE_END;	
+	{
+		play_list_play_status = PLAY_LIST_FILE_END;
+		log_print("list->out_list_index=%d list->list_num=%d",list->out_list_index,list->list_num);
+		if(list->out_list_index < list->list_num)
+			info->status = PLAYER_PLAY_NEXT;
+	}
 	log_print("[play_list_update_state]sta=0x%x curtime=%d lasttime=%d\n",info->status,info->current_time,info->last_time);
 	return 0;
 }
@@ -107,7 +120,7 @@ static void *play_list_play(void *args)
 			flag = play_list_ctrl_play(pid);
 			if(flag == PLAY_NEXT_FILE)
 			{
-				//player_exit(pid);
+				player_exit(pid);
 				log_print("play next file !\n");
 				continue;
 			}
@@ -125,7 +138,11 @@ static void *play_list_play(void *args)
 	}while(file_name);
 err:	
 	play_list_release();
-	
+	if(play_list_ctrl_para.play_ctrl_para.file_name)
+	{
+		FREE(play_list_ctrl_para.play_ctrl_para.file_name);
+		play_list_ctrl_para.play_ctrl_para.file_name = NULL;
+	}
 	pthread_exit(NULL);
 	log_print("Exit play list play thread!\n");
 	return NULL;		
@@ -136,21 +153,21 @@ int play_list_player(play_control_t *pctrl,unsigned long priv)
 	int num;
 	int ret = -1;
 	play_list_t *play_list = NULL;
+	play_control_t *m_play_ctrl;
 	play_list_init();
-	
-	//play_list_ctrl_para.play_ctrl_para = pctrl;
-	MEMCPY(&play_list_ctrl_para.play_ctrl_para,pctrl,sizeof(pctrl));
+	m_play_ctrl = &play_list_ctrl_para.play_ctrl_para;
+	MEMCPY(m_play_ctrl,pctrl,sizeof(pctrl));	
 	play_list_ctrl_para.priv = priv;
-	log_print("[%s:%d]file_name =%s\n",__FUNCTION__,__LINE__,play_list_ctrl_para.play_ctrl_para.file_name);
+	if(player_register_update_callback(&m_play_ctrl->callback_fn, pctrl->callback_fn.update_statue_callback,pctrl->callback_fn.update_interval)<0)
+		log_print("[%s:%d]Warning: callback register failed!\n",__FUNCTION__,__LINE__);
 	num=play_list_parser_m3u(pctrl->file_name);
 	if(num > 0)			
 	{
 		play_list = player_get_playlist();
 		if(play_list)
 		{		
-			pctrl->is_playlist = 1;
-			//log_print("[%s:%d]cb=%p\n",__FUNCTION__,__LINE__,pctrl->callback_fn);
-			log_print("[%s:%d]cb=%p\n",__FUNCTION__,__LINE__,&play_list_ctrl_para.play_ctrl_para.callback_fn);
+			m_play_ctrl->is_playlist = 1;			
+			log_print("[%s:%d]is_playlist=%d\n",__FUNCTION__,__LINE__,m_play_ctrl->is_playlist);
 			ret = pthread_create(&playlist_thread_id, NULL, play_list_play, (void *)&play_list_ctrl_para);
 		}
     }
@@ -167,12 +184,12 @@ int check_url_type(char *filename)
 	int err;
 	char line[MAX_PATH];	
 	char *pline;	
-	log_error("[%s]filename=%s!\n",__FUNCTION__,filename);
+	log_print("[%s]filename=%s!\n",__FUNCTION__,filename);
 	if((err=url_fopen(&s,filename,URL_RDONLY))<0)
 	{
 		log_error("[%s]open %s error!\n",__FUNCTION__,filename);
 		return err;
-	}
+	}	
 	if(play_list_get_line(s,line,sizeof(line))==0)
 	{
 		log_print("[%s:%d]list_line=%s!\n",__FUNCTION__,__LINE__,line);
@@ -182,15 +199,15 @@ int check_url_type(char *filename)
 			url_fclose(s);
 			return 1;
 		}
-	}
+	}	
 	if((match_ext(filename, 'm3u'))||(match_ext(filename, 'm3u8'))) 
 	{
-		url_fclose(s);
+		url_fclose(s);	
 		return 1;
 	}
 	else
 	{
-		url_fclose(s);
+		url_fclose(s);	
 		return 0;
 	}
 }
