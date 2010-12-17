@@ -680,6 +680,9 @@ typedef struct AVFormatContext {
 
     /* added by Z.C for index building */
     int index_builded;
+
+    /* added by Z.C for some ps/ts file seeking */
+    int64_t valid_offset;
 } AVFormatContext;
 
 typedef struct AVPacketList {

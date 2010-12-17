@@ -372,6 +372,8 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
     ByteIOContext *pb = para->pFormatCtx->pb;
     unsigned char *pbuf ;    
     static int try_count = 0;
+    int64_t cur_offset = 0;
+    
     #if DUMP_READ
     if(fdr==-1)
     {
@@ -400,10 +402,11 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
 		pkt->data=pkt->buf;
 	}    
     pbuf = pkt->data;
+    cur_offset = url_ftell(pb);
     if(!para->playctrl_info.read_end_flag && (0 == pkt->data_size))
     {        
     	rev_byte = get_buffer(pb,pbuf,para->max_raw_size);
-        if(rev_byte > 0)
+        if((rev_byte > 0) && (cur_offset <= para->pFormatCtx->valid_offset))
     	{	
             try_count = 0;
     		pkt->data_size = rev_byte;		
@@ -422,7 +425,7 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
             #endif
 
     	} 
-        else if(rev_byte == AVERROR_EOF)//if(rev_byte != AVERROR(EAGAIN))
+        else if((rev_byte == AVERROR_EOF) || (cur_offset > para->pFormatCtx->valid_offset))//if(rev_byte != AVERROR(EAGAIN))
         {/*if the return is EAGAIN,we need to try more times*/
             para->playctrl_info.read_end_flag = 1;
             log_print("raw read: read end!\n");
@@ -939,6 +942,11 @@ int time_search(play_para_t *am_p)
                     offset = am_p->data_offset;
             }            
             log_info("time_point = %d  offset=%llx \n",time_point, offset);   
+            if (offset > s->valid_offset)
+            {
+                offset = url_ftell(s->pb);
+                log_info("seek offset exceed, use current 0x%llx\n", offset);
+            }
             ret = url_fseek(s->pb, offset, SEEK_SET);
 		    if (ret < 0)
             {
