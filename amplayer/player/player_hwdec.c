@@ -637,7 +637,27 @@ static int mpeg_add_header(play_para_t *para, am_packet_t *pkt)
     pkt->avpkt_newflag = 1;   
 	return write_av_packet(para, pkt);    
 }
+ static int flac_add_header(play_para_t *para, am_packet_t *pkt)
+{
+     unsigned ext_size = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata_size;
+     unsigned char *extradata = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata;
 
+     if(ext_size > 0){
+	     MEMCPY(pkt->hdr->data,extradata , ext_size);
+	     pkt->hdr->size = ext_size;
+	     pkt->avpkt_newflag = 1;  
+		if(para->acodec){		
+			pkt->codec = para->acodec;
+
+		}	
+	      pkt->type = CODEC_AUDIO;
+	      log_print("==============flac add header =======================\n");
+	  
+		return write_av_packet(para, pkt);   
+     	}
+	 return 0;
+
+}
 
 int pre_header_feeding(play_para_t *para, am_packet_t *pkt)
 {	
@@ -650,7 +670,29 @@ int pre_header_feeding(play_para_t *para, am_packet_t *pkt)
     
     pStream = para->pFormatCtx->streams[index];
     avcodec = pStream->codec;    
-    
+     if(para->astream_info.audio_format == AFORMAT_FLAC&&para->astream_info.has_audio ){
+
+		if(pkt->hdr == NULL)
+		{
+			pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+			pkt->hdr->data = (char *)MALLOC( HDR_BUF_SIZE);
+			if(!pkt->hdr->data) {
+				log_print("[pre_header_feeding] NOMEM!");
+				return PLAYER_NOMEM;
+			}
+		}
+		flac_add_header(para,pkt);
+		if(pkt->hdr)
+		{
+			if(pkt->hdr->data)
+			{
+				FREE(pkt->hdr->data);
+				pkt->hdr->data = NULL;
+			}
+			FREE(pkt->hdr);				
+			pkt->hdr = NULL;				
+		}	
+ 	}	
 	if(para->stream_type == STREAM_ES && para->vstream_info.has_video)
 	{ 
 		if(pkt->hdr == NULL)
