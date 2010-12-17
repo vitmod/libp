@@ -32,12 +32,12 @@ static int play_list_play_file(char *filename,unsigned long args)
 {	
 	play_control_t *plist_ctrl;
 	unsigned long priv;	
-	play_list_thread_para_t *plist_thread_para = (unsigned long)args;
+	play_list_thread_para_t *plist_thread_para = (play_list_thread_para_t *)args;
 	if(plist_thread_para)
 	{		
-		plist_ctrl = plist_thread_para->play_ctrl_para;
+		plist_ctrl = &plist_thread_para->play_ctrl_para;
 		priv = plist_thread_para->priv;
-		log_print("[%s]cb=%p\n",__FUNCTION__,plist_ctrl->callback_fn);			
+		log_print("[%s]cb=%p\n",__FUNCTION__,&plist_ctrl->callback_fn);			
 	}
 	else
 	{
@@ -98,7 +98,7 @@ static void *play_list_play(void *args)
 		file_name = play_list_get_file();
 		if(file_name)						
 		{
-			pid = play_list_play_file(file_name, args);	
+			pid = play_list_play_file(file_name, (unsigned long)args);	
 			if(pid < 0) 
 			{
 				log_error("Play start file %s failed!ret=%d\n",file_name,pid);
@@ -150,7 +150,7 @@ int play_list_player(play_control_t *pctrl,unsigned long priv)
 		{		
 			pctrl->is_playlist = 1;
 			//log_print("[%s:%d]cb=%p\n",__FUNCTION__,__LINE__,pctrl->callback_fn);
-			log_print("[%s:%d]cb=%p\n",__FUNCTION__,__LINE__,play_list_ctrl_para.play_ctrl_para.callback_fn);
+			log_print("[%s:%d]cb=%p\n",__FUNCTION__,__LINE__,&play_list_ctrl_para.play_ctrl_para.callback_fn);
 			ret = pthread_create(&playlist_thread_id, NULL, play_list_play, (void *)&play_list_ctrl_para);
 		}
     }

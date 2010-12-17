@@ -21,7 +21,7 @@ typedef struct{
 }play_list_t;
 
 typedef struct{
-	play_control_t *play_ctrl_para;
+	play_control_t play_ctrl_para;
 	unsigned long priv;
 }play_list_thread_para_t;
 #endif
