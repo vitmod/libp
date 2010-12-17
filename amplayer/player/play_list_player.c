@@ -52,7 +52,7 @@ static int play_list_play_file(char *filename,unsigned long args)
 		up_callback_fn=plist_ctrl->callback_fn.update_statue_callback;	
 	if(plist_ctrl->file_name)
 	{
-		FREE(plist_ctrl->file_name);
+		//FREE(plist_ctrl->file_name);
 		plist_ctrl->file_name = NULL;
 	}
 	plist_ctrl->file_name = MALLOC(strlen(filename)+2);
