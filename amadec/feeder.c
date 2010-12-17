@@ -43,6 +43,8 @@ static volatile unsigned *amport_regs = (unsigned *)MAP_FAILED;
 static int amport_reg_offset;
 static int amport_reg_size;
 #define aififo_bits_ready(x) (((volatile)amport_regs[7] * 8) >= (x))
+#define AIFIFO_READY  (((volatile)amport_regs[8] &(1<<9)) )
+
 static int amport_fd;
 #ifndef min
 #define min(x,y) ((x)<(y)?(x):(y))
@@ -258,8 +260,17 @@ inline static void wait_bits_ready(int len)
 
 static int amport_get_bits(unsigned long *buf,int len)
 {
+	int fifo_ready_wait = 0;
 	wait_bits_ready(len);
-    amport_regs[2] = len;
+	while(!AIFIFO_READY){
+		fifo_ready_wait++;
+		usleep(1000);
+		if(fifo_ready_wait > 100){
+			 log_print(LOG_ERR,"FATAL err,AIFIFO is not ready,check!!\n");
+			return 0;
+		}	
+	}
+    	amport_regs[2] = len;
 	buf[0]=amport_regs[2];
 	return 0;
 
@@ -268,6 +279,7 @@ static int amport_get_bits(unsigned long *buf,int len)
 
 static int amport_get_bytes(unsigned char *buffer,int size)
 {
+	int fifo_ready_wait = 0;
 	int bytes;
 	int len;
 	unsigned char *p=buffer;
@@ -275,6 +287,8 @@ static int amport_get_bytes(unsigned char *buffer,int size)
 	int space;
 	int i;
 	int wait_times=0;
+	while( size >=  amport_regs[0xb]&&!stop_flag)
+		usleep(1000);
 	for(len=0;len<size;)
 	{
 					space=(size-len);
@@ -297,6 +311,14 @@ static int amport_get_bytes(unsigned char *buffer,int size)
 					{
 							//WRITE_MPEG_REG(MREG_AIU_AIFIFO_GBIT,8);
 							//tmp=READ_MPEG_REG(MREG_AIU_AIFIFO_GBIT);
+							while(!AIFIFO_READY){
+								fifo_ready_wait++;
+								usleep(1000);
+								if(fifo_ready_wait > 100){
+									 log_print(LOG_ERR,"FATAL err,AIFIFO is not ready,check!!\n");
+									return 0;
+								}	
+							}
 							amport_regs[2] = 8;
 							tmp=amport_regs[2];
 							*p++=tmp&0xff;
