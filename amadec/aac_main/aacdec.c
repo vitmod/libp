@@ -65,18 +65,19 @@ int AAC_decode_frame(char *buf,int len,struct frame_fmt *fmt)
     int decoded;
     int data_size;
 
-    if(packet.size  <= 0){
+    if(packet.size  <= 6144/2){
         int ret = 0;
-
-        packet.size = 4096;
-        ret = AAC_read(rbuf, packet.size);
-        packet.data = rbuf;
-
+        memcpy(rbuf, packet.data, packet.size);
+        ret = AAC_read(rbuf+ packet.size,6144- packet.size);
         if(ret <= 0){
             packet.data = NULL;
             packet.size = 0;
             return 0;
-        }
+        }	
+        packet.data = rbuf;
+	 packet.size += ret;	
+
+
     }
 
     data_size = sizeof(dec_buf1);
@@ -91,12 +92,7 @@ int AAC_decode_frame(char *buf,int len,struct frame_fmt *fmt)
     
     if(decoded < 0){
         log_print(LOG_ERR,"avcodec_decode_audio3 error!\n");
-        if(packet.size > 0){
-            memcpy(rbuf, packet.data, packet.size);
-            AAC_read(rbuf+packet.size, 4096-packet.size);
-            packet.data = rbuf;
-            packet.size = 4096;
-        }
+        packet.size = 0;
         return 0;
     }
     
