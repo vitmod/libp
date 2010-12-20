@@ -200,7 +200,7 @@ int check_url_type(char *filename)
 			return 1;
 		}
 	}	
-	if((match_ext(filename, 'm3u'))||(match_ext(filename, 'm3u8'))) 
+	if((match_ext(filename, "m3u"))||(match_ext(filename, "m3u8"))) 
 	{
 		url_fclose(s);	
 		return 1;
