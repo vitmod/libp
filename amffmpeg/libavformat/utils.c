@@ -2005,6 +2005,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 			                    st->duration < duration)
 			                    {
 				                    st->duration = duration;
+                                    ic->valid_offset = offset;
 									break;
 			                	}
 			            }
@@ -2093,6 +2094,7 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
             file_size = 0;
     }
     ic->file_size = file_size;
+    ic->valid_offset = file_size ? file_size : 0x7fffffffffffffff;
 
     if ((!strcmp(ic->iformat->name, "mpeg") ||
          !strcmp(ic->iformat->name, "mpegts")) &&

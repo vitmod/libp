@@ -140,7 +140,7 @@ err:
 	play_list_release();
 	if(play_list_ctrl_para.play_ctrl_para.file_name)
 	{
-		FREE(play_list_ctrl_para.play_ctrl_para.file_name);
+		//FREE(play_list_ctrl_para.play_ctrl_para.file_name);
 		play_list_ctrl_para.play_ctrl_para.file_name = NULL;
 	}
 	pthread_exit(NULL);
