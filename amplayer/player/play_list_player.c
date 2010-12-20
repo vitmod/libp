@@ -17,6 +17,7 @@ static pthread_t playlist_thread_id;
 static update_state_fun_t up_callback_fn=NULL;
 static play_list_thread_para_t play_list_ctrl_para;
 int play_list_play_status;
+int play_list_update_state(int pid,player_info_t *info) ;
 
 static int play_list_ctrl_init(play_control_t *ctrl_param)
 {	
@@ -28,7 +29,7 @@ static int play_list_ctrl_init(play_control_t *ctrl_param)
 	ctrl_param->sub_index = -1;	
 	return 0;
 }
-static int play_list_play_file(char *filename,unsigned long args)
+static int play_list_play_file(char *filename,unsigned long args,int first)
 {	
 	play_control_t *plist_ctrl;
 	unsigned long priv;	
@@ -47,14 +48,12 @@ static int play_list_play_file(char *filename,unsigned long args)
 	}	
 		
 	log_print("try play file=%s\n",filename);	
-
-	if(plist_ctrl->callback_fn.update_statue_callback)
-		up_callback_fn=plist_ctrl->callback_fn.update_statue_callback;	
 	if(plist_ctrl->file_name)
 	{
 		FREE(plist_ctrl->file_name);
 		plist_ctrl->file_name = NULL;
 	}
+	plist_ctrl->need_start=first?plist_ctrl->need_start:0;
 	plist_ctrl->file_name = MALLOC(strlen(filename)+2);
 	plist_ctrl->file_name[0]='s';
 	strcpy(plist_ctrl->file_name+1,filename);
@@ -64,19 +63,23 @@ static int play_list_play_file(char *filename,unsigned long args)
 }
 int play_list_update_state(int pid,player_info_t *info) 
 {
+	player_info_t new_info;
+	memcpy(&new_info,info,sizeof(*info));
 	play_list_t *list = player_get_playlist();	
 	if(info->status != info->last_sta)
 		log_print("play_list_update_status:0x%x last:0x%x",info->status,info->last_sta);
 	if(info->status == PLAYER_STOPED)
 		play_list_play_status = PLAY_LIST_STOPED;
-	else if(info->status == PLAYER_PLAYEND || info->status == PLAYER_ERROR)
+	else if(player_thread_stop(info->status))
 	{
 		play_list_play_status = PLAY_LIST_FILE_END;
 		log_print("list->out_list_index=%d list->list_num=%d",list->out_list_index,list->list_num);
 		if(list->out_list_index < list->list_num)
-			info->status = PLAYER_PLAY_NEXT;
+			new_info.status = PLAYER_PLAY_NEXT;
 	}
 	log_print("[play_list_update_state]sta=0x%x curtime=%d lasttime=%d\n",info->status,info->current_time,info->last_time);
+	if(up_callback_fn)
+		return up_callback_fn(pid,&new_info);
 	return 0;
 }
 
@@ -104,6 +107,7 @@ static void *play_list_play(void *args)
 	char *file_name;	
 	int pid;
 	int flag;	
+	int first_player=1;
 	
 	play_list_t *list = player_get_playlist();	
 	log_print("Enter play list play thread!\n");
@@ -111,12 +115,21 @@ static void *play_list_play(void *args)
 		file_name = play_list_get_file();
 		if(file_name)						
 		{
-			pid = play_list_play_file(file_name, (unsigned long)args);	
+			pid = play_list_play_file(file_name, (unsigned long)args,first_player);	
 			if(pid < 0) 
 			{
 				log_error("Play start file %s failed!ret=%d\n",file_name,pid);
 				goto err;
 			}
+			if(up_callback_fn)
+				{
+				player_info_t new_info;/**/
+				memset(&new_info,0,sizeof(new_info));
+				new_info.status=PLAYER_INITING;
+				up_callback_fn(pid,&new_info);
+				}
+			first_player=0;
+			while(player_get_state(pid)<PLAYER_ERROR)	usleep(1000*1000);
 			flag = play_list_ctrl_play(pid);
 			if(flag == PLAY_NEXT_FILE)
 			{
@@ -156,11 +169,13 @@ int play_list_player(play_control_t *pctrl,unsigned long priv)
 	play_control_t *m_play_ctrl;
 	play_list_init();
 	m_play_ctrl = &play_list_ctrl_para.play_ctrl_para;
-	MEMCPY(m_play_ctrl,pctrl,sizeof(pctrl));	
+	MEMCPY(m_play_ctrl,pctrl,sizeof(*pctrl));	
 	play_list_ctrl_para.priv = priv;
-	if(player_register_update_callback(&m_play_ctrl->callback_fn, pctrl->callback_fn.update_statue_callback,pctrl->callback_fn.update_interval)<0)
+	up_callback_fn=pctrl->callback_fn.update_statue_callback;	
+	if(player_register_update_callback(&m_play_ctrl->callback_fn,play_list_update_state,pctrl->callback_fn.update_interval)<0)
 		log_print("[%s:%d]Warning: callback register failed!\n",__FUNCTION__,__LINE__);
 	num=play_list_parser_m3u(pctrl->file_name);
+	m_play_ctrl->file_name=NULL;
 	if(num > 0)			
 	{
 		play_list = player_get_playlist();
