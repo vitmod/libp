@@ -366,16 +366,35 @@ void init_checksum(ByteIOContext *s,
 
 /* XXX: put an inline version */
 int get_byte(ByteIOContext *s)
-{    
+{   
+	int retry_fill_cnt = 0;
     if (s->buf_ptr < s->buf_end) {        
         return *s->buf_ptr++;       
     } else {
-        fill_buffer(s);
-        if (s->buf_ptr < s->buf_end)                    
+get_data:
+		fill_buffer(s);
+		if (s->buf_ptr < s->buf_end)                    
             return *s->buf_ptr++; 
         else
-            return 0;
+        {
+			// return 0;
+			if (url_interrupt_cb())       
+            	return AVERROR(EINTR);
+			if(s->eof_reached || s->error)
+				av_log(NULL, AV_LOG_ERROR,"[%s]fill buffer: eof=%d error=%d retry_fill_cnt=%d\n",__FUNCTION__,s->eof_reached,s->error,retry_fill_cnt);
+			if(retry_fill_cnt >= 1000)
+			{
+				av_log(NULL, AV_LOG_ERROR,"[%s]fill buffer retry for a long time,give up!\n",__FUNCTION__);
+				return 0;
+			}			 
+			if(s->error == AVERROR(EAGAIN))
+			{
+				retry_fill_cnt ++;
+				goto get_data;
+			} 
+        }
     }
+	return 0;
 }
 
 int url_fgetc(ByteIOContext *s)
