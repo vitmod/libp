@@ -741,7 +741,10 @@ static unsigned int rm_offset_search_pts(AVStream *pStream, unsigned int timepoi
     if (index_entry_f < 0)
     {
         if (index_entry_b < 0)
-            return 0;
+        {
+			log_error("[%s]not found valid backward index entry\n",__FUNCTION__);
+			return 0;
+        }
         else
             return pStream->index_entries[index_entry_b].pos;
     }
@@ -780,6 +783,7 @@ static unsigned int rm_offset_search(play_para_t *am_p, int64_t offset, unsigned
 	unsigned short sync_flag = 0; 
     unsigned int i = 0;
     AVStream *pStream;
+	int retry_get_data = 0;
 
     AVFormatContext *s = am_p->pFormatCtx;
 
@@ -805,80 +809,106 @@ static unsigned int rm_offset_search(play_para_t *am_p, int64_t offset, unsigned
     cur_offset = offset;    
     while (1)
     {        
-        url_fseek(s->pb, offset, SEEK_SET);
-        read_length = get_buffer(s->pb, data+12, read_size);          
-        if (read_length<=0)        
+        url_fseek(s->pb, offset, SEEK_SET);	
+		retry_get_data = 0;
+		do
+		{
+			read_length = get_buffer(s->pb, data+12, read_size);          
+	        if (read_length<=0)        
+	        {	
+				if(read_length == AVERROR(EAGAIN))
+				{
+					retry_get_data ++;					
+					continue;
+				}
+				else 
+				{
+					FREE(data);
+					log_error("[%s]get data failed. ret=%d\n",__FUNCTION__,read_length);
+					return 0;
+				}
+	        }
+			else
+				break;
+		}while(retry_get_data < am_p->playctrl_info.read_max_retry_cnt);    	
+    	
+        pkt = data+12;
+        for(;;)
         {
-			FREE(data);
-			return 0;        
-        }
-        else 
-        {
-            pkt = data+12;
-            while (1)
+            for (i=0;i<read_size;i++)
             {
-                for (i=0;i<read_size;i++)
+                if (skip_byte>0)
                 {
-                    if (skip_byte>0)
-                    {
-                        skip_byte--;
-                    	if (skip_byte==0){
-                            //media_packet_header
-                            unsigned short version = (pkt[0]<<8)|pkt[1];
-                            unsigned short size = (pkt[2]<<8)|pkt[3];
-                            unsigned short streamid = (pkt[4]<<8)|pkt[5];
-                            unsigned char flag = pkt[11];
-                            unsigned int timestamp;
-                           
-                            if (((version==0)||(version==1))
-                                &&(size>=12)
-                                &&((streamid==video_id)||(streamid==audio_id)))
-                            {                                
-                                if ((flag&2)&&(streamid==video_id)){
-                                    timestamp = (pkt[6]<<24)|(pkt[7]<<16)|(pkt[8]<<8)|pkt[9];
-                                    cur_offset += pkt - (data+12);
-                                    FREE(data);
-                                    return cur_offset;
-                                }
-                                else 
-                                {
-                                    skip_byte = size;                                    
-                                }
-                                sync_flag = 0;                                 
-                            }                               
-                        }                        
-                    }
-                    else
-                    {
+                    skip_byte--;
+                	if (skip_byte==0){
+                        //media_packet_header
                         unsigned short version = (pkt[0]<<8)|pkt[1];
                         unsigned short size = (pkt[2]<<8)|pkt[3];
-                        unsigned short streamid = (pkt[4]<<8)|pkt[5];                        
-                    	if (((version==0)||(version==1))
-                    	    &&(size>=12)
-                    	    &&((streamid==video_id)||(streamid==audio_id))){
-                            skip_byte = size;
-                            sync_flag = 0;                            
-                    	}
-                    }
-                    pkt++;
-                }               
-                sync_flag++;
-                MEMCPY(data, data+read_size, 12);                
-                cur_offset += read_size;     
-                //log_print("[%s:%d]cur_offset=%x file_size=%x\n",__FUNCTION__, __LINE__,cur_offset,s->file_size);
-                if (cur_offset < s->file_size)
-                    url_fseek(s->pb, cur_offset, SEEK_SET);
-                read_length = get_buffer(s->pb, data+12, read_size);                    
-                if ((read_length<=0)||(sync_flag==1024))
-                {
-                   FREE(data);
-                   return 0;
+                        unsigned short streamid = (pkt[4]<<8)|pkt[5];
+                        unsigned char flag = pkt[11];
+                        unsigned int timestamp;
+                       
+                        if (((version==0)||(version==1))
+                            &&(size>=12)
+                            &&((streamid==video_id)||(streamid==audio_id)))
+                        {                                
+                            if ((flag&2)&&(streamid==video_id)){
+                                timestamp = (pkt[6]<<24)|(pkt[7]<<16)|(pkt[8]<<8)|pkt[9];
+                                cur_offset += pkt - (data+12);
+                                FREE(data);
+                                return cur_offset;
+                            }
+                            else 
+                            {
+                                skip_byte = size;                                    
+                            }
+                            sync_flag = 0;                                 
+                        }                               
+                    }                        
                 }
-                pkt = data;
-            }
-        }       
+                else
+                {
+                    unsigned short version = (pkt[0]<<8)|pkt[1];
+                    unsigned short size = (pkt[2]<<8)|pkt[3];
+                    unsigned short streamid = (pkt[4]<<8)|pkt[5];                        
+                	if (((version==0)||(version==1))
+                	    &&(size>=12)
+                	    &&((streamid==video_id)||(streamid==audio_id))){
+                        skip_byte = size;
+                        sync_flag = 0;                            
+                	}
+                }
+                pkt++;
+            }               
+            sync_flag++;
+            MEMCPY(data, data+read_size, 12);                
+            cur_offset += read_size;     
+            //log_print("[%s:%d]cur_offset=%x file_size=%x\n",__FUNCTION__, __LINE__,cur_offset,s->file_size);
+            if (cur_offset < s->file_size)
+                url_fseek(s->pb, cur_offset, SEEK_SET);
+			retry_get_data = 0;
+			do
+			{
+				read_length = get_buffer(s->pb, data+12, read_size);                    
+	            if ((read_length<=0)||(sync_flag==1024))
+	            {
+					if(read_length == AVERROR(EAGAIN))
+						continue;
+					else
+					{
+						FREE(data);
+						log_error("[%s]get data failed. ret=%d\n",__FUNCTION__,read_length);
+						return 0;
+					}
+	            }
+				else
+					break;
+			}while(retry_get_data < am_p->playctrl_info.read_max_retry_cnt); 
+            pkt = data;
+        }          
     } 
     FREE(data);
+	log_error("[%s]not found key frame. ret=0\n",__FUNCTION__);
     return 0;
 }
 
