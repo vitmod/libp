@@ -79,6 +79,40 @@ int set_subtitle_num(int num)
     
 }
 
+int set_subtitle_fps(int fps)
+{
+    int fd;
+    char *path = "/sys/class/subtitle/fps";    
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",fps);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;
+    
+}
+
+int set_subtitle_subtype(int subtype)
+{
+    int fd;
+    char *path = "/sys/class/subtitle/subtype";    
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",subtype);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;
+    
+}
+
 int av_get_subtitle_curr()
 {
     int fd;

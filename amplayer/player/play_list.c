@@ -209,12 +209,11 @@ char * play_list_get_file(void)
 	{
 		unsigned int out_idx;
 		char *file_name = NULL;
-		out_idx = plist->out_list_index;		
+		out_idx = plist->out_list_index++;		
 		if(out_idx < plist->list_num)			
 		{
 			file_name = plist->list[out_idx];
 			log_print("Get a file :%s from list[%d]\n", file_name,out_idx);
-			out_idx ++;
 		}
 		return file_name;
 	}

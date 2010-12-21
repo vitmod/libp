@@ -39,6 +39,8 @@ typedef enum
 	PLAYER_FF_END   	= 0x20007,
 	PLAYER_FB_END   	= 0x20008,
 
+	PLAYER_PLAY_NEXT	= 0x20009,	
+
 	/******************************
 	* 0x3000x: 
 	* player will exit	
@@ -46,16 +48,8 @@ typedef enum
 	PLAYER_ERROR		= 0x30001,
 	PLAYER_PLAYEND  	= 0x30002,	
 	PLAYER_STOPED   	= 0x30003,  
-	/******************************
-	* 0x4000x: 
-	* player already exit	
-	******************************/
-	PLAYER_EXIT   		= 0x40001, 
-	/******************************
-	* 0x5000x: 
-	* player list status	
-	******************************/
-	PLAYER_PLAY_NEXT	= 0x50001,	
+	PLAYER_EXIT   		= 0x30004, 
+	
 }player_status;
 
 
@@ -172,9 +166,9 @@ typedef struct pid_info
 
 
 #define state_pre(sta) (sta>>16)
-#define player_thread_init(sta)	(state_pre(sta)==0x10000)
-#define player_thread_run(sta)	(state_pre(sta)==0x20000)
-#define player_thread_stop(sta)	(state_pre(sta)==0x30000)
+#define player_thread_init(sta)	(state_pre(sta)==0x1)
+#define player_thread_run(sta)	(state_pre(sta)==0x2)
+#define player_thread_stop(sta)	(state_pre(sta)==0x3)
 
 typedef int (*update_state_fun_t)(int pid,player_info_t *) ;
 

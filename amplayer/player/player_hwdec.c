@@ -776,7 +776,9 @@ int pre_header_feeding(play_para_t *para, am_packet_t *pkt)
                 return PLAYER_NOMEM;
             }
 		}
-        if (CODEC_ID_MPEG1VIDEO == avcodec->codec_id )
+        if ((CODEC_ID_MPEG1VIDEO == avcodec->codec_id )
+            || (CODEC_ID_MPEG2VIDEO == avcodec->codec_id)
+            || (CODEC_ID_MPEG2VIDEO_XVMC == avcodec->codec_id))
         {           
         	ret = mpeg_add_header(para,pkt);
             if(ret != PLAYER_SUCCESS)

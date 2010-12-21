@@ -38,7 +38,9 @@ static void get_av_codec_type(play_para_t *p_para)
 		}
 		else
 			p_para->vstream_info.flv_flag = 0;
-        if(pCodecCtx->codec_id == CODEC_ID_MPEG1VIDEO)
+        if((pCodecCtx->codec_id == CODEC_ID_MPEG1VIDEO)
+            || (pCodecCtx->codec_id == CODEC_ID_MPEG2VIDEO)
+            || (pCodecCtx->codec_id == CODEC_ID_MPEG2VIDEO_XVMC))
             mpeg_check_sequence(p_para);
 		if(p_para->stream_type == STREAM_ES)		
             p_para->vstream_info.video_codec_type= video_codec_type_convert(pCodecCtx->codec_tag);		
