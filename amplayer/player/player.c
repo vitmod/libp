@@ -490,8 +490,18 @@ static void player_para_init(play_para_t *para)
 static void subtitle_para_init(play_para_t *player)
 {	
 	set_subtitle_num(player->sstream_num);
-	set_subtitle_fps(player->media_info.video_info[0]->frame_rate_num/player->media_info.video_info[0]->frame_rate_den);
-	set_subtitle_subtype(0);
+	float video_fps = player->media_info.video_info[0]->frame_rate_num/(float)(player->media_info.video_info[0]->frame_rate_den);
+	set_subtitle_fps(video_fps*100);
+	if(player->sstream_info.has_sub){
+		if(player->sstream_info.sub_type == CODEC_ID_DVD_SUBTITLE)
+			set_subtitle_subtype(0);
+		else if(player->sstream_info.sub_type == CODEC_ID_HDMV_PGS_SUBTITLE)
+			set_subtitle_subtype(1);
+		else
+			set_subtitle_subtype(2);		
+	}
+	else
+		set_subtitle_subtype(0);
 	if(player->astream_info.start_time != -1){
 		set_subtitle_startpts(player->astream_info.start_time);
 		log_print("player set startpts is %x\n\n",player->astream_info.start_time);

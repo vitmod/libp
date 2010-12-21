@@ -235,7 +235,8 @@ static int set_sstream_info(play_para_t *p_para)
                 sinfo->id       = pStream->id;              
                 sinfo->internal_external = 0; 
 				sinfo->width	= pStream->codec->width;
-			    sinfo->height	= pStream->codec->height;			   	
+			    sinfo->height	= pStream->codec->height;
+				sinfo->sub_type = pStream->codec->codec_id;
 			    //sinfo->subtitle_size;  
 			    if(lang)
 			    	sinfo->sub_language = lang->value;   
