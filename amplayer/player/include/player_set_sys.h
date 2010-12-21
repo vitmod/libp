@@ -9,4 +9,6 @@ int set_fb1_blank(int blank);
 int set_subtitle_num(int num);
 int av_get_subtitle_curr();
 int set_subtitle_startpts(int pts);
+int set_subtitle_fps(int fps);
+int set_subtitle_subtype(int subtype);
 #endif
