@@ -104,6 +104,7 @@ typedef struct
     char internal_external; //0:internal_sub 1:external_sub       
     unsigned short width;
     unsigned short height;
+	unsigned int sub_type;
     char resolution;
     long long subtitle_size;  
     char *sub_language;   

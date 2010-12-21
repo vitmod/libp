@@ -1807,7 +1807,14 @@ void player_switch_sub(play_para_t *para)
         log_print("[%s:%d]no stream found for new sid\n", __FUNCTION__, __LINE__);
         return;
     }
-
+	if(pstream->codec->codec_id == CODEC_ID_DVD_SUBTITLE){
+		set_subtitle_subtype(0);
+	}
+	else if(pstream->codec->codec_id == CODEC_ID_HDMV_PGS_SUBTITLE){
+		set_subtitle_subtype(1);
+	}
+	else
+		set_subtitle_subtype(2);
     /* only ps and ts stream */
     if (para->codec == NULL)
     {
