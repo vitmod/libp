@@ -153,7 +153,7 @@ err:
 	play_list_release();
 	if(play_list_ctrl_para.play_ctrl_para.file_name)
 	{
-		//FREE(play_list_ctrl_para.play_ctrl_para.file_name);
+		FREE(play_list_ctrl_para.play_ctrl_para.file_name);
 		play_list_ctrl_para.play_ctrl_para.file_name = NULL;
 	}
 	pthread_exit(NULL);
@@ -200,14 +200,22 @@ int check_url_type(char *filename)
 	char line[MAX_PATH];	
 	char *pline;	
 	log_print("[%s]filename=%s!\n",__FUNCTION__,filename);
+	if(!filename)
+		return 0;
+	log_print("[%s]check file type!\n",__FUNCTION__);
 	if((err=url_fopen(&s,filename,URL_RDONLY))<0)
 	{
 		log_error("[%s]open %s error!\n",__FUNCTION__,filename);
 		return err;
+	}
+	if((match_ext(filename, "m3u"))||(match_ext(filename, "m3u8"))) 
+	{
+		url_fclose(s);	
+		return 1;
 	}	
 	if(play_list_get_line(s,line,sizeof(line))==0)
 	{
-		log_print("[%s:%d]list_line=%s!\n",__FUNCTION__,__LINE__,line);
+		log_print("[%s:%d]list_line=%s! strlen(line)=%d\n",__FUNCTION__,__LINE__,line,strlen(line));
 		if(strcmp(line,"#EXTM3U")==0)
 		{
 			log_print("[%s:%d]M3U FOUND!\n",__FUNCTION__,__LINE__);
@@ -215,14 +223,7 @@ int check_url_type(char *filename)
 			return 1;
 		}
 	}	
-	if((match_ext(filename, "m3u"))||(match_ext(filename, "m3u8"))) 
-	{
-		url_fclose(s);	
-		return 1;
-	}
-	else
-	{
-		url_fclose(s);	
-		return 0;
-	}
+	url_fclose(s);	
+    return 0;
+
 }
