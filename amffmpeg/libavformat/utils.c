@@ -545,12 +545,16 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
     if (fmt->flags & AVFMT_NEEDNUMBER) {
         if (!av_filename_number_test(filename)) {
             err = AVERROR_NUMEXPECTED;
+			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
             goto fail;
         }
     }
     err = av_open_input_stream(ic_ptr, pb, filename, fmt, ap);
     if (err)
-        goto fail;
+    {
+		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
+		goto fail;
+    }
     return 0;
  fail:
     av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);

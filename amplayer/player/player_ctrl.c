@@ -572,7 +572,9 @@ char * player_status2str(player_status status)
     	case PLAYER_FB_END:			return "FB_END";
         case PLAYER_ERROR:   		return "ERROR";
         case PLAYER_PLAYEND:      	return "PLAY_END";   	
-    	case PLAYER_STOPED:			return "STOPED";         
+    	case PLAYER_STOPED:			return "STOPED";    
+		case PLAYER_EXIT:			return "EXIT";
+		case PLAYER_PLAY_NEXT:		return "PLAY_NEXT";
     	default:
     			return "UNKNOW_STATE";
 	}
