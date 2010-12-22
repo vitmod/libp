@@ -497,8 +497,13 @@ static void subtitle_para_init(play_para_t *player)
 			set_subtitle_subtype(0);
 		else if(player->sstream_info.sub_type == CODEC_ID_HDMV_PGS_SUBTITLE)
 			set_subtitle_subtype(1);
+		else if(player->sstream_info.sub_type == CODEC_ID_XSUB)
+			set_subtitle_subtype(2);
+		else if(player->sstream_info.sub_type == CODEC_ID_TEXT || \
+			player->sstream_info.sub_type == CODEC_ID_SSA)
+			set_subtitle_subtype(3);
 		else
-			set_subtitle_subtype(2);		
+			set_subtitle_subtype(4);
 	}
 	else
 		set_subtitle_subtype(0);

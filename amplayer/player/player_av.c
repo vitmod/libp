@@ -1813,8 +1813,13 @@ void player_switch_sub(play_para_t *para)
 	else if(pstream->codec->codec_id == CODEC_ID_HDMV_PGS_SUBTITLE){
 		set_subtitle_subtype(1);
 	}
-	else
+	else if(pstream->codec->codec_id == CODEC_ID_XSUB)
 		set_subtitle_subtype(2);
+	else if(pstream->codec->codec_id == CODEC_ID_TEXT || \
+			pstream->codec->codec_id == CODEC_ID_SSA)
+		set_subtitle_subtype(3);
+	else
+		set_subtitle_subtype(4);
     /* only ps and ts stream */
     if (para->codec == NULL)
     {
