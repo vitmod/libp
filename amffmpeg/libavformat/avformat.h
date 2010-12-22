@@ -513,7 +513,7 @@ typedef struct AVChapter {
     AVMetadata *metadata;
 } AVChapter;
 
-#define MAX_STREAMS 20
+#define MAX_STREAMS 30//20
 
 /**
  * Format I/O context.
