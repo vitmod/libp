@@ -413,7 +413,10 @@ int av_open_input_stream(AVFormatContext **ic_ptr,
     if (ic->iformat->read_header) {
         err = ic->iformat->read_header(ic, ap);
         if (err < 0)
-            goto fail;
+        {
+			av_log(NULL, AV_LOG_ERROR, "[%s]read header error! err=%x\n",__FUNCTION__,err);
+			goto fail;
+        }
     }
 
     if (pb && !ic->data_offset)
@@ -1817,7 +1820,10 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 		return -2;
 	buf2 = av_malloc(CHECK_FULL_ZERO_SIZE);
 	if(!buf2)
+	{
+		av_free(buf1);
 		return -3;
+	}
 	memset(buf1,0,CHECK_FULL_ZERO_SIZE);
 	memset(buf2,0,CHECK_FULL_ZERO_SIZE);	
 	filesize = ic->file_size;	
@@ -1886,7 +1892,62 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 	av_free(buf2);
 	return -1;
 }
-
+static int check_last_blk_valid(AVFormatContext *ic)
+{
+	unsigned char *buf1;
+	unsigned char *buf2;
+	int check_size;
+	int read_size;
+	int64_t filesize,offset;	
+	int64_t start_offset,end_offset;	
+	int64_t ret = -1;
+	
+	buf1 = av_mallocz(CHECK_FULL_ZERO_SIZE);	
+	if(!buf1)
+		return AVERROR_NOMEM;
+	buf2 = av_mallocz(CHECK_FULL_ZERO_SIZE);	
+	if(!buf2)
+	{
+		av_free(buf1);
+		return AVERROR_NOMEM;
+	}
+	filesize = ic->file_size;	
+	if(filesize < CHECK_FULL_ZERO_SIZE)
+		check_size = filesize >> 3;
+	else
+		check_size = CHECK_FULL_ZERO_SIZE;
+	
+	offset = filesize - check_size;
+    if (offset < 0)
+        offset = 0;
+    url_fseek(ic->pb, offset, SEEK_SET);
+    read_size = 0;
+	read_size = get_buffer(ic->pb, buf1, check_size);
+	if(read_size <= 0)
+	{
+		av_log(ic, AV_LOG_ERROR, "[%s]get buffer failed, ret=%d\n",__FUNCTION__,read_size);
+		ret = 2;
+		goto end;
+	}
+	else if(memcmp(buf1,buf2,check_size)==0)	//cmp,buf1=buf2=0
+	{		
+		av_log(ic, AV_LOG_ERROR, "[%s]last block is full ZERO\n",__FUNCTION__,read_size);
+		ret = seek_last_valid_pkt(ic);
+		goto end;
+	
+	}
+	else
+	{
+		av_log(ic, AV_LOG_ERROR, "[%s]last block is valid data!\n",__FUNCTION__,read_size);
+		ret = filesize;		
+	}	
+end:
+	av_free(buf1);
+	av_free(buf2);
+	av_log(ic, AV_LOG_INFO, "[%s]last valid block is [0x%llx] file_size=0x%llx\n",__FUNCTION__,ret, filesize);
+	return ret;
+	
+}
 /* only usable for MPEG-PS streams */
 static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset)
 {
@@ -2088,6 +2149,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
+	//int64_t cur_offset;	
 
     /* get the file size, if possible */
     if (ic->iformat->flags & AVFMT_NOFILE) {
@@ -2114,7 +2176,9 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
         av_estimate_timings_from_bit_rate(ic);
     }
     av_update_stream_timings(ic);
-
+	//cur_offset = url_ftell(ic->pb);
+	//check_last_blk_valid(ic);	
+	//url_fseek(ic->pb,cur_offset,SEEK_SET);
 #if 0
     {
         int i;
@@ -2648,13 +2712,15 @@ AVStream *av_new_stream(AVFormatContext *s, int id)
     AVStream *st;
     int i;
 
+	av_log(s, AV_LOG_ERROR,"[%s:%d]nb_streams=%d (%d)\n",__FUNCTION__,__LINE__,s->nb_streams,MAX_STREAMS);
     if (s->nb_streams >= MAX_STREAMS)
         return NULL;
+	av_log(s, AV_LOG_ERROR,"[%s:%d]\n",__FUNCTION__,__LINE__);
 
     st = av_mallocz(sizeof(AVStream));
     if (!st)
         return NULL;
-
+	av_log(s, AV_LOG_ERROR,"[%s:%d]\n",__FUNCTION__,__LINE__);
     st->codec= avcodec_alloc_context();
     if (s->iformat) {
         /* no default bitrate if decoding */
