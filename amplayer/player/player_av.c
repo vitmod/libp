@@ -1742,6 +1742,7 @@ void player_switch_audio(play_para_t *para)
 
     para->astream_info.audio_channel = pCodecCtx->channels;    
     para->astream_info.audio_samplerate = pCodecCtx->sample_rate;
+    para->astream_info.audio_index = audio_index;
         
     if (!para->playctrl_info.raw_mode
         && para->astream_info.audio_format == AFORMAT_AAC)
@@ -1753,7 +1754,6 @@ void player_switch_audio(play_para_t *para)
 			return;              
 		}
     }       
-    para->astream_info.audio_index = audio_index;
 
     /* reinit audio info */
     pcodec->has_audio = 1;
