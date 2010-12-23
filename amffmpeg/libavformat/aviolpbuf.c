@@ -98,7 +98,7 @@ int url_lpopen(URLContext *s,int size)
 	lp->buffer_end=lp->buffer+size;
 	lp->valid_data_size=0;
 	lp->pos=0;
-	lp->block_read_size=64*1024;
+	lp->block_read_size=FFMIN(64*1024,size>>8);
 	lp_lock_init(&lp->mutex,NULL);
 	lp->file_size=url_lpseek(s,0,AVSEEK_SIZE);
 	return 0;

@@ -477,10 +477,29 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
        hack needed to handle RTSP/TCP */
     if (!fmt || !(fmt->flags & AVFMT_NOFILE)) {
         /* if no file needed do not try to open one */
-        if ((err=url_fopen(&pb, filename, URL_RDONLY)) < 0) {
-			av_log(logctx, AV_LOG_DEBUG, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
+        if ((err=url_fopen(&pb, pd->filename, URL_RDONLY)) < 0) {
+			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
             goto fail;
         }
+		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
+		if(url_is_file_list(pb,filename))
+		{
+			char *listfile;
+			listfile=av_malloc(strlen(filename)+10);
+			if(!listfile)
+				return AVERROR(ENOMEM);
+			strcpy(listfile,"list:");
+			strcpy(listfile+5,filename);
+			pd->filename=listfile;
+			url_fclose(pb);
+			pb=NULL;
+			if ((err=url_fopen(&pb, pd->filename, URL_RDONLY)) < 0) {
+				av_log(logctx, AV_LOG_ERROR, "av_open_input_file:%s failed,line=%d err=0x%x\n",pd->filename,__LINE__,err);
+	            goto fail;
+        	}
+			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
+		}
+		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
         if (buf_size > 0) {
             url_setbufsize(pb, buf_size);
         }
@@ -519,7 +538,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
             memset(pd->buf+pd->buf_size, 0, AVPROBE_PADDING_SIZE);
             if (url_fseek(pb, 0, SEEK_SET) < 0) {
                 url_fclose(pb);
-                if (url_fopen(&pb, filename, URL_RDONLY) < 0) {
+                if (url_fopen(&pb, pd->filename, URL_RDONLY) < 0) {
                     pb = NULL;
                     err = AVERROR(EIO);
 					av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d\n",__LINE__);
@@ -546,13 +565,13 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
    av_log(NULL, AV_LOG_INFO, "[%s:%d]guess format=%s\n",__FUNCTION__,__LINE__,fmt->name);	
     /* check filename in case an image number is expected */
     if (fmt->flags & AVFMT_NEEDNUMBER) {
-        if (!av_filename_number_test(filename)) {
+        if (!av_filename_number_test(pd->filename)) {
             err = AVERROR_NUMEXPECTED;
 			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
             goto fail;
         }
     }
-    err = av_open_input_stream(ic_ptr, pb, filename, fmt, ap);
+    err = av_open_input_stream(ic_ptr, pb, pd->filename, fmt, ap);
     if (err)
     {
 		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);

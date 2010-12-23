@@ -217,5 +217,6 @@ void av_register_all(void)
     REGISTER_PROTOCOL (TCP, tcp);
     REGISTER_PROTOCOL (UDP, udp);
 	REGISTER_PROTOCOL (SHTTP,shttp);
+	register_list_demux_all();
 	
 }

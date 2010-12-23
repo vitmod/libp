@@ -21,6 +21,8 @@ typedef struct  url_lpbuf{
 	lock_t mutex;
 }url_lpbuf_t;
 #define IO_LP_BUFFER_SIZE (1024*1024*6)
+#define IO_LP_BUFFER_MINI_SIZE (1024*64)
+
 
 int url_lpopen(URLContext *s,int size);
 int url_lpfillbuffer(URLContext *s,int size);

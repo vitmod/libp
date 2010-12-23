@@ -67,6 +67,9 @@ typedef struct URLPollEntry {
 #define URL_WRONLY 1
 #define URL_RDWR   2
 
+
+#define URL_MINI_BUFFER	0x20000000
+
 typedef int URLInterruptCB(void);
 
 int url_open_protocol (URLContext **puc, struct URLProtocol *up,
