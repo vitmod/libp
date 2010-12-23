@@ -1562,7 +1562,7 @@ int write_sub_data(am_packet_t *pkt, char *buf, unsigned int length)
 
 int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
 {
-    unsigned char sub_header[16] = {0x41, 0x4d, 0x4c, 0x55, 0xaa, 0};
+    unsigned char sub_header[20] = {0x41, 0x4d, 0x4c, 0x55, 0xaa, 0};
     unsigned int sub_type;
     int64_t sub_pts=0;
     static int last_duration = 0;
@@ -1603,6 +1603,15 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
     sub_header[13] = (sub_pts >> 16) & 0xff;
     sub_header[14] = (sub_pts >> 8) & 0xff;
     sub_header[15] = sub_pts & 0xff;
+    sub_header[16] = (last_duration >> 24) & 0xff;
+    sub_header[17] = (last_duration >> 16) & 0xff;
+    sub_header[18] = (last_duration >> 8) & 0xff;
+    sub_header[19] = last_duration & 0xff;
+
+   	log_print("[ pkt->avpkt->duration:%d,   last_duration:%d,para->sstream_info.sub_duration %d ]\n",pkt->avpkt->duration ,last_duration,para->sstream_info.sub_duration);
+
+	log_print("[ sub_type:0x%x,   data_size:%d,  sub_pts:%d last_duration %d]\n",sub_type ,data_size, sub_pts,last_duration);
+	log_print("[ sizeof:%d ]\n",sizeof(sub_header));
 
     if (write_sub_data(pkt, (char *)&sub_header, sizeof(sub_header)))
     {
