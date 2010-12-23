@@ -616,6 +616,9 @@ static int ff_asf_get_packet(AVFormatContext *s, ByteIOContext *pb)
     if (s->packet_size > 0)
         off= (url_ftell(pb) - s->data_offset) % s->packet_size + 3;
 
+    //av_log(NULL, AV_LOG_INFO, "tell 0x%lld, offset 0x%llx, packetsize 0x%x, off %d\n",
+    //    url_ftell(pb), s->data_offset, s->packet_size, off);
+
     c=d=e=-1;
     while(off-- > 0){
         c=d; d=e;
@@ -773,7 +776,7 @@ static int ff_asf_parse_packet(AVFormatContext *s, ByteIOContext *pb, AVPacket *
     ASFContext *asf = s->priv_data;
     ASFStream *asf_st = 0;
     for (;;) {
-        if(url_feof(pb))
+        if(url_feof(pb) || (url_ftell(pb) > s->valid_offset))
         {
             av_log(NULL, AV_LOG_INFO, "[ff_asf_parse_packet] feof\n");
             return AVERROR_EOF;
@@ -933,12 +936,14 @@ static int ff_asf_parse_packet(AVFormatContext *s, ByteIOContext *pb, AVPacket *
             }
             asf_st->frag_offset = 0;
             *pkt= asf_st->pkt;
+            //av_log(NULL, AV_LOG_INFO, "asf pkt dts 0x%llx, pts 0x%llx\n", pkt->dts, pkt->pts);
             //printf("packet %d %d\n", asf_st->pkt.size, asf->packet_frag_size);
             asf_st->pkt.size = 0;
             asf_st->pkt.data = 0;
             break; // packet completed
         }
     }
+
     return 0;
 }
 
@@ -1019,6 +1024,9 @@ static int64_t asf_read_pts(AVFormatContext *s, int stream_index, int64_t *ppos,
     int i;
     int64_t start_pos[s->nb_streams];
 
+    if (pos > s->valid_offset)
+        pos = s->valid_offset - 1024;
+    
     for(i=0; i<s->nb_streams; i++){
         start_pos[i]= pos;
     }

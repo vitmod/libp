@@ -1892,7 +1892,7 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 	av_free(buf2);
 	return -1;
 }
-static int check_last_blk_valid(AVFormatContext *ic)
+static int64_t check_last_blk_valid(AVFormatContext *ic)
 {
 	unsigned char *buf1;
 	unsigned char *buf2;
@@ -2149,7 +2149,8 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
-	//int64_t cur_offset;	
+	int64_t cur_offset;
+    int64_t valid_offset;
 
     /* get the file size, if possible */
     if (ic->iformat->flags & AVFMT_NOFILE) {
@@ -2176,9 +2177,18 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
         av_estimate_timings_from_bit_rate(ic);
     }
     av_update_stream_timings(ic);
-	//cur_offset = url_ftell(ic->pb);
-	//check_last_blk_valid(ic);	
-	//url_fseek(ic->pb,cur_offset,SEEK_SET);
+	cur_offset = url_ftell(ic->pb);
+	valid_offset = check_last_blk_valid(ic);	
+    if ((valid_offset > 2) && (ic->valid_offset != 0x7fffffffffffffff)) 
+    {
+        ic->valid_offset = valid_offset;
+        if (ic->valid_offset + CHECK_FULL_ZERO_SIZE <= ic->file_size)
+        {
+            ic->valid_offset += CHECK_FULL_ZERO_SIZE;
+        }
+        av_log(NULL, AV_LOG_INFO, "[av_estimate_timings]valid_offset 0x%llx\n", ic->valid_offset);
+    }
+	url_fseek(ic->pb,cur_offset,SEEK_SET);
 #if 0
     {
         int i;
