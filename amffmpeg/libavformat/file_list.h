@@ -31,8 +31,15 @@
 #define lp_lock(x)		pthread_mutex_lock(x)
 #define lp_unlock(x)   	pthread_mutex_unlock(x)
 
+
+
 #define DISCONTINUE_FLAG			(1<<0)
-#define SEEK_SUPPORT_FLAG			(1<<1)
+#define DURATION_FLAG				(1<<1)
+#define SEEK_SUPPORT_FLAG			(1<<2)
+#define ENDLIST_FLAG				(1<<3)
+#define KEY_FLAG					(1<<4)
+#define EXT_INFO					(1<<5)
+
 struct list_mgt;
 struct list_demux;
 
@@ -42,11 +49,14 @@ typedef struct list_item
 	int 	   flags;	  
 	int64_t	   *start_pos;
 	int64_t	   *size;
+	struct list_item * prev;
 	struct list_item * next;
 }list_item_t;
 
 typedef struct list_mgt
 {
+	char *filename;
+	int flags;
 	lock_t mutex;
 	struct list_item *item_list;
 	int item_num;
