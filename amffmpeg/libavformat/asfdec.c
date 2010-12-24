@@ -786,6 +786,11 @@ static int ff_asf_parse_packet(AVFormatContext *s, ByteIOContext *pb, AVPacket *
             //asf->packet_size_left <= asf->packet_padsize) {
             int ret = asf->packet_size_left + asf->packet_padsize;
             //printf("PacketLeftSize:%d  Pad:%d Pos:%"PRId64"\n", asf->packet_size_left, asf->packet_padsize, url_ftell(pb));
+            if (ret < 0)
+            {
+                av_log(NULL, AV_LOG_ERROR, "ff_asf_parse_packet ret<0, maybe need fix\n");
+                return AVERROR_EOF;
+            }
             assert(ret>=0);
             /* fail safe */
             url_fskip(pb, ret);
