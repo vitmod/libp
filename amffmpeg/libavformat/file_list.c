@@ -102,13 +102,13 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 	return demux!=NULL?1:0;
 }
 
-
-static int list_open(URLContext *h, const char *filename, int flags)
+static int list_open_internet(ByteIOContext **pbio,struct list_mgt **pmgt,const char *filename, int flags)
 {
-	struct list_mgt *mgt=av_malloc(sizeof(struct list_mgt));
 	list_demux_t *demux;
 	int ret;
 	ByteIOContext *bio;
+	struct list_mgt *mgt;
+	mgt=av_malloc(sizeof(struct list_mgt));
 	if(!mgt)
 		return AVERROR(ENOMEM);
 	memset(mgt,0,sizeof(*mgt));
@@ -133,10 +133,8 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	lp_lock_init(&mgt->mutex,NULL);
 	mgt->current_item=mgt->item_list;
 	mgt->cur_uio=NULL;
- 	h->is_streamed=1;
-	h->is_slowmedia=1;
-	h->priv_data = mgt;
-	url_fclose(bio);
+	*pbio=bio;
+	*pmgt=mgt;
 	return 0;
 error:
 	if(bio)
@@ -145,12 +143,25 @@ error:
 	return ret;
 }
 
+static int list_open(URLContext *h, const char *filename, int flags)
+{
+	struct list_mgt *mgt;
+	int ret;
+	ByteIOContext *bio;
+	if((ret=list_open_internet(&bio,&mgt,filename,flags))!=0)
+		return ret;
+ 	h->is_streamed=1;
+	h->is_slowmedia=1;
+	h->priv_data = mgt;
+	url_fclose(bio);
+	return 0;
+}
+
 static int list_read(URLContext *h, unsigned char *buf, int size)
 {   
 	struct list_mgt *mgt = h->priv_data;
     int len=AVERROR(EIO);
 	struct list_item *item=mgt->current_item;
-	
 retry:	
 	//av_log(NULL, AV_LOG_INFO, "list_read start buf=%x,size=%d\n",buf,size);
 	if(!mgt->cur_uio )
@@ -167,12 +178,14 @@ retry:
 			if(url_is_file_list(bio,item->file))
 			{
 				const char*newfile=av_realloc(item->file,strlen(item->file)+16);
+				item->file=newfile;
 				if(!newfile)
 					return AVERROR(ENOMEM); 
 				memmove(newfile+5,newfile,strlen(newfile)+1);
 				memcpy(newfile,"list:",5);
+				item->file=newfile;
 				url_fclose(bio);
-				len=list_open(&bio,item->file,O_RDONLY | URL_MINI_BUFFER);
+				len=url_fopen(&bio,item->file,O_RDONLY | URL_MINI_BUFFER);
 				if(len!=0)
 				{
 					return len;

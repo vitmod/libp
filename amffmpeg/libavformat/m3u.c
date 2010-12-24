@@ -62,6 +62,21 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	int ret;
 	unsigned char *p; 
 	int getnum=0;
+	URLContext *url=s->opaque;
+	char *location=url->location;
+	char prefix[1024];
+	if(location && (memcmp(location,"http",4)==0))
+	{
+		char *p;
+		p=strrchr(location,'/');
+		prefix[0]='\0';
+		if(p!=NULL)
+		{
+			memcpy(prefix,location,p-location);
+			prefix[p-location]='\0';
+		}
+		av_log(NULL, AV_LOG_INFO, "m3u_format_parser prefix =%s\n",prefix);
+	}
  
 	while(m3u_format_get_line(s,line,1024)>0)
 	{
@@ -73,7 +88,17 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			item=av_malloc(sizeof(struct list_item));
 			if(!item)
 				return AVERROR(ENOMEM);
-			item->file=strdup(p); 
+			if(!location || memcmp(p,location,4)==0)
+				item->file=strdup(p); 
+			else{
+				int r;
+				item->file=av_malloc(strlen(prefix)+strlen(p)+4);
+				if(!item->file)
+					return AVERROR(ENOMEM);
+				strcpy(item->file,prefix);
+				strcpy(item->file+strlen(prefix),p);
+				
+			}
 			item->next=NULL;
 			item->size=0;
 			item->start_pos=0;
@@ -82,6 +107,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			list_add_item(mgt,item);
 		}
 	}
+	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d\n",getnum);
 	return getnum;
 }
 

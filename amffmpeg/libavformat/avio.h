@@ -55,6 +55,7 @@ typedef struct URLContext {
     void *priv_data;
 	
     char *filename; /**< specified filename */
+	char *location;
 } URLContext;
 #include "libavformat/aviolpbuf.h"
 typedef struct URLPollEntry {

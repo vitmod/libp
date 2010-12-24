@@ -35,6 +35,9 @@
 #define URL_SIZE    4096
 #define MAX_REDIRECTS 8
 
+#define MAX_RETRY	10
+
+
 typedef struct {
     URLContext *hd;
     unsigned char buffer[BUFFER_SIZE], *buf_ptr, *buf_end;
@@ -43,6 +46,7 @@ typedef struct {
     int64_t chunksize;      /**< Used if "Transfer-Encoding: chunked" otherwise -1. */
     int64_t off, filesize;
     char location[URL_SIZE];
+    int err_retry;
 } HTTPContext;
 
 static int http_connect(URLContext *h, const char *path, const char *hoststr,
@@ -61,13 +65,14 @@ static int http_open_cnx(URLContext *h)
     int port, use_proxy, err, location_changed = 0, redirects = 0;
     HTTPContext *s = h->priv_data;
     URLContext *hd = NULL;
-	
+
     proxy_path = getenv("http_proxy");
     use_proxy = (proxy_path != NULL) && !getenv("no_proxy") &&
         av_strstart(proxy_path, "http://", NULL);
 
     /* fill the dest addr */
  redo:
+     av_log(NULL, AV_LOG_INFO, "http_open_cnx url=%s\n",s->location);
     /* needed in any case to build the host string */
     url_split(NULL, 0, auth, sizeof(auth), hostname, sizeof(hostname), &port,
               path1, sizeof(path1), s->location);
@@ -98,12 +103,15 @@ static int http_open_cnx(URLContext *h)
     s->hd = hd;
     if (http_connect(h, path, hoststr, auth, &location_changed) < 0)
         goto fail;
+   av_log(NULL, AV_LOG_INFO, "http_open_cnx s->http_code=%d,location_changed=%d\n",s->http_code,location_changed);	
     if ((s->http_code == 302 || s->http_code == 303) && location_changed == 1) {
         /* url moved, get next */
         url_close(hd);
         if (redirects++ >= MAX_REDIRECTS)
             return AVERROR(EIO);
         location_changed = 0;
+		s->filesize = -1;/*file changed*/
+		h->location=s->location;
         goto redo;
     }
     return 0;
@@ -113,13 +121,35 @@ static int http_open_cnx(URLContext *h)
     return AVERROR(EIO);
 }
 
+
+
+static int http_reopen_cnx(URLContext *h,int64_t off)
+{
+    HTTPContext *s = h->priv_data;
+    URLContext *old_hd = s->hd;
+    int64_t old_off = s->off;
+    int64_t old_chunksize=s->chunksize ;	
+
+   if(off>0)
+    		s->off = off;
+    /* if it fails, continue on old connection */
+    av_log(NULL, AV_LOG_INFO, "http_reopen_cnx err_retry=%d\n",s->err_retry);
+		/*reget it*/
+    s->chunksize = -1;
+    if (http_open_cnx(h) < 0) {
+	 s->chunksize=old_chunksize;
+        s->hd = old_hd;
+        s->off = old_off;
+        return -1;
+    }
+    url_close(old_hd);
+    return off;
+}
+
 static int http_open(URLContext *h, const char *uri, int flags)
 {
     HTTPContext *s;
     int ret;
-	
-	av_log(NULL, AV_LOG_INFO, "http_open:url=%s\n",uri);
-
     s = av_malloc(sizeof(HTTPContext));
     if (!s) {
         return AVERROR(ENOMEM);
@@ -128,11 +158,16 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->filesize = -1;
     s->chunksize = -1;
     s->off = 0;
+    s->err_retry=MAX_RETRY;
     av_strlcpy(s->location, uri, URL_SIZE);
-
+	h->location=s->location;
     ret = http_open_cnx(h);
+    while(ret<0 && s->err_retry-->0 && !url_interrupt_cb())
+    	ret = http_open_cnx(h);
     if (ret != 0)
         av_free (s);
+	//h->is_streamed=1;
+	//h->is_slowmedia=1;/*make sure we are slowmedia,to let less seek.*/
     return ret;
 }
 static int http_getc(HTTPContext *s)
@@ -167,7 +202,7 @@ static int http_get_line(HTTPContext *s, char *line, int line_size)
             if (q > line && q[-1] == '\r')
                 q--;
             *q = '\0';
-
+		av_log(NULL, AV_LOG_INFO, "http_get_line line =%s\n",line);
             return 0;
         } else {
             if ((q - line) < line_size - 1)
@@ -210,7 +245,7 @@ static int process_line(URLContext *h, char *line, int line_count,
         p++;
         while (isspace(*p))
             p++;
-        if (!strcmp(tag, "Location")) {
+        if (!strcasecmp(tag, "Location")) {
             strcpy(s->location, p);
             *new_location = 1;
         } else if (!strcmp (tag, "Content-Length") && s->filesize == -1) {
@@ -242,6 +277,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     char *auth_b64;
     int auth_b64_len = (strlen(auth) + 2) / 3 * 4 + 1;
     int64_t off = s->off;
+
 
     /* send http header */
     post = h->flags & URL_WRONLY;
@@ -300,8 +336,9 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 static int http_read(URLContext *h, uint8_t *buf, int size)
 {
     HTTPContext *s = h->priv_data;
-    int len;
+    int len=AVERROR(EIO);
 
+retry:
     if (s->chunksize >= 0) {
         if (!s->chunksize) {
             char line[32];
@@ -309,15 +346,15 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
             for(;;) {
                 do {
                     if (http_get_line(s, line, sizeof(line)) < 0)
-                        return AVERROR(EIO);
+                    	{
+			   goto errors;
+                    	}
                 } while (!*line);    /* skip CR LF from last chunk */
-
                 s->chunksize = strtoll(line, NULL, 16);
-
-                dprintf(NULL, "Chunked encoding data size: %"PRId64"'\n", s->chunksize);
+		av_log(NULL, AV_LOG_INFO, "Chunked encoding data size: %"PRId64"',str=%s\n", s->chunksize,line);
 
                 if (!s->chunksize)
-                    return 0;
+                   goto errors;
                 break;
             }
         }
@@ -338,7 +375,15 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
         if (s->chunksize > 0)
             s->chunksize -= len;
     }
-    return len;
+errors:
+	if(len<0 && s->err_retry-->0 && !url_interrupt_cb())
+	{
+		http_reopen_cnx(h,0);
+		goto retry;
+	}
+	
+    	return len;
+
 }
 
 /* used only when posting data */
@@ -359,30 +404,35 @@ static int http_close(URLContext *h)
 static int64_t http_seek(URLContext *h, int64_t off, int whence)
 {
     HTTPContext *s = h->priv_data;
-    URLContext *old_hd = s->hd;
-    int64_t old_off = s->off;
-
+    int ret=-1;
+	
     if (whence == AVSEEK_SIZE)
         return s->filesize;
     else if ((s->filesize == -1 && whence == SEEK_END) || h->is_streamed)
         return -1;
-
     /* we save the old context in case the seek fails */
-    s->hd = NULL;
+	av_log(NULL, AV_LOG_INFO, "http_seek:seek to %lld,whence=%d\n",off,whence);
     if (whence == SEEK_CUR)
         off += s->off;
     else if (whence == SEEK_END)
         off += s->filesize;
-    s->off = off;
 
     /* if it fails, continue on old connection */
-    if (http_open_cnx(h) < 0) {
-        s->hd = old_hd;
-        s->off = old_off;
-        return -1;
+   ret=http_reopen_cnx(h,off);
+    while(ret<0 && s->err_retry>0 && !url_interrupt_cb())
+    {
+     	if(off<0 || (s->filesize >0 && off>=s->filesize))
+     	{
+     		/*try once,if,out of range,we return now;*/
+		break;
+     	}
+	s->err_retry--;
+	ret=http_reopen_cnx(h,off);
     }
-    url_close(old_hd);
-    return off;
+    if(ret<0)
+	return -1;
+    else
+    	return off;
 }
 
 static int
