@@ -729,7 +729,7 @@ static int check_write_finish(play_para_t *para, am_packet_t *pkt)
 	return PLAYER_WR_FAILED;
 }
 
-static unsigned int rm_offset_search_pts(AVStream *pStream, unsigned int timepoint)
+static int64_t rm_offset_search_pts(AVStream *pStream, unsigned int timepoint)
 {
     int64_t wanted_pts = timepoint * 1000;
     int index_entry, index_entry_f, index_entry_b;
@@ -746,7 +746,10 @@ static unsigned int rm_offset_search_pts(AVStream *pStream, unsigned int timepoi
 			return 0;
         }
         else
-            return pStream->index_entries[index_entry_b].pos;
+        {
+			log_print("[%s:%d]time_point=%d pos=0x%llx\n",timepoint, pStream->index_entries[index_entry_b].pos);
+			return pStream->index_entries[index_entry_b].pos;
+        }
     }
     #if 0
     if (index_entry_b < 0)
@@ -770,7 +773,7 @@ static unsigned int rm_offset_search_pts(AVStream *pStream, unsigned int timepoi
     return pStream->index_entries[index_entry].pos;
 }
 
-static unsigned int rm_offset_search(play_para_t *am_p, int64_t offset, unsigned int time_point)
+static int64_t rm_offset_search(play_para_t *am_p, int64_t offset, unsigned int time_point)
 {    
     int read_length = 0;
     unsigned char *data;
@@ -856,6 +859,7 @@ static unsigned int rm_offset_search(play_para_t *am_p, int64_t offset, unsigned
                                 timestamp = (pkt[6]<<24)|(pkt[7]<<16)|(pkt[8]<<8)|pkt[9];
                                 cur_offset += pkt - (data+12);
                                 FREE(data);
+					            log_print("[%s:%d]find key_frame offset=0x%llx\n",__FUNCTION__, __LINE__,cur_offset);
                                 return cur_offset;
                             }
                             else 
@@ -1129,18 +1133,18 @@ int check_in_pts(play_para_t *para, am_packet_t *pkt)
 	int last_duration = 0;
     static int last_v_duration=0, last_a_duration=0;
 	int64_t pts;
-	float duration = 0;	
+	float time_base_ratio = 0;	
 	long long start_time=0;  
 
 	if(pkt->type == CODEC_AUDIO)
 	{   
-		duration = para->astream_info.audio_duration;		
+		time_base_ratio = para->astream_info.audio_duration;		
 		start_time = para->astream_info.start_time;
         last_duration = last_a_duration;
 	}
 	else if(pkt->type == CODEC_VIDEO)
 	{      
-		duration = para->vstream_info.video_pts;
+		time_base_ratio = para->vstream_info.video_pts;
 		start_time = para->vstream_info.start_time;
         last_duration = last_v_duration;
 	}  
@@ -1149,7 +1153,7 @@ int check_in_pts(play_para_t *para, am_packet_t *pkt)
 	{
 		if ((int64_t)INT64_0 != pkt->avpkt->pts)
 	    {           
-	        pts = pkt->avpkt->pts * duration;
+	        pts = pkt->avpkt->pts * time_base_ratio;
 	    	if(pts < start_time)
 			 	pts = pts * last_duration;  
 
@@ -1163,7 +1167,7 @@ int check_in_pts(play_para_t *para, am_packet_t *pkt)
 		}
 		else if ((int64_t)INT64_0 != pkt->avpkt->dts)
 		{	
-			pts = pkt->avpkt->dts * duration* last_duration;   
+			pts = pkt->avpkt->dts * time_base_ratio* last_duration;   
             //log_print("[check_in_pts:%d]type=%d pkt->dts=%llx pts=%llx\n",__LINE__,pkt->type,pkt->avpkt->dts,pts);
 
 			if(codec_checkin_pts(pkt->codec, pts)!=0)
@@ -1589,16 +1593,9 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
 	} 
     if (!para->sstream_info.check_first_pts)
         para->sstream_info.check_first_pts = 1;
-        
 
     /* first write the header */
     sub_type = para->sstream_info.sub_type;
-    
-    if(sub_type==0x17000)
-    {
-    	sub_type=0x1700a;
-    }    
-    
     sub_header[5] = (sub_type >> 16) & 0xff;
     sub_header[6] = (sub_type >> 8) & 0xff;
     sub_header[7] = sub_type & 0xff;
@@ -1836,23 +1833,10 @@ void player_switch_sub(play_para_t *para)
 		set_subtitle_subtype(3);
 	else
 		set_subtitle_subtype(4);
-    /* only ps and ts stream */	
-    //if (para->codec == NULL)// codec always has value
-    if(para->stream_type == STREAM_ES)
+    /* only ps and ts stream */
+    if (para->codec == NULL)
     {
         para->sstream_info.sub_index = i;
-        para->sstream_info.sub_pid = (unsigned short)pstream->id;
-        para->sstream_info.sub_type = pstream->codec->codec_id;
-        if (pstream->time_base.num &&(0!=pstream->time_base.den))
-        {
-            para->sstream_info.sub_duration = UNIT_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
-            para->sstream_info.sub_pts = PTS_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
-            para->sstream_info.start_time = pstream->start_time * pstream->time_base.num * PTS_FREQ/ pstream->time_base.den;
-        }
-        else
-        {
-            para->sstream_info.start_time = pstream->start_time * PTS_FREQ;
-        }
         if (codec_reset_subtile(para->scodec))
         {
             log_print("[%s:%d]reset subtile failed\n", __FUNCTION__, __LINE__);
