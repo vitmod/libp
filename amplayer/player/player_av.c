@@ -1590,13 +1590,15 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
     if (!para->sstream_info.check_first_pts)
         para->sstream_info.check_first_pts = 1;
         
-    if(sub_type==0x17000)
-    {
-    	sub_type=0x1700a;
-    }
 
     /* first write the header */
     sub_type = para->sstream_info.sub_type;
+    
+    if(sub_type==0x17000)
+    {
+    	sub_type=0x1700a;
+    }    
+    
     sub_header[5] = (sub_type >> 16) & 0xff;
     sub_header[6] = (sub_type >> 8) & 0xff;
     sub_header[7] = sub_type & 0xff;
