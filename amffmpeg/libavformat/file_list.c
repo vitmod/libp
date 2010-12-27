@@ -69,13 +69,41 @@ struct list_demux * probe_demux(ByteIOContext  *s,const char *filename)
 int list_add_item(struct list_mgt *mgt,struct list_item*item)
 {
 	struct list_item**list;
+	struct list_item*prev;
 	list=&mgt->item_list;
-	 while (*list != NULL) list = &(*list)->next;
+	prev=NULL;
+	 while (*list != NULL) 
+	 {
+	 	prev=*list;
+	 	list = &(*list)->next;
+	 }
 	*list = item;
+	item->prev=prev;
     item->next = NULL;
 	mgt->item_num++;
 	return 0;
 }
+static int list_del_item(struct list_mgt *mgt,struct list_item*item)
+{
+	struct list_item*tmp;
+	if(!item || !mgt)
+		return -1;
+	if(mgt->item_list==item){
+		mgt->item_list=item->next;
+		if(mgt->item_list)
+			mgt->item_list->prev=NULL;
+	}
+	else {
+		tmp=item->prev;
+		tmp->next=item->next;
+		if(item->next) 
+			item->next->prev=tmp;
+	}
+	mgt->item_num--;
+	av_free(item);
+	return 0;		
+}
+
 /*=======================================================================================*/
 int url_is_file_list(ByteIOContext *s,const char *filename)
 {
@@ -102,16 +130,11 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 	return demux!=NULL?1:0;
 }
 
-static int list_open_internet(ByteIOContext **pbio,struct list_mgt **pmgt,const char *filename, int flags)
+static int list_open_internet(ByteIOContext **pbio,struct list_mgt *mgt,const char *filename, int flags)
 {
 	list_demux_t *demux;
 	int ret;
 	ByteIOContext *bio;
-	struct list_mgt *mgt;
-	mgt=av_malloc(sizeof(struct list_mgt));
-	if(!mgt)
-		return AVERROR(ENOMEM);
-	memset(mgt,0,sizeof(*mgt));
 	ret=url_fopen(&bio,filename+5,flags|URL_MINI_BUFFER);
 	if(ret!=0)
 		{
@@ -130,11 +153,7 @@ static int list_open_internet(ByteIOContext **pbio,struct list_mgt **pmgt,const 
 		ret=-1;
 		goto error;
 	}
-	lp_lock_init(&mgt->mutex,NULL);
-	mgt->current_item=mgt->item_list;
-	mgt->cur_uio=NULL;
 	*pbio=bio;
-	*pmgt=mgt;
 	return 0;
 error:
 	if(bio)
@@ -148,13 +167,65 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	struct list_mgt *mgt;
 	int ret;
 	ByteIOContext *bio;
-	if((ret=list_open_internet(&bio,&mgt,filename,flags))!=0)
+	mgt=av_malloc(sizeof(struct list_mgt));
+	if(!mgt)
+		return AVERROR(ENOMEM);
+	memset(mgt,0,sizeof(*mgt));
+	if((ret=list_open_internet(&bio,mgt,filename,flags))!=0)
 		return ret;
+	lp_lock_init(&mgt->mutex,NULL);
+	mgt->current_item=mgt->item_list;
+	mgt->cur_uio=NULL;
+	mgt->filename=filename;
+	mgt->flags=flags;
  	h->is_streamed=1;
 	h->is_slowmedia=1;
 	h->priv_data = mgt;
+	
 	url_fclose(bio);
 	return 0;
+}
+
+static struct list_item * switchto_next_item(struct list_mgt *mgt)
+{
+	struct list_item *next=NULL;
+	struct list_item *current;
+	if(!mgt || !mgt->current_item)
+		return NULL;
+	if(mgt->current_item->next==NULL){
+			/*new refresh this mgtlist now*/
+			ByteIOContext *bio;
+			
+			int ret;
+			if((ret=list_open_internet(&bio,mgt,mgt->filename,mgt->flags|URL_MINI_BUFFER))!=0)
+			{
+				goto switchnext;
+			}
+			url_fclose(bio);
+			current=mgt->current_item;
+			next=mgt->current_item->next;
+			for(;next!=NULL;next=next->next){
+				if(strcmp(current->file,next->file)==0){
+					/*found the same item,switch to the next*/	
+					current=next;
+					break;
+				}
+			}
+			while(current!=mgt->item_list){
+				/*del the old item,lest current,and then play current->next*/
+				list_del_item(mgt,mgt->item_list);
+			}
+			mgt->current_item=mgt->item_list;
+			
+	}
+switchnext:	
+	mgt->current_item=mgt->current_item->next;
+	next=mgt->current_item;
+	if(next)
+		av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d",next->file,mgt->item_num);
+	else
+		av_log(NULL, AV_LOG_INFO, "switch to new file=NULL,total=%d\n",mgt->item_num);
+	return next;
 }
 
 static int list_read(URLContext *h, unsigned char *buf, int size)
@@ -177,15 +248,11 @@ retry:
 			}
 			if(url_is_file_list(bio,item->file))
 			{
-				const char*newfile=av_realloc(item->file,strlen(item->file)+16);
-				item->file=newfile;
-				if(!newfile)
-					return AVERROR(ENOMEM); 
-				memmove(newfile+5,newfile,strlen(newfile)+1);
-				memcpy(newfile,"list:",5);
-				item->file=newfile;
+				/*have 32 bytes space at the end..*/
+				memmove(item->file+5,item->file,strlen(item->file)+1);
+				memcpy(item->file,"list:",5);
 				url_fclose(bio);
-				len=url_fopen(&bio,item->file,O_RDONLY | URL_MINI_BUFFER);
+				len=url_fopen(&bio,item->file,mgt->flags | URL_MINI_BUFFER);
 				if(len!=0)
 				{
 					return len;
@@ -195,18 +262,29 @@ retry:
 		}
 		else
 		{
-			av_log(NULL, AV_LOG_INFO, "reach list end now!,item=%x\n",item);
-			return 0;/*end of file*/
+			/*follow to next....*/
 		}
 	}
 	len=get_buffer(mgt->cur_uio,buf,size);
-	if((len==0 || mgt->cur_uio->eof_reached)&& mgt->current_item!=NULL)
+	if((len<=0 || mgt->cur_uio->eof_reached)&& mgt->current_item!=NULL)
 	{/*end of the file*/
-		mgt->current_item=mgt->current_item->next;
-		item=mgt->current_item;
 		url_fclose(mgt->cur_uio);
 		mgt->cur_uio=NULL;
-		goto retry;
+		item=switchto_next_item(mgt);
+		if(!item)
+			return -1;/*get error*/
+		if(item->flags & ENDLIST_FLAG){
+			av_log(NULL, AV_LOG_INFO, "reach list end now!,item=%x\n",item);
+			return len;
+		}
+		else if(item->flags & DISCONTINUE_FLAG){
+			av_log(NULL, AV_LOG_INFO, "Discontiue item \n");
+			//1 TODO:need to notify uper level stream is changed
+			return 0;
+		}
+		else{	
+			goto retry;
+		}
 	}
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d\n",buf,size);
     return len;
@@ -237,8 +315,6 @@ static int list_close(URLContext *h)
 		{
 		item1=item;
 		item=item->next;
-		if(item1->file)
-			av_free(item1->file);
 		av_free(item1);
 	
 		}

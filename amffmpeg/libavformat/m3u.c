@@ -30,6 +30,29 @@
 #include "os_support.h"
 #include "file_list.h"
 
+#define EXTM3U						"#EXTM3U"
+#define EXTINF						"#EXTINF"
+#define EXT_X_TARGETDURATION		"#EXT-X-TARGETDURATION"
+
+#define EXT_X_MEDIA_SEQUENCE		"#EXT-X-MEDIA-SEQUENCE"
+#define EXT_X_KEY					"#EXT-X-KEY"
+#define EXT_X_PROGRAM_DATE_TIME		"#EXT-X-PROGRAM-DATE-TIME"
+#define EXT_X_ALLOW_CACHE			"#EXT-X-ALLOW-CACHE"
+#define EXT_X_ENDLIST				"#EXT-X-ENDLIST"
+#define EXT_X_STREAM_INF			"#EXT-X-STREAM-INF"
+
+#define is_TAG(l,tag)	(!strncmp(l,tag,strlen(tag)))
+
+struct m3u_info{
+	int duration;
+	int sequence;
+	int allow_cache;
+	int endlist;
+	char *key;
+	char *data_time;
+	char *streaminfo;
+	char *file;
+};
 
 int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
 {
@@ -56,56 +79,62 @@ int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
 	return 0;
 }
 
+static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_item*item)
+{
+	unsigned char *p=line; 
+	p=line;
+	while(*p==' ' && p!='\0' && p-line<1024) p++;
+	if(*p!='#' && strlen(p)>0)
+	{
+
+		item->file=p; 
+		item->next=NULL;
+		item->size=0;
+		item->start_pos=0;
+		item->flags=0;
+	}
+	else if(is_TAG(p,EXT_X_ENDLIST)){
+		item->file=NULL; 
+		item->next=NULL;
+		item->size=0;
+		item->start_pos=0;
+		item->flags=ENDLIST_FLAG;
+	}
+	else{
+		return -1;
+	}
+	return 0;
+}
+
+
 static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 { 
 	unsigned  char line[1024];
 	int ret;
 	unsigned char *p; 
 	int getnum=0;
-	URLContext *url=s->opaque;
-	char *location=url->location;
-	char prefix[1024];
-	if(location && (memcmp(location,"http",4)==0))
-	{
-		char *p;
-		p=strrchr(location,'/');
-		prefix[0]='\0';
-		if(p!=NULL)
-		{
-			memcpy(prefix,location,p-location);
-			prefix[p-location]='\0';
-		}
-		av_log(NULL, AV_LOG_INFO, "m3u_format_parser prefix =%s\n",prefix);
-	}
- 
+	struct list_item tmpitem;
+ 	
 	while(m3u_format_get_line(s,line,1024)>0)
 	{
-		p=line;
-		while(*p==' ' && p!='\0' && p-line<1024) p++;
-		if(*p!='#' && strlen(p)>0)
+		if(m3u_parser_line(mgt,line,&tmpitem)==0)
 		{
 			struct list_item*item;
-			item=av_malloc(sizeof(struct list_item));
+			int size_file=tmpitem.file?(strlen(tmpitem.file)+32):4;
+			item=av_malloc(sizeof(struct list_item)+size_file);
 			if(!item)
 				return AVERROR(ENOMEM);
-			if(!location || memcmp(p,location,4)==0)
-				item->file=strdup(p); 
-			else{
-				int r;
-				item->file=av_malloc(strlen(prefix)+strlen(p)+4);
-				if(!item->file)
-					return AVERROR(ENOMEM);
-				strcpy(item->file,prefix);
-				strcpy(item->file+strlen(prefix),p);
-				
-			}
-			item->next=NULL;
-			item->size=0;
-			item->start_pos=0;
-			item->flags=0;
-			getnum++;
+			memcpy(item,&tmpitem,sizeof(tmpitem));
+			item->file=NULL;
+			if(tmpitem.file)
+				{
+				item->file=&item[1];
+				strcpy(item->file,tmpitem.file);
+				}
 			list_add_item(mgt,item);
+			getnum++;
 		}
+		
 	}
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d\n",getnum);
 	return getnum;
@@ -120,7 +149,7 @@ static int m3u_probe(ByteIOContext *s,const char *file)
 		if(m3u_format_get_line(s,line,1024)>0)
 		{
 
-			if(memcmp(line,"#EXTM3U",strlen("#EXTM3U"))==0)
+			if(memcmp(line,EXTM3U,strlen(EXTM3U))==0)
 			{
 				av_log(NULL, AV_LOG_INFO, "get m3u flags!!\n");
 				return 100;
