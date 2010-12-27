@@ -270,5 +270,6 @@ OBJS-$(CONFIG_JACK_INDEV)                += timefilter.o
 EXAMPLES  = output
 TESTPROGS = timefilter
 
+OBJS+=file_list.o m3u.o
 
 $(SUBDIR)output-example$(EXESUF): ELIBS = -lswscale

@@ -477,10 +477,29 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
        hack needed to handle RTSP/TCP */
     if (!fmt || !(fmt->flags & AVFMT_NOFILE)) {
         /* if no file needed do not try to open one */
-        if ((err=url_fopen(&pb, filename, URL_RDONLY)) < 0) {
-			av_log(logctx, AV_LOG_DEBUG, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
+        if ((err=url_fopen(&pb, pd->filename, URL_RDONLY)) < 0) {
+			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
             goto fail;
         }
+		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
+		if(url_is_file_list(pb,filename))
+		{
+			char *listfile;
+			listfile=av_malloc(strlen(filename)+10);
+			if(!listfile)
+				return AVERROR(ENOMEM);
+			strcpy(listfile,"list:");
+			strcpy(listfile+5,filename);
+			pd->filename=listfile;
+			url_fclose(pb);
+			pb=NULL;
+			if ((err=url_fopen(&pb, pd->filename, URL_RDONLY)) < 0) {
+				av_log(logctx, AV_LOG_ERROR, "av_open_input_file:%s failed,line=%d err=0x%x\n",pd->filename,__LINE__,err);
+	            goto fail;
+        	}
+			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
+		}
+		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
         if (buf_size > 0) {
             url_setbufsize(pb, buf_size);
         }
@@ -519,7 +538,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
             memset(pd->buf+pd->buf_size, 0, AVPROBE_PADDING_SIZE);
             if (url_fseek(pb, 0, SEEK_SET) < 0) {
                 url_fclose(pb);
-                if (url_fopen(&pb, filename, URL_RDONLY) < 0) {
+                if (url_fopen(&pb, pd->filename, URL_RDONLY) < 0) {
                     pb = NULL;
                     err = AVERROR(EIO);
 					av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d\n",__LINE__);
@@ -546,13 +565,13 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
    av_log(NULL, AV_LOG_INFO, "[%s:%d]guess format=%s\n",__FUNCTION__,__LINE__,fmt->name);	
     /* check filename in case an image number is expected */
     if (fmt->flags & AVFMT_NEEDNUMBER) {
-        if (!av_filename_number_test(filename)) {
+        if (!av_filename_number_test(pd->filename)) {
             err = AVERROR_NUMEXPECTED;
 			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
             goto fail;
         }
     }
-    err = av_open_input_stream(ic_ptr, pb, filename, fmt, ap);
+    err = av_open_input_stream(ic_ptr, pb, pd->filename, fmt, ap);
     if (err)
     {
 		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
@@ -1892,7 +1911,7 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 	av_free(buf2);
 	return -1;
 }
-static int check_last_blk_valid(AVFormatContext *ic)
+static int64_t check_last_blk_valid(AVFormatContext *ic)
 {
 	unsigned char *buf1;
 	unsigned char *buf2;
@@ -2149,7 +2168,8 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
-	//int64_t cur_offset;	
+	int64_t cur_offset;
+    int64_t valid_offset;
 
     /* get the file size, if possible */
     if (ic->iformat->flags & AVFMT_NOFILE) {
@@ -2176,9 +2196,18 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
         av_estimate_timings_from_bit_rate(ic);
     }
     av_update_stream_timings(ic);
-	//cur_offset = url_ftell(ic->pb);
-	//check_last_blk_valid(ic);	
-	//url_fseek(ic->pb,cur_offset,SEEK_SET);
+	cur_offset = url_ftell(ic->pb);
+	valid_offset = check_last_blk_valid(ic);	
+    if ((valid_offset > 2) && (ic->valid_offset != 0x7fffffffffffffff)) 
+    {
+        ic->valid_offset = valid_offset;
+        if (ic->valid_offset + CHECK_FULL_ZERO_SIZE <= ic->file_size)
+        {
+            ic->valid_offset += CHECK_FULL_ZERO_SIZE;
+        }
+        av_log(NULL, AV_LOG_INFO, "[av_estimate_timings]valid_offset 0x%llx\n", ic->valid_offset);
+    }
+	url_fseek(ic->pb,cur_offset,SEEK_SET);
 #if 0
     {
         int i;

@@ -55,6 +55,7 @@ typedef struct URLContext {
     void *priv_data;
 	
     char *filename; /**< specified filename */
+	char *location;
 } URLContext;
 #include "libavformat/aviolpbuf.h"
 typedef struct URLPollEntry {
@@ -66,6 +67,11 @@ typedef struct URLPollEntry {
 #define URL_RDONLY 0
 #define URL_WRONLY 1
 #define URL_RDWR   2
+
+
+#define URL_MINI_BUFFER	0x20000000
+#define URL_NO_LP_BUFFER	0x40000000
+
 
 typedef int URLInterruptCB(void);
 

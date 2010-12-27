@@ -1562,7 +1562,7 @@ int write_sub_data(am_packet_t *pkt, char *buf, unsigned int length)
 
 int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
 {
-    unsigned char sub_header[16] = {0x41, 0x4d, 0x4c, 0x55, 0xaa, 0};
+    unsigned char sub_header[20] = {0x41, 0x4d, 0x4c, 0x55, 0xaa, 0};
     unsigned int sub_type;
     int64_t sub_pts=0;
     static int last_duration = 0;
@@ -1589,9 +1589,16 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
 	} 
     if (!para->sstream_info.check_first_pts)
         para->sstream_info.check_first_pts = 1;
+        
 
     /* first write the header */
     sub_type = para->sstream_info.sub_type;
+    
+    if(sub_type==0x17000)
+    {
+    	sub_type=0x1700a;
+    }    
+    
     sub_header[5] = (sub_type >> 16) & 0xff;
     sub_header[6] = (sub_type >> 8) & 0xff;
     sub_header[7] = sub_type & 0xff;
@@ -1603,6 +1610,15 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
     sub_header[13] = (sub_pts >> 16) & 0xff;
     sub_header[14] = (sub_pts >> 8) & 0xff;
     sub_header[15] = sub_pts & 0xff;
+    sub_header[16] = (last_duration >> 24) & 0xff;
+    sub_header[17] = (last_duration >> 16) & 0xff;
+    sub_header[18] = (last_duration >> 8) & 0xff;
+    sub_header[19] = last_duration & 0xff;
+
+   	log_print("[ pkt->avpkt->duration:%d,   last_duration:%d,para->sstream_info.sub_duration %d ]\n",pkt->avpkt->duration ,last_duration,para->sstream_info.sub_duration);
+
+	log_print("[ sub_type:0x%x,   data_size:%d,  sub_pts:%d last_duration %d]\n",sub_type ,data_size, sub_pts,last_duration);
+	log_print("[ sizeof:%d ]\n",sizeof(sub_header));
 
     if (write_sub_data(pkt, (char *)&sub_header, sizeof(sub_header)))
     {
@@ -1820,10 +1836,23 @@ void player_switch_sub(play_para_t *para)
 		set_subtitle_subtype(3);
 	else
 		set_subtitle_subtype(4);
-    /* only ps and ts stream */
-    if (para->codec == NULL)
+    /* only ps and ts stream */	
+    //if (para->codec == NULL)// codec always has value
+    if(para->stream_type == STREAM_ES)
     {
         para->sstream_info.sub_index = i;
+        para->sstream_info.sub_pid = (unsigned short)pstream->id;
+        para->sstream_info.sub_type = pstream->codec->codec_id;
+        if (pstream->time_base.num &&(0!=pstream->time_base.den))
+        {
+            para->sstream_info.sub_duration = UNIT_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
+            para->sstream_info.sub_pts = PTS_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
+            para->sstream_info.start_time = pstream->start_time * pstream->time_base.num * PTS_FREQ/ pstream->time_base.den;
+        }
+        else
+        {
+            para->sstream_info.start_time = pstream->start_time * PTS_FREQ;
+        }
         if (codec_reset_subtile(para->scodec))
         {
             log_print("[%s:%d]reset subtile failed\n", __FUNCTION__, __LINE__);

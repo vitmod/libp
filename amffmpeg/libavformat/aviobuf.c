@@ -594,13 +594,21 @@ int url_fdopen(ByteIOContext **s, URLContext *h)
 {
     uint8_t *buffer;
     int buffer_size, max_packet_size;
-
-    max_packet_size = url_get_max_packet_size(h);
-    if (max_packet_size) {
-        buffer_size = max_packet_size; /* no need to bufferize more than one packet */
-    } else {
-        buffer_size = IO_BUFFER_SIZE;
-    }
+	int lpbuffer_size=(h->flags & URL_MINI_BUFFER)?IO_LP_BUFFER_MINI_SIZE:IO_LP_BUFFER_SIZE;
+	av_log(NULL, AV_LOG_INFO, "url_fdopen buffer size=%d\n",lpbuffer_size);
+	if(h->flags & URL_MINI_BUFFER)
+	{
+		buffer_size=1024;
+	}
+	else
+	{
+	    max_packet_size = url_get_max_packet_size(h);
+	    if (max_packet_size) {
+	        buffer_size = max_packet_size; /* no need to bufferize more than one packet */
+	    } else {
+	        buffer_size = IO_BUFFER_SIZE;
+	    }
+	}
     buffer = av_malloc(buffer_size);
     if (!buffer)
         return AVERROR(ENOMEM);
@@ -610,9 +618,10 @@ int url_fdopen(ByteIOContext **s, URLContext *h)
         av_free(buffer);
         return AVERROR(ENOMEM);
     }
-    if((h->is_slowmedia) && 				
+    if((h->is_slowmedia) && 
+		!(h->flags &URL_NO_LP_BUFFER)	&&		/*no lp buffer*/	
 		!(h->flags & URL_WRONLY || h->flags & URL_RDWR)  && /*no write support*/
-		!url_lpopen(h,IO_LP_BUFFER_SIZE))
+		!url_lpopen(h,lpbuffer_size))
 	{
 		(*s)->enabled_lp_buffer=1;
 		if (init_put_byte(*s, buffer, buffer_size,

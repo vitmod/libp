@@ -114,7 +114,8 @@ static int http_open_cnx(URLContext *h)
         if (redirects++ >= MAX_REDIRECTS)
             return AVERROR(EIO);
         location_changed = 0;
-	s->filesize = -1;/*file changed*/
+		s->filesize = -1;/*file changed*/
+		h->location=s->location;
         goto redo;
     }
     return 0;
@@ -162,8 +163,8 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->chunksize = -1;
     s->off = 0;
     s->err_retry=MAX_RETRY;
-    av_strlcpy(s->location, uri, URL_SIZE);
-
+    av_strlcpy(s->location, uri+1, URL_SIZE);
+	h->location=s->location;
     ret = http_open_cnx(h);
     while(ret<0 && s->err_retry-->0 && !url_interrupt_cb())
     	ret = http_open_cnx(h);
@@ -248,7 +249,7 @@ static int process_line(URLContext *h, char *line, int line_count,
         p++;
         while (isspace(*p))
             p++;
-        if (!strcmp(tag, "Location")) {
+        if (!strcasecmp(tag, "Location")) {
             strcpy(s->location, p);
             *new_location = 1;
         } else if (!strcmp (tag, "Content-Length") && s->filesize == -1) {
