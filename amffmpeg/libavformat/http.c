@@ -37,6 +37,7 @@
 
 #define MAX_RETRY	10
 
+#define IPAD_IDENT	"Mozilla/5.0 (iPad; U; CPU OS_3_2_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B500 Safari/531.21.10"
 
 typedef struct {
     URLContext *hd;
@@ -277,28 +278,34 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     char *auth_b64;
     int auth_b64_len = (strlen(auth) + 2) / 3 * 4 + 1;
     int64_t off = s->off;
-
+	int len;
 
     /* send http header */
     post = h->flags & URL_WRONLY;
     auth_b64 = av_malloc(auth_b64_len);
     av_base64_encode(auth_b64, auth_b64_len, auth, strlen(auth));
-    snprintf(s->buffer, sizeof(s->buffer),
-             "%s %s HTTP/1.1\r\n"
-             "User-Agent: %s\r\n"
+
+	len=snprintf(s->buffer,sizeof(s->buffer),
+				"%s %s HTTP/1.1\r\n",
+				post ? "POST" : "GET",
+             	path);
+	len+=snprintf(s->buffer+len, sizeof(s->buffer),
+             	"User-Agent: %s\r\n",
+             IPAD_IDENT);
+	if(s->off>0){
+		len+=snprintf(s->buffer+len, sizeof(s->buffer),
+				"Accept: */*\r\n"
+				"Range: bytes=%"PRId64"-\r\n",
+				s->off);
+	}
+    len+=snprintf(s->buffer+len, sizeof(s->buffer),
              "Accept: */*\r\n"
-             "Range: bytes=%"PRId64"-\r\n"
              "Host: %s\r\n"
              "Authorization: Basic %s\r\n"
              "Connection: close\r\n"
              "\r\n",
-             post ? "POST" : "GET",
-             path,
-             LIBAVFORMAT_IDENT,
-             s->off,
              hoststr,
              auth_b64);
-
     av_freep(&auth_b64);
     if (http_write(h, s->buffer, strlen(s->buffer)) < 0)
         return AVERROR(EIO);
