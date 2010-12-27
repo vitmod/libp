@@ -114,6 +114,8 @@ typedef struct play_para
     int             sstream_num;   
     int             first_index;
     int             max_raw_size;	
+	int				discontinue_point[16];
+	int				discontinue_point_idx;
     check_end_info_t check_end;
 
     read_write_size read_size;

@@ -60,7 +60,40 @@ int set_tsync_enable(int enable)
 	return -1;
     
 }
-
+int set_tsync_discontinue(int discontinue)		//kernel set to 1,player clear to 0
+{
+    int fd;
+    char *path = "/sys/class/tsync/discontinue";    
+	char  bcmd[16];
+	if(discontinue)
+		return -1;
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",discontinue);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;
+    
+}
+int get_pts_discontinue()
+{
+    int fd;
+    int discontinue = 0;
+    char *path = "/sys/class/video/discontinue";
+	char  bcmd[16];
+	fd=open(path, O_RDONLY);
+	if(fd>=0)
+	{    	
+    	read(fd,bcmd,sizeof(bcmd));       
+        discontinue = strtol(bcmd, NULL, 16);       
+        discontinue &= 0x1;
+    	close(fd);    	
+	}
+	return discontinue;
+}
 
 int set_subtitle_num(int num)
 {
