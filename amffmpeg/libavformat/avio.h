@@ -70,6 +70,8 @@ typedef struct URLPollEntry {
 
 
 #define URL_MINI_BUFFER	0x20000000
+#define URL_NO_LP_BUFFER	0x40000000
+
 
 typedef int URLInterruptCB(void);
 

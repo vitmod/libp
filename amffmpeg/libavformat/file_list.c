@@ -135,7 +135,7 @@ static int list_open_internet(ByteIOContext **pbio,struct list_mgt *mgt,const ch
 	list_demux_t *demux;
 	int ret;
 	ByteIOContext *bio;
-	ret=url_fopen(&bio,filename+5,flags|URL_MINI_BUFFER);
+	ret=url_fopen(&bio,filename+5,flags);
 	if(ret!=0)
 		{
 			av_free(mgt);
@@ -171,7 +171,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	if(!mgt)
 		return AVERROR(ENOMEM);
 	memset(mgt,0,sizeof(*mgt));
-	if((ret=list_open_internet(&bio,mgt,filename,flags))!=0)
+	if((ret=list_open_internet(&bio,mgt,filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 		return ret;
 	lp_lock_init(&mgt->mutex,NULL);
 	mgt->current_item=mgt->item_list;
@@ -197,7 +197,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 			ByteIOContext *bio;
 			
 			int ret;
-			if((ret=list_open_internet(&bio,mgt,mgt->filename,mgt->flags|URL_MINI_BUFFER))!=0)
+			if((ret=list_open_internet(&bio,mgt,mgt->filename,mgt->flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 			{
 				goto switchnext;
 			}
@@ -241,7 +241,7 @@ retry:
 		{
 			ByteIOContext *bio;
 			av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s\n",item->file);
-			len=url_fopen(&bio,item->file,O_RDONLY | URL_MINI_BUFFER);
+			len=url_fopen(&bio,item->file,O_RDONLY | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 			if(len!=0)
 			{
 				return len;
@@ -252,7 +252,7 @@ retry:
 				memmove(item->file+5,item->file,strlen(item->file)+1);
 				memcpy(item->file,"list:",5);
 				url_fclose(bio);
-				len=url_fopen(&bio,item->file,mgt->flags | URL_MINI_BUFFER);
+				len=url_fopen(&bio,item->file,mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 				if(len!=0)
 				{
 					return len;
