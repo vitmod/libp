@@ -66,72 +66,86 @@ int extract_adts_header_info(play_para_t *para)
     else
     {
         pCodecCtx = para->pFormatCtx->streams[aidx]->codec;
+		log_print("[%s:%d]aidx=%d pCodecCtx=%p\n", __FUNCTION__, __LINE__,aidx, pCodecCtx);
     }
-	p = pCodecCtx->extradata;
-	hdr.profile = (*p >> 3) -1;
-	hdr.sample_freq_idx = (*p&0x7)<<1|(*(p+1) >> 7);
-	hdr.channel_configuration = (*(p+1) & 0x7f) >> 3;
-	hdr.syncword = 0xfff;
-	hdr.id = 0;
-	hdr.layer = 0;
-	hdr.protection_absent = 1;
-	hdr.private_bit = 0;
-	hdr.original_copy = 0;
-	hdr.home = 0;  
-	hdr.copyright_identification_bit = 0; 
-	hdr.copyright_identification_start = 0;    
-	hdr.aac_frame_length = 0;
-	hdr.adts_buffer_fullness = 0x7ff;
-	hdr.number_of_raw_data_blocks_in_frame = 0;  
-	buf = MALLOC(ADTS_HEADER_SIZE);
-	if(buf)
+	if(pCodecCtx->extradata)
 	{
-		buf[0] = (char)(hdr.syncword >>4);
-		buf[1] = (char)((hdr.syncword & 0xf<<4) |
-	                  (hdr.id << 3)|
-	                  (hdr.layer << 1)|
-	                  hdr.protection_absent);
-		buf[2] = (char)((hdr.profile<<6)|
-	                  (hdr.sample_freq_idx<<2)|
-	                  (hdr.private_bit<<1)|
-	                  (hdr.channel_configuration>>2));
-		buf[3] = (char)(((hdr.channel_configuration&0x3)<<6)|
-					    (hdr.original_copy<<5)|
-						(hdr.home<<4)|
-						(hdr.copyright_identification_bit<<3)|
-						(hdr.copyright_identification_start<<2)|
-						(hdr.aac_frame_length)>>11);
-		buf[4] = (char)((hdr.aac_frame_length>>3)&0xff);
-		buf[5] = (char)(((hdr.aac_frame_length&0x7)<<5)|
-	                   (hdr.adts_buffer_fullness>>6));
-		buf[6] = (char)(((hdr.adts_buffer_fullness&0x3f)<<2)|
-	                    hdr.number_of_raw_data_blocks_in_frame); 
-		para->astream_info.extradata = buf;
-	    para->astream_info.extradata_size = ADTS_HEADER_SIZE; 		
+		p = pCodecCtx->extradata;
+		hdr.profile = (*p >> 3) -1;
+		hdr.sample_freq_idx = (*p&0x7)<<1|(*(p+1) >> 7);
+		hdr.channel_configuration = (*(p+1) & 0x7f) >> 3;
+		hdr.syncword = 0xfff;
+		hdr.id = 0;
+		hdr.layer = 0;
+		hdr.protection_absent = 1;
+		hdr.private_bit = 0;
+		hdr.original_copy = 0;
+		hdr.home = 0;  
+		hdr.copyright_identification_bit = 0; 
+		hdr.copyright_identification_start = 0;    
+		hdr.aac_frame_length = 0;
+		hdr.adts_buffer_fullness = 0x7ff;
+		hdr.number_of_raw_data_blocks_in_frame = 0;  
+		buf = MALLOC(ADTS_HEADER_SIZE);
+		if(buf)
+		{
+			buf[0] = (char)(hdr.syncword >>4);
+			buf[1] = (char)((hdr.syncword & 0xf<<4) |
+		                  (hdr.id << 3)|
+		                  (hdr.layer << 1)|
+		                  hdr.protection_absent);
+			buf[2] = (char)((hdr.profile<<6)|
+		                  (hdr.sample_freq_idx<<2)|
+		                  (hdr.private_bit<<1)|
+		                  (hdr.channel_configuration>>2));
+			buf[3] = (char)(((hdr.channel_configuration&0x3)<<6)|
+						    (hdr.original_copy<<5)|
+							(hdr.home<<4)|
+							(hdr.copyright_identification_bit<<3)|
+							(hdr.copyright_identification_start<<2)|
+							(hdr.aac_frame_length)>>11);
+			buf[4] = (char)((hdr.aac_frame_length>>3)&0xff);
+			buf[5] = (char)(((hdr.aac_frame_length&0x7)<<5)|
+		                   (hdr.adts_buffer_fullness>>6));
+			buf[6] = (char)(((hdr.adts_buffer_fullness&0x3f)<<2)|
+		                    hdr.number_of_raw_data_blocks_in_frame); 
+			para->astream_info.extradata = buf;
+		    para->astream_info.extradata_size = ADTS_HEADER_SIZE; 		
+		}
+		else
+		{
+			log_error("[%s:%d]no memory for extract adts header!\n",__FUNCTION__,__LINE__);
+			return PLAYER_NOMEM;
+		}
 	}
 	else
 	{
-		log_error("[%s:%d]no memory for extract adts header!\n",__FUNCTION__,__LINE__);
-		return PLAYER_NOMEM;
+		log_error("[%s:%d]pCodecCtx->extradata NULL!\n",__FUNCTION__, __LINE__);
 	}
 	return PLAYER_SUCCESS;
 }
 
 void adts_add_header(play_para_t *para, am_packet_t *pkt)
 {		
-	char *buf = para->astream_info.extradata;
+	char *buf ;
 	int i;
-	int size = ADTS_HEADER_SIZE + pkt->data_size;	// 13bit valid
+	int size = ADTS_HEADER_SIZE + pkt->data_size;	// 13bit valid	
 	size &= 0x1fff;
-	buf[3] = buf[3] & 0xfc | (size >> 11);
-	buf[4] = (size >> 3) & 0xff;					
-	buf[5] = buf[5] & 0x1f | ((size & 0x7) << 5);	
-	if(para->astream_info.extradata_size == ADTS_HEADER_SIZE)
-	{	
-		MEMCPY(pkt->hdr->data,para->astream_info.extradata,para->astream_info.extradata_size);	
-	    pkt->hdr->size = ADTS_HEADER_SIZE;  
-	    pkt->type = CODEC_AUDIO;
+	buf = para->astream_info.extradata;
+	if(para->astream_info.extradata)
+	{
+		buf[3] = buf[3] & 0xfc | (size >> 11);
+		buf[4] = (size >> 3) & 0xff;					
+		buf[5] = buf[5] & 0x1f | ((size & 0x7) << 5);	
+		if(para->astream_info.extradata_size == ADTS_HEADER_SIZE)
+		{	
+			MEMCPY(pkt->hdr->data,para->astream_info.extradata,para->astream_info.extradata_size);	
+		    pkt->hdr->size = ADTS_HEADER_SIZE;  
+		    pkt->type = CODEC_AUDIO;
+		}
 	}
+	//else
+	//	log_error("[%s:%d]extradata NULL!\n",__FUNCTION__,__LINE__);
     return ;
 }
 
