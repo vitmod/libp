@@ -110,6 +110,7 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 	int ret;
 	list_demux_t *demux;
 	ByteIOContext *lio=s;
+	int64_t	   *oldpos=0;
 	if(!lio)
 	{
 		ret=url_fopen(&lio,filename,O_RDONLY);
@@ -118,6 +119,9 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 		return AVERROR(EIO); 
 		}
 	}
+	else{
+		oldpos=url_ftell(lio);
+	}
 	demux=probe_demux(lio,filename);
 	if(lio!=s)
 	{
@@ -125,7 +129,7 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 	}
 	else
 	{
-		url_fseek(lio, 0, SEEK_SET);
+		url_fseek(lio, oldpos, SEEK_SET);
 	}
 	return demux!=NULL?1:0;
 }
