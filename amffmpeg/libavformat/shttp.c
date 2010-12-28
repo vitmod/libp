@@ -109,7 +109,7 @@ static int http_open_cnx(URLContext *h)
     if (http_connect(h, path, hoststr, auth, &location_changed) < 0)
         goto fail;
    av_log(NULL, AV_LOG_INFO, "http_open_cnx s->http_code=%d,location_changed=%d\n",s->http_code,location_changed);	
-    if ((s->http_code == 302 || s->http_code == 303) && location_changed == 1) {
+    if ((s->http_code == 301 ||s->http_code == 302 || s->http_code == 303)&& location_changed == 1) {
         /* url moved, get next */
         url_close(hd);
         if (redirects++ >= MAX_REDIRECTS)
