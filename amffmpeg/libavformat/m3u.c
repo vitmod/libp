@@ -114,23 +114,48 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	unsigned char *p; 
 	int getnum=0;
 	struct list_item tmpitem;
- 	
+ 	char prefix[1024]="";
+	int prefix_len=0;
+	if(mgt->filename){
+		char *tail;
+		tail=strrchr(mgt->filename,'/');
+		if(tail!=NULL){
+			prefix_len=tail-mgt->filename;
+			memcpy(prefix,mgt->filename,prefix_len);
+			prefix[prefix_len]='\0';
+		}
+	}
+	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
 	while(m3u_format_get_line(s,line,1024)>0)
 	{
 		if(m3u_parser_line(mgt,line,&tmpitem)==0)
 		{
 			struct list_item*item;
+			int need_prefix=0;
 			int size_file=tmpitem.file?(strlen(tmpitem.file)+32):4;
+			if(tmpitem.file && 
+				((!strncmp(prefix,"http",4) || !strncmp(prefix,"shttp",5)) && 
+				(strncmp(tmpitem.file,"http",4)!=0) ))
+			{/*if m3u is http,item is not http,add prefix*/
+				need_prefix=1;
+				size_file+=prefix_len;
+			}
 			item=av_malloc(sizeof(struct list_item)+size_file);
 			if(!item)
 				return AVERROR(ENOMEM);
 			memcpy(item,&tmpitem,sizeof(tmpitem));
 			item->file=NULL;
 			if(tmpitem.file)
-				{
+			{
 				item->file=&item[1];
-				strcpy(item->file,tmpitem.file);
+				if(need_prefix){
+					strcpy(item->file,prefix);
+					strcpy(item->file+prefix_len,tmpitem.file);
 				}
+				else{
+					strcpy(item->file,tmpitem.file);
+				}
+			}
 			list_add_item(mgt,item);
 			getnum++;
 		}

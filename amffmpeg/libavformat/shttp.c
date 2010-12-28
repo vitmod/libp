@@ -365,7 +365,7 @@ retry:
 		av_log(NULL, AV_LOG_INFO, "Chunked encoding data size: %"PRId64"',str=%s\n", s->chunksize,line);
 
                 if (!s->chunksize)
-                   goto errors;
+                   return 0;/*eof*/
                 break;
             }
         }
