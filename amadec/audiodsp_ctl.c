@@ -74,6 +74,7 @@ static int switch_audiodsp(int fmt)
 		case AUDIO_FORMAT_PCM_S16BE:
 		case AUDIO_FORMAT_PCM_S16LE:
 		case AUDIO_FORMAT_PCM_U8:
+		case AUDIO_AFORMAT_PCM_BLURAY:
 			return MCODEC_FMT_PCM;
 		case AUDIO_FORMAT_WMA:
 			return MCODEC_FMT_WMA;

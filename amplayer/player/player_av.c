@@ -114,8 +114,12 @@ aformat_t audio_type_convert(enum CodecID id,pfile_type File_type)
             break;
             
         case CODEC_ID_WMAPRO:
-        format = AFORMAT_WMAPRO;
-        break;
+        	format = AFORMAT_WMAPRO;
+        	break;
+
+		case CODEC_ID_PCM_BLURAY:
+			format = AFORMAT_PCM_BLURAY;
+			break;
 
         default:
         	format = -1;
@@ -1833,10 +1837,23 @@ void player_switch_sub(play_para_t *para)
 		set_subtitle_subtype(3);
 	else
 		set_subtitle_subtype(4);
-    /* only ps and ts stream */
-    if (para->codec == NULL)
+    /* only ps and ts stream */	
+    //if (para->codec == NULL)// codec always has value
+    if(para->stream_type == STREAM_ES)
     {
         para->sstream_info.sub_index = i;
+        para->sstream_info.sub_pid = (unsigned short)pstream->id;
+        para->sstream_info.sub_type = pstream->codec->codec_id;
+        if (pstream->time_base.num &&(0!=pstream->time_base.den))
+        {
+            para->sstream_info.sub_duration = UNIT_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
+            para->sstream_info.sub_pts = PTS_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
+            para->sstream_info.start_time = pstream->start_time * pstream->time_base.num * PTS_FREQ/ pstream->time_base.den;
+        }
+        else
+        {
+            para->sstream_info.start_time = pstream->start_time * PTS_FREQ;
+        }
         if (codec_reset_subtile(para->scodec))
         {
             log_print("[%s:%d]reset subtile failed\n", __FUNCTION__, __LINE__);

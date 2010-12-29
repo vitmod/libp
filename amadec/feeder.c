@@ -184,7 +184,13 @@ static audio_format_t get_audio_format()
 	    close(fd);
 	    return AUDIO_FORMAT_WMA;
     }
-    
+
+	if(strncmp(format, "amadec_pcm_bluray", 10) == 0) {
+	    /*TODO: get format/channel numer/sample rate etc */
+	    close(fd);
+	    return AUDIO_AFORMAT_PCM_BLURAY;
+    }
+	
     close(fd);
 
     log_print(LOG_ERR, "audio format unknow.");

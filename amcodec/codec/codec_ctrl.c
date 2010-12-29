@@ -331,7 +331,8 @@ static inline int codec_ps_init(codec_para_t *pcodec)
 		}
 
 		if((pcodec->audio_type == AFORMAT_ADPCM)||(pcodec->audio_type == AFORMAT_WMA)||(pcodec->audio_type == AFORMAT_WMAPRO) ||(pcodec->audio_type == AFORMAT_PCM_S16BE)
-			|| (pcodec->audio_type == AFORMAT_PCM_S16LE) || (pcodec->audio_type == AFORMAT_PCM_U8))
+			|| (pcodec->audio_type == AFORMAT_PCM_S16LE) || (pcodec->audio_type == AFORMAT_PCM_U8)
+			|| (pcodec->audio_type == AFORMAT_PCM_BLURAY))
 		{
 			r=set_audio_info(pcodec);
         		if(r<0)
@@ -408,7 +409,8 @@ static inline int codec_ts_init(codec_para_t *pcodec)
 		}
 
 		if((pcodec->audio_type == AFORMAT_ADPCM)||(pcodec->audio_type == AFORMAT_WMA)||(pcodec->audio_type == AFORMAT_WMAPRO) ||(pcodec->audio_type == AFORMAT_PCM_S16BE)
-			|| (pcodec->audio_type == AFORMAT_PCM_S16LE) || (pcodec->audio_type == AFORMAT_PCM_U8))
+			|| (pcodec->audio_type == AFORMAT_PCM_S16LE) || (pcodec->audio_type == AFORMAT_PCM_U8)
+			|| (pcodec->audio_type == AFORMAT_PCM_BLURAY))
 		{
 			r=set_audio_info(pcodec);
         		if(r<0)
