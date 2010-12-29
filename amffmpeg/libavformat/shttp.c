@@ -207,7 +207,7 @@ static int http_get_line(HTTPContext *s, char *line, int line_size)
             if (q > line && q[-1] == '\r')
                 q--;
             *q = '\0';
-		av_log(NULL, AV_LOG_INFO, "http_get_line line =%s\n",line);
+		
             return 0;
         } else {
             if ((q - line) < line_size - 1)
@@ -225,7 +225,7 @@ static int process_line(URLContext *h, char *line, int line_count,
     /* end of header */
     if (line[0] == '\0')
         return 0;
-
+	av_log(NULL, AV_LOG_INFO, "process_line =%s\n",line);
     p = line;
     if (line_count == 0) {
         while (!isspace(*p) && *p != '\0')
@@ -362,7 +362,7 @@ retry:
                     	}
                 } while (!*line);    /* skip CR LF from last chunk */
                 s->chunksize = strtoll(line, NULL, 16);
-		av_log(NULL, AV_LOG_INFO, "Chunked encoding data size: %"PRId64"',str=%s\n", s->chunksize,line);
+				//av_log(NULL, AV_LOG_INFO, "Chunked encoding data size: %"PRId64"',str=%s\n", s->chunksize,line);
 
                 if (!s->chunksize)
                    return 0;/*eof*/
