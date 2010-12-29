@@ -535,6 +535,7 @@ void player_clear_ctrl_flags(p_ctrl_info_t *cflag)
 void player_para_reset(play_para_t *para)
 {    
     player_ctrl_flag_reset(&para->playctrl_info);
+	para->discontinue_point = 0;
     MEMSET(&para->write_size, 0, sizeof(read_write_size));
     MEMSET(&para->read_size, 0, sizeof(read_write_size));     
 }

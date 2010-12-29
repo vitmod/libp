@@ -452,8 +452,17 @@ static unsigned int get_pts_audio()
 static unsigned int get_current_time(play_para_t *p_para)
 {   
     unsigned int pcr_scr = 0, vpts = 0, apts = 0; 
-    unsigned int ctime = 0;       
-       
+    unsigned int ctime = 0; 	
+	int64_t cur_offset;	
+    if((p_para->stream_type == STREAM_PS) && get_pts_discontinue())
+	{
+		cur_offset = url_ftell(p_para->pFormatCtx->pb);
+		log_print("[%s:%d]offset=%lld bitrate=%d\n",__FUNCTION__,__LINE__,cur_offset,p_para->pFormatCtx->bit_rate);
+		//p_para->discontinue_point = (unsigned int)(cur_offset/p_para->pFormatCtx->bit_rate);
+		p_para->discontinue_point = p_para->state.last_time;
+		set_tsync_discontinue(0);
+		log_print("[%s:%d]pts discontinue, point=%d\n",__FUNCTION__,__LINE__,p_para->discontinue_point);
+    }
     if(p_para->vstream_info.has_video && p_para->astream_info.has_audio)
     {            
         pcr_scr = get_pts_pcrscr();
@@ -513,7 +522,11 @@ static void update_current_time(play_para_t *p_para)
 	    		else
 	    			time -= p_para->state.start_time;
 	        }
-	       
+	        if((time/PTS_FREQ) < p_para->discontinue_point && p_para->discontinue_point > 0)
+			{
+		        log_print("[update_current_time]time=%d discontinue_point=%d\n",time/PTS_FREQ,p_para->discontinue_point);
+				time += p_para->discontinue_point * PTS_FREQ;
+	        }
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n",time/PTS_FREQ,p_para->state.current_time,p_para->state.last_time);
 			p_para->state.current_ms = time / PTS_FREQ_MS;
 			p_para->state.current_pts = time;
@@ -526,13 +539,14 @@ static void update_current_time(play_para_t *p_para)
 
 	    if (p_para->state.current_time == 0 && p_para->playctrl_info.time_point > 0)
 	    {
-	    	log_print("[update_current_time]time=%d tpos=%d\n",time,p_para->playctrl_info.time_point);
+	    	//log_print("[update_current_time]time=%d tpos=%d\n",time,p_para->playctrl_info.time_point);
 			p_para->state.current_time = p_para->playctrl_info.time_point;
 			p_para->state.current_ms = p_para->state.current_time * 1000;
+	    	log_print("[update_current_time]curtime: 0->%d tpos=%d\n",time,p_para->playctrl_info.time_point);
 	    }
 	    if(p_para->state.current_time > p_para->state.full_time)       
 		{
-	    	log_print("[update_current_time]time=0x%x(%d) fulltime=%d\n",time,time/PTS_FREQ,p_para->state.full_time);
+	    	log_print("[update_current_time]time=%d fulltime=%d\n",time,p_para->state.full_time);
 			p_para->state.current_time = p_para->state.full_time; 
 			p_para->state.current_ms = p_para->state.current_time * 1000;
 	    }

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <errno.h>
 #include <log_print.h>
 #include <player_set_sys.h>
 
@@ -63,7 +64,7 @@ int set_tsync_enable(int enable)
 int set_tsync_discontinue(int discontinue)		//kernel set to 1,player clear to 0
 {
     int fd;
-    char *path = "/sys/class/tsync/discontinue";    
+    char *path = "/sys/class/tsync/discontinue";  
 	char  bcmd[16];
 	if(discontinue)
 		return -1;
@@ -72,9 +73,11 @@ int set_tsync_discontinue(int discontinue)		//kernel set to 1,player clear to 0
 	{
     	sprintf(bcmd,"%d",discontinue);
     	write(fd,bcmd,strlen(bcmd));
-    	close(fd);
+    	close(fd);		
     	return 0;
 	}
+	else		
+		log_error("[%s:%d]open %s failed! errno=%d\n",__FUNCTION__,__LINE__,path,errno);
 	return -1;
     
 }
@@ -82,16 +85,18 @@ int get_pts_discontinue()
 {
     int fd;
     int discontinue = 0;
-    char *path = "/sys/class/video/discontinue";
-	char  bcmd[16];
+    char *path = "/sys/class/tsync/discontinue";
+	char  bcmd[16];	
 	fd=open(path, O_RDONLY);
 	if(fd>=0)
-	{    	
+	{	
     	read(fd,bcmd,sizeof(bcmd));       
         discontinue = strtol(bcmd, NULL, 16);       
-        discontinue &= 0x1;
+        discontinue &= 0x1;		
     	close(fd);    	
 	}
+	else
+		log_error("[%s:%d]open %s failed!\n",__FUNCTION__,__LINE__,path);
 	return discontinue;
 }
 
