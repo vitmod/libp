@@ -39,6 +39,8 @@
 #define ENDLIST_FLAG				(1<<3)
 #define KEY_FLAG					(1<<4)
 #define EXT_INFO					(1<<5)
+#define READ_END_FLAG				(1<<6)
+
 
 struct list_mgt;
 struct list_demux;

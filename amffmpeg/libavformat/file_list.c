@@ -195,9 +195,9 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 {
 	struct list_item *next=NULL;
 	struct list_item *current;
-	if(!mgt || !mgt->current_item)
+	if(!mgt)
 		return NULL;
-	if(mgt->current_item->next==NULL){
+	if(mgt->current_item==NULL || mgt->current_item->next==NULL){
 			/*new refresh this mgtlist now*/
 			ByteIOContext *bio;
 			
@@ -207,25 +207,28 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 				goto switchnext;
 			}
 			url_fclose(bio);
-			current=mgt->current_item;
-			next=mgt->current_item->next;
-			for(;next!=NULL;next=next->next){
-				if(strcmp(current->file,next->file)==0){
-					/*found the same item,switch to the next*/	
-					current=next;
-					break;
+			if(mgt->current_item){/*current item,switch to next*/
+				current=mgt->current_item;
+				next=mgt->current_item->next;
+				for(;next!=NULL;next=next->next){
+					if(strcmp(current->file,next->file)==0){
+						/*found the same item,switch to the next*/	
+						current=next;
+						break;
+					}
 				}
+				while(current!=mgt->item_list){
+					/*del the old item,lest current,and then play current->next*/
+					list_del_item(mgt,mgt->item_list);
+				}
+				mgt->current_item=current;/*switch to new current;*/
 			}
-			while(current!=mgt->item_list){
-				/*del the old item,lest current,and then play current->next*/
-				list_del_item(mgt,mgt->item_list);
-			}
-			mgt->current_item=mgt->item_list;
-			
 	}
-switchnext:	
-	mgt->current_item=mgt->current_item->next;
-	next=mgt->current_item;
+switchnext:
+	if(mgt->current_item)
+		next=mgt->current_item->next;
+	else
+		next=mgt->item_list;
 	if(next)
 		av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d",next->file,mgt->item_num);
 	else
@@ -239,7 +242,7 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
     int len=AVERROR(EIO);
 	struct list_item *item=mgt->current_item;
 retry:	
-	//av_log(NULL, AV_LOG_INFO, "list_read start buf=%x,size=%d\n",buf,size);
+	av_log(NULL, AV_LOG_INFO, "list_read start buf=%x,size=%d\n",buf,size);
 	if(!mgt->cur_uio )
 	{
 		if(item && item->file)
@@ -265,19 +268,22 @@ retry:
 			}
 			mgt->cur_uio=bio;
 		}
-		else
-		{
-			/*follow to next....*/
-		}
 	}
-	len=get_buffer(mgt->cur_uio,buf,size);
-	if((len<=0 || mgt->cur_uio->eof_reached)&& mgt->current_item!=NULL)
+	if(mgt->cur_uio)
+		len=get_buffer(mgt->cur_uio,buf,size);
+	if(len==AVERROR(EAGAIN))
+		 return AVERROR(EAGAIN);/*not end,bug need to*/
+	else if((len<=0 || (mgt->cur_uio && mgt->cur_uio->eof_reached))&& mgt->current_item!=NULL)
 	{/*end of the file*/
-		url_fclose(mgt->cur_uio);
-		mgt->cur_uio=NULL;
+		av_log(NULL, AV_LOG_INFO, "try switchto_next_item buf=%x,size=%d,len=%d\n",buf,size,len);
 		item=switchto_next_item(mgt);
-		if(!item)
-			return -1;/*get error*/
+		if(!item){
+			 return AVERROR(EAGAIN);/*not end,but need to refresh the list later*/
+		}
+		if(mgt->cur_uio)
+			url_fclose(mgt->cur_uio);
+		mgt->cur_uio=NULL;
+		mgt->current_item=item;
 		if(item->flags & ENDLIST_FLAG){
 			av_log(NULL, AV_LOG_INFO, "reach list end now!,item=%x\n",item);
 			return len;
@@ -291,7 +297,7 @@ retry:
 			goto retry;
 		}
 	}
-	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d\n",buf,size);
+	av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d\n",buf,size);
     return len;
 }
 
