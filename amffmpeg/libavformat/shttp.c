@@ -116,6 +116,7 @@ static int http_open_cnx(URLContext *h)
             return AVERROR(EIO);
         location_changed = 0;
 		s->filesize = -1;/*file changed*/
+		s->chunksize = -1;/*chunk may changed also*/
 		h->location=s->location;
         goto redo;
     }

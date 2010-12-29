@@ -139,10 +139,9 @@ static int list_open_internet(ByteIOContext **pbio,struct list_mgt *mgt,const ch
 	list_demux_t *demux;
 	int ret;
 	ByteIOContext *bio;
-	ret=url_fopen(&bio,filename+5,flags);
+	ret=url_fopen(&bio,filename,flags);
 	if(ret!=0)
 		{
-			av_free(mgt);
 			return AVERROR(EIO); 
 		}
 	demux=probe_demux(bio,filename);
@@ -162,7 +161,6 @@ static int list_open_internet(ByteIOContext **pbio,struct list_mgt *mgt,const ch
 error:
 	if(bio)
 		url_fclose(bio);
-	av_free(mgt);
 	return ret;
 }
 
@@ -177,8 +175,11 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	memset(mgt,0,sizeof(*mgt));
 	mgt->filename=filename+5;
 	mgt->flags=flags;
-	if((ret=list_open_internet(&bio,mgt,filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
+	if((ret=list_open_internet(&bio,mgt,mgt->filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
+	{
+		av_free(mgt);
 		return ret;
+	}
 	lp_lock_init(&mgt->mutex,NULL);
 	mgt->current_item=mgt->item_list;
 	mgt->cur_uio=NULL;
@@ -315,6 +316,8 @@ static int list_close(URLContext *h)
 	struct list_item *item,*item1;
 	if(!mgt)return 0;
 	item=mgt->item_list;
+	if(mgt->cur_uio!=NULL)
+		url_fclose(mgt->cur_uio);
 	while(item!=NULL)
 		{
 		item1=item;
