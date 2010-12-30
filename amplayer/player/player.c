@@ -96,6 +96,11 @@ static int player_para_release(play_para_t *para)
 		FREE(para->file_name);
 		para->file_name = NULL;
 	}
+	//reset subtitle prop
+	set_subtitle_num(0);
+	set_subtitle_fps(0);
+	set_subtitle_subtype(0);
+	set_subtitle_startpts(0);
     return PLAYER_SUCCESS;
 }
 
@@ -490,48 +495,6 @@ static void player_para_init(play_para_t *para)
 	para->sstream_info.sub_index = -1;	
 }
 
-static void subtitle_para_init(play_para_t *player)
-{	
-	set_subtitle_num(player->sstream_num);
-	float video_fps;
-	log_print("[%s:%d]player->media_info.video_info[0]=%p vidx=%d\n",__FUNCTION__,__LINE__,player->media_info.video_info[0],player->vstream_info.video_index);
-	if(player->media_info.video_info[0])
-		video_fps = player->media_info.video_info[0]->frame_rate_num/(float)(player->media_info.video_info[0]->frame_rate_den);
-	set_subtitle_fps(video_fps*100);
-	if(player->sstream_info.has_sub){
-		if(player->sstream_info.sub_type == CODEC_ID_DVD_SUBTITLE)
-			set_subtitle_subtype(0);
-		else if(player->sstream_info.sub_type == CODEC_ID_HDMV_PGS_SUBTITLE)
-			set_subtitle_subtype(1);
-		else if(player->sstream_info.sub_type == CODEC_ID_XSUB)
-			set_subtitle_subtype(2);
-		else if(player->sstream_info.sub_type == CODEC_ID_TEXT || \
-			player->sstream_info.sub_type == CODEC_ID_SSA)
-			set_subtitle_subtype(3);
-		else
-			set_subtitle_subtype(4);
-	}
-	else
-		set_subtitle_subtype(0);
-	if(player->astream_info.start_time != -1){
-		set_subtitle_startpts(player->astream_info.start_time);
-		log_print("player set startpts is %x\n\n",player->astream_info.start_time);
-	}
-	else if(player->vstream_info.start_time != -1){
-		set_subtitle_startpts(player->vstream_info.start_time);
-		log_print("player set startpts is %x\n\n",player->vstream_info.start_time);
-	}
-	else
-		set_subtitle_startpts(0);
-}
-
-static void subtitle_para_uninit()
-{
-	set_subtitle_num(0);
-	set_subtitle_fps(0);
-	set_subtitle_subtype(0);
-	set_subtitle_startpts(0);
-}
 ///////////////////*main function *//////////////////////////////////////
 void *player_thread(play_para_t *player)
  {  
@@ -577,7 +540,6 @@ void *player_thread(play_para_t *player)
 	}    
     
     ret = set_media_info(player);
-	subtitle_para_init(player);
     if(ret != PLAYER_SUCCESS)
     {
         log_error("pid[%d::player_set_media_info failed!\n",player->player_id);
@@ -931,7 +893,6 @@ release0:
 	set_player_state(player,PLAYER_EXIT);
 	update_player_states(player,1);
 	log_print("\npid[%d]::before subtitle uninit!(sta:0x%x)\n",player->player_id,get_player_state(player));
-	subtitle_para_uninit();
 	log_print("\npid[%d]::stop play, exit player thead!(sta:0x%x)\n",player->player_id,get_player_state(player));
 	pthread_exit(NULL);   
 	return NULL;

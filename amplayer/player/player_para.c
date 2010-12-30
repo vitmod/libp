@@ -674,6 +674,55 @@ static void check_ctx_bitrate(play_para_t *p_para)
     log_print("[check_ctx_bitrate:%d]bit_rate=%d ic->bit_rate=%d\n",__LINE__,bit_rate, ic->bit_rate);
     
 }
+
+static void subtitle_para_init(play_para_t *player)
+{	
+	AVFormatContext *pCtx = player->pFormatCtx;
+	int frame_rate_num, frame_rate_den;
+	float video_fps;
+	if(player->vstream_info.has_video){
+        unsigned int i;  
+        AVStream *pStream;        
+        for(i = 0;i < pCtx->nb_streams;i ++)
+        {           
+            pStream = pCtx->streams[i];      
+            if(pStream->codec->codec_type == CODEC_TYPE_VIDEO)
+            {
+                frame_rate_num   = pStream->r_frame_rate.num;
+                frame_rate_den   = pStream->r_frame_rate.den;
+				video_fps = frame_rate_num/(float)frame_rate_den;
+				set_subtitle_fps(video_fps*100);
+            } 
+        }
+    }
+	set_subtitle_num(player->sstream_num);
+	if(player->sstream_info.has_sub){
+		if(player->sstream_info.sub_type == CODEC_ID_DVD_SUBTITLE)
+			set_subtitle_subtype(0);
+		else if(player->sstream_info.sub_type == CODEC_ID_HDMV_PGS_SUBTITLE)
+			set_subtitle_subtype(1);
+		else if(player->sstream_info.sub_type == CODEC_ID_XSUB)
+			set_subtitle_subtype(2);
+		else if(player->sstream_info.sub_type == CODEC_ID_TEXT || \
+			player->sstream_info.sub_type == CODEC_ID_SSA)
+			set_subtitle_subtype(3);
+		else
+			set_subtitle_subtype(4);
+	}
+	else
+		set_subtitle_subtype(0);
+	if(player->astream_info.start_time != -1){
+		set_subtitle_startpts(player->astream_info.start_time);
+		log_print("player set startpts is %x\n\n",player->astream_info.start_time);
+	}
+	else if(player->vstream_info.start_time != -1){
+		set_subtitle_startpts(player->vstream_info.start_time);
+		log_print("player set startpts is %x\n\n",player->vstream_info.start_time);
+	}
+	else
+		set_subtitle_startpts(0);
+}
+
 ///////////////////////////////////////////////////////////////////
 int player_dec_init(play_para_t *p_para)
 {
@@ -764,7 +813,8 @@ int player_dec_init(play_para_t *p_para)
 	{
 	    //log_print("*****data offset 0x%x\n", p_para->data_offset);
 	    url_fseek(p_para->pFormatCtx->pb,p_para->data_offset, SEEK_SET);       
-    }       
+    }    
+	subtitle_para_init(p_para);
 	set_tsync_enable(1);		//open av sync
     return PLAYER_SUCCESS;
 
