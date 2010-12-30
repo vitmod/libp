@@ -79,7 +79,6 @@ int ffmpeg_parse_file(play_para_t *am_p)
 		log_print("[ffmpeg_open_file] Empty pointer!\n");
 		return FFMPEG_EMP_POINTER;
 	}
-	am_p->byteiobufsize=1024;
 	if(am_p->byteiobufsize>0)
 		byteiosize=am_p->byteiobufsize;
 	if(am_p->file_name != NULL)
