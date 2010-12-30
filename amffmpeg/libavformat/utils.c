@@ -1890,7 +1890,13 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 	        if (ret < 0)
 	        {
 	        	av_log(NULL, AV_LOG_INFO, "[%s:%d]av_read_packet failed ret=%d\n",__FUNCTION__,__LINE__,ret);
-	        	break;
+				if(ret == AVERROR_EOF)
+				{
+					av_free(buf1);
+					av_free(buf2);
+					return filesize;
+				}
+				break;
 	        }
 			if(memcmp(buf1,buf2,CHECK_FULL_ZERO_SIZE) == 0)
 			{
@@ -1951,7 +1957,7 @@ static int64_t check_last_blk_valid(AVFormatContext *ic)
 	else if(memcmp(buf1,buf2,check_size)==0)	//cmp,buf1=buf2=0
 	{		
 		av_log(ic, AV_LOG_ERROR, "[%s]last block is full ZERO\n",__FUNCTION__,read_size);
-		ret = seek_last_valid_pkt(ic);
+		ret = 0;
 		goto end;
 	
 	}
@@ -2051,7 +2057,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     }
 
 #if 1
-	if (duration <= 0)
+	if (duration <= 0 && (!check_last_blk_valid(ic)))
 	{	
 		offset = seek_last_valid_pkt(ic);
 		if(offset > 0)
@@ -2197,7 +2203,10 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     }
     av_update_stream_timings(ic);
 	cur_offset = url_ftell(ic->pb);
-	valid_offset = check_last_blk_valid(ic);	
+	if(check_last_blk_valid(ic))
+		valid_offset = ic->file_size;
+	else
+		valid_offset = seek_last_valid_pkt(ic);
     if ((valid_offset > 2) && (ic->valid_offset != 0x7fffffffffffffff)) 
     {
         ic->valid_offset = valid_offset;
@@ -2740,16 +2749,12 @@ AVStream *av_new_stream(AVFormatContext *s, int id)
 {
     AVStream *st;
     int i;
-
-	av_log(s, AV_LOG_ERROR,"[%s:%d]nb_streams=%d (%d)\n",__FUNCTION__,__LINE__,s->nb_streams,MAX_STREAMS);
     if (s->nb_streams >= MAX_STREAMS)
         return NULL;
-	av_log(s, AV_LOG_ERROR,"[%s:%d]\n",__FUNCTION__,__LINE__);
 
     st = av_mallocz(sizeof(AVStream));
     if (!st)
         return NULL;
-	av_log(s, AV_LOG_ERROR,"[%s:%d]\n",__FUNCTION__,__LINE__);
     st->codec= avcodec_alloc_context();
     if (s->iformat) {
         /* no default bitrate if decoding */
