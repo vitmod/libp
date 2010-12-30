@@ -61,6 +61,11 @@ static int player_para_release(play_para_t *para)
                 para->media_info.audio_info[i] = NULL;
         	}
         }
+		if(para->astream_info.extradata != NULL)
+		{
+		    FREE(para->astream_info.extradata);
+		    para->astream_info.extradata = NULL;
+		}
     }
     
     if(para->sstream_info.has_sub)
@@ -74,11 +79,7 @@ static int player_para_release(play_para_t *para)
         	}
         }
     }  
-	if(para->astream_info.extradata != NULL)
-    {
-        FREE(para->astream_info.extradata);
-        para->astream_info.extradata = NULL;
-    }
+	
     if(para->pFormatCtx!=NULL)
 	{
 		av_close_input_file(para->pFormatCtx);
@@ -101,7 +102,8 @@ static int player_para_release(play_para_t *para)
 static int check_decoder_worksta(play_para_t *para)
 {      
     #define PARSER_ERROR_WRONG_PACKAGE_SIZE 0x80
-    #define PARSER_ERROR_WRONG_HEAD_VER     0x40	
+	#define PARSER_ERROR_WRONG_HEAD_VER     0x40
+	#define DECODER_ERROR_VLC_DECODE_TBL    0x20	
     codec_para_t *codec;
     struct vdec_status vdec;   
     int ret;
@@ -123,12 +125,13 @@ static int check_decoder_worksta(play_para_t *para)
         	}
             else
             {             
-                if(vdec.status & (0x20) && 
+                if((vdec.status & 0x20)&& 
                     ((para->state.current_time - para->state.last_time)>=1) && 
                     (!para->playctrl_info.read_end_flag))
                 {   
-                    if(vdec.status & (PARSER_ERROR_WRONG_PACKAGE_SIZE|PARSER_ERROR_WRONG_HEAD_VER))
-                    {     
+                    if((vdec.status >> 16) & (PARSER_ERROR_WRONG_PACKAGE_SIZE|PARSER_ERROR_WRONG_HEAD_VER))
+                    {   
+                        log_print("pid[%d]::[%s:%d]find decoder error! curtime=%d lastime=%d \n",para->player_id,__FUNCTION__, __LINE__,para->state.current_time,para->state.last_time);
                         if(para->playctrl_info.need_reset)
                         {
                             para->playctrl_info.time_point = para->state.current_time;                          
@@ -490,7 +493,10 @@ static void player_para_init(play_para_t *para)
 static void subtitle_para_init(play_para_t *player)
 {	
 	set_subtitle_num(player->sstream_num);
-	float video_fps = player->media_info.video_info[0]->frame_rate_num/(float)(player->media_info.video_info[0]->frame_rate_den);
+	float video_fps;
+	log_print("[%s:%d]player->media_info.video_info[0]=%p vidx=%d\n",__FUNCTION__,__LINE__,player->media_info.video_info[0],player->vstream_info.video_index);
+	if(player->media_info.video_info[0])
+		video_fps = player->media_info.video_info[0]->frame_rate_num/(float)(player->media_info.video_info[0]->frame_rate_den);
 	set_subtitle_fps(video_fps*100);
 	if(player->sstream_info.has_sub){
 		if(player->sstream_info.sub_type == CODEC_ID_DVD_SUBTITLE)
@@ -924,6 +930,7 @@ release0:
 	player_para_release(player);
 	set_player_state(player,PLAYER_EXIT);
 	update_player_states(player,1);
+	log_print("\npid[%d]::before subtitle uninit!(sta:0x%x)\n",player->player_id,get_player_state(player));
 	subtitle_para_uninit();
 	log_print("\npid[%d]::stop play, exit player thead!(sta:0x%x)\n",player->player_id,get_player_state(player));
 	pthread_exit(NULL);   
