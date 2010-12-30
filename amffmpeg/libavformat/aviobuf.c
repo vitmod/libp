@@ -419,6 +419,7 @@ int url_buffering_data(ByteIOContext *s,int size)
 int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
 {
     int len, size1;
+	int read_len = 0;
     s->error = 0;   //xh,20100419
     size1 = size;    
     while (size > 0) {
@@ -446,6 +447,7 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
                     buf += len;
                     s->buf_ptr = s->buffer;
                     s->buf_end = s->buffer/* + len*/;
+					read_len += len;
                 }
             }else{
                 fill_buffer(s);
@@ -460,19 +462,23 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
             buf += len;
             s->buf_ptr += len;
             size -= len;
+			read_len += len;
         }else{/*len <0*/
         	av_log(NULL,AV_LOG_ERROR,"get_buffer failed: buffer overflow= %d\n",len);
         	return s->error?s->error:-1; 
         	}
-    }
+    }	
     #if 0
     if (size1 == size) {        
         if (url_ferror(s)) return url_ferror(s);   
         if (url_feof(s))   return AVERROR_EOF;
     }
     #else  //if (s->buf_end - s->buf_ptr)<size1, old can't return eof
-    if (url_ferror(s)) return url_ferror(s);         
-    if (url_feof(s))   return AVERROR_EOF;     
+	if(read_len <= 0)
+	{
+	    if (url_ferror(s)) return url_ferror(s);         
+	    if (url_feof(s))   return AVERROR_EOF;
+	}
     #endif
     
     return size1 - size;
