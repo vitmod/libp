@@ -1574,7 +1574,7 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
     unsigned int sub_type;
     int64_t sub_pts=0;
     static int last_duration = 0;
-    float duration = para->sstream_info.sub_duration;
+    float duration = para->sstream_info.sub_pts;
     long long start_time = para->sstream_info.start_time;
     int data_size = pkt->avpkt->size;
 
@@ -1600,6 +1600,10 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
 
     /* first write the header */
     sub_type = para->sstream_info.sub_type;
+    if(sub_type==0x17000)
+    {
+    	sub_type=0x1700a;
+    }    
     sub_header[5] = (sub_type >> 16) & 0xff;
     sub_header[6] = (sub_type >> 8) & 0xff;
     sub_header[7] = sub_type & 0xff;
@@ -1616,7 +1620,6 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
     sub_header[18] = (last_duration >> 8) & 0xff;
     sub_header[19] = last_duration & 0xff;
 
-   	log_print("[ pkt->avpkt->duration:%d,   last_duration:%d,para->sstream_info.sub_duration %d ]\n",pkt->avpkt->duration ,last_duration,para->sstream_info.sub_duration);
 
 	log_print("[ sub_type:0x%x,   data_size:%d,  sub_pts:%d last_duration %d]\n",sub_type ,data_size, sub_pts,last_duration);
 	log_print("[ sizeof:%d ]\n",sizeof(sub_header));
