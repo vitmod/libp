@@ -41,6 +41,8 @@
 #define EXT_X_ENDLIST				"#EXT-X-ENDLIST"
 #define EXT_X_STREAM_INF			"#EXT-X-STREAM-INF"
 
+#define EXT_X_DISCONTINUITY		"#EXT-X-DISCONTINUITY"
+
 #define is_TAG(l,tag)	(!strncmp(l,tag,strlen(tag)))
 
 struct m3u_info{
