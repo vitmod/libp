@@ -377,7 +377,7 @@ static void *audio_decode_init(void *args)
 
 	while(!stop_flag){	
 
-        if(avcodecCtx->codec_id == CODEC_ID_AAC && avcodecCtx->profile == FF_PROFILE_AAC_MAIN){
+        if(avcodecCtx && avcodecCtx->codec_id == CODEC_ID_AAC && avcodecCtx->profile == FF_PROFILE_AAC_MAIN){
             log_print(LOG_INFO,"[%s,%d]audio is FF_PROFILE_AAC_MAIN, use ffmpeg decoder\n", __func__, __LINE__);
             pfeeder = feeder_init(0);
         }else{
