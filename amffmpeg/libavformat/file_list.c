@@ -276,6 +276,9 @@ retry:
 	else if((len<=0 || (mgt->cur_uio && mgt->cur_uio->eof_reached))&& mgt->current_item!=NULL)
 	{/*end of the file*/
 		av_log(NULL, AV_LOG_INFO, "try switchto_next_item buf=%x,size=%d,len=%d\n",buf,size,len);
+
+		if(item && (item->flags & ENDLIST_FLAG))
+			return 0;
 		item=switchto_next_item(mgt);
 		if(!item){
 			 return AVERROR(EAGAIN);/*not end,but need to refresh the list later*/
@@ -286,7 +289,7 @@ retry:
 		mgt->current_item=item;
 		if(item->flags & ENDLIST_FLAG){
 			av_log(NULL, AV_LOG_INFO, "reach list end now!,item=%x\n",item);
-			return len;
+			return 0;/*endof file*/
 		}
 		else if(item->flags & DISCONTINUE_FLAG){
 			av_log(NULL, AV_LOG_INFO, "Discontiue item \n");
