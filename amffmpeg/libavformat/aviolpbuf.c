@@ -293,7 +293,7 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 		
 	}else if(offset1>0 && (s->is_streamed || s->is_slowmedia) && 
 			(offset1<lp->buffer_size-lp->block_read_size) && 
-			(lp->file_size<=0 || (lp->file_size>0 && offset<lp->file_size-1024*128)))/*if offset1>filesize-64*1024,then do first seek end,don't buffer*/
+			(lp->file_size<=0 || (lp->file_size>0 && offset<lp->file_size/2)))/*if offset1>filesize/2,thendo first seek end,don't buffer*/
 	{/*seek to buffer end,but buffer is not full,do read seek*/
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer read seek forward offset=%lld offset1=%lld  whence=%d\n",offset,offset1,whence);
 		lp->rp+=valid_data_can_seek_forward;

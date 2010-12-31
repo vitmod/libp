@@ -207,11 +207,11 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 				goto switchnext;
 			}
 			url_fclose(bio);
-			if(mgt->current_item){/*current item,switch to next*/
+			if(mgt->current_item && mgt->current_item->file){/*current item,switch to next*/
 				current=mgt->current_item;
 				next=mgt->current_item->next;
 				for(;next!=NULL;next=next->next){
-					if(strcmp(current->file,next->file)==0){
+					if(next->file && strcmp(current->file,next->file)==0){
 						/*found the same item,switch to the next*/	
 						current=next;
 						break;

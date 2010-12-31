@@ -713,7 +713,8 @@ static int  update_buffering_states(play_para_t *p_para,
 		}
 		if(	(get_player_state(p_para) == PLAYER_RUNNING) &&
 			(minlevel< p_para->buffering_threshhold_min)  && 
-			 (maxlevel< p_para->buffering_threshhold_max))
+			 (maxlevel< p_para->buffering_threshhold_max) &&
+			 !p_para->playctrl_info.read_end_flag)
 		{
 			codec_pause(p_para->codec);
 			set_player_state(p_para,PLAYER_BUFFERING);
@@ -722,7 +723,8 @@ static int  update_buffering_states(play_para_t *p_para,
 		}
 		else if((get_player_state(p_para) == PLAYER_BUFFERING) &&
 			 ((minlevel> p_para->buffering_threshhold_middle)  ||
-			 (maxlevel> p_para->buffering_threshhold_max)))
+			 (maxlevel> p_para->buffering_threshhold_max) ||
+				p_para->playctrl_info.read_end_flag))
 		{
 			codec_resume(p_para->codec);
 			set_player_state(p_para,PLAYER_RUNNING);
