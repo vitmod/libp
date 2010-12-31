@@ -681,19 +681,8 @@ static void subtitle_para_init(play_para_t *player)
 	int frame_rate_num, frame_rate_den;
 	float video_fps;
 	if(player->vstream_info.has_video){
-        unsigned int i;  
-        AVStream *pStream;        
-        for(i = 0;i < pCtx->nb_streams;i ++)
-        {           
-            pStream = pCtx->streams[i];      
-            if(pStream->codec->codec_type == CODEC_TYPE_VIDEO)
-            {
-                frame_rate_num   = pStream->r_frame_rate.num;
-                frame_rate_den   = pStream->r_frame_rate.den;
-				video_fps = frame_rate_num/(float)frame_rate_den;
-				set_subtitle_fps(video_fps*100);
-            } 
-        }
+		video_fps = (UNIT_FREQ)/(float)player->vstream_info.video_rate;
+		set_subtitle_fps(video_fps*100);
     }
 	set_subtitle_num(player->sstream_num);
 	if(player->sstream_info.has_sub){
