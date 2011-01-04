@@ -661,20 +661,16 @@ int url_fdopen(ByteIOContext **s, URLContext *h)
 
 int url_setbufsize(ByteIOContext *s, int buf_size)
 {
-    uint8_t *buffer;
-	int64_t old_pos=0;
+    uint8_t *buffer;	
     buffer = av_malloc(buf_size);
     if (!buffer)
-        return AVERROR(ENOMEM);
-	old_pos = url_ftell(s);
+        return AVERROR(ENOMEM);	
     av_free(s->buffer);
     s->buffer = buffer;
     s->buffer_size = buf_size;
 	//s->buffer_size = 2048;
     s->buf_ptr = buffer;
-    url_resetbuf(s, s->write_flag ? URL_WRONLY : URL_RDONLY);
-	if(old_pos != s->pos)
-		url_fseek(s, old_pos, SEEK_SET);
+    url_resetbuf(s, s->write_flag ? URL_WRONLY : URL_RDONLY);	
     return 0;
 }
 

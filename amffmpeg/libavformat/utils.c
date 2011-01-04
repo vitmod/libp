@@ -481,6 +481,10 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
 			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
             goto fail;
         }
+		if (buf_size > 0) {
+            url_setbufsize(pb, buf_size);
+        }
+
 		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
 		if(url_is_file_list(pb,filename))
 		{
@@ -497,12 +501,12 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
 				av_log(logctx, AV_LOG_ERROR, "av_open_input_file:%s failed,line=%d err=0x%x\n",pd->filename,__LINE__,err);
 	            goto fail;
         	}
+			if (buf_size > 0) {
+            url_setbufsize(pb, buf_size);
+	        }
 			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
 		}
-		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
-        if (buf_size > 0) {
-            url_setbufsize(pb, buf_size);
-        }
+		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);        
 
         //every time multiply 2
         for(probe_size= PROBE_BUF_MIN; probe_size<=PROBE_BUF_MAX && !fmt; probe_size<<=1){
