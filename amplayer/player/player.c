@@ -786,6 +786,8 @@ write_packet:
 	                else
 	                {
 	                    player->playctrl_info.end_flag = 1;
+						update_playing_info(player); 
+            			update_player_states(player,1);  
 						player_thread_wait(player, (32 >> player->playctrl_info.f_step)*10 * 1000);//(32 >> player->playctrl_info.f_step)*10 ms
 	                    break;
 	                }
