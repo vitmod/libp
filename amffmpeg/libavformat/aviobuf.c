@@ -700,10 +700,15 @@ static int url_resetbuf(ByteIOContext *s, int flags)
 
 int url_fopen(ByteIOContext **s, const char *filename, int flags)
 {
+    return url_fopen_h(s, filename, flags, NULL);
+}
+
+int url_fopen_h(ByteIOContext **s, const char *filename, int flags, const char *headers)
+{
     URLContext *h;
     int err;
 
-    err = url_open(&h, filename, flags);
+    err = url_open_h(&h, filename, flags, headers);
     if (err < 0)
         return err;
     err = url_fdopen(s, h);

@@ -68,7 +68,7 @@ int register_protocol(URLProtocol *protocol)
 #endif
 
 int url_open_protocol (URLContext **puc, struct URLProtocol *up,
-                       const char *filename, int flags)
+                       const char *filename, int flags, const char *headers)
 {
     URLContext *uc;
     int err;
@@ -88,8 +88,10 @@ int url_open_protocol (URLContext **puc, struct URLProtocol *up,
     uc->is_streamed = 0; /* default = not streamed */
     uc->is_slowmedia = 0;
     uc->max_packet_size = 0; /* default: stream file */
+    uc->headers = headers ? strdup(headers) : NULL;
     err = up->url_open(uc, filename, flags);
     if (err < 0) {
+        if (uc->headers) av_free(uc->headers);
         av_free(uc);
         *puc = NULL;
         return err;
@@ -108,6 +110,11 @@ int url_open_protocol (URLContext **puc, struct URLProtocol *up,
 }
 
 int url_open(URLContext **puc, const char *filename, int flags)
+{
+    return url_open_h(puc, filename, flags, NULL);
+}
+
+int url_open_h(URLContext **puc, const char *filename, int flags, const char *headers)
 {
     URLProtocol *up;
     const char *p;
@@ -134,7 +141,7 @@ int url_open(URLContext **puc, const char *filename, int flags)
     up = first_protocol;
     while (up != NULL) {
         if (!strcmp(proto_str, up->name))
-            return url_open_protocol (puc, up, filename, flags);
+            return url_open_protocol (puc, up, filename, flags, headers);
         up = up->next;
     }
     *puc = NULL;
@@ -193,6 +200,7 @@ int url_close(URLContext *h)
 
     if (h->prot->url_close)
         ret = h->prot->url_close(h);
+    if (h->headers) av_free(h->headers);
     av_free(h);
     return ret;
 }

@@ -56,6 +56,7 @@ typedef struct URLContext {
 	
     char *filename; /**< specified filename */
 	char *location;
+    char *headers;
 } URLContext;
 #include "libavformat/aviolpbuf.h"
 typedef struct URLPollEntry {
@@ -76,8 +77,9 @@ typedef struct URLPollEntry {
 typedef int URLInterruptCB(void);
 
 int url_open_protocol (URLContext **puc, struct URLProtocol *up,
-                       const char *filename, int flags);
+                       const char *filename, int flags, const char *headers);
 int url_open(URLContext **h, const char *filename, int flags);
+int url_open_h(URLContext **h, const char *filename, int flags, const char *headers);
 int url_read(URLContext *h, unsigned char *buf, int size);
 int url_read_complete(URLContext *h, unsigned char *buf, int size);
 int url_write(URLContext *h, unsigned char *buf, int size);
@@ -382,6 +384,7 @@ int url_resetbuf(ByteIOContext *s, int flags);
 /** @note when opened as read/write, the buffers are only used for
     writing */
 int url_fopen(ByteIOContext **s, const char *filename, int flags);
+int url_fopen_h(ByteIOContext **s, const char *filename, int flags, const char *headers);
 int url_fclose(ByteIOContext *s);
 URLContext *url_fileno(ByteIOContext *s);
 

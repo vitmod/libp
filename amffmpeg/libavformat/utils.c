@@ -455,7 +455,8 @@ int av_open_input_stream(AVFormatContext **ic_ptr,
 int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
                        AVInputFormat *fmt,
                        int buf_size,
-                       AVFormatParameters *ap)
+                       AVFormatParameters *ap,
+                       const char *headers)
 {
     int err, probe_size;
     AVProbeData probe_data, *pd = &probe_data;
@@ -477,7 +478,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
        hack needed to handle RTSP/TCP */
     if (!fmt || !(fmt->flags & AVFMT_NOFILE)) {
         /* if no file needed do not try to open one */
-        if ((err=url_fopen(&pb, pd->filename, URL_RDONLY)) < 0) {
+        if ((err=url_fopen_h(&pb, pd->filename, URL_RDONLY, headers)) < 0) {
 			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d err=0x%x\n",__LINE__,err);
             goto fail;
         }
@@ -497,7 +498,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
 			pd->filename=listfile;
 			url_fclose(pb);
 			pb=NULL;
-			if ((err=url_fopen(&pb, pd->filename, URL_RDONLY)) < 0) {
+			if ((err=url_fopen_h(&pb, pd->filename, URL_RDONLY, headers)) < 0) {
 				av_log(logctx, AV_LOG_ERROR, "av_open_input_file:%s failed,line=%d err=0x%x\n",pd->filename,__LINE__,err);
 	            goto fail;
         	}
@@ -542,7 +543,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
             memset(pd->buf+pd->buf_size, 0, AVPROBE_PADDING_SIZE);
             if (url_fseek(pb, 0, SEEK_SET) < 0) {
                 url_fclose(pb);
-                if (url_fopen(&pb, pd->filename, URL_RDONLY) < 0) {
+                if (url_fopen_h(&pb, pd->filename, URL_RDONLY, headers) < 0) {
                     pb = NULL;
                     err = AVERROR(EIO);
 					av_log(logctx, AV_LOG_ERROR, "av_open_input_file,failed,line=%d\n",__LINE__);

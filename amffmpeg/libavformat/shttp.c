@@ -296,6 +296,9 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 	len+=snprintf(s->buffer+len, sizeof(s->buffer),
              	"User-Agent: %s\r\n",
              IPAD_IDENT);
+    if (h->headers) {
+        len += snprintf(s->buffer + len, sizeof(s->buffer), h->headers);
+    }
 	if(s->off>0){
 		len+=snprintf(s->buffer+len, sizeof(s->buffer),
 				"Accept: */*\r\n"

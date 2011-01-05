@@ -830,7 +830,7 @@ int av_open_input_stream(AVFormatContext **ic_ptr,
 int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
                        AVInputFormat *fmt,
                        int buf_size,
-                       AVFormatParameters *ap);
+                       AVFormatParameters *ap, const char *headers);
 
 #if LIBAVFORMAT_VERSION_MAJOR < 53
 /**

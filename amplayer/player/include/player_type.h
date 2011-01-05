@@ -183,6 +183,7 @@ typedef struct
 typedef struct
  {
 	char  *file_name;	
+    char  *headers;
 	//List  *play_list;
 	int	video_index;
 	int	audio_index;

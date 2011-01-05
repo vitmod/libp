@@ -84,7 +84,7 @@ int ffmpeg_parse_file(play_para_t *am_p)
 	if(am_p->file_name != NULL)
 	{	
 Retry_open:	
-        ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL);
+        ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, am_p->start_param ? am_p->start_param->headers : NULL);
 	    if(ret!=0)
 	    {       
 	    	if(ret==AVERROR(EAGAIN))
