@@ -35,7 +35,7 @@
    only a subset of it. */
 
 /* used for protocol handling */
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 2048
 #define URL_SIZE    4096
 #define MAX_REDIRECTS 8
 
@@ -283,38 +283,49 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     char *auth_b64;
     int auth_b64_len = (strlen(auth) + 2) / 3 * 4 + 1;
     int64_t off = s->off;
-	int len;
+    int len, wrote;
 
     /* send http header */
     post = h->flags & URL_WRONLY;
+    if ((wrote = snprintf(s->buffer, sizeof(s->buffer),
+                          "%s %s HTTP/1.1\r\n",
+                          post ? "POST" : "GET",
+                          path)) < 0)
+        return AVERROR(EINVAL);
+    len = wrote;
+    if ((wrote = snprintf(s->buffer+len, sizeof(s->buffer) - len,
+                          "User-Agent: %s\r\n",
+                          IPAD_IDENT)) < 0)
+        return AVERROR(EINVAL);
+    len += wrote;
+    if (h->headers) {
+        if ((wrote = snprintf(s->buffer + len, sizeof(s->buffer) - len, "%s", h->headers)) < 0)
+            return AVERROR(EINVAL);
+        len += wrote;
+    }
+    if(s->off>0){
+        if ((wrote = snprintf(s->buffer+len, sizeof(s->buffer) - len,
+                              "Accept: */*\r\n"
+                              "Range: bytes=%"PRId64"-\r\n",
+                              s->off)) < 0)
+            return AVERROR(EINVAL);
+        len += wrote;
+    }
     auth_b64 = av_malloc(auth_b64_len);
     av_base64_encode(auth_b64, auth_b64_len, auth, strlen(auth));
-	len=snprintf(s->buffer,sizeof(s->buffer),
-				"%s %s HTTP/1.1\r\n",
-				post ? "POST" : "GET",
-             	path);
-	len+=snprintf(s->buffer+len, sizeof(s->buffer),
-             	"User-Agent: %s\r\n",
-             IPAD_IDENT);
-    if (h->headers) {
-        len += snprintf(s->buffer + len, sizeof(s->buffer), h->headers);
-    }
-	if(s->off>0){
-		len+=snprintf(s->buffer+len, sizeof(s->buffer),
-				"Accept: */*\r\n"
-				"Range: bytes=%"PRId64"-\r\n",
-				s->off);
-	}
-    len+=snprintf(s->buffer+len, sizeof(s->buffer),
-             "Accept: */*\r\n"
-             "Host: %s\r\n"
-             "Authorization: Basic %s\r\n"
-             "Connection: close\r\n"
-             "\r\n",
-             hoststr,
-             auth_b64);
-
+    wrote = snprintf(s->buffer+len, sizeof(s->buffer) - len,
+                     "Accept: */*\r\n"
+                     "Host: %s\r\n"
+                     "Authorization: Basic %s\r\n"
+                     "Connection: close\r\n"
+                     "\r\n",
+                     hoststr,
+                     auth_b64);
+    len += wrote;
     av_freep(&auth_b64);
+    if (wrote < 0)
+        return AVERROR(EINVAL);
+
     if (http_write(h, s->buffer, strlen(s->buffer)) < 0)
         return AVERROR(EIO);
 
