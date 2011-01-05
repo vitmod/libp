@@ -52,7 +52,7 @@ typedef struct AVIStream {
 
 int pre_header_feeding(play_para_t *para, am_packet_t *pkt);
 int h264_add_frame_header(unsigned char* data, int size);
-int h264_update_frame_header(unsigned char* data, int size);
+int h264_update_frame_header(am_packet_t *pkt);
 void adts_add_header(play_para_t *para, am_packet_t *pkt);
 int extract_adts_header_info(play_para_t *para);
 int divx3_prefix(am_packet_t *pkt);

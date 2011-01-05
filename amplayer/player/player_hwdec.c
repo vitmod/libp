@@ -26,6 +26,38 @@ static int check_size_in_buffer(unsigned char *p, int len)
 	return 0;
 }
 
+static int check_size_in_buffer3(unsigned char *p, int len)
+{
+	unsigned int size;
+	unsigned char *q = p;       
+	while ( (q+3) < (p+len) )
+	{
+		size = (*q<<16)|(*(q+1)<<8)|(*(q+2));
+
+		if ( q+size+3 == p+len )
+			return 1;
+
+		q += size+3;       
+	}    
+	return 0;
+}
+
+static int check_size_in_buffer2(unsigned char *p, int len)
+{
+	unsigned int size;
+	unsigned char *q = p;       
+	while ( (q+2) < (p+len) )
+	{
+		size = (*q<<8)|(*(q+1));       
+
+		if ( q+size+2 == p+len )
+			return 1;
+
+		q += size+2;       
+	}    
+	return 0;
+}
+
 /**********************************************************************
 0: syncword 12 always: '111111111111' 
 12: ID 1 0: MPEG-4, 1: MPEG-2 
@@ -812,9 +844,10 @@ int pre_header_feeding(play_para_t *para, am_packet_t *pkt)
 	return PLAYER_SUCCESS;
 }
 
-int h264_update_frame_header(unsigned char* data, int size)
+int h264_update_frame_header(am_packet_t *pkt)
 {
-	int nalsize;
+	int nalsize, size = pkt->data_size;
+	unsigned char *data = pkt->data;
 	unsigned char *p = data;	    
     if(p != NULL)
     {
@@ -827,6 +860,41 @@ int h264_update_frame_header(unsigned char* data, int size)
     			p+=(nalsize+4);
     		}
     		return PLAYER_SUCCESS;
+    	}
+    	else if ( check_size_in_buffer3(p, size) )
+    	{
+    		while((p+3)<(data +size))
+    		{
+    			nalsize = (*p<<16)|(*(p+1)<<8)|(*(p+2));
+    			*p=0;*(p+1)=0;*(p+2)=1;
+    			p+=(nalsize+3);
+    		}
+    		return PLAYER_SUCCESS;
+    	}
+    	else if ( check_size_in_buffer2(p, size) )
+    	{
+			unsigned char *new_data;
+ 			int new_len = 0;
+
+			new_data = (unsigned char *)MALLOC(size+2*1024);
+  			if ( !new_data )
+  				return PLAYER_NOMEM;
+                    
+    		while((p+2)<(data +size))
+    		{
+    			nalsize = (*p<<8)|(*(p+1));
+    			*(new_data+new_len)=0;*(new_data+new_len+1)=0;*(new_data+new_len+2)=0;*(new_data+new_len+3)=1;
+    			memcpy(new_data+new_len+4, p+2, nalsize);
+    			p+=(nalsize+2);
+    			new_len += nalsize+4;
+    		}
+
+			FREE(pkt->buf);
+
+    		pkt->buf = new_data;
+    		pkt->buf_size = size+2*1024;
+    		pkt->data = pkt->buf;
+    		pkt->data_size = new_len;
     	}
     }
     else
