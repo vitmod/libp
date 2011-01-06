@@ -46,6 +46,7 @@ typedef struct {
     int http_code;
     int64_t chunksize;      /**< Used if "Transfer-Encoding: chunked" otherwise -1. */
     int64_t off, filesize;
+	int is_seek;
     char location[URL_SIZE];
     int err_retry;
 } HTTPContext;
@@ -163,6 +164,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->err_retry=MAX_RETRY;
     av_strlcpy(s->location, uri, URL_SIZE);
 	h->location=s->location;
+	s->is_seek=0;
     ret = http_open_cnx(h);
     while(ret<0 && s->err_retry-->0 && !url_interrupt_cb())
     	ret = http_open_cnx(h);
@@ -293,9 +295,8 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 	len+=snprintf(s->buffer+len, sizeof(s->buffer),
              	"User-Agent: %s\r\n",
              IPAD_IDENT);
-	if(s->off>0){
+	if(s->is_seek>0){
 		len+=snprintf(s->buffer+len, sizeof(s->buffer),
-				"Accept: */*\r\n"
 				"Range: bytes=%"PRId64"-\r\n",
 				s->off);
 	}
@@ -424,7 +425,7 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
         off += s->off;
     else if (whence == SEEK_END)
         off += s->filesize;
-
+	s->is_seek=1;
     /* if it fails, continue on old connection */
    ret=http_reopen_cnx(h,off);
     while(ret<0 && s->err_retry>0 && !url_interrupt_cb())
@@ -437,8 +438,9 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
 	s->err_retry--;
 	ret=http_reopen_cnx(h,off);
     }
+	s->is_seek=0;
     if(ret<0)
-	return -1;
+		return -1;
     else
     	return off;
 }
