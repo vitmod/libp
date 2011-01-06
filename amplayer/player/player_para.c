@@ -313,7 +313,7 @@ static void get_stream_info(play_para_t *p_para)
 	
 	get_av_codec_type(p_para);  
 
-    if (p_para->stream_type == STREAM_RM)
+    if (p_para->stream_type == STREAM_RM && video_index != -1)
     {
         if (p_para->pFormatCtx->streams[video_index]->stream_offset > 0)
             p_para->data_offset = p_para->pFormatCtx->streams[video_index]->stream_offset;
@@ -341,8 +341,16 @@ static int set_decode_para(play_para_t*am_p)
 	}
 	else if(am_p->vstream_info.video_index == -1)
 	{
-		set_player_error_no(am_p, PLAYER_NO_VIDEO);
-	    update_player_states(am_p, 1);	
+		if(am_p->file_type == RM_FILE)
+		{
+			log_error("Can't support rm file without video!\n");
+        	return PLAYER_UNSUPPORT;
+		}
+		else
+		{
+			set_player_error_no(am_p, PLAYER_NO_VIDEO);
+	    	update_player_states(am_p, 1);
+		}
 	}	
 	if(am_p->playctrl_info.no_audio_flag)
 	{
@@ -362,17 +370,9 @@ static int set_decode_para(play_para_t*am_p)
         return PLAYER_UNSUPPORT;
     }	
 	else if((am_p->vstream_info.video_index != -1) && (am_p->vstream_info.has_video == 0))
-	{
-		if(am_p->file_type == RM_FILE)
-		{
-			log_error("Can't support rm audio file!\n");
-        	return PLAYER_UNSUPPORT;
-		}
-		else
-		{
-			set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);
-	        update_player_states(am_p, 1);	
-		}
+	{		
+		set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);
+        update_player_states(am_p, 1);			
 	}
 	else if((am_p->astream_info.audio_index != -1) && (am_p->astream_info.has_audio == 0))	//no audio
 	{
