@@ -263,7 +263,6 @@ static int mov_read_default(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
 
     if (atom.size < 0)
         atom.size = INT64_MAX;
-	av_log(NULL, AV_LOG_INFO,"[%s:%d]\n",__FUNCTION__,__LINE__);
     while(((total_size + 8) < atom.size) && !url_feof(pb) && !err) {
         int (*parse)(MOVContext*, ByteIOContext*, MOVAtom) = NULL;
         a.size = atom.size;
@@ -276,9 +275,7 @@ static int mov_read_default(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
         a.offset += 8;
         dprintf(c->fc, "type: %08x  %.4s  sz: %"PRIx64"  %"PRIx64"   %"PRIx64"\n",
                 a.type, (char*)&a.type, a.size, atom.size, total_size);
-		av_log(c->fc, AV_LOG_INFO, "a.type:0x%08x atom.type=0x%08x a.size=0x%llx atom.size=0x%llx total_size=0x%llx a.offset=0x%llx atom.offset=0x%llx\n",
-				a.type,atom.type,a.size,atom.size,total_size,a.offset,atom.offset);
-        if (a.size == 1) { /* 64 bit extended size */
+       if (a.size == 1) { /* 64 bit extended size */
             a.size = get_be64(pb) - 8;
             a.offset += 8;
             total_size += 8;
@@ -993,21 +990,16 @@ enum CodecID ff_mov_get_lpcm_codec_id(int bps, int flags)
     return CODEC_ID_NONE;
 }
 
-static int mov_read_stsd(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
+int ff_mov_read_stsd_entries(MOVContext *c, ByteIOContext *pb, int entries)
 {
     AVStream *st;
     MOVStreamContext *sc;
-    int j, entries, pseudo_stream_id;
+    int j, pseudo_stream_id;
 
     if (c->fc->nb_streams < 1)
         return 0;
     st = c->fc->streams[c->fc->nb_streams-1];
     sc = st->priv_data;
-
-    get_byte(pb); /* version */
-    get_be24(pb); /* flags */
-
-    entries = get_be32(pb);
 
     for(pseudo_stream_id=0; pseudo_stream_id<entries; pseudo_stream_id++) {
         //Parsing Sample description table
@@ -1069,7 +1061,6 @@ static int mov_read_stsd(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
                 (format >> 24) & 0xff, st->codec->codec_type);
 
         if(st->codec->codec_type==CODEC_TYPE_VIDEO) {
-            uint8_t codec_name[32];
             unsigned int color_depth, len;
             int color_greyscale;
 
@@ -1087,20 +1078,11 @@ static int mov_read_stsd(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
             get_be32(pb); /* vert resolution */
             get_be32(pb); /* data size, always 0 */
             get_be16(pb); /* frames per samples */
-			len = get_byte(pb); /* codec name, pascal string */
+
+            len = get_byte(pb); /* codec name, pascal string */
             if (len > 31)
                 len = 31;
-            /*get_buffer(pb, codec_name, 32); // codec name, pascal string 
-            if (codec_name[0] <= 31) {
-                int i;
-                int pos = 0;
-                for (i = 0; i < codec_name[0] && pos < sizeof(st->codec->codec_name) - 3; i++) {
-                    uint8_t tmp;
-                    PUT_UTF8(codec_name[i+1], tmp, st->codec->codec_name[pos++] = tmp;)
-                }
-                st->codec->codec_name[pos] = 0;
-            }*/
- 			mov_read_mac_string(c, pb, len, st->codec->codec_name, 32);
+            mov_read_mac_string(c, pb, len, st->codec->codec_name, 32);
             if (len < 31)
                 url_fskip(pb, 31 - len);
             /* codec_tag YV12 triggers an UV swap in rawdec.c */
@@ -1213,7 +1195,7 @@ static int mov_read_stsd(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
                     st->codec->channels = get_be32(pb);
                     get_be32(pb); /* always 0x7F000000 */
                     st->codec->bits_per_coded_sample = get_be32(pb); /* bits per channel if sound is uncompressed */
-                    flags = get_be32(pb); /* lcpm format specific flag */
+                    flags = get_be32(pb); /* lpcm format specific flag */
                     sc->bytes_per_frame = get_be32(pb); /* bytes per audio packet if constant */
                     sc->samples_per_frame = get_be32(pb); /* lpcm frames per audio packet if constant */
                     if (format == MKTAG('l','p','c','m'))
@@ -1343,16 +1325,16 @@ static int mov_read_stsd(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
     return 0;
 }
 
-/*static int mov_read_stsd(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
+static int mov_read_stsd(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
 {
     int entries;
 
-    get_byte(pb); // version 
-    get_be24(pb); // flags 
+    get_byte(pb); /* version */
+    get_be24(pb); /* flags */
     entries = get_be32(pb);
 
     return ff_mov_read_stsd_entries(c, pb, entries);
-}*/
+}
 
 static int mov_read_stsc(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
 {
@@ -1672,9 +1654,7 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
                 sample_size = sc->sample_size > 0 ? sc->sample_size : sc->sample_sizes[current_sample];
                 if(sc->pseudo_stream_id == -1 ||
                    sc->stsc_data[stsc_index].id - 1 == sc->pseudo_stream_id) {
-                   /* av_add_index_entry(st, current_offset, current_dts, sample_size, distance,
-                                    keyframe ? AVINDEX_KEYFRAME : 0);*/
-				    AVIndexEntry *e = &st->index_entries[st->nb_index_entries++];
+                    AVIndexEntry *e = &st->index_entries[st->nb_index_entries++];
                     e->pos = current_offset;
                     e->timestamp = current_dts;
                     e->size = sample_size;
@@ -1738,18 +1718,11 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
 
         // populate index
         for (i = 0; i < sc->chunk_count; i++) {
-           // unsigned chunk_samples;
-
             current_offset = sc->chunk_offsets[i];
             if (stsc_index + 1 < sc->stsc_count &&
                 i + 1 == sc->stsc_data[stsc_index + 1].first)
                 stsc_index++;
             chunk_samples = sc->stsc_data[stsc_index].count;
-
-            /*if (sc->samples_per_frame && chunk_samples % sc->samples_per_frame) {
-                av_log(mov->fc, AV_LOG_ERROR, "error unaligned chunk\n");
-                return;
-            }*/
 
             while (chunk_samples > 0) {
                 AVIndexEntry *e;
@@ -1769,8 +1742,7 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
                     }
                 }
 
-               // av_add_index_entry(st, current_offset, current_dts, size, 0, AVINDEX_KEYFRAME);
-	   			if (st->nb_index_entries >= total) {
+                if (st->nb_index_entries >= total) {
                     av_log(mov->fc, AV_LOG_ERROR, "wrong chunk count %d\n", total);
                     return;
                 }
@@ -1779,7 +1751,7 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
                 e->timestamp = current_dts;
                 e->size = size;
                 e->min_distance = 0;
-                e->flags = AVINDEX_KEYFRAME;			
+                e->flags = AVINDEX_KEYFRAME;
                 dprintf(mov->fc, "AVIndex stream %d, chunk %d, offset %"PRIx64", dts %"PRId64", "
                         "size %d, duration %d\n", st->index, i, current_offset, current_dts,
                         size, samples);
