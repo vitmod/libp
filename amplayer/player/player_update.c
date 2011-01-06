@@ -473,7 +473,7 @@ static unsigned int get_current_time(play_para_t *p_para)
     else if (!p_para->astream_info.has_audio)
     {
         vpts = get_pts_video();
-        ctime = vpts;
+        ctime = vpts;		
     }
     else
     {
@@ -493,6 +493,8 @@ static void update_current_time(play_para_t *p_para)
 	    if(p_para->playctrl_info.f_step > 0)   
 	    {
 	        time = (unsigned int)p_para->playctrl_info.time_point;
+			p_para->state.current_time = time;
+			p_para->state.current_ms = time * 1000;
 	    }
 	    else  
 	    {        
