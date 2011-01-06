@@ -535,7 +535,7 @@ static void update_current_time(play_para_t *p_para)
 		if(p_para->state.current_time < p_para->state.full_time)
 			p_para->state.last_time = p_para->state.current_time;
 	    p_para->state.current_time = (int)time;
-	    p_para->state.current_ms = p_para->state.current_time * 1000;
+	   
 	    log_debug("[update_current_time]curtime=%d lasttime=%d tpos=%d full_time=%d\n",p_para->state.current_time,p_para->state.last_time,p_para->playctrl_info.time_point,p_para->state.full_time);
 
 	    if (p_para->state.current_time == 0 && p_para->playctrl_info.time_point > 0)
