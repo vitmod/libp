@@ -764,8 +764,9 @@ int player_dec_init(play_para_t *p_para)
     ret = set_decode_para(p_para);
     if(ret!=PLAYER_SUCCESS)
         goto init_fail;	
-	
-    check_ctx_bitrate(p_para);
+
+	if(p_para->stream_type != STREAM_TS)
+   		check_ctx_bitrate(p_para);
 	
     if((0!=p_para->pFormatCtx->bit_rate) && (0!=p_para->file_size))
     {
