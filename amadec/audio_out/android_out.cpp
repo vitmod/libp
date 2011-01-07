@@ -113,8 +113,10 @@ extern "C" int android_init(adec_feeder_t * feed)
     small_buf_init();
 
     Mutex::Autolock _l(mLock);
-    
+
+if(!track)
     track = new AudioTrack();
+
     //if (track == 0 || feed==NULL || !feed->dsp_on || feed->dsp_read==NULL)
     if (track == 0 || feed==NULL) 
         return -1;
@@ -132,7 +134,7 @@ extern "C" int android_init(adec_feeder_t * feed)
                0,       // notificationFrames
                0,       // shared buffer
                0);
-
+	log_print(0, "AudioTrack set ok!");
     if (status != NO_ERROR) {
         log_print(0, "track->set returns %d", status);
         log_print(0, "feeder samplet %d", feed->sample_rate);
@@ -207,7 +209,7 @@ extern "C" int android_start(void)
 
 extern "C" int android_uninit(void)
 {
-    log_print(0, "AudioTrack freed");
+    log_print(0, "AudioTrack free");
 	
     Mutex::Autolock _l(mLock);
 
@@ -219,8 +221,10 @@ extern "C" int android_uninit(void)
         cur_codec = NULL;
     }
 
+#if 0
     delete track;
     track = 0;
+#endif
 
     return 0;
 }
