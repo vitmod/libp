@@ -320,6 +320,11 @@ static void get_stream_info(play_para_t *p_para)
         else
             p_para->data_offset = p_para->pFormatCtx->data_offset;
         log_print("[%s:%d]real offset %lld\n", __FUNCTION__, __LINE__, p_para->data_offset);
+		if(p_para->vstream_info.video_height> 720)
+		{
+			log_print("[%s:%d]real video_height=%d, exceed 720 not support!\n",__FUNCTION__,__LINE__,p_para->vstream_info.video_height);
+			p_para->vstream_info.has_video = 0;
+		}
     }
 
 	return;
@@ -369,16 +374,20 @@ static int set_decode_para(play_para_t*am_p)
         log_error("Can't support the video_format and audio_format!\n");
         return PLAYER_UNSUPPORT;
     }	
-	else if((am_p->vstream_info.video_index != -1) && (am_p->vstream_info.has_video == 0))
-	{		
+
+	if((am_p->vstream_info.video_index != -1) &&
+	   (am_p->vstream_info.has_video == 0))
+	{			
 		set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);
-        update_player_states(am_p, 1);			
+		update_player_states(am_p, 1);				
 	}
-	else if((am_p->astream_info.audio_index != -1) && (am_p->astream_info.has_audio == 0))	//no audio
+	else if((am_p->astream_info.audio_index != -1) && 
+		    (am_p->astream_info.has_audio == 0))	//no audio
 	{
 		set_player_error_no(am_p, PLAYER_UNSUPPORT_AUDIO);
         update_player_states(am_p, 1);         		
 	}
+	
     if(am_p->playctrl_info.no_audio_flag)        
 		am_p->astream_info.has_audio = 0;
 		
