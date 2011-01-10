@@ -31,13 +31,13 @@
    only a subset of it. */
 
 /* used for protocol handling */
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 2048
 #define URL_SIZE    4096
 #define MAX_REDIRECTS 8
 
 #define MAX_RETRY	10
-
 #define IPAD_IDENT	"Mozilla/5.0 (iPad; U; CPU OS_3_2_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B500 Safari/531.21.10"
+
 
 typedef struct {
     URLContext *hd;
@@ -106,7 +106,7 @@ static int http_open_cnx(URLContext *h)
     if (http_connect(h, path, hoststr, auth, &location_changed) < 0)
         goto fail;
    av_log(NULL, AV_LOG_INFO, "http_open_cnx s->http_code=%d,location_changed=%d\n",s->http_code,location_changed);	
-    if ((s->http_code == 301 ||s->http_code == 302 || s->http_code == 303) && location_changed == 1) {
+    if ((s->http_code == 301 ||s->http_code == 302 || s->http_code == 303)&& location_changed == 1) {
         /* url moved, get next */
         url_close(hd);
         if (redirects++ >= MAX_REDIRECTS)
@@ -164,10 +164,13 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->err_retry=MAX_RETRY;
     av_strlcpy(s->location, uri, URL_SIZE);
 	h->location=s->location;
-	s->is_seek=0;
+	s->is_seek=1;/*for first rang=0*/
     ret = http_open_cnx(h);
-    while(ret<0 && s->err_retry-->0 && !url_interrupt_cb())
+    while(ret<0 && s->err_retry-->0 && !url_interrupt_cb()){
+		s->is_seek=!s->is_seek;
     	ret = http_open_cnx(h);
+    }
+	s->is_seek=0;
     if (ret != 0)
         av_free (s);
 	//h->is_streamed=1;
@@ -206,7 +209,7 @@ static int http_get_line(HTTPContext *s, char *line, int line_size)
             if (q > line && q[-1] == '\r')
                 q--;
             *q = '\0';
-			//av_log(NULL, AV_LOG_INFO, "http_get_line line =%s\n",line);
+		
             return 0;
         } else {
             if ((q - line) < line_size - 1)
@@ -295,7 +298,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 	len+=snprintf(s->buffer+len, sizeof(s->buffer),
              	"User-Agent: %s\r\n",
              IPAD_IDENT);
-	if(s->is_seek>0){
+    if(s->is_seek>0 ||  s->off>0){
 		len+=snprintf(s->buffer+len, sizeof(s->buffer),
 				"Range: bytes=%"PRId64"-\r\n",
 				s->off);
@@ -363,7 +366,7 @@ retry:
 				//av_log(NULL, AV_LOG_INFO, "Chunked encoding data size: %"PRId64"',str=%s\n", s->chunksize,line);
 
                 if (!s->chunksize)
-                  return 0;/*Eof*/
+                   return 0;/*eof*/
                 break;
             }
         }

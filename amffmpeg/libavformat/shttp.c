@@ -17,10 +17,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-
- 
- No HTTP Seek  support 
- For Some http servers which not support the seek;
  */
 
 #include "libavutil/base64.h"
@@ -168,10 +164,13 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->err_retry=MAX_RETRY;
     av_strlcpy(s->location, uri+1, URL_SIZE);
 	h->location=s->location;
-	s->is_seek=0;
+	s->is_seek=1;/*for first rang=0*/
     ret = http_open_cnx(h);
-    while(ret<0 && s->err_retry-->0 && !url_interrupt_cb())
+    while(ret<0 && s->err_retry-->0 && !url_interrupt_cb()){
+		s->is_seek=!s->is_seek;
     	ret = http_open_cnx(h);
+    }
+	s->is_seek=0;
     if (ret != 0)
         av_free (s);
 	//h->is_streamed=1;
@@ -305,7 +304,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
             return AVERROR(EINVAL);
         len += wrote;
     }
-    if(s->is_seek>0){
+    if(s->is_seek>0 ||  s->off>0){
         if ((wrote = snprintf(s->buffer+len, sizeof(s->buffer) - len,
                               "Range: bytes=%"PRId64"-\r\n",
                               s->off)) < 0)
@@ -458,7 +457,7 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
     }
 	s->is_seek=0;
     if(ret<0)
-	return -1;
+		return -1;
     else
     	return off;
 }
