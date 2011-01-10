@@ -199,10 +199,12 @@ int64_t url_fsize(ByteIOContext *s)
 
     if(!s)
         return AVERROR(EINVAL);
-
+	if(s->file_size > 0)
+		return s->file_size;
     if (!s->seek)
         return AVERROR(EPIPE);
     size = s->seek(s->opaque, 0, AVSEEK_SIZE);
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]size=0x%llx (%lld)\n",__FUNCTION__,__LINE__,size,size);
     if(size<0){
         if ((size = s->seek(s->opaque, -1, SEEK_END)) < 0)
             return size;

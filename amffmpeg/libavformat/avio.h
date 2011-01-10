@@ -240,6 +240,7 @@ typedef struct {
     int (*read_pause)(void *opaque, int pause);
     int64_t (*read_seek)(void *opaque, int stream_index,
                          int64_t timestamp, int flags);
+	int64_t file_size;
 } ByteIOContext;
 
 int init_put_byte(ByteIOContext *s,

@@ -27,6 +27,9 @@
 #include <sys/time.h>
 #include <time.h>
 #include <strings.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 #undef NDEBUG
 #include <assert.h>
@@ -459,6 +462,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
                        const char *headers)
 {
     int err, probe_size;
+	struct stat filesize;
     AVProbeData probe_data, *pd = &probe_data;
     ByteIOContext *pb = NULL;
     void *logctx= ap && ap->prealloced_context ? *ic_ptr : NULL;
@@ -508,7 +512,18 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
 			av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);
 		}
 		av_log(logctx, AV_LOG_ERROR, "av_open_input_file,line=%d\n",__LINE__);        
-
+		if(pb)
+		{
+			if(stat(filename,&filesize) < 0)
+			{
+				pb->file_size = 0;
+				av_log(NULL, AV_LOG_WARNING, "av_open_input_file, line=%d, get file size failed, errno=%d\n",__LINE__,errno);
+			}
+			else
+				pb->file_size = filesize.st_size;
+			av_log(NULL, AV_LOG_WARNING, "av_open_input_file, line=%d, get file size=%lld\n",__LINE__,pb->file_size);
+			
+		}
         //every time multiply 2
         for(probe_size= PROBE_BUF_MIN; probe_size<=PROBE_BUF_MAX && !fmt; probe_size<<=1){
             int score= probe_size < PROBE_BUF_MAX ? AVPROBE_SCORE_MAX/4 : 0;
@@ -2510,7 +2525,7 @@ int av_find_stream_info(AVFormatContext *ic)
         st = ic->streams[pkt->stream_index];
         if(codec_info_nb_frames[st->index]>1) {
             if (st->time_base.den > 0 && av_rescale_q(codec_info_duration[st->index], st->time_base, AV_TIME_BASE_Q) >= ic->max_analyze_duration){
-                av_log(ic, AV_LOG_WARNING, "max_analyze_duration reached\n");
+                av_log(ic, AV_LOG_WARNING, "max_analyze_duration:%d reached\n",ic->max_analyze_duration);
                 break;
             }
             codec_info_duration[st->index] += pkt->duration;
