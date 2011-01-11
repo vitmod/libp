@@ -125,7 +125,7 @@ static int tcp_read(URLContext *h, uint8_t *buf, int size)
         FD_ZERO(&rfds);
         FD_SET(s->fd, &rfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 800 * 1000;       
+        tv.tv_usec = 300 * 1000;       
         ret = select(fd_max + 1, &rfds, NULL, NULL, &tv);          
         if (ret > 0 && FD_ISSET(s->fd, &rfds)) {            
             len = recv(s->fd, buf, size, 0);              
@@ -141,7 +141,7 @@ static int tcp_read(URLContext *h, uint8_t *buf, int size)
         }
         else if(ret == 0){
             tout_cnt --;        
-			av_log(NULL,AV_LOG_INFO, "tcp_read(%d): reach 1s,try again\n",tout_cnt);
+			av_log(NULL,AV_LOG_INFO, "tcp_read(%d): read timeout,try again\n",tout_cnt);
             if(tout_cnt == 0)
             {               
                 

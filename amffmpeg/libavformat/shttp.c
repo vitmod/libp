@@ -36,6 +36,7 @@
 #define MAX_REDIRECTS 8
 
 #define MAX_RETRY	10
+#define OPEN_RETRY 3
 #define IPAD_IDENT	"Mozilla/5.0 (iPad; U; CPU OS_3_2_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B500 Safari/531.21.10"
 
 
@@ -48,7 +49,6 @@ typedef struct {
     int64_t off, filesize;
 	int is_seek;
     char location[URL_SIZE];
-    int err_retry;
 } HTTPContext;
 
 static int http_connect(URLContext *h, const char *path, const char *hoststr,
@@ -133,10 +133,9 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
     int64_t old_off = s->off;
     int64_t old_chunksize=s->chunksize ;	
 
-   if(off>0)
+   if(off>=0)
     		s->off = off;
     /* if it fails, continue on old connection */
-    av_log(NULL, AV_LOG_INFO, "http_reopen_cnx err_retry=%d\n",s->err_retry);
 		/*reget it*/
     s->chunksize = -1;
     if (http_open_cnx(h) < 0) {
@@ -153,6 +152,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
 {
     HTTPContext *s;
     int ret;
+	int open_retry=0;
     s = av_malloc(sizeof(HTTPContext));
     if (!s) {
         return AVERROR(ENOMEM);
@@ -161,12 +161,11 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->filesize = -1;
     s->chunksize = -1;
     s->off = 0;
-    s->err_retry=MAX_RETRY;
     av_strlcpy(s->location, uri+1, URL_SIZE);
 	h->location=s->location;
-	s->is_seek=1;/*for first rang=0*/
+	s->is_seek=0;/*for first rang=0*/
     ret = http_open_cnx(h);
-    while(ret<0 && s->err_retry-->0 && !url_interrupt_cb()){
+    while(ret<0 && open_retry++<OPEN_RETRY && !url_interrupt_cb()){
 		s->is_seek=!s->is_seek;
     	ret = http_open_cnx(h);
     }
@@ -363,7 +362,7 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
 {
     HTTPContext *s = h->priv_data;
     int len=AVERROR(EIO);
-
+	int err_retry=MAX_RETRY;
 retry:
     if (s->chunksize >= 0) {
         if (!s->chunksize) {
@@ -402,9 +401,10 @@ retry:
             s->chunksize -= len;
     }
 errors:
-	if(len<0 && s->err_retry-->0 && !url_interrupt_cb())
+	if(len<0 && err_retry-->0 && !url_interrupt_cb())
 	{
-		http_reopen_cnx(h,0);
+		av_log(NULL, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
+		http_reopen_cnx(h,-1);
 		goto retry;
 	}
 	
@@ -431,7 +431,8 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
 {
     HTTPContext *s = h->priv_data;
     int ret=-1;
-	
+	int open_retry=0;
+
     if (whence == AVSEEK_SIZE)
         return s->filesize;
     else if ((s->filesize == -1 && whence == SEEK_END) || h->is_streamed)
@@ -445,15 +446,14 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
 	s->is_seek=1;
     /* if it fails, continue on old connection */
    ret=http_reopen_cnx(h,off);
-    while(ret<0 && s->err_retry>0 && !url_interrupt_cb())
+	while(ret<0 && open_retry++<OPEN_RETRY&& !url_interrupt_cb())
     {
      	if(off<0 || (s->filesize >0 && off>=s->filesize))
      	{
      		/*try once,if,out of range,we return now;*/
 		break;
      	}
-	s->err_retry--;
-	ret=http_reopen_cnx(h,off);
+		ret=http_reopen_cnx(h,off);
     }
 	s->is_seek=0;
     if(ret<0)
