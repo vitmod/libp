@@ -554,13 +554,34 @@ static int mpegps_read_packet(AVFormatContext *s,
         goto redo;
     }
     /* no stream found: add a new stream */
-    st = av_new_stream(s, startcode);
-    if (!st)
-        goto skip;
-    st->codec->codec_type = type;
-    st->codec->codec_id = codec_id;
-    if (codec_id != CODEC_ID_PCM_S16BE)
-        st->need_parsing = AVSTREAM_PARSE_FULL;
+	if(startcode >= 0x20 && startcode <= 0x3f){
+		//add all subtitle streams which less then current subtitle stream
+		int i = 0, j = 0;
+		for(i=0; i<(startcode-0x20+1); i++){
+			for(j=0; j<s->nb_streams; j++){
+				if((i+0x20) == s->streams[j]->id)
+					break;
+			}
+			if(j == s->nb_streams){
+				st = av_new_stream(s, (i+0x20));
+			    if (!st)
+			        goto skip;
+			    st->codec->codec_type = type;
+			    st->codec->codec_id = codec_id;
+			    if (codec_id != CODEC_ID_PCM_S16BE)
+			        st->need_parsing = AVSTREAM_PARSE_FULL;
+			}
+		}
+	}
+	else{
+	    st = av_new_stream(s, startcode);
+	    if (!st)
+	        goto skip;
+	    st->codec->codec_type = type;
+	    st->codec->codec_id = codec_id;
+	    if (codec_id != CODEC_ID_PCM_S16BE)
+	        st->need_parsing = AVSTREAM_PARSE_FULL;
+	}
  found:
     if(st->discard >= AVDISCARD_ALL)
         goto skip;
