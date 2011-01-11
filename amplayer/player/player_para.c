@@ -786,11 +786,13 @@ int player_dec_init(play_para_t *p_para)
 			check_ctx_bitrate(p_para);
 			if((0!=p_para->pFormatCtx->bit_rate) && (0!=p_para->file_size))
 				p_para->state.full_time = (int)((p_para->file_size<<3)/p_para->pFormatCtx->bit_rate);	
+			else
+				p_para->state.full_time = INT32_MAX;
 		}
 		else
-			p_para->state.full_time = UINT32_MAX;
+			p_para->state.full_time = INT32_MAX;
 	}
-    log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld file_type=%d stream_type=%d full_time=%lld\n",__LINE__,p_para->pFormatCtx->bit_rate,p_para->file_size,p_para->file_type,p_para->stream_type,p_para->state.full_time);
+    log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld file_type=%d stream_type=%d full_time=%lld(0x%llx)\n",__LINE__,p_para->pFormatCtx->bit_rate,p_para->file_size,p_para->file_type,p_para->stream_type,p_para->state.full_time,p_para->state.full_time);
 	
 	if(p_para->pFormatCtx->iformat->flags & AVFMT_NOFILE) 
     {

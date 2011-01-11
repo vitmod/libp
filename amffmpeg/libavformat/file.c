@@ -29,6 +29,9 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include "os_support.h"
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 
 /* standard file protocol */
@@ -72,7 +75,16 @@ static int file_write(URLContext *h, unsigned char *buf, int size)
 /* XXX: use llseek */
 static int64_t file_seek(URLContext *h, int64_t pos, int whence)
 {
-    int fd = (intptr_t) h->priv_data;
+    int fd = (intptr_t) h->priv_data;	
+	struct stat filesize;
+	if(whence == AVSEEK_SIZE)
+	{
+		av_log(NULL, AV_LOG_WARNING, "file_seek:%d, whence=%d\n",__LINE__,whence);
+		if(fstat(fd,&filesize) < 0)		
+			return lseek(fd, pos, whence);	
+		else
+			return filesize.st_size;
+	}	
     return lseek(fd, pos, whence);
 }
 

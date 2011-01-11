@@ -207,10 +207,16 @@ int64_t url_fsize(ByteIOContext *s)
 	av_log(NULL, AV_LOG_INFO, "[%s:%d]size=0x%llx (%lld)\n",__FUNCTION__,__LINE__,size,size);
     if(size<0){
         if ((size = s->seek(s->opaque, -1, SEEK_END)) < 0)
-            return size;
+        {
+        	if(s->file_size == 0)
+				s->file_size = size;
+        	return size;
+        }
         size++;
         s->seek(s->opaque, s->pos, SEEK_SET);
     }
+	if(s->file_size == 0)
+		s->file_size = size;
     return size;
 }
 
