@@ -61,7 +61,9 @@ aformat_t audio_type_convert(enum CodecID id,pfile_type File_type)
         	format = AFORMAT_ADPCM;
             break;
     	
-        case CODEC_ID_MP2:
+        
+	case CODEC_ID_MP1:
+	case CODEC_ID_MP2:
         case CODEC_ID_MP3:
         	format = AFORMAT_MPEG;
             break;
