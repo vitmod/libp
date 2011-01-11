@@ -47,7 +47,6 @@ static void player_release(int pid)
 int player_init()
 {
 	// Register all formats and codecs
-	DEBUG_PN();
 	ffmpeg_init();
 	player_id_pool_init();
 	ts_register_stream_decoder();
@@ -115,6 +114,7 @@ int player_start(play_control_t *thead_p,unsigned long  priv)
     p_para->extern_priv = priv;
     log_debug1("[player_start]player_para=%p,start_param=%p pid=%d\n",p_para,p_para->start_param,pid);
 	ffmpeg_uninterrupt();
+	disable_freescale();
     ret=player_thread_create(p_para) ;
     if(ret!=PLAYER_SUCCESS)	
     {
@@ -230,6 +230,7 @@ int player_exit(int pid)
 	}
     player_close_pid_data(pid);
     player_release(pid);
+	enable_freescale();
 	log_print("[player_exit:exit]pid=%d\n", pid);   
     return ret;
 }

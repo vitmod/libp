@@ -11,6 +11,14 @@
 #include <log_print.h>
 #include <player_set_sys.h>
 
+#define DISP_MODE_480I		(1)
+#define DISP_MODE_480P		(2)
+#define DISP_MODE_576I		(3)
+#define DISP_MODE_576P		(4)
+#define DISP_MODE_720P		(5)
+#define DISP_MODE_1080I		(6)
+#define DISP_MODE_1080P		(7)
+	
 int set_black_policy(int blackout)       
 {
 	int fd;
@@ -216,3 +224,402 @@ int set_fb1_blank(int blank)
 	return -1;   				
 }
 
+char *get_display_mode()
+{
+	int fd;   
+    char *path = "/sys/class/display/mode";
+	char *mode = NULL;
+	fd=open(path, O_RDONLY);
+	if(fd>=0)
+	{    	
+		mode = malloc(6);
+		if(mode)
+    	{
+    		read(fd,mode,6); 
+			mode[5] = '\0';
+		}
+		else
+			log_error("[get_display_mode]malloc failed!\n");
+    	close(fd);    	
+	}
+	log_print("[get_display_mode]display_mode=%s\n",mode);
+	return mode;
+}
+
+int set_fb0_freescale(int freescale)
+{
+	int fd;
+    char *path = "/sys/class/graphics/fb0/free_scale" ;   
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",freescale);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;   	
+}
+
+int set_fb1_freescale(int freescale)
+{
+	int fd;
+    char *path = "/sys/class/graphics/fb1/free_scale" ;   
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",freescale);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;   	
+}
+
+int set_display_axis(int *coordinate)
+{
+	int fd;
+    char *path = "/sys/class/display/axis" ;   
+	char  bcmd[32];
+	int x00, x01,x10,x11,y00, y01,y10,y11;
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0 && coordinate)
+	{
+		x00 = coordinate[0];
+		y00 = coordinate[1];
+		x01 = coordinate[2];
+		y01 = coordinate[3];
+		x10 = coordinate[4];
+		y10 = coordinate[5];
+		x11 = coordinate[6];
+		y11 = coordinate[7];
+    	sprintf(bcmd,"%d %d %d %d %d %d %d %d",x00, y00, x01, y01, x10, y10, x11, y11);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;
+}
+
+int set_video_axis(int *coordinate)
+{
+	int fd;
+    char *path = "/sys/class/video/axis" ;   
+	char  bcmd[32];
+	int x0, y0, x1,y1;
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0 && coordinate)
+	{
+		x0 = coordinate[0];
+		y0 = coordinate[1];
+		x1 = coordinate[2];
+		y1 = coordinate[3];		
+    	sprintf(bcmd,"%d %d %d %d",x0, y0, x1, y1);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;
+}
+
+int set_fb0_scale_width(int width)
+{
+	int fd;
+    char *path = "/sys/class/graphics/fb0/scale_width" ;   
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",width);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;   	
+}
+int set_fb0_scale_height(int height)
+{
+	int fd;
+    char *path = "/sys/class/graphics/fb0/scale_height" ;   
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",height);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;   	
+}
+int set_fb1_scale_width(int width)
+{
+	int fd;
+    char *path = "/sys/class/graphics/fb1/scale_width" ;   
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",width);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;   	
+}
+int set_fb1_scale_height(int height)
+{
+	int fd;
+    char *path = "/sys/class/graphics/fb1/scale_height" ;   
+	char  bcmd[16];
+	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if(fd>=0)
+	{
+    	sprintf(bcmd,"%d",height);
+    	write(fd,bcmd,strlen(bcmd));
+    	close(fd);
+    	return 0;
+	}
+	return -1;   	
+}
+
+static int display_mode_convert(char *disp_mode)
+{	
+	if(!disp_mode)
+		return -1;
+	else if(strcmp(disp_mode, "480i"))
+		return DISP_MODE_480I;
+	else if(strcmp(disp_mode, "480p"))
+		return DISP_MODE_480P;
+	else if(strcmp(disp_mode, "567i"))
+		return DISP_MODE_576I;
+	else if(strcmp(disp_mode, "576p"))
+		return DISP_MODE_576P;
+	else if(strcmp(disp_mode, "720p"))
+		return DISP_MODE_720P;
+	else if(strcmp(disp_mode, "1080i"))
+		return DISP_MODE_1080I;
+	else if(strcmp(disp_mode, "1080p"))
+		return DISP_MODE_1080P;
+	else
+		return -2;
+}
+
+int disable_freescale()
+{	
+	char *mode = get_display_mode();
+	log_print("[disable_freescale]displayer_mode=%s\n",mode);
+	int osd_coordinates[8];
+	if(mode)
+	{
+		switch(display_mode_convert(mode))
+		{
+			case DISP_MODE_480P:
+				osd_coordinates[0] = 0;
+				osd_coordinates[1] = 0;
+				osd_coordinates[2] = 800;
+				osd_coordinates[3] = 480;
+				osd_coordinates[4] = 0;
+				osd_coordinates[5] = 0;
+				osd_coordinates[6] = 18;
+				osd_coordinates[7] = 18;
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_display_axis(osd_coordinates);
+				break;
+			case DISP_MODE_720P:
+				osd_coordinates[0] = 240;
+				osd_coordinates[1] = 120;
+				osd_coordinates[2] = 800;
+				osd_coordinates[3] = 480;
+				osd_coordinates[4] = 240;
+				osd_coordinates[5] = 120;
+				osd_coordinates[6] = 18;
+				osd_coordinates[7] = 18;
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_display_axis(osd_coordinates);
+				break;
+			case DISP_MODE_1080I:
+			case DISP_MODE_1080P:
+				osd_coordinates[0] = 560;
+				osd_coordinates[1] = 300;
+				osd_coordinates[2] = 800;
+				osd_coordinates[3] = 480;
+				osd_coordinates[4] = 560;
+				osd_coordinates[5] = 300;
+				osd_coordinates[6] = 18;
+				osd_coordinates[7] = 18;
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_display_axis(osd_coordinates);
+				break;
+		}
+		log_print("[disable_freescale]success!\n");
+		if(mode)
+			free(mode);
+		return 0;
+	}
+	log_print("[disable_freescale]failed!\n");
+	if(mode)
+		free(mode);
+	return -1;
+}
+
+int enable_freescale()
+{
+	char *mode = get_display_mode();
+	log_print("[enable_freescale:enter]displayer_mode=%s\n",mode);	
+	int video_coordinates[4];
+	int osd_coordinates[8];
+	if(mode)
+	{
+		switch(display_mode_convert(mode))
+		{
+			case DISP_MODE_480P:
+				video_coordinates[0] = 20;
+				video_coordinates[1] = 10;
+				video_coordinates[2] = 700;
+				video_coordinates[3] = 470;		
+				set_video_axis(video_coordinates);
+				osd_coordinates[0] = 0;
+				osd_coordinates[1] = 0;
+				osd_coordinates[2] = 800;
+				osd_coordinates[3] = 480;
+				osd_coordinates[4] = 0;
+				osd_coordinates[5] = 0;
+				osd_coordinates[6] = 18;
+				osd_coordinates[7] = 18;
+				set_display_axis(osd_coordinates);
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_fb0_scale_width(800);
+				set_fb0_scale_height(480);
+				set_fb1_scale_width(800);
+				set_fb1_scale_height(480);
+				set_fb0_freescale(1);
+				set_fb1_freescale(1);
+				
+				break;
+			case DISP_MODE_720P:
+				video_coordinates[0] = 40;
+				video_coordinates[1] = 15;
+				video_coordinates[2] = 1240;
+				video_coordinates[3] = 705;		
+				set_video_axis(video_coordinates);
+				osd_coordinates[0] = 0;
+				osd_coordinates[1] = 0;
+				osd_coordinates[2] = 800;
+				osd_coordinates[3] = 480;
+				osd_coordinates[4] = 0;
+				osd_coordinates[5] = 0;
+				osd_coordinates[6] = 18;
+				osd_coordinates[7] = 18;
+				set_display_axis(osd_coordinates);
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_fb0_scale_width(800);
+				set_fb0_scale_height(480);
+				set_fb1_scale_width(800);
+				set_fb1_scale_height(480);
+				set_fb0_freescale(1);
+				set_fb1_freescale(1);
+				break;
+			case DISP_MODE_1080I:
+			case DISP_MODE_1080P:
+				video_coordinates[0] = 40;
+				video_coordinates[1] = 20;
+				video_coordinates[2] = 1880;
+				video_coordinates[3] = 1060;		
+				set_video_axis(video_coordinates);
+				osd_coordinates[0] = 0;
+				osd_coordinates[1] = 0;
+				osd_coordinates[2] = 800;
+				osd_coordinates[3] = 480;
+				osd_coordinates[4] = 0;
+				osd_coordinates[5] = 0;
+				osd_coordinates[6] = 18;
+				osd_coordinates[7] = 18;
+				set_display_axis(osd_coordinates);
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_fb0_scale_width(800);
+				set_fb0_scale_height(480);
+				set_fb1_scale_width(800);
+				set_fb1_scale_height(480);
+				set_fb0_freescale(1);
+				set_fb1_freescale(1);
+				break;
+		}
+		log_print("[enable_freescale:exit]success\n");	
+		if(mode)
+			free(mode);
+		return 0;
+	}
+	log_print("[enable_freescale:exit]failed\n");	
+	if(mode)
+		free(mode);
+	return -1;
+}
+/*****************************************************
+EnableFreeScale() {
+mode = "cat /sys/class/display/mode"   //取得当前模式
+if(mode = 480p)
+echo 20 10 700 470  > /sys/class/video/axis             //设置free_scale目标区域
+echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis  //取消OSD偏移
+echo 0 > /sys/class/graphics/fb0/free_scale              //关闭free_scale
+echo 0 > /sys/class/graphics/fb1/free_scale 
+echo 800 > /sys/class/graphics/fb0/scale_width         //设置free_scale参数
+echo 480 > /sys/class/graphics/fb0/scale_height
+echo 800 > /sys/class/graphics/fb1/scale_width
+echo 480 > /sys/class/graphics/fb1/scale_height
+echo 1 > /sys/class/graphics/fb0/free_scale              //开启free_scale
+echo 1 > /sys/class/graphics/fb1/free_scale 
+ 
+else if(mode = 720p)
+echo 40 15 1240 705 > /sys/class/video/axis 
+echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis 
+echo 0 > /sys/class/graphics/fb0/free_scale 
+echo 0 > /sys/class/graphics/fb1/free_scale 
+echo 800 > /sys/class/graphics/fb0/scale_width
+echo 480 > /sys/class/graphics/fb0/scale_height
+echo 800 > /sys/class/graphics/fb1/scale_width
+echo 480 > /sys/class/graphics/fb1/scale_height
+echo 1 > /sys/class/graphics/fb0/free_scale 
+echo 1 > /sys/class/graphics/fb1/free_scale 
+ 
+else if(mode = 1080i || mode = 1080p)
+      echo 40 20 1880 1060 > /sys/class/video/axis 
+echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis 
+echo 0 > /sys/class/graphics/fb0/free_scale 
+echo 0 > /sys/class/graphics/fb1/free_scale 
+echo 800 > /sys/class/graphics/fb0/scale_width
+echo 480 > /sys/class/graphics/fb0/scale_height
+echo 800 > /sys/class/graphics/fb1/scale_width
+echo 480 > /sys/class/graphics/fb1/scale_height
+echo 1 > /sys/class/graphics/fb0/free_scale 
+echo 1 > /sys/class/graphics/fb1/free_scale 
+}
+
+
+*DisableFreeScale() {
+mode = "cat /sys/class/display/mode"        //取得当前模式
+if(mode = 480p)
+echo 0 > /sys/class/graphics/fb0/free_scale     //关闭free_scale
+echo 0 > /sys/class/graphics/fb1/free_scale     //关闭free_scale
+echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis  //OSD 居中
+ 
+else if(mode = 720p)
+echo 0 > /sys/class/graphics/fb0/free_scale 
+echo 0 > /sys/class/graphics/fb1/free_scale 
+echo 240 120 800 480 240 120 18 18 > /sys/class/display/axis 
+ 
+else if(mode = 1080i || mode = 1080p)
+echo 0 > /sys/class/graphics/fb0/free_scale 
+echo 0 > /sys/class/graphics/fb1/free_scale 
+echo 560 300 800 480 560 300 18 18 > /sys/class/display/axis 
+ 
+}
+**********************************************************/
