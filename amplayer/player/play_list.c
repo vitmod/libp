@@ -172,7 +172,6 @@ int play_list_parser_m3u(const char *filename)
 	char line[MAX_PATH];
 	char *pline;
 	int num=0;
-	DEBUG_PN();
 	///int url_fopen(ByteIOContext **s, const char *filename, int flags)
 	if((err=url_fopen(&s,filename,URL_RDONLY))<0)
 	{
@@ -193,7 +192,6 @@ int play_list_parser_m3u(const char *filename)
 		}
 	}	
 	url_fclose(s);
-	DEBUG_PN();
 	return num;
 }
 

@@ -894,7 +894,6 @@ release0:
 	player_para_release(player);
 	set_player_state(player,PLAYER_EXIT);
 	update_player_states(player,1);
-	log_print("\npid[%d]::before subtitle uninit!(sta:0x%x)\n",player->player_id,get_player_state(player));
 	log_print("\npid[%d]::stop play, exit player thead!(sta:0x%x)\n",player->player_id,get_player_state(player));
 	pthread_exit(NULL);   
 	return NULL;
