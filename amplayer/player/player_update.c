@@ -186,18 +186,17 @@ static int set_astream_info(play_para_t *p_para)
                 ainfo = MALLOC(sizeof(maudio_info_t));
                 MEMSET(ainfo, 0, sizeof(maudio_info_t));
                 ainfo->id           = pStream->id;              
-                ainfo->channel      = p_para->astream_info.audio_channel;
-                ainfo->sample_rate  = p_para->astream_info.audio_samplerate;
+                ainfo->channel      = pStream->codec->channels;
+                ainfo->sample_rate  = pStream->codec->sample_rate;
                 ainfo->duration     = (int)(pStream->duration*pStream->time_base.num/pStream->time_base.den);
                 ainfo->bit_rate     = pStream->codec->bit_rate;
-                ainfo->aformat      = p_para->astream_info.audio_format;
+                ainfo->aformat      = audio_type_convert(pStream->codec->codec_id,p_para->file_type);
                 if(p_para->stream_type == STREAM_AUDIO)
                 {
                     if(ainfo->bit_rate == 0)
                         ainfo->bit_rate = info->bitrate;
                     ainfo->audio_tag = MALLOC(sizeof(audio_tag_info));         
                     get_tag_from_metadata(pCtx, ainfo->audio_tag);
-
                 }
                 p_para->media_info.audio_info[anum] = ainfo;
                 anum ++;
