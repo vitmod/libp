@@ -386,31 +386,70 @@ int set_fb1_scale_height(int height)
 }
 
 static int display_mode_convert(char *disp_mode)
-{	
+{
+	int ret = 0xff;
+	log_print("[display_mode_convert]disp_mode=%s\n",disp_mode);
 	if(!disp_mode)
-		return -1;
-	else if(strcmp(disp_mode, "480i"))
-		return DISP_MODE_480I;
-	else if(strcmp(disp_mode, "480p"))
-		return DISP_MODE_480P;
-	else if(strcmp(disp_mode, "567i"))
-		return DISP_MODE_576I;
-	else if(strcmp(disp_mode, "576p"))
-		return DISP_MODE_576P;
-	else if(strcmp(disp_mode, "720p"))
-		return DISP_MODE_720P;
-	else if(strcmp(disp_mode, "1080i"))
-		return DISP_MODE_1080I;
-	else if(strcmp(disp_mode, "1080p"))
-		return DISP_MODE_1080P;
+		ret = -1;	
+	else if(!strcmp(disp_mode, "480i"))
+		ret = DISP_MODE_480I;
+	else if(!strcmp(disp_mode, "480p"))
+		ret = DISP_MODE_480P;
+	else if(!strcmp(disp_mode, "567i"))
+		ret = DISP_MODE_576I;
+	else if(!strcmp(disp_mode, "576p"))
+		ret = DISP_MODE_576P;
+	else if(!strcmp(disp_mode, "720p"))
+		ret = DISP_MODE_720P;
+	else if(!strcmp(disp_mode, "1080i"))
+		ret = DISP_MODE_1080I;
+	else if(!strcmp(disp_mode, "1080p"))
+		ret = DISP_MODE_1080P;
 	else
-		return -2;
+		ret = -2;
+	log_print("[display_mode_convert]disp_mode=%s-->%d\n",disp_mode, ret);
+	return ret;
 }
-
+//////////////////////////////////////////////
+static void get_display_axis()
+{
+    int fd;
+    int discontinue = 0;
+    char *path = "/sys/class/display/axis";
+	char  bcmd[32];	
+	fd=open(path, O_RDONLY);
+	if(fd>=0)
+	{	
+    	read(fd,bcmd,sizeof(bcmd));       
+		bcmd[31]='\0';
+        log_print("[get_disp_axis]===%s===\n",bcmd);
+    	close(fd);    	
+	}
+	else
+		log_error("[%s:%d]open %s failed!\n",__FUNCTION__,__LINE__,path);	
+}
+static void get_video_axis()
+{
+    int fd;
+    int discontinue = 0;
+    char *path = "/sys/class/video/axis";
+	char  bcmd[32];	
+	fd=open(path, O_RDONLY);
+	if(fd>=0)
+	{	
+    	read(fd,bcmd,sizeof(bcmd));       
+		bcmd[31]='\0';
+        log_print("[get_video_axis]===%s===\n",bcmd);
+    	close(fd);    	
+	}
+	else
+		log_error("[%s:%d]open %s failed!\n",__FUNCTION__,__LINE__,path);	
+}
+//////////////////////////////////////////////
 int disable_freescale()
 {	
 	char *mode = get_display_mode();
-	log_print("[disable_freescale]displayer_mode=%s\n",mode);
+	log_print("[disable_freescale]display_mode=%s \n",mode);
 	int osd_coordinates[8];
 	if(mode)
 	{
@@ -427,7 +466,7 @@ int disable_freescale()
 				osd_coordinates[7] = 18;
 				set_fb0_freescale(0);
 				set_fb1_freescale(0);
-				set_display_axis(osd_coordinates);
+				set_display_axis(osd_coordinates);				
 				break;
 			case DISP_MODE_720P:
 				osd_coordinates[0] = 240;
@@ -454,7 +493,7 @@ int disable_freescale()
 				osd_coordinates[7] = 18;
 				set_fb0_freescale(0);
 				set_fb1_freescale(0);
-				set_display_axis(osd_coordinates);
+				set_display_axis(osd_coordinates);				
 				break;
 		}
 		log_print("[disable_freescale]success!\n");
@@ -550,7 +589,7 @@ int enable_freescale()
 				set_fb1_scale_width(800);
 				set_fb1_scale_height(480);
 				set_fb0_freescale(1);
-				set_fb1_freescale(1);
+				set_fb1_freescale(1);				
 				break;
 		}
 		log_print("[enable_freescale:exit]success\n");	
