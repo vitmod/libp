@@ -1170,6 +1170,7 @@ static int avi_load_index(AVFormatContext *s)
     int i;
     AVIStream *avi_stream = NULL;
 
+    s->seekable = 0;
     if (url_fseek(pb, avi->movi_end, SEEK_SET) < 0)
         goto the_end; // maybe truncated file
 #ifdef DEBUG_SEEK
@@ -1195,6 +1196,7 @@ static int avi_load_index(AVFormatContext *s)
             if (avi_read_idx1(s, size) < 0)
                 goto skip;
             ret = 0;
+            s->seekable = 1;
                 goto the_end;
             break;
         default:

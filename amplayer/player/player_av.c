@@ -753,7 +753,7 @@ static int64_t rm_offset_search_pts(AVStream *pStream, unsigned int timepoint)
         }
         else
         {
-			log_print("[%s:%d]time_point=%d pos=0x%llx\n",timepoint, pStream->index_entries[index_entry_b].pos);
+			log_print("[%s:%d]time_point=%d pos=0x%llx\n",__FUNCTION__, __LINE__, timepoint, pStream->index_entries[index_entry_b].pos);
 			return pStream->index_entries[index_entry_b].pos;
         }
     }
@@ -946,7 +946,12 @@ int time_search(play_para_t *am_p)
            am_p->file_type == MOV_FILE ||
            am_p->file_type == P2P_FILE ||
            am_p->file_type == ASF_FILE)
-        {            
+        {
+            if (am_p->file_type == AVI_FILE && !s->seekable)
+            {
+                time_point = am_p->state.current_time;
+            }
+            
         	timestamp = (int64_t)time_point * AV_TIME_BASE;					
 		    /* add the stream start time */
 		    if (s->start_time != (int64_t)AV_NOPTS_VALUE)
@@ -1623,7 +1628,7 @@ int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
     sub_header[19] = last_duration & 0xff;
 
 
-	log_print("[ sub_type:0x%x,   data_size:%d,  sub_pts:%d last_duration %d]\n",sub_type ,data_size, sub_pts,last_duration);
+	log_print("[ sub_type:0x%x,   data_size:%d,  sub_pts:%lld last_duration %d]\n",sub_type ,data_size, sub_pts,last_duration);
 	log_print("[ sizeof:%d ]\n",sizeof(sub_header));
 
     if (write_sub_data(pkt, (char *)&sub_header, sizeof(sub_header)))
