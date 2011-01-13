@@ -126,7 +126,8 @@ typedef struct
     int total_audio_num;
     int cur_audio_index;
     int total_sub_num;      
-    int cur_sub_index;			
+    int cur_sub_index;	
+    int seekable;
 }mstream_info_t;
 
 typedef struct
