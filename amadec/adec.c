@@ -236,9 +236,7 @@ int adec_refresh_pts(void)
     if (pts==-1 || last_pts==pts)
     	{
 	    	close(fd);
-            if (!adec_automute_stat)
-                return -1;
-            else if (pts == -1)
+            if (pts == -1)
                 return -1;
 	}
 
@@ -270,31 +268,7 @@ int adec_refresh_pts(void)
     
     if (abs(pts-systime) < SYSTIME_CORRECTION_THRESHOLD)
     {
-        if (first_audio_frame)
-        {
-            first_audio_frame = 0;
-            if (adec_automute_stat)
-            {
-                //sound_mute_set("switch playback mute", 1, 1, NULL);
-                android_device.mute(0);
-                adec_automute_stat = adec_automute_cmd;
-            }
-        }
         return 0;
-    }
-
-    if (adec_automute_stat &&first_audio_frame)
-    {
-        if (pts > systime)
-        {
-            return 1;
-        }
-        /*else
-        {
-            return 2;
-        }*/
-        //sound_mute_set("switch playback mute", 1, 1, NULL);
-        android_device.mute(0);
     }
     
     /* report apts-system time difference */
@@ -364,7 +338,7 @@ void adec_resume()
 
 void adec_auto_mute(int auto_mute)
 {
-    adec_automute_cmd = auto_mute;
+    adec_automute_cmd = 1;
 }
 
 static void *audio_decode_init(void *args)
@@ -406,8 +380,21 @@ static void *audio_decode_init(void *args)
 
 	//if((!stop_flag)&&cur_out && (pfeeder->dsp_on)){
 	if((!stop_flag)&&cur_out){
+
 		/*start  the  the pts scr,...*/
 		adec_pts_start();
+
+       	if(adec_automute_cmd){
+		avsync_control(0);
+		adec_pts_pause();
+		
+		while((!stop_flag) && track_switch_pts())
+			usleep(1000);
+
+		avsync_control(1);
+		adec_pts_resume();
+		adec_automute_cmd = 0;
+		}
 
 		/*start AudioTrack*/
 		android_device.start();
@@ -489,4 +476,81 @@ int adec_init(void * arg)
     avcodecCtx = (AVCodecContext *)arg;
     audio_codec_init();
     return 0;
+}
+
+/* Disable or Enable av sync.
+ *
+ * Parameters:
+ * - 1: enable av sync.
+ * - 0: disable av sync.
+ *
+ * Returned value:
+ *  - -1: failed.
+ *  - 0: success.
+ */
+void avsync_control(int flag)
+{
+    int fd;
+    char *path = "/sys/class/tsync/enable";    
+    char  bcmd[16];
+    fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+    if(fd>=0)
+    {
+        sprintf(bcmd,"%d",flag);
+        write(fd,bcmd,strlen(bcmd));
+        close(fd);
+        return 0;
+    }
+    return -1;
+}
+
+/* When audio track switch occurred, use this function to judge audio should 
+ *   be played or not. If system time fall behind audio pts , and their difference 
+ *   is greater than SYSTIME_CORRECTION_THRESHOLD, auido should wait for
+ *   video. Otherwise audio can be played.
+ *
+ * Parameters:
+ *  none
+ *
+ * Returned value:
+ *  - -1: failed.
+ *  - 0: success.
+ */
+int track_switch_pts(void)
+{
+    unsigned long vpts;
+    unsigned long apts;
+    unsigned long pcr;
+    char buf[64];
+    char *file;
+    int fd = -1;
+
+    memset(buf, 0, sizeof(buf));
+    file=TSYNC_PCRSCR;
+    if ((fd = open(file, O_RDWR)) < 0) {
+        log_print(LOG_ERR, "unable to open file %s,err: %s",file, strerror(errno));
+        return 1;
+    }
+
+    read(fd,buf,sizeof(buf));
+    close(fd);
+
+    if (sscanf(buf,"0x%x",&pcr) < 1) {
+        log_print(LOG_ERR, "unable to get pcr %s", buf);
+        close(fd);
+        return 1;
+    }
+
+    apts=adec_get_pts();
+    if (apts==-1){
+	  close(fd);
+	  log_print(LOG_ERR, "unable to get apts");
+         return 1;
+    }
+	
+    if (abs(apts-pcr) < SYSTIME_CORRECTION_THRESHOLD || (apts <= pcr))
+        return 0;
+    else
+        return 1;
+        
 }
