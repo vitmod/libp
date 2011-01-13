@@ -242,7 +242,10 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
 	struct list_mgt *mgt = h->priv_data;
     int len=AVERROR(EIO);
 	struct list_item *item=mgt->current_item;
+	
 retry:	
+	if (url_interrupt_cb())       
+            return AVERROR(EINTR); 
 	av_log(NULL, AV_LOG_INFO, "list_read start buf=%x,size=%d\n",buf,size);
 	if(!mgt->cur_uio )
 	{
