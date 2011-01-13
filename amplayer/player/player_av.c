@@ -937,7 +937,17 @@ int time_search(play_para_t *am_p)
 	temp = (unsigned int)(s->duration/AV_TIME_BASE);
     log_info("[time_search:%d]time_point =%d temp=%d duration= %lld\n",__LINE__,time_point,temp,s->duration);	
     /* if seeking requested, we execute it */ 
-    if (time_point <temp)   
+    if(url_is_streamed(s->pb) && time_point>0){
+          log_info("[time_search:%d] direct seek to time_point =%d\n",__LINE__,time_point);
+           ret=url_fseek(s->pb, time_point,AVSEEK_TO_TIME);
+          if(ret>=0)      {
+                   av_read_frame_flush(s);
+                   return PLAYER_SUCCESS;
+           }
+           /*failed*/
+           return PLAYER_SEEK_FAILED;
+	}
+	else if (time_point <temp)
 	{		
 		if(am_p->file_type == AVI_FILE ||
            am_p->file_type == MP4_FILE ||

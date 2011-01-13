@@ -84,28 +84,32 @@ int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
 static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_item*item)
 {
 	unsigned char *p=line; 
+	int enditem=0;
+		
 	p=line;
 	while(*p==' ' && p!='\0' && p-line<1024) p++;
 	if(*p!='#' && strlen(p)>0)
 	{
 
 		item->file=p; 
-		item->next=NULL;
-		item->size=0;
-		item->start_pos=0;
-		item->flags=0;
-	}
-	else if(is_TAG(p,EXT_X_ENDLIST)){
-		item->file=NULL; 
-		item->next=NULL;
-		item->size=0;
-		item->start_pos=0;
+		enditem=1;
+	}else if(is_TAG(p,EXT_X_ENDLIST)){
 		item->flags=ENDLIST_FLAG;
+		enditem=1;
+	}else if(is_TAG(p,EXTINF)){
+		int duration=0;
+		sscanf(p+8,"%d",&duration);//skip strlen("#EXTINF:")
+		if(duration>0){
+			item->flags|=DURATION_FLAG;
+			item->duration=duration;
+			
+		}
+	}else if(is_TAG(p,EXT_X_ALLOW_CACHE)){
+		item->flags|=ALLOW_CACHE_FLAG;
+	}else{
+		return 0;
 	}
-	else{
-		return -1;
-	}
-	return 0;
+	return enditem;
 }
 
 
@@ -118,6 +122,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	struct list_item tmpitem;
  	char prefix[1024]="";
 	int prefix_len=0;
+	int start_time=0;
 	if(mgt->filename){
 		char *tail;
 		tail=strrchr(mgt->filename,'/');
@@ -127,14 +132,17 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			prefix[prefix_len]='\0';
 		}
 	}
+	memset(&tmpitem,0,sizeof(tmpitem));
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
 	while(m3u_format_get_line(s,line,1024)>0)
 	{
-		if(m3u_parser_line(mgt,line,&tmpitem)==0)
+		if(m3u_parser_line(mgt,line,&tmpitem))
 		{
 			struct list_item*item;
 			int need_prefix=0;
 			int size_file=tmpitem.file?(strlen(tmpitem.file)+32):4;
+			tmpitem.start_time=start_time;
+			start_time+=tmpitem.duration;
 			if(tmpitem.file && 
 				((!strncmp(prefix,"http",4) || !strncmp(prefix,"shttp",5)) && 
 				(strncmp(tmpitem.file,"http",4)!=0) ))
@@ -160,10 +168,15 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			}
 			list_add_item(mgt,item);
 			getnum++;
+			memset(&tmpitem,0,sizeof(tmpitem));
+		}else{
+			if(tmpitem.flags&ALLOW_CACHE_FLAG)
+				mgt->flags|=ALLOW_CACHE_FLAG;
 		}
 		
 	}
-	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d\n",getnum);
+	mgt->full_time=start_time;
+	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%d\n",getnum,start_time);
 	return getnum;
 }
 

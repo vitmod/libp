@@ -40,6 +40,7 @@
 #define KEY_FLAG					(1<<4)
 #define EXT_INFO					(1<<5)
 #define READ_END_FLAG				(1<<6)
+#define ALLOW_CACHE_FLAG			(1<<7)
 
 
 struct list_mgt;
@@ -49,8 +50,8 @@ typedef struct list_item
 {
 	const char *file;
 	int 	   flags;	  
-	int64_t	   *start_pos;
-	int64_t	   *size;
+	int 		start_time;
+	int 		duration;
 	struct list_item * prev;
 	struct list_item * next;
 }list_item_t;
@@ -63,8 +64,8 @@ typedef struct list_mgt
 	struct list_item *item_list;
 	int item_num;
 	struct list_item *current_item;
-	int64_t global_pos;
-	int64_t file_pos;
+	int64_t file_size;
+	int 	full_time;
 	ByteIOContext	*cur_uio;
 	struct list_demux *demux;
 }list_mgt_t;

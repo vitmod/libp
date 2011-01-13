@@ -137,7 +137,20 @@ int64_t url_fseek(ByteIOContext *s, int64_t offset, int whence)
         return AVERROR(EINVAL);
 
     pos = s->pos - (s->write_flag ? 0 : (s->buf_end - s->buffer));
-
+	if(whence == AVSEEK_TO_TIME ){
+		if(s->seek){
+	 		if((offset1=s->seek(s->opaque, offset, AVSEEK_TO_TIME))>=0)
+	 		{
+	 			if (!s->write_flag)
+	            	s->buf_end = s->buffer;
+		        s->buf_ptr = s->buffer;
+		        s->pos = 0;/*I think it is the first,pos now*/
+				s->eof_reached=0;/*clear eof error*/
+				return offset1;
+	 		}
+	 	}
+		return AVERROR(EPIPE);
+	}
     if (whence != SEEK_CUR && whence != SEEK_SET)
         return AVERROR(EINVAL);
 
@@ -191,6 +204,14 @@ void url_fskip(ByteIOContext *s, int64_t offset)
 int64_t url_ftell(ByteIOContext *s)
 {
     return url_fseek(s, 0, SEEK_CUR);
+}
+int64_t url_ffulltime(ByteIOContext *s)
+{
+	int64_t size;
+	if (!s->seek)
+        return AVERROR(EPIPE);
+	size = s->seek(s->opaque, 0, AVSEEK_FULLTIME);
+	return size;
 }
 
 int64_t url_fsize(ByteIOContext *s)
@@ -437,7 +458,7 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
         if (len == 0) {           
             if(size > s->buffer_size && !s->update_checksum){                  
                 if(s->read_packet)
-                {                    
+                {            
                     len = s->read_packet(s->opaque, buf, size);
                 }
                 if (len <= 0) {

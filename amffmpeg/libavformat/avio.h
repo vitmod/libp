@@ -153,6 +153,8 @@ int64_t av_url_read_seek(URLContext *h, int stream_index,
  * If it is not supported then the seek function will return <0.
  */
 #define AVSEEK_SIZE 0x10000
+#define AVSEEK_FULLTIME 0x20000
+#define AVSEEK_TO_TIME 	0x30000
 
 
 /*command fomat
@@ -304,6 +306,7 @@ int64_t url_fsize(ByteIOContext *s);
  */
 int url_feof(ByteIOContext *s);
 
+int64_t url_ffulltime(ByteIOContext *s);
 int url_ferror(ByteIOContext *s);
 
 int av_url_read_fpause(ByteIOContext *h, int pause);

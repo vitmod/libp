@@ -642,6 +642,13 @@ int player_dec_reset(play_para_t *p_para)
 	if(ret != PLAYER_SUCCESS)
 	{
 		log_error("[player_dec_reset]time search failed !ret = %x\n",ret);
+	}else{
+		/*clear the maybe end flags*/
+		p_para->playctrl_info.audio_end_flag=0;
+		p_para->playctrl_info.video_end_flag=0;
+		p_para->playctrl_info.read_end_flag=0;
+		p_para->playctrl_info.video_low_buffer=0;
+		p_para->playctrl_info.audio_low_buffer=0;
 	}
 
     if (mute_flag)
@@ -798,6 +805,16 @@ int player_dec_init(play_para_t *p_para)
 		}
 		else
 			p_para->state.full_time = INT32_MAX;
+		if(p_para->state.full_time==INT32_MAX )
+		{
+			if(p_para->pFormatCtx->pb)
+			{
+				int duration=url_ffulltime(p_para->pFormatCtx->pb);
+				if(duration>0)
+				       p_para->state.full_time=duration;
+			}
+		}
+		
 	}
     log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld file_type=%d stream_type=%d full_time=%lld(0x%llx)\n",__LINE__,p_para->pFormatCtx->bit_rate,p_para->file_size,p_para->file_type,p_para->stream_type,p_para->state.full_time,p_para->state.full_time);
 	

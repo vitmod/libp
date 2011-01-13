@@ -248,12 +248,32 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 		lp_unlock(&lp->mutex);
 		return offset1;
 	}
-	
-      if (whence != SEEK_CUR && whence != SEEK_SET)
-      	{
+	else if (whence == AVSEEK_FULLTIME)
+	{
+		offset1=s->prot->url_seek(s,0, AVSEEK_FULLTIME);/*clear the lowlevel errors*/
+		lp_unlock(&lp->mutex);
+		return offset1;
+	}
+	else if(whence == AVSEEK_TO_TIME ){
+	 	if(s->prot->url_seek){
+			if((offset1=s->prot->url_seek(s, offset, AVSEEK_TO_TIME))>=0)
+			{
+				lp->rp=lp->buffer;
+				lp->wp=lp->buffer;
+				lp->valid_data_size=0;
+				lp->pos=0;
+				lp_unlock(&lp->mutex);
+				return offset;
+			}
+	 	}
+		lp_unlock(&lp->mutex);
+		return AVERROR(EPIPE);
+	}
+    if (whence != SEEK_CUR && whence != SEEK_SET)
+    {
       		lp_unlock(&lp->mutex);
         	return AVERROR(EINVAL);
-      	}
+    }
 
 	if(lp->wp>=lp->rp)
 		valid_data_can_seek_forward=lp->wp-lp->rp;

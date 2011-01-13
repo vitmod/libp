@@ -230,7 +230,8 @@ switchnext:
 	else
 		next=mgt->item_list;
 	if(next)
-		av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d",next->file,mgt->item_num);
+		av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d,start=%d,duration=%d\n",
+			next->file,mgt->item_num,next->start_time,next->duration);
 	else
 		av_log(NULL, AV_LOG_INFO, "switch to new file=NULL,total=%d\n",mgt->item_num);
 	return next;
@@ -314,9 +315,30 @@ static int list_write(URLContext *h, unsigned char *buf, int size)
 /* XXX: use llseek */
 static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 {
-	unused(h);
-	unused(pos);
-	unused(whence);
+	struct list_mgt *mgt = h->priv_data;
+	struct list_item *item,*item1;
+	av_log(NULL, AV_LOG_INFO, "list_seek pos=%lld,whence=%x\n",pos,whence);
+	if (whence == AVSEEK_SIZE)
+        return mgt->file_size;
+	if (whence == AVSEEK_FULLTIME)
+		return mgt->full_time;
+	if(whence == AVSEEK_TO_TIME && pos>=0 && pos<mgt->full_time)
+	{
+		av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x\n",pos,whence);
+		for(item=mgt->item_list;item;item=item->next)
+		{
+			if(item->start_time<=pos && pos <item->start_time+item->duration)
+			{	
+				if(mgt->cur_uio)
+					url_fclose(mgt->cur_uio);
+				mgt->cur_uio=NULL;
+				mgt->current_item=item;
+				av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
+				return item->start_time;/*pos=0;*/
+			}
+		}
+	}
+	av_log(NULL, AV_LOG_INFO, "list_seek failed\n");
 	return -1;
 }
 static int list_close(URLContext *h)
