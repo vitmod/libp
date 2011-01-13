@@ -9,16 +9,53 @@
 #include <string.h>
 #include <errno.h>
 #include <log_print.h>
+#include <player_type.h>
 #include <player_set_sys.h>
 
-#define DISP_MODE_480I		(1)
-#define DISP_MODE_480P		(2)
-#define DISP_MODE_576I		(3)
-#define DISP_MODE_576P		(4)
-#define DISP_MODE_720P		(5)
-#define DISP_MODE_1080I		(6)
-#define DISP_MODE_1080P		(7)
-	
+static freescale_setting_t freescale_setting[] =
+{
+	{
+		DISP_MODE_480P,
+		{0,0,800,480,0,0,18,18},
+		{0,0,800,480,0,0,18,18},
+		{20,10,700,470},
+		800,
+		480,
+		800,
+		480
+	},
+	{
+		DISP_MODE_720P,
+		{240,120,800,480,240,120,18,18},
+		{0,0,800,480,0,0,18,18},
+		{40,15,1240,705},
+		800,
+		480,
+		800,
+		480
+	},
+	{
+		DISP_MODE_1080I,
+		{560,300,800,480,560,300,18,18},
+		{0,0,800,480,0,0,18,18},
+		{40,20,1880,1060},
+		800,
+		480,
+		800,
+		480
+	},
+	{
+		DISP_MODE_1080P,
+		{560,300,800,480,560,300,18,18},
+		{0,0,800,480,0,0,18,18},
+		{40,20,1880,1060},
+		800,
+		480,
+		800,
+		480
+	}
+};
+
 int set_black_policy(int blackout)       
 {
 	int fd;
@@ -232,11 +269,12 @@ char *get_display_mode()
 	fd=open(path, O_RDONLY);
 	if(fd>=0)
 	{    	
-		mode = malloc(6);
+		mode = malloc(16);		
 		if(mode)
-    	{
-    		read(fd,mode,6); 
-			mode[5] = '\0';
+    	{    		
+    		read(fd,mode,16); 
+			log_print("[get_display_mode]mode=%s strlen=%d\n",mode,strlen(mode));
+			mode[strlen(mode)] = '\0';
 		}
 		else
 			log_error("[get_display_mode]malloc failed!\n");
@@ -390,24 +428,24 @@ static int display_mode_convert(char *disp_mode)
 	int ret = 0xff;
 	log_print("[display_mode_convert]disp_mode=%s\n",disp_mode);
 	if(!disp_mode)
-		ret = -1;	
-	else if(!strcmp(disp_mode, "480i"))
+		ret = 0xeeee;	
+	else if(!strncmp(disp_mode, "480i", 4))
 		ret = DISP_MODE_480I;
-	else if(!strcmp(disp_mode, "480p"))
+	else if(!strncmp(disp_mode, "480p", 4))
 		ret = DISP_MODE_480P;
-	else if(!strcmp(disp_mode, "567i"))
+	else if(!strncmp(disp_mode, "576i", 4))
 		ret = DISP_MODE_576I;
-	else if(!strcmp(disp_mode, "576p"))
+	else if(!strncmp(disp_mode, "576p", 4))
 		ret = DISP_MODE_576P;
-	else if(!strcmp(disp_mode, "720p"))
+	else if(!strncmp(disp_mode, "720p", 4))
 		ret = DISP_MODE_720P;
-	else if(!strcmp(disp_mode, "1080i"))
+	else if(!strncmp(disp_mode, "1080i", 5))
 		ret = DISP_MODE_1080I;
-	else if(!strcmp(disp_mode, "1080p"))
+	else if(!strncmp(disp_mode, "1080p", 5))
 		ret = DISP_MODE_1080P;
 	else
-		ret = -2;
-	log_print("[display_mode_convert]disp_mode=%s-->%d\n",disp_mode, ret);
+		ret = 0xffff;
+	log_print("[display_mode_convert]disp_mode=%s-->%x\n",disp_mode, ret);
 	return ret;
 }
 //////////////////////////////////////////////
@@ -422,7 +460,7 @@ static void get_display_axis()
 	{	
     	read(fd,bcmd,sizeof(bcmd));       
 		bcmd[31]='\0';
-        log_print("[get_disp_axis]===%s===\n",bcmd);
+        log_print("[get_disp_axis]%s\n",bcmd);
     	close(fd);    	
 	}
 	else
@@ -439,226 +477,116 @@ static void get_video_axis()
 	{	
     	read(fd,bcmd,sizeof(bcmd));       
 		bcmd[31]='\0';
-        log_print("[get_video_axis]===%s===\n",bcmd);
+        log_print("[get_video_axis]%sn",bcmd);
     	close(fd);    	
 	}
 	else
 		log_error("[%s:%d]open %s failed!\n",__FUNCTION__,__LINE__,path);	
 }
 //////////////////////////////////////////////
-int disable_freescale()
+int disable_freescale(int cfg)
 {	
-	char *mode = get_display_mode();
-	log_print("[disable_freescale]display_mode=%s \n",mode);
-	int osd_coordinates[8];
-	if(mode)
+	char *mode = NULL;	
+	freescale_setting_t *setting;
+	display_mode disp_mode;
+	int i;
+	int num;
+	
+	log_print("[disable_freescale]cfg = 0x%x\n", cfg);
+	if(cfg == MID_800_400_FREESCALE)
 	{
-		switch(display_mode_convert(mode))
-		{
-			case DISP_MODE_480P:
-				osd_coordinates[0] = 0;
-				osd_coordinates[1] = 0;
-				osd_coordinates[2] = 800;
-				osd_coordinates[3] = 480;
-				osd_coordinates[4] = 0;
-				osd_coordinates[5] = 0;
-				osd_coordinates[6] = 18;
-				osd_coordinates[7] = 18;
-				set_fb0_freescale(0);
-				set_fb1_freescale(0);
-				set_display_axis(osd_coordinates);				
-				break;
-			case DISP_MODE_720P:
-				osd_coordinates[0] = 240;
-				osd_coordinates[1] = 120;
-				osd_coordinates[2] = 800;
-				osd_coordinates[3] = 480;
-				osd_coordinates[4] = 240;
-				osd_coordinates[5] = 120;
-				osd_coordinates[6] = 18;
-				osd_coordinates[7] = 18;
-				set_fb0_freescale(0);
-				set_fb1_freescale(0);
-				set_display_axis(osd_coordinates);
-				break;
-			case DISP_MODE_1080I:
-			case DISP_MODE_1080P:
-				osd_coordinates[0] = 560;
-				osd_coordinates[1] = 300;
-				osd_coordinates[2] = 800;
-				osd_coordinates[3] = 480;
-				osd_coordinates[4] = 560;
-				osd_coordinates[5] = 300;
-				osd_coordinates[6] = 18;
-				osd_coordinates[7] = 18;
-				set_fb0_freescale(0);
-				set_fb1_freescale(0);
-				set_display_axis(osd_coordinates);				
-				break;
-		}
-		log_print("[disable_freescale]success!\n");
+		log_print("[disable_freescale]mid 800*400, do config...\n");
+		mode = get_display_mode();
+		log_print("[disable_freescale]display_mode=%s \n",mode);
 		if(mode)
+		{
+			disp_mode = display_mode_convert(mode);
+			num = sizeof(freescale_setting)/sizeof(freescale_setting[0]);
+			log_print("[%s:%d]num=%d\n",__FUNCTION__,__LINE__,num);
+			if(disp_mode >= DISP_MODE_480I && disp_mode <= DISP_MODE_1080P)
+			{				
+				for(i = 0; i < num; i ++)
+				{
+					if(disp_mode == freescale_setting[i].disp_mode)
+					{
+						setting = &freescale_setting[i];
+						break;
+					}
+				}
+				if(i == num)
+				{
+					log_error("[%s:%d]display_mode [%s:%d] needn't set!\n",__FUNCTION__,__LINE__,mode,disp_mode);
+					free(mode);
+					return 0;
+				}
+			}
+			set_fb0_freescale(0);
+			set_fb1_freescale(0);
+			set_display_axis(setting->osd_disble_coordinate);						
+			log_print("[disable_freescale]mid 800*400 config success!\n");			
 			free(mode);
-		return 0;
+			return 0;
+		}	
+		else
+			log_error("[disable_freescale]get display mode failed\n");
 	}
-	log_print("[disable_freescale]failed!\n");
-	if(mode)
-		free(mode);
+	log_print("[disable_freescale]do not need config freescale, exit!");
 	return -1;
 }
 
-int enable_freescale()
+int enable_freescale(int cfg)
 {
-	char *mode = get_display_mode();
-	log_print("[enable_freescale:enter]displayer_mode=%s\n",mode);	
-	int video_coordinates[4];
-	int osd_coordinates[8];
-	if(mode)
+	char *mode = NULL;	
+	freescale_setting_t *setting;
+	display_mode disp_mode;
+	int i;
+	int num;
+	
+	log_print("[enable_freescale]cfg = 0x%x\n", cfg);
+	if(cfg == MID_800_400_FREESCALE)
 	{
-		switch(display_mode_convert(mode))
-		{
-			case DISP_MODE_480P:
-				video_coordinates[0] = 20;
-				video_coordinates[1] = 10;
-				video_coordinates[2] = 700;
-				video_coordinates[3] = 470;		
-				set_video_axis(video_coordinates);
-				osd_coordinates[0] = 0;
-				osd_coordinates[1] = 0;
-				osd_coordinates[2] = 800;
-				osd_coordinates[3] = 480;
-				osd_coordinates[4] = 0;
-				osd_coordinates[5] = 0;
-				osd_coordinates[6] = 18;
-				osd_coordinates[7] = 18;
-				set_display_axis(osd_coordinates);
-				set_fb0_freescale(0);
-				set_fb1_freescale(0);
-				set_fb0_scale_width(800);
-				set_fb0_scale_height(480);
-				set_fb1_scale_width(800);
-				set_fb1_scale_height(480);
-				set_fb0_freescale(1);
-				set_fb1_freescale(1);
-				
-				break;
-			case DISP_MODE_720P:
-				video_coordinates[0] = 40;
-				video_coordinates[1] = 15;
-				video_coordinates[2] = 1240;
-				video_coordinates[3] = 705;		
-				set_video_axis(video_coordinates);
-				osd_coordinates[0] = 0;
-				osd_coordinates[1] = 0;
-				osd_coordinates[2] = 800;
-				osd_coordinates[3] = 480;
-				osd_coordinates[4] = 0;
-				osd_coordinates[5] = 0;
-				osd_coordinates[6] = 18;
-				osd_coordinates[7] = 18;
-				set_display_axis(osd_coordinates);
-				set_fb0_freescale(0);
-				set_fb1_freescale(0);
-				set_fb0_scale_width(800);
-				set_fb0_scale_height(480);
-				set_fb1_scale_width(800);
-				set_fb1_scale_height(480);
-				set_fb0_freescale(1);
-				set_fb1_freescale(1);
-				break;
-			case DISP_MODE_1080I:
-			case DISP_MODE_1080P:
-				video_coordinates[0] = 40;
-				video_coordinates[1] = 20;
-				video_coordinates[2] = 1880;
-				video_coordinates[3] = 1060;		
-				set_video_axis(video_coordinates);
-				osd_coordinates[0] = 0;
-				osd_coordinates[1] = 0;
-				osd_coordinates[2] = 800;
-				osd_coordinates[3] = 480;
-				osd_coordinates[4] = 0;
-				osd_coordinates[5] = 0;
-				osd_coordinates[6] = 18;
-				osd_coordinates[7] = 18;
-				set_display_axis(osd_coordinates);
-				set_fb0_freescale(0);
-				set_fb1_freescale(0);
-				set_fb0_scale_width(800);
-				set_fb0_scale_height(480);
-				set_fb1_scale_width(800);
-				set_fb1_scale_height(480);
-				set_fb0_freescale(1);
-				set_fb1_freescale(1);				
-				break;
-		}
-		log_print("[enable_freescale:exit]success\n");	
+		log_print("[enable_freescale]mid 800*400, do config...\n");
+		mode = get_display_mode();
+		log_print("[enable_freescale]display_mode=%s \n",mode);
 		if(mode)
+		{
+			disp_mode = display_mode_convert(mode);
+			num = sizeof(freescale_setting)/sizeof(freescale_setting[0]);
+			log_print("[%s:%d]num=%d\n",__FUNCTION__,__LINE__,num);
+			if(disp_mode >= DISP_MODE_480I && disp_mode <= DISP_MODE_1080P)
+			{				
+				for(i = 0; i < num; i ++)
+				{
+					if(disp_mode == freescale_setting[i].disp_mode)
+					{
+						setting = &freescale_setting[i];
+						break;
+					}
+				}
+				if(i == num)
+				{
+					log_error("[%s:%d]display_mode [%s:%d] needn't set!\n",__FUNCTION__,__LINE__,mode,disp_mode);
+					free(mode);
+					return 0;
+				}
+			}
+			set_video_axis(setting->video_enablecoordinate);
+			set_display_axis(setting->osd_enable_coordinate);
+			set_fb0_freescale(0);
+			set_fb1_freescale(0);
+			set_fb0_scale_width(setting->fb0_freescale_width);
+			set_fb0_scale_height(setting->fb0_freescale_height);
+			set_fb1_scale_width(setting->fb1_freescale_width);
+			set_fb1_scale_height(setting->fb1_freescale_height);
+			set_fb0_freescale(1);
+			set_fb1_freescale(1);				
+			log_print("[enable_freescale]mid 800*400 config success!\n");			
 			free(mode);
-		return 0;
+			return 0;
+		}	
+		else
+			log_error("[enable_freescale]get display mode failed\n");
 	}
-	log_print("[enable_freescale:exit]failed\n");	
-	if(mode)
-		free(mode);
-	return -1;
+	log_print("[enable_freescale]do not need config freescale, exit!");
+	return -1;	
 }
-/*****************************************************
-EnableFreeScale() {
-mode = "cat /sys/class/display/mode"   //取得当前模式
-if(mode = 480p)
-echo 20 10 700 470  > /sys/class/video/axis             //设置free_scale目标区域
-echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis  //取消OSD偏移
-echo 0 > /sys/class/graphics/fb0/free_scale              //关闭free_scale
-echo 0 > /sys/class/graphics/fb1/free_scale 
-echo 800 > /sys/class/graphics/fb0/scale_width         //设置free_scale参数
-echo 480 > /sys/class/graphics/fb0/scale_height
-echo 800 > /sys/class/graphics/fb1/scale_width
-echo 480 > /sys/class/graphics/fb1/scale_height
-echo 1 > /sys/class/graphics/fb0/free_scale              //开启free_scale
-echo 1 > /sys/class/graphics/fb1/free_scale 
- 
-else if(mode = 720p)
-echo 40 15 1240 705 > /sys/class/video/axis 
-echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis 
-echo 0 > /sys/class/graphics/fb0/free_scale 
-echo 0 > /sys/class/graphics/fb1/free_scale 
-echo 800 > /sys/class/graphics/fb0/scale_width
-echo 480 > /sys/class/graphics/fb0/scale_height
-echo 800 > /sys/class/graphics/fb1/scale_width
-echo 480 > /sys/class/graphics/fb1/scale_height
-echo 1 > /sys/class/graphics/fb0/free_scale 
-echo 1 > /sys/class/graphics/fb1/free_scale 
- 
-else if(mode = 1080i || mode = 1080p)
-      echo 40 20 1880 1060 > /sys/class/video/axis 
-echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis 
-echo 0 > /sys/class/graphics/fb0/free_scale 
-echo 0 > /sys/class/graphics/fb1/free_scale 
-echo 800 > /sys/class/graphics/fb0/scale_width
-echo 480 > /sys/class/graphics/fb0/scale_height
-echo 800 > /sys/class/graphics/fb1/scale_width
-echo 480 > /sys/class/graphics/fb1/scale_height
-echo 1 > /sys/class/graphics/fb0/free_scale 
-echo 1 > /sys/class/graphics/fb1/free_scale 
-}
-
-
-*DisableFreeScale() {
-mode = "cat /sys/class/display/mode"        //取得当前模式
-if(mode = 480p)
-echo 0 > /sys/class/graphics/fb0/free_scale     //关闭free_scale
-echo 0 > /sys/class/graphics/fb1/free_scale     //关闭free_scale
-echo 0 0 800 480 0 0 18 18 > /sys/class/display/axis  //OSD 居中
- 
-else if(mode = 720p)
-echo 0 > /sys/class/graphics/fb0/free_scale 
-echo 0 > /sys/class/graphics/fb1/free_scale 
-echo 240 120 800 480 240 120 18 18 > /sys/class/display/axis 
- 
-else if(mode = 1080i || mode = 1080p)
-echo 0 > /sys/class/graphics/fb0/free_scale 
-echo 0 > /sys/class/graphics/fb1/free_scale 
-echo 560 300 800 480 560 300 18 18 > /sys/class/display/axis 
- 
-}
-**********************************************************/

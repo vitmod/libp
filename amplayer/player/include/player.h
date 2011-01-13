@@ -54,6 +54,10 @@ int         player_noloop(int pid);
 int check_url_type(char *filename);
 int play_list_player(play_control_t *pctrl,unsigned long priv);
 
+//freescale
+int enable_freescale(int cfg);
+int disable_freescale(int cfg);
+
 #ifdef  __cplusplus
 }
 #endif

@@ -113,8 +113,7 @@ int player_start(play_control_t *thead_p,unsigned long  priv)
     p_para->player_id = pid;
     p_para->extern_priv = priv;
     log_debug1("[player_start]player_para=%p,start_param=%p pid=%d\n",p_para,p_para->start_param,pid);
-	ffmpeg_uninterrupt();
-	disable_freescale();
+	ffmpeg_uninterrupt();	
     ret=player_thread_create(p_para) ;
     if(ret!=PLAYER_SUCCESS)	
     {
@@ -229,8 +228,7 @@ int player_exit(int pid)
         log_print("[player_exit:%d]pthread_join return: %d\n",__LINE__,ret);    	   
 	}
     player_close_pid_data(pid);
-    player_release(pid);
-	enable_freescale();
+    player_release(pid);	
 	log_print("[player_exit:exit]pid=%d\n", pid);   
     return ret;
 }
