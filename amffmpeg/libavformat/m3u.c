@@ -122,7 +122,9 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	struct list_item tmpitem;
  	char prefix[1024]="";
 	int prefix_len=0;
-	int start_time=0;
+	int start_time=mgt->full_time;
+
+	
 	if(mgt->filename){
 		char *tail;
 		tail=strrchr(mgt->filename,'/');
@@ -167,14 +169,23 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				}
 			}
 			list_add_item(mgt,item);
-			getnum++;
-			memset(&tmpitem,0,sizeof(tmpitem));
+			if(item->flags &ENDLIST_FLAG)
+			{
+				mgt->have_list_end=1;
+				break;
+			}
+			else
+			{
+				memset(&tmpitem,0,sizeof(tmpitem));
+				getnum++;
+			}
 		}else{
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
 		}
 		
 	}
+
 	mgt->full_time=start_time;
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%d\n",getnum,start_time);
 	return getnum;

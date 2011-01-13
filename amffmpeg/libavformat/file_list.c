@@ -321,7 +321,12 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	if (whence == AVSEEK_SIZE)
         return mgt->file_size;
 	if (whence == AVSEEK_FULLTIME)
-		return mgt->full_time;
+	{
+		if(mgt->have_list_end)
+			return mgt->full_time;
+		else
+			return -1;
+	}
 	if(whence == AVSEEK_TO_TIME && pos>=0 && pos<mgt->full_time)
 	{
 		av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x\n",pos,whence);

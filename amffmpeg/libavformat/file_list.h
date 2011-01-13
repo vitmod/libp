@@ -66,6 +66,7 @@ typedef struct list_mgt
 	struct list_item *current_item;
 	int64_t file_size;
 	int 	full_time;
+	int 	have_list_end;
 	ByteIOContext	*cur_uio;
 	struct list_demux *demux;
 }list_mgt_t;
