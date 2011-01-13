@@ -652,12 +652,13 @@ int player_dec_reset(play_para_t *p_para)
 	p_para->state.last_time = p_para->playctrl_info.time_point;
 	return ret;     
 }
-static void check_ctx_bitrate(play_para_t *p_para)
+static int check_ctx_bitrate(play_para_t *p_para)
 {
 	AVFormatContext *ic = p_para->pFormatCtx;
     AVStream *st;
     int bit_rate = 0;
     unsigned int i;    
+	int flag = 0;
     for(i=0;i<ic->nb_streams;i++) 
     {
         st = ic->streams[i];
@@ -669,6 +670,10 @@ static void check_ctx_bitrate(play_para_t *p_para)
 		}
 		else
 			bit_rate += st->codec->bit_rate;
+		if(st->codec->codec_type == CODEC_TYPE_VIDEO && st->codec->bit_rate == 0)
+			flag = -1;
+		if(st->codec->codec_type == CODEC_TYPE_AUDIO && st->codec->bit_rate == 0)
+			flag = -1;
     }
     log_print("[check_ctx_bitrate:%d]bit_rate=%d ic->bit_rate=%d\n",__LINE__,bit_rate, ic->bit_rate);
     if(p_para->file_type == ASF_FILE)
@@ -682,7 +687,7 @@ static void check_ctx_bitrate(play_para_t *p_para)
             ic->bit_rate = bit_rate ;
     }
     log_print("[check_ctx_bitrate:%d]bit_rate=%d ic->bit_rate=%d\n",__LINE__,bit_rate, ic->bit_rate);
-    
+    return flag;
 }
 
 static void subtitle_para_init(play_para_t *player)
@@ -768,16 +773,17 @@ int player_dec_init(play_para_t *p_para)
 
 	if(p_para->stream_type != STREAM_TS && p_para->stream_type!= STREAM_PS)
    	{
-	   	check_ctx_bitrate(p_para);
-		
-	    if((0!=p_para->pFormatCtx->bit_rate) && (0!=p_para->file_size))
-	    {
-			full_time = (int)((p_para->file_size<<3)/p_para->pFormatCtx->bit_rate);	
-		    log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld full_time=%d\n",__LINE__,p_para->pFormatCtx->bit_rate,p_para->file_size,full_time);
+	   	if(check_ctx_bitrate(p_para) == 0)
+		{		
+		    if((0!=p_para->pFormatCtx->bit_rate) && (0!=p_para->file_size))
+		    {
+				full_time = (int)((p_para->file_size<<3)/p_para->pFormatCtx->bit_rate);	
+			    log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld full_time=%d\n",__LINE__,p_para->pFormatCtx->bit_rate,p_para->file_size,full_time);
 
-	    	if(abs(p_para->state.full_time - full_time) > 30)
-	        	p_para->state.full_time = full_time;        
-	    }
+		    	if(abs(p_para->state.full_time - full_time) > 30)
+		        	p_para->state.full_time = full_time;        
+		    }
+	   	}
 	}
     	
 	if(p_para->state.full_time <= 0)
