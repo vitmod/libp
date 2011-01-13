@@ -862,6 +862,10 @@ resync:
     for(i=sync=url_ftell(pb); !url_feof(pb); i++) {
         int j;
 
+        // if exceed valid data, return EOF
+        if (i >= s->valid_offset)
+            return AVERROR_EOF;
+        
         for(j=0; j<7; j++)
             d[j]= d[j+1];
         d[7]= get_byte(pb);
