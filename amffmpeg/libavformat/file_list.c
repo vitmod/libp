@@ -277,7 +277,7 @@ retry:
 		len=get_buffer(mgt->cur_uio,buf,size);
 	if(len==AVERROR(EAGAIN))
 		 return AVERROR(EAGAIN);/*not end,bug need to*/
-	else if((len<=0 || (mgt->cur_uio && mgt->cur_uio->eof_reached))&& mgt->current_item!=NULL)
+	else if((len<=0)&& mgt->current_item!=NULL)
 	{/*end of the file*/
 		av_log(NULL, AV_LOG_INFO, "try switchto_next_item buf=%x,size=%d,len=%d\n",buf,size,len);
 
