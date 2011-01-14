@@ -261,27 +261,27 @@ int set_fb1_blank(int blank)
 	return -1;   				
 }
 
-char *get_display_mode()
+void get_display_mode(char *mode)
 {
 	int fd;   
     char *path = "/sys/class/display/mode";
-	char *mode = NULL;
+	if(!mode)
+	{
+		log_error("[get_display_mode]Invalide parameter!");
+		return;
+	}
 	fd=open(path, O_RDONLY);
 	if(fd>=0)
-	{    	
-		mode = malloc(16);		
-		if(mode)
-    	{    		
-    		read(fd,mode,16); 
-			log_print("[get_display_mode]mode=%s strlen=%d\n",mode,strlen(mode));
-			mode[strlen(mode)] = '\0';
-		}
-		else
-			log_error("[get_display_mode]malloc failed!\n");
+	{ 			    		
+		read(fd,mode,16); 
+		log_print("[get_display_mode]mode=%s strlen=%d\n",mode,strlen(mode));
+		mode[strlen(mode)] = '\0';				
     	close(fd);    	
 	}
+	else
+		sprintf(mode,"%s","fail");;
 	log_print("[get_display_mode]display_mode=%s\n",mode);
-	return mode;
+	return ;
 }
 
 int set_fb0_freescale(int freescale)
@@ -486,7 +486,7 @@ static void get_video_axis()
 //////////////////////////////////////////////
 int disable_freescale(int cfg)
 {	
-	char *mode = NULL;	
+	char mode[16];	
 	freescale_setting_t *setting;
 	display_mode disp_mode;
 	int i;
@@ -496,9 +496,9 @@ int disable_freescale(int cfg)
 	if(cfg == MID_800_400_FREESCALE)
 	{
 		log_print("[disable_freescale]mid 800*400, do config...\n");
-		mode = get_display_mode();
+		get_display_mode(mode);
 		log_print("[disable_freescale]display_mode=%s \n",mode);
-		if(mode)
+		if(strncmp(mode,"fail",4))	//mode !=fail
 		{
 			disp_mode = display_mode_convert(mode);
 			num = sizeof(freescale_setting)/sizeof(freescale_setting[0]);
@@ -516,15 +516,15 @@ int disable_freescale(int cfg)
 				if(i == num)
 				{
 					log_error("[%s:%d]display_mode [%s:%d] needn't set!\n",__FUNCTION__,__LINE__,mode,disp_mode);
-					free(mode);
 					return 0;
-				}
+				}			
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_display_axis(setting->osd_disble_coordinate);						
+				log_print("[disable_freescale]mid 800*400 config success!\n");				
 			}
-			set_fb0_freescale(0);
-			set_fb1_freescale(0);
-			set_display_axis(setting->osd_disble_coordinate);						
-			log_print("[disable_freescale]mid 800*400 config success!\n");			
-			free(mode);
+			else
+				log_error("[disable_freescale]mid 800*400 config failed, display mode invalid\n");
 			return 0;
 		}	
 		else
@@ -536,7 +536,7 @@ int disable_freescale(int cfg)
 
 int enable_freescale(int cfg)
 {
-	char *mode = NULL;	
+	char mode[16];	
 	freescale_setting_t *setting;
 	display_mode disp_mode;
 	int i;
@@ -546,9 +546,9 @@ int enable_freescale(int cfg)
 	if(cfg == MID_800_400_FREESCALE)
 	{
 		log_print("[enable_freescale]mid 800*400, do config...\n");
-		mode = get_display_mode();
+		get_display_mode(mode);
 		log_print("[enable_freescale]display_mode=%s \n",mode);
-		if(mode)
+		if(strncmp(mode,"fail",4))
 		{
 			disp_mode = display_mode_convert(mode);
 			num = sizeof(freescale_setting)/sizeof(freescale_setting[0]);
@@ -566,22 +566,22 @@ int enable_freescale(int cfg)
 				if(i == num)
 				{
 					log_error("[%s:%d]display_mode [%s:%d] needn't set!\n",__FUNCTION__,__LINE__,mode,disp_mode);
-					free(mode);
 					return 0;
-				}
+				}			
+				set_video_axis(setting->video_enablecoordinate);
+				set_display_axis(setting->osd_enable_coordinate);
+				set_fb0_freescale(0);
+				set_fb1_freescale(0);
+				set_fb0_scale_width(setting->fb0_freescale_width);
+				set_fb0_scale_height(setting->fb0_freescale_height);
+				set_fb1_scale_width(setting->fb1_freescale_width);
+				set_fb1_scale_height(setting->fb1_freescale_height);
+				set_fb0_freescale(1);
+				set_fb1_freescale(1);				
+				log_print("[enable_freescale]mid 800*400 config success!\n");				
 			}
-			set_video_axis(setting->video_enablecoordinate);
-			set_display_axis(setting->osd_enable_coordinate);
-			set_fb0_freescale(0);
-			set_fb1_freescale(0);
-			set_fb0_scale_width(setting->fb0_freescale_width);
-			set_fb0_scale_height(setting->fb0_freescale_height);
-			set_fb1_scale_width(setting->fb1_freescale_width);
-			set_fb1_scale_height(setting->fb1_freescale_height);
-			set_fb0_freescale(1);
-			set_fb1_freescale(1);				
-			log_print("[enable_freescale]mid 800*400 config success!\n");			
-			free(mode);
+			else
+				log_error("[enable_freescale]mid 800*400 config failed, display mode invalid\n");
 			return 0;
 		}	
 		else
