@@ -972,7 +972,7 @@ int time_search(play_para_t *am_p)
                 {
                     stream_index = am_p->first_index;
                 }
-                seek_flags |= AVSEEK_FLAG_ANY;
+                //seek_flags |= AVSEEK_FLAG_ANY;
             }
          	log_info("[time_search:%d] stream_index %d, time_point=%d timestamp=%lld start_time=%lld\n",
               __LINE__,stream_index, time_point, timestamp, s->start_time);
