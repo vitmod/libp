@@ -680,6 +680,7 @@ int url_fdopen(ByteIOContext **s, URLContext *h)
 
     (*s)->is_streamed = h->is_streamed;
 	(*s)->is_slowmedia = h->is_slowmedia;
+	(*s)->support_time_seek = h->support_time_seek;
     (*s)->max_packet_size = max_packet_size;
     if(h->prot) {
         (*s)->read_pause = (int (*)(void *, int))h->prot->url_read_pause;

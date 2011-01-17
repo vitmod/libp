@@ -937,7 +937,7 @@ int time_search(play_para_t *am_p)
 	temp = (unsigned int)(s->duration/AV_TIME_BASE);
     log_info("[time_search:%d]time_point =%d temp=%d duration= %lld\n",__LINE__,time_point,temp,s->duration);	
     /* if seeking requested, we execute it */ 
-    if(url_is_streamed(s->pb) && time_point>0){
+    if(url_support_time_seek(s->pb) && time_point>0){
           log_info("[time_search:%d] direct seek to time_point =%d\n",__LINE__,time_point);
            ret=url_fseek(s->pb, time_point,AVSEEK_TO_TIME);
           if(ret>=0)      {

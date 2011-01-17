@@ -185,6 +185,8 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	mgt->cur_uio=NULL;
  	h->is_streamed=1;
 	h->is_slowmedia=1;
+	if(mgt->full_time>0 && mgt->have_list_end)
+		h->support_time_seek=1;
 	h->priv_data = mgt;
 	
 	url_fclose(bio);

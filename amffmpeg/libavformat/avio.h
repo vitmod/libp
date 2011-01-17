@@ -50,6 +50,7 @@ typedef struct URLContext {
     int flags;
     int is_streamed;  /**< true if streamed (no seek possible), default = false */
 	int is_slowmedia;  /**For slow media,maybe  remote playing,not used seek,if not needed*/
+	int support_time_seek;/*direct time seek*/
     int max_packet_size;  /**< if non zero, the stream is packetized with this max packet size */
     struct  url_lpbuf *lpbuf;
     void *priv_data;
@@ -232,6 +233,7 @@ typedef struct {
     int write_flag;  /**< true if open for writing */
     int is_streamed;
     int is_slowmedia;  /**For slow media,maybe  remote playing,not used seek,if not needed*/
+	int support_time_seek;
     int enabled_lp_buffer;
     int lp_buffer_size;
     int max_packet_size;
@@ -369,6 +371,12 @@ static inline int url_is_slowmedia(ByteIOContext *s)
 {
     return s->is_slowmedia;
 }
+
+static inline int url_support_time_seek(ByteIOContext *s)
+{
+    return s->support_time_seek;
+}
+
 
 int url_buffering_data(ByteIOContext *s,int size);
 /** @note when opened as read/write, the buffers are only used for
