@@ -76,11 +76,11 @@ aformat_t audio_type_convert(enum CodecID id,pfile_type File_type)
             break;
     	
         case CODEC_ID_AC3:
-        	format = -1;
+        	format = AFORMAT_AC3;
             break;
         	
         case CODEC_ID_DTS:
-        	format = -1;
+        	format = AFORMAT_DTS;
             break;
         	
         case CODEC_ID_PCM_S16BE:
