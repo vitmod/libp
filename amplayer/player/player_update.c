@@ -515,21 +515,27 @@ static void update_current_time(play_para_t *p_para)
 		        }  
 			}
 
-			log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d discontinue=%d\n",time/PTS_FREQ,((unsigned int)p_para->astream_info.start_time/PTS_FREQ),((unsigned int)p_para->vstream_info.start_time/PTS_FREQ),p_para->state.last_time, p_para->discontinue_point);
+			log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d\n",time/PTS_FREQ,((unsigned int)p_para->astream_info.start_time/PTS_FREQ),((unsigned int)p_para->vstream_info.start_time/PTS_FREQ),p_para->state.last_time);
 
 	        if (time>0)
 	        {
-	            if((time/PTS_FREQ)< ((unsigned int)p_para->state.start_time/PTS_FREQ))
+	            if(time < (unsigned int)p_para->state.start_time)
 	    		{
-					log_print("[update_current_time:%d]time=%d astart_time=%d  vstart_time=%d last_time=%d\n",__LINE__,time/PTS_FREQ,((unsigned int)p_para->astream_info.start_time/PTS_FREQ),((unsigned int)p_para->vstream_info.start_time/PTS_FREQ),p_para->state.last_time);
+					log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n",__LINE__,time,((unsigned int)p_para->astream_info.start_time);
 		   			p_para->state.start_time = time;
 	            }
-	    		else
+	    		if((unsigned int)p_para->state.start_time > 0)
+	    		{	 
+					log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n",__LINE__,time,p_para->state.start_time);
 	    			time -= p_para->state.start_time;
+					log_print("[update_current_time:%d]time=0x%x (%d)\n",__LINE__,time,time/PTS_FREQ);
+
+	    		}
 	        }
+			log_debug("[update_current_time:%d]time=%d discontinue=%d\n",__LINE__,time/PTS_FREQ,p_para->discontinue_point);
 	        if((time/PTS_FREQ) < p_para->discontinue_point && p_para->discontinue_point > 0)
 			{
-		        log_print("[update_current_time]time=%d discontinue_point=%d\n",time/PTS_FREQ,p_para->discontinue_point);
+		        log_print("[update_current_time:%d]time=%d discontinue_point=%d\n",__LINE__,time/PTS_FREQ,p_para->discontinue_point);
 				if(url_support_time_seek(p_para->pFormatCtx->pb) && (time/PTS_FREQ > 0) && (!p_para->discontinue_flag))
 				{
 					p_para->discontinue_point = p_para->discontinue_point - time/PTS_FREQ;
@@ -547,17 +553,17 @@ static void update_current_time(play_para_t *p_para)
 			p_para->state.last_time = p_para->state.current_time;
 	    p_para->state.current_time = (int)time;
 	   
-	    log_debug("[update_current_time]curtime=%d lasttime=%d tpos=%d full_time=%d\n",p_para->state.current_time,p_para->state.last_time,p_para->playctrl_info.time_point,p_para->state.full_time);
+	    log_print("[update_current_time]curtime=%d lasttime=%d tpos=%d full_time=%d\n",p_para->state.current_time,p_para->state.last_time,p_para->playctrl_info.time_point,p_para->state.full_time);
 
 	    if (p_para->state.current_time == 0 && p_para->playctrl_info.time_point > 0)
 	    {
 			p_para->state.current_time = p_para->playctrl_info.time_point;
 			p_para->state.current_ms = p_para->state.current_time * 1000;
-	    	log_print("[update_current_time]curtime: 0->%d tpos=%d\n",time,p_para->playctrl_info.time_point);
+	    	log_print("[update_current_time:%d]curtime: 0->%d tpos=%d\n",__LINE__,time,p_para->playctrl_info.time_point);
 	    }
 	    if(p_para->state.current_time > p_para->state.full_time)       
 		{
-	    	log_print("[update_current_time]time=%d fulltime=%d\n",time,p_para->state.full_time);
+	    	log_print("[update_current_time:%d]time=%d fulltime=%d\n",__LINE__,time,p_para->state.full_time);
 			p_para->state.current_time = p_para->state.full_time; 
 			p_para->state.current_ms = p_para->state.current_time * 1000;
 	    }
