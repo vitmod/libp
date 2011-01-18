@@ -515,7 +515,7 @@ static void update_current_time(play_para_t *p_para)
 		        }  
 			}
 
-			log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d\n",time/PTS_FREQ,((unsigned int)p_para->astream_info.start_time/PTS_FREQ),((unsigned int)p_para->vstream_info.start_time/PTS_FREQ),p_para->state.last_time);
+			log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d discontinue=%d\n",time/PTS_FREQ,((unsigned int)p_para->astream_info.start_time/PTS_FREQ),((unsigned int)p_para->vstream_info.start_time/PTS_FREQ),p_para->state.last_time, p_para->discontinue_point);
 
 	        if (time>0)
 	        {
@@ -530,6 +530,12 @@ static void update_current_time(play_para_t *p_para)
 	        if((time/PTS_FREQ) < p_para->discontinue_point && p_para->discontinue_point > 0)
 			{
 		        log_print("[update_current_time]time=%d discontinue_point=%d\n",time/PTS_FREQ,p_para->discontinue_point);
+				if(url_support_time_seek(p_para->pFormatCtx->pb) && (time/PTS_FREQ > 0) && (!p_para->discontinue_flag))
+				{
+					p_para->discontinue_point = p_para->discontinue_point - time/PTS_FREQ;
+					p_para->discontinue_flag = 1;			
+					log_print("[update_current_time]url_support_time_seek:discontinue_point=%d\n",p_para->discontinue_point);
+				}
 				time += p_para->discontinue_point * PTS_FREQ;
 	        }
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n",time/PTS_FREQ,p_para->state.current_time,p_para->state.last_time);
@@ -545,7 +551,6 @@ static void update_current_time(play_para_t *p_para)
 
 	    if (p_para->state.current_time == 0 && p_para->playctrl_info.time_point > 0)
 	    {
-	    	//log_print("[update_current_time]time=%d tpos=%d\n",time,p_para->playctrl_info.time_point);
 			p_para->state.current_time = p_para->playctrl_info.time_point;
 			p_para->state.current_ms = p_para->state.current_time * 1000;
 	    	log_print("[update_current_time]curtime: 0->%d tpos=%d\n",time,p_para->playctrl_info.time_point);

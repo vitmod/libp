@@ -940,9 +940,12 @@ int time_search(play_para_t *am_p)
     if(url_support_time_seek(s->pb) && time_point>0){
           log_info("[time_search:%d] direct seek to time_point =%d\n",__LINE__,time_point);
            ret=url_fseek(s->pb, time_point,AVSEEK_TO_TIME);
-          if(ret>=0)      {
-                   av_read_frame_flush(s);
-                   return PLAYER_SUCCESS;
+          if(ret>=0)     
+		  {
+               av_read_frame_flush(s);
+			   am_p->discontinue_point = ret;
+               log_info("[time_search:%d] direct seek discontinue_point =%d\n",__LINE__,am_p->discontinue_point);
+               return PLAYER_SUCCESS;
            }
            /*failed*/
            return PLAYER_SEEK_FAILED;

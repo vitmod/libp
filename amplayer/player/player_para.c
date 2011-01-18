@@ -545,7 +545,10 @@ void player_clear_ctrl_flags(p_ctrl_info_t *cflag)
 void player_para_reset(play_para_t *para)
 {    
     player_ctrl_flag_reset(&para->playctrl_info);
-	para->discontinue_point = 0;
+	if(!url_support_time_seek(para->pFormatCtx->pb))
+		para->discontinue_point = 0;
+	para->discontinue_flag = 0;
+	log_print("[player_para_reset]para->discontinue_point=%d\n",para->discontinue_point);
     MEMSET(&para->write_size, 0, sizeof(read_write_size));
     MEMSET(&para->read_size, 0, sizeof(read_write_size));     
 }

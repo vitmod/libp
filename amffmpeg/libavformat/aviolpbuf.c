@@ -263,7 +263,7 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 				lp->valid_data_size=0;
 				lp->pos=0;
 				lp_unlock(&lp->mutex);
-				return offset;
+				return offset1;
 			}
 	 	}
 		lp_unlock(&lp->mutex);
