@@ -493,6 +493,8 @@ static void player_para_init(play_para_t *para)
 	para->astream_info.audio_index = -1;
     para->astream_info.start_time = -1;
 	para->sstream_info.sub_index = -1;	
+	para->discontinue_point = 0;
+	para->discontinue_flag = 0;
 }
 
 ///////////////////*main function *//////////////////////////////////////
