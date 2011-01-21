@@ -189,8 +189,12 @@ int player_stop(int pid)
     if(player_para==NULL)
         return PLAYER_NOT_VALID_PID;	
 
+	log_print("[player_stop]player_status=0x%x\n", get_player_state(player_para)); 
+	if((get_player_state(player_para)&0x30000) == 1)
+		return PLAYER_SUCCESS;
+	
     if(player_para->pFormatCtx)
-    av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
+    	av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
 	ffmpeg_interrupt();
     cmd=message_alloc();
     if(cmd)
@@ -220,12 +224,12 @@ int player_exit(int pid)
     para=player_open_pid_data(pid);
 	if(para != NULL)
 	{
-        if(get_player_state(para)!=PLAYER_PLAYEND)
-        {
+		log_print("[player_exit]player_state=0x%x\n", get_player_state(para));   
+        if(get_player_state(para)!=PLAYER_EXIT)        
         	player_stop(pid);
-        }
-        ret = player_thread_wait_exit(para);
-        log_print("[player_exit:%d]pthread_join return: %d\n",__LINE__,ret);    	   
+
+		ret = player_thread_wait_exit(para);
+        log_print("[player_exit]player thread already exit: %d\n",ret);    	   
 	}
     player_close_pid_data(pid);
     player_release(pid);	
