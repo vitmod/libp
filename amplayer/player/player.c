@@ -78,14 +78,13 @@ static int player_para_release(play_para_t *para)
                 para->media_info.sub_info[i] = NULL;
         	}
         }
-    }  
-	
-    if(para->pFormatCtx!=NULL)
+    } 
+	if(para->pFormatCtx!=NULL)
 	{
 		av_close_input_file(para->pFormatCtx);
 		//av_free((p_para->pFormatCtx));
 		para->pFormatCtx = NULL; 
-	}     
+	} 
     if(para->decoder && para->decoder->release)
 	{
     	para->decoder->release(para);
@@ -203,7 +202,7 @@ static void check_msg(play_para_t *para,player_cmd_t *msg)
             para->playctrl_info.search_flag = 1;
             para->playctrl_info.time_point = msg->param;      
             para->playctrl_info.end_flag = 1;
-            para->playctrl_info.need_reset = 0;            
+            para->playctrl_info.need_reset = 0;    			
         }
 		else if(msg->param == para->state.full_time)
 		{
@@ -298,7 +297,11 @@ int check_flag(play_para_t *p_para)
         {          
             set_black_policy(p_para->playctrl_info.black_out);
             set_player_state(p_para,PLAYER_STOPED); 
-        }		
+        }
+		else if(p_para->playctrl_info.search_flag)
+		{
+			set_black_policy(0);			
+		}
         return BREAK_FLAG;
     }
            
