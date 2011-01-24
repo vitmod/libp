@@ -1173,7 +1173,7 @@ int check_in_pts(play_para_t *para, am_packet_t *pkt)
         last_duration = last_v_duration;
 	}  
     
-	if(para->stream_type == STREAM_ES)
+	if(para->stream_type == STREAM_ES && (pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO))
 	{
 		if ((int64_t)INT64_0 != pkt->avpkt->pts)
 	    {           
@@ -1186,26 +1186,27 @@ int check_in_pts(play_para_t *para, am_packet_t *pkt)
 				log_error("ERROR pid[%d]: check in pts error!\n",para->player_id);
 				return PLAYER_PTS_ERROR;
 	    	}
-            //log_print("[check_in_pts:%d]type=%d pkt->pts=%llx pts=%llx start_time=%llx duration=%.2f\n",__LINE__,pkt->type,pkt->avpkt->pts,pts, start_time, duration);
+            //log_print("[check_in_pts:%d]type=%d pkt->pts=%llx pts=%llx start_time=%llx \n",__LINE__,pkt->type,pkt->avpkt->pts,pts, start_time);
 		
 		}
 		else if ((int64_t)INT64_0 != pkt->avpkt->dts)
 		{	
-			pts = pkt->avpkt->dts * time_base_ratio* last_duration;   
-            //log_print("[check_in_pts:%d]type=%d pkt->dts=%llx pts=%llx\n",__LINE__,pkt->type,pkt->avpkt->dts,pts);
+			pts = pkt->avpkt->dts * time_base_ratio * last_duration;   
+            //log_print("[check_in_pts:%d]type=%d pkt->dts=%llx pts=%llx time_base_ratio=%.2f last_duration=%d\n",__LINE__,pkt->type,pkt->avpkt->dts,pts,time_base_ratio,last_duration);
 
 			if(codec_checkin_pts(pkt->codec, pts)!=0)
 			{
 				log_error("ERROR pid[%d]: check in dts error!\n",para->player_id);
 				return PLAYER_PTS_ERROR;
-			}    
+			} 			
+
             if (pkt->type == CODEC_AUDIO)        
-            {                
-                last_a_duration = pkt->avpkt->duration;        
+            { 
+                last_a_duration = pkt->avpkt->duration ? pkt->avpkt->duration : 1;        
             }
             else if (pkt->type == CODEC_VIDEO)        
-            {                
-                last_v_duration = pkt->avpkt->duration;
+            {             	
+                last_v_duration = pkt->avpkt->duration ? pkt->avpkt->duration : 1;
             }
 		}
 		else
