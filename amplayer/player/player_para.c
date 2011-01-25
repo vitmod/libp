@@ -137,10 +137,15 @@ static void get_av_codec_type(play_para_t *p_para)
                 char profile = (*ppp)>>3; 
                 log_print(" aac profile = %d  ********* { MAIN, LC, SSR } \n", profile);
 
-                if (profile==1){
+                if (profile==1)
+				{
                     pCodecCtx->profile = FF_PROFILE_AAC_MAIN;
                 }
-            }else{
+				//else
+				//	p_para->astream_info.has_audio = 0;
+            }
+			else
+            {
 
                 AVCodec * aac_codec = avcodec_find_decoder_by_name("aac");
 
@@ -352,10 +357,15 @@ static int set_decode_para(play_para_t*am_p)
 			log_error("Can't support rm file without video!\n");
         	return PLAYER_UNSUPPORT;
 		}
-		else
+		else if(am_p->astream_info.has_audio && am_p->astream_info.audio_index != -1)
 		{
 			set_player_error_no(am_p, PLAYER_NO_VIDEO);
 	    	update_player_states(am_p, 1);
+		}
+		else
+		{
+		 	log_error("Can't support the video_format and audio_format!\n");
+        	return PLAYER_UNSUPPORT; 
 		}
 	}	
 	if(am_p->playctrl_info.no_audio_flag)
@@ -365,17 +375,25 @@ static int set_decode_para(play_para_t*am_p)
 	}
 	else if(am_p->astream_info.audio_index == -1)
 	{
-		set_player_error_no(am_p, PLAYER_NO_AUDIO);
-	    update_player_states(am_p, 1);	
+		if(am_p->vstream_info.has_video && (am_p->vstream_info.video_index != -1))
+		{
+			set_player_error_no(am_p, PLAYER_NO_AUDIO);
+	    	update_player_states(am_p, 1);	
+		}
+		else
+		{
+			log_error("Can't support the video_format and audio_format!\n");
+        	return PLAYER_UNSUPPORT; 
+		}
 	}
 		
-    if(((am_p->vstream_info.video_index != -1) && (am_p->vstream_info.has_video == 0))&&
+    /*if(((am_p->vstream_info.video_index != -1) && (am_p->vstream_info.has_video == 0))&&
 	   ((am_p->astream_info.audio_index != -1) && (am_p->astream_info.has_audio == 0)))
     {        
         log_error("Can't support the video_format and audio_format!\n");
         return PLAYER_UNSUPPORT;
-    }	
-
+    }*/	
+	
 	if((am_p->vstream_info.video_index != -1) &&
 	   (am_p->vstream_info.has_video == 0))
 	{			
