@@ -979,13 +979,26 @@ int time_search(play_para_t *am_p)
             }
          	log_info("[time_search:%d] stream_index %d, time_point=%d timestamp=%lld start_time=%lld\n",
               __LINE__,stream_index, time_point, timestamp, s->start_time);
-            
-	        ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
-	        if (ret < 0) 
+
+			if(am_p->vstream_info.video_index == -1 || !am_p->vstream_info.has_video)
 			{
-	            log_info("%s: could not seek to position %0.3f s ret=%lld\n",s->filename, (double)timestamp / AV_TIME_BASE, ret);		
-				return PLAYER_SEEK_FAILED;
-	        }		
+				offset = ((int64_t)time_point * (s->bit_rate >> 3));	
+				ret = url_fseek(s->pb, offset, SEEK_SET);
+			    if (ret < 0)
+	            {
+	                log_info("%s: could not seek to position 0x%llx  ret=0x%llx\n",s->filename, offset, ret);
+				    return PLAYER_SEEK_FAILED;
+			    }    
+			}
+			else
+			{
+		        ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
+		        if (ret < 0) 
+				{
+		            log_info("[%s] could not seek to position %0.3f s ret=%lld\n",__FUNCTION__, (double)timestamp / AV_TIME_BASE, ret);		
+					return PLAYER_SEEK_FAILED;
+		        }
+			}
 		}
 		else
 		{           
