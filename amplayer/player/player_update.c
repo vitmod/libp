@@ -455,7 +455,9 @@ static unsigned int get_current_time(play_para_t *p_para)
 {   
     unsigned int pcr_scr = 0, vpts = 0, apts = 0; 
     unsigned int ctime = 0; 	
-	if(get_pts_discontinue() && ((p_para->stream_type == STREAM_PS)||url_support_time_seek(p_para->pFormatCtx->pb)))
+	
+	if(get_pts_discontinue() && 
+	  ((p_para->stream_type == STREAM_PS)||(p_para->pFormatCtx && p_para->pFormatCtx->pb && url_support_time_seek(p_para->pFormatCtx->pb))))
 	{    
 		p_para->discontinue_point = p_para->state.last_time;
 		set_tsync_discontinue(0);
