@@ -211,6 +211,12 @@ static int stream_es_release(play_para_t *p_para)
     int r = -1;
 	if(p_para->acodec)
 	{
+		r = codec_close_cntl(p_para->acodec);
+        if(r < 0)
+        {
+            log_error("[stream_es_init]close codec control handle failed, r= %x\n",r);
+            return r;
+        }
     	r = codec_close(p_para->acodec);
         if(r < 0)
         {
