@@ -23,7 +23,7 @@
 #include <string.h>
 #include <errno.h>
 #include <poll.h>
-#include <linux/dvb/dmx.h>
+#include <dvb/dmx.h>
 #include <log_print.h>
 
 

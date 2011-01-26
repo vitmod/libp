@@ -17,7 +17,7 @@ LOCAL_SRC_FILES := dvb/dvb.c \
 
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../amplayer/player/include \
-  $(LOCAL_PATH)/dvb_include \
+  $(LOCAL_PATH)/include \
   $(LOCAL_PATH)/../amffmpeg \
   $(LOCAL_PATH)/../amcodec/include \
   $(LOCAL_PATH)/../amadec/include \

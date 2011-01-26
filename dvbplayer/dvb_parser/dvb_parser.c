@@ -4,8 +4,8 @@
 
 #include <am_debug.h>
 #include <am_mem.h>
-#include <linux/amports/vformat.h>
-#include <linux/amports/aformat.h>
+#include <amports/vformat.h>
+#include <amports/aformat.h>
 #include "am_parser_internal.h"
 #include <string.h>
 #include <assert.h>

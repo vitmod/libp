@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <linux/dvb/frontend.h>
+#include <dvb/frontend.h>
 #include <sys/ioctl.h>
 #include <poll.h>
 

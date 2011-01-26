@@ -24,11 +24,8 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <linux/amports/amstream.h>
-#ifdef CHIP_8226H
-#include <linux/jpegdec.h>
-#endif
-#include <linux/amports/jpegdec.h>
+#include <amports/amstream.h>
+#include <amports/jpegdec.h>
 #include <log_print.h>
 #include <adec.h>
 
