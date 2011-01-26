@@ -323,18 +323,21 @@ int set_display_axis(int *coordinate)
 	char  bcmd[32];
 	int x00, x01,x10,x11,y00, y01,y10,y11;
 	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
-	if(fd>=0 && coordinate)
-	{
-		x00 = coordinate[0];
-		y00 = coordinate[1];
-		x01 = coordinate[2];
-		y01 = coordinate[3];
-		x10 = coordinate[4];
-		y10 = coordinate[5];
-		x11 = coordinate[6];
-		y11 = coordinate[7];
-    	sprintf(bcmd,"%d %d %d %d %d %d %d %d",x00, y00, x01, y01, x10, y10, x11, y11);
-    	write(fd,bcmd,strlen(bcmd));
+	if(fd>=0)
+	{	
+		if(coordinate)
+		{
+			x00 = coordinate[0];
+			y00 = coordinate[1];
+			x01 = coordinate[2];
+			y01 = coordinate[3];
+			x10 = coordinate[4];
+			y10 = coordinate[5];
+			x11 = coordinate[6];
+			y11 = coordinate[7];
+	    	sprintf(bcmd,"%d %d %d %d %d %d %d %d",x00, y00, x01, y01, x10, y10, x11, y11);
+	    	write(fd,bcmd,strlen(bcmd));
+		}
     	close(fd);
     	return 0;
 	}
@@ -348,14 +351,17 @@ int set_video_axis(int *coordinate)
 	char  bcmd[32];
 	int x0, y0, x1,y1;
 	fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
-	if(fd>=0 && coordinate)
+	if(fd>=0)
 	{
-		x0 = coordinate[0];
-		y0 = coordinate[1];
-		x1 = coordinate[2];
-		y1 = coordinate[3];		
-    	sprintf(bcmd,"%d %d %d %d",x0, y0, x1, y1);
-    	write(fd,bcmd,strlen(bcmd));
+		if(coordinate)
+		{
+			x0 = coordinate[0];
+			y0 = coordinate[1];
+			x1 = coordinate[2];
+			y1 = coordinate[3];		
+	    	sprintf(bcmd,"%d %d %d %d",x0, y0, x1, y1);
+	    	write(fd,bcmd,strlen(bcmd));
+		}
     	close(fd);
     	return 0;
 	}
