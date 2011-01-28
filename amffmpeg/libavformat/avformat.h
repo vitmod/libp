@@ -683,6 +683,7 @@ typedef struct AVFormatContext {
 
     /* added by Z.C for some ps/ts file seeking */
     int64_t valid_offset;
+    int valid_offset_done;
 
     /* added by Z.C for avi or some other files seekable */
     int seekable;

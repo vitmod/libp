@@ -863,7 +863,7 @@ resync:
         int j;
 
         // if exceed valid data, return EOF
-        if (i >= s->valid_offset)
+        if (s->valid_offset_done && (i >= s->valid_offset))
             return AVERROR_EOF;
         
         for(j=0; j<7; j++)

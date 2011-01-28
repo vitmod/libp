@@ -2215,6 +2215,7 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     if ((valid_offset > 2) && (ic->valid_offset != 0x7fffffffffffffff)) 
     {
         ic->valid_offset = valid_offset;
+        ic->valid_offset_done = 1;
         if (ic->valid_offset + CHECK_FULL_ZERO_SIZE <= ic->file_size)
         {
             ic->valid_offset += CHECK_FULL_ZERO_SIZE;
