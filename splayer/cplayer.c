@@ -14,7 +14,8 @@
 //#include <getopt.h>
 static codec_para_t ts_codec_para;
 static codec_para_t *pcodec;
-static char filename[256]="ahmei-1_feicui.ts";
+static char sfilename[]="ahmei-1_feicui.ts";
+static char *filename=sfilename;
 static int file_fd=-1;
 
 int osd_blank(char *path,int cmd)
@@ -52,13 +53,23 @@ int main(int argc,char *argv[])
 	int size = READ_SIZE;
 	uint32_t cnt = 0;	
 	
-    printf("\n*********CODEC PLAYER DEMO************\n\n");	
+    	printf("\n*********CODEC PLAYER DEMO************\n\n");	
 	pcodec = &ts_codec_para;
 	memset(pcodec, 0, sizeof(codec_para_t *));		
 	pcodec->video_pid = 851;
 	pcodec->audio_pid = 852;
+
+	if(argc>1)
+		filename=argv[1];
+	if(argc>2)
+		sscanf(argv[2],"%d",&pcodec->video_pid);
+	if(argc>3)
+                sscanf(argv[3],"%d",&pcodec->audio_pid);
+	
+	printf("used vid=%d,aid=%d \n",pcodec->video_pid, pcodec->audio_pid);
+
 	pcodec->video_type = VFORMAT_H264;
-    pcodec->audio_type = AFORMAT_AC3;
+    	pcodec->audio_type = AFORMAT_AAC;
 	pcodec->has_video = 1;
 	pcodec->has_audio = 1;
 	pcodec->stream_type = STREAM_TYPE_TS;	
@@ -66,6 +77,7 @@ int main(int argc,char *argv[])
 	osd_blank("/sys/class/graphics/fb0/blank",1);
 	osd_blank("/sys/class/graphics/fb1/blank",0);
 	memset(buffer,0, READ_SIZE);
+	
 	file_fd = open(filename, O_RDWR, 0666);
     if (file_fd < 0)
     {
@@ -75,7 +87,8 @@ int main(int argc,char *argv[])
 	printf("open file:%s ok!\n",filename);
 	if(pcodec->has_audio || pcodec->has_video)
 	{
-again:  ret = codec_init(pcodec);
+again:  
+		ret = codec_init(pcodec);
 		if(ret != CODEC_ERROR_NONE)
 		{
 			printf("codec init failed, ret=-0x%x", -ret);
@@ -94,6 +107,7 @@ again:  ret = codec_init(pcodec);
 				codec_close(pcodec);
 				osd_blank("/sys/class/graphics/fb0/blank",1);
 				osd_blank("/sys/class/graphics/fb1/blank",0);
+				usleep(1000*1000*10);
 				goto again;
 			}
 			len = read(file_fd, buffer, size);			
