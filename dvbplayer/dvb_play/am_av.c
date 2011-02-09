@@ -460,9 +460,19 @@ AM_ErrorCode_t AM_AV_StartTS(int dev_no, uint16_t vpid, uint16_t apid, AM_AV_VFo
 	para.vfmt = vfmt;
 	para.apid = apid;
 	para.afmt = afmt;
-	log_print("***********************\n");	
-	ret = av_start(dev, AV_PLAY_TS, &para);
-	
+	log_print("***********************\n");
+
+  pthread_mutex_unlock(&dev->lock);
+
+  if(para.vpid && para.apid)
+    AM_AV_SetSyncMode(dev_no, AM_AV_SYNC_ENABLE);
+  else
+    AM_AV_SetSyncMode(dev_no, AM_AV_SYNC_DISABLE);
+
+  AM_AV_SetPCRRecoverMode(dev_no, AM_AV_RECOVER_ENABLE);
+
+  pthread_mutex_lock(&dev->lock);
+  ret = av_start(dev, AV_PLAY_TS, &para);
 	pthread_mutex_unlock(&dev->lock);
 	
 	return ret;
@@ -486,6 +496,9 @@ AM_ErrorCode_t AM_AV_StopTS(int dev_no)
 	ret = av_stop(dev, AV_PLAY_TS);
 	
 	pthread_mutex_unlock(&dev->lock);
+
+  AM_AV_SetSyncMode(dev_no, AM_AV_SYNC_DISABLE);
+  AM_AV_SetPCRRecoverMode(dev_no, AM_AV_RECOVER_DISABLE);
 	
 	return ret;
 }
@@ -1855,3 +1868,132 @@ AM_ErrorCode_t AM_AV_GetVideoDisplayMode(int dev_no, AM_AV_VideoDisplayMode_t *m
 	return ret;
 }
 
+/**\brief Set A/V sync mode
+ * \param dev_no 音视频设备号
+ * \param mode sync mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+AM_ErrorCode_t AM_AV_SetSyncMode(int dev_no, AM_AV_SyncMode_t mode)
+{
+  AM_AV_Device_t *dev;
+  int fd;
+  char *path = "/sys/class/tsync/enable";    
+  char  bcmd[16];
+  AM_ErrorCode_t ret = AM_SUCCESS;
+  
+  AM_TRY(av_get_openned_dev(dev_no, &dev));
+  
+  pthread_mutex_lock(&dev->lock);
+
+  if(dev->sync_mode!=mode)
+  {
+    fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+    if(fd>=0)
+    {
+      sprintf(bcmd,"%d",(mode==AM_AV_SYNC_ENABLE));
+      write(fd,bcmd,strlen(bcmd));
+      close(fd);
+      dev->sync_mode = mode;
+      AM_EVT_Signal(dev->dev_no, AM_AV_EVT_SYNC_MODE_CHANGED, (void*)mode);
+      if(dev->sync_mode==AM_AV_SYNC_ENABLE)
+        log_print("A/V sync enabled\n");
+      else
+        log_print("A/V sync disabled\n");
+    }
+  }
+  
+  pthread_mutex_unlock(&dev->lock);
+  
+  return ret;
+}
+
+/**\brief Get A/V sync mode
+ * \param dev_no 音视频设备号
+ * \param mode sync mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+extern AM_ErrorCode_t AM_AV_GetSyncMode(int dev_no, AM_AV_SyncMode_t *mode)
+{
+  AM_AV_Device_t *dev;
+  AM_ErrorCode_t ret = AM_SUCCESS;
+  
+  AM_TRY(av_get_openned_dev(dev_no, &dev));
+  
+  pthread_mutex_lock(&dev->lock);
+  
+  if(mode)
+    *mode = dev->sync_mode;
+  
+  pthread_mutex_unlock(&dev->lock);
+  
+  return ret;
+}
+
+/**\brief Set PCR recover mode
+ * \param dev_no 音视频设备号
+ * \param mode PCR Recover mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+AM_ErrorCode_t AM_AV_SetPCRRecoverMode(int dev_no, AM_AV_PCRRecoverMode_t mode)
+{
+  AM_AV_Device_t *dev;
+  int fd;
+  char *path = "/sys/class/tsync/pcr_recover";
+  char  bcmd[16];
+  AM_ErrorCode_t ret = AM_SUCCESS;
+  
+  AM_TRY(av_get_openned_dev(dev_no, &dev));
+  
+  pthread_mutex_lock(&dev->lock);
+  
+  if(dev->recover_mode!=mode)
+  {
+    fd=open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+    if(fd>=0)
+    {
+      sprintf(bcmd,"%d",(mode==AM_AV_RECOVER_ENABLE));
+      write(fd,bcmd,strlen(bcmd));
+      close(fd);
+      dev->recover_mode = mode;
+      AM_EVT_Signal(dev->dev_no, AM_AV_EVT_PCRRECOVER_MODE_CHANGED, (void*)mode);
+      if(dev->recover_mode==AM_AV_RECOVER_ENABLE)
+        log_print("PCR recover enabled\n");
+      else
+        log_print("PCR recover disabled\n");
+    }
+  }
+  
+  pthread_mutex_unlock(&dev->lock);
+  
+  return ret;
+}
+
+/**\brief Get PCR Recover mode
+ * \param dev_no 音视频设备号
+ * \param mode PCR Recover mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+extern AM_ErrorCode_t AM_AV_GetPCRRecoverMode(int dev_no, AM_AV_PCRRecoverMode_t *mode)
+{
+  AM_AV_Device_t *dev;
+  AM_ErrorCode_t ret = AM_SUCCESS;
+  
+  AM_TRY(av_get_openned_dev(dev_no, &dev));
+  
+  pthread_mutex_lock(&dev->lock);
+  
+  if(mode)
+    *mode = dev->recover_mode;
+  
+  pthread_mutex_unlock(&dev->lock);
+  
+  return ret;
+}

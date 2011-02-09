@@ -190,6 +190,8 @@ struct AM_AV_Device
 	AM_Bool_t        video_blackout;       /**< 无数据时是否黑屏*/
 	AM_AV_VideoAspectRatio_t video_ratio;  /**< 视频长宽比*/
 	AM_AV_VideoDisplayMode_t video_mode;   /**< 视频显示模式*/
+	AM_AV_SyncMode_t         sync_mode;    /**< A/V Sync Mode*/
+	AM_AV_PCRRecoverMode_t   recover_mode; /**< A/V PCR Recover Mode*/
 };
 
 /****************************************************************************

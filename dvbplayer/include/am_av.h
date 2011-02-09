@@ -67,6 +67,8 @@ enum AM_AV_EventType
 	AM_AV_EVT_VIDEO_DISABLED,          /**< 视频曾隐藏*/
 	AM_AV_EVT_VIDEO_ASPECT_RATIO_CHANGED, /**< 视频长宽比变化，参数为新的长宽比(AM_AV_VideoAspectRatio_t)*/
 	AM_AV_EVT_VIDEO_DISPLAY_MODE_CHANGED, /**< 视频显示模式变化，参数为新的显示模式(AM_AV_VideoDisplayMode_t)*/
+	AM_AV_EVT_SYNC_MODE_CHANGED,          /**< Sync模式变化，参数为新的Sync模式(AM_AV_SyncMode_t)*/
+  AM_AV_EVT_PCRRECOVER_MODE_CHANGED,    /**< PCR Recover模式变化，参数为新的Sync模式(AM_AV_PCRRecoverMode_t)*/
 	AM_AV_EVT_END
 };
 
@@ -164,6 +166,20 @@ typedef enum
 	AM_AV_VIDEO_DISPLAY_NORMAL,     /**< 普通显示*/
 	AM_AV_VIDEO_DISPLAY_FULL_SCREEN /**< 全屏显示*/
 } AM_AV_VideoDisplayMode_t;
+
+/**\brief A/V Sync mode*/
+typedef enum
+{
+  AM_AV_SYNC_DISABLE,     /**< Disable A/V sync*/
+  AM_AV_SYNC_ENABLE       /**< Enable A/V sync*/
+} AM_AV_SyncMode_t;
+
+/**\brief PCR Recover mode*/
+typedef enum
+{
+  AM_AV_RECOVER_DISABLE,     /**< Disable PCR recover*/
+  AM_AV_RECOVER_ENABLE       /**< Enable PCR recover*/
+} AM_AV_PCRRecoverMode_t;
 
 /**\brief 音视频解码设备开启参数*/
 typedef struct
@@ -591,6 +607,42 @@ extern AM_ErrorCode_t AM_AV_SetVideoDisplayMode(int dev_no, AM_AV_VideoDisplayMo
  *   - 其他值 错误代码(见am_av.h)
  */
 extern AM_ErrorCode_t AM_AV_GetVideoDisplayMode(int dev_no, AM_AV_VideoDisplayMode_t *mode);
+
+/**\brief Set A/V sync mode
+ * \param dev_no 音视频设备号
+ * \param mode sync mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+extern AM_ErrorCode_t AM_AV_SetSyncMode(int dev_no, AM_AV_SyncMode_t mode);
+
+/**\brief Get A/V sync mode
+ * \param dev_no 音视频设备号
+ * \param mode sync mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+extern AM_ErrorCode_t AM_AV_GetSyncMode(int dev_no, AM_AV_SyncMode_t *mode);
+
+/**\brief Set PCR recover mode
+ * \param dev_no 音视频设备号
+ * \param mode PCR Recover mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+AM_ErrorCode_t AM_AV_SetPCRRecoverMode(int dev_no, AM_AV_PCRRecoverMode_t mode);
+
+/**\brief Get PCR Recover mode
+ * \param dev_no 音视频设备号
+ * \param mode PCR Recover mode
+ * \return
+ *   - AM_SUCCESS 成功
+ *   - 其他值 错误代码(见am_av.h)
+ */
+extern AM_ErrorCode_t AM_AV_GetPCRRecoverMode(int dev_no, AM_AV_PCRRecoverMode_t *mode);
 
 #ifdef __cplusplus
 }
