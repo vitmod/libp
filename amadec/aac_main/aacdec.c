@@ -21,7 +21,7 @@ static AVCodecContext * aac_ctx = NULL;
 
 int AAC_init(adec_feeder_t *feeder, void * arg)
 {
-    if(feeder == NULL || arg == NULL){
+    if (feeder == NULL || arg == NULL) {
         return -1;
     }
 
@@ -31,12 +31,12 @@ int AAC_init(adec_feeder_t *feeder, void * arg)
     aac_feeder->data_width = 16;
 
     aac_codec = avcodec_find_decoder_by_name("aac");
-    if (!aac_codec){
+    if (!aac_codec) {
         log_print(LOG_ERR, "avcodec_finde_decoder_by_name(\"aac\") error!\n");
         return -1;
     }
 
-    if (avcodec_open(aac_ctx, aac_codec) < 0){
+    if (avcodec_open(aac_ctx, aac_codec) < 0) {
         log_print(LOG_ERR, "avcodec_open() error!\n");
         return -1;
     }
@@ -65,17 +65,17 @@ int AAC_decode_frame(char *buf,int len,struct frame_fmt *fmt)
     int decoded;
     int data_size;
 
-    if(packet.size  <= 6144/2){
+    if (packet.size  <= 6144/2) {
         int ret = 0;
         memcpy(rbuf, packet.data, packet.size);
         ret = AAC_read(rbuf+ packet.size,6144- packet.size);
-        if(ret <= 0){
+        if (ret <= 0) {
             packet.data = NULL;
             packet.size = 0;
             return 0;
-        }	
+        }
         packet.data = rbuf;
-	 packet.size += ret;	
+        packet.size += ret;
 
 
     }
@@ -89,17 +89,17 @@ int AAC_decode_frame(char *buf,int len,struct frame_fmt *fmt)
 
     decoded = avcodec_decode_audio3(aac_ctx, (int16_t *)dec_buf1, &data_size, &packet);
     //log_print(LOG_ERR, "AAC_decode_frame: decoded:%d, data_size:%d, frame_number:%d\n",decoded, data_size, aac_ctx->frame_number);
-    
-    if(decoded < 0){
+
+    if (decoded < 0) {
         log_print(LOG_ERR,"avcodec_decode_audio3 error!\n");
         packet.size = 0;
         return 0;
     }
-    
+
     packet.data += decoded;
     packet.size -= decoded;
 
-    if(data_size <= 0){
+    if (data_size <= 0) {
         return 0 ;
     }
 
@@ -108,8 +108,7 @@ int AAC_decode_frame(char *buf,int len,struct frame_fmt *fmt)
     return data_size;
 }
 
-am_codec_struct AAC_codec=
-{
+am_codec_struct AAC_codec= {
     .name="aac",
     .format=AUDIO_FORMAT_AAC,
     .used=0,

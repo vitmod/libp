@@ -2,14 +2,13 @@
 
 #ifndef AUDIODSP_CONTROL_H
 #define AUDIODSP_CONTROL_H
- 
 
-struct audiodsp_cmd 
-{
-int cmd;
-int fmt;
-int data_len;
-char *data;
+
+struct audiodsp_cmd {
+        int cmd;
+        int fmt;
+        int data_len;
+        char *data;
 };
 
 #ifdef ANDROID

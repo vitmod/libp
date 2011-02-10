@@ -6,16 +6,16 @@ int sound_mute_set(char * id_string , long num, int rw, long * value);
 
 
 
-typedef struct _spectrumPoint{
-    unsigned short int left;// u16 left,
-    unsigned short int right;// u16 right;
+typedef struct _spectrumPoint {
+        unsigned short int left;// u16 left,
+        unsigned short int right;// u16 right;
 }MP_SpectrumPoint;
- 
-typedef struct _audioSpectrum{
-    int flag;//MP_DATA_SPECTRUM  just refer to 1001
-    MP_SpectrumPoint sample_point[32];
-    int lpeak_value;//left peak value
-    int rpeak_value;//right peak value
+
+typedef struct _audioSpectrum {
+        int flag;//MP_DATA_SPECTRUM  just refer to 1001
+        MP_SpectrumPoint sample_point[32];
+        int lpeak_value;//left peak value
+        int rpeak_value;//right peak value
 }MP_AudioSpectrum;
 
 

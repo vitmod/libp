@@ -11,13 +11,13 @@ void log_print(const int level, const char *fmt, ...)
 {
     char *buf = NULL;
     va_list ap;
-	
-	va_start(ap, fmt);
-	vasprintf(&buf, fmt, ap);
-	va_end(ap);
+
+    va_start(ap, fmt);
+    vasprintf(&buf, fmt, ap);
+    va_end(ap);
 
     if (buf) {
-		LOGI("%s", buf);
+        LOGI("%s", buf);
         free(buf);
     }
 }

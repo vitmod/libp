@@ -10,7 +10,7 @@
 #include "include/log.h"
 #include "include/adec.h"
 
-//#include "include/oss_out.h" 
+//#include "include/oss_out.h"
 //#include "include/alsa_out.h"
 #include "include/audiodsp_ctl.h"
 
@@ -27,7 +27,7 @@
 #define DATAWIDTH_PATH \
 "/sys/class/astream/datawidth"
 
-	
+
 
 #define AIFIFO_DEV \
 "/dev/uio0"
@@ -38,7 +38,7 @@
 	"/sys/class/astream/astream-dev/uio0/maps/map0/size"
 #define AIFIFO_OFFSET \
 	"/sys/class/astream/astream-dev/uio0/maps/map0/offset"
-	
+
 static volatile unsigned *amport_regs = (unsigned *)MAP_FAILED;
 static int amport_reg_offset;
 static int amport_reg_size;
@@ -64,7 +64,7 @@ static unsigned long  get_num_infile(char *file)
     read(fd, buf, sizeof(buf));
     num = strtoul(buf, NULL, 0);
     close(fd);
-   return num;
+    return num;
 }
 
 
@@ -86,11 +86,11 @@ static audio_format_t get_audio_format()
     if (len > 0) {
         format[len] = 0;
     }
-     if (strncmp(format, "NA", 2) == 0) {
+    if (strncmp(format, "NA", 2) == 0) {
         close(fd);
         return AUDIO_FORMAT_UNKNOWN;
     }
-	 
+
     log_print(LOG_INFO, "amadec format: %s", format);
 
     if (strncmp(format, "amadec_mpeg", 11) == 0) {
@@ -105,9 +105,9 @@ static audio_format_t get_audio_format()
     }
 
     if (strncmp(format, "amadec_pcm_s16be", 16) == 0) {
-	   /*TODO: get format/channel numer/sample rate etc */
-	   close(fd);
-	   return AUDIO_FORMAT_PCM_S16BE;
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_FORMAT_PCM_S16BE;
     }
 
     if (strncmp(format, "amadec_pcm_u8", 13) == 0) {
@@ -121,76 +121,76 @@ static audio_format_t get_audio_format()
         close(fd);
         return AUDIO_FORMAT_ADPCM;
     }
-	
+
     if (strncmp(format, "amadec_aac", 10) == 0) {
         /*TODO: get format/channel numer/sample rate etc */
         close(fd);
         return AUDIO_FORMAT_AAC;
     }
 
-     if (strncmp(format, "amadec_ac3", 10) == 0) {
+    if (strncmp(format, "amadec_ac3", 10) == 0) {
         /*TODO: get format/channel numer/sample rate etc */
         close(fd);
         return AUDIO_FORMAT_AC3;
     }
 
-      if (strncmp(format, "amadec_alaw", 11) == 0) {
+    if (strncmp(format, "amadec_alaw", 11) == 0) {
         /*TODO: get format/channel numer/sample rate etc */
         close(fd);
         return AUDIO_FORMAT_ALAW;
     }
 
-      if (strncmp(format, "amadec_mulaw", 12) == 0) {
+    if (strncmp(format, "amadec_mulaw", 12) == 0) {
         /*TODO: get format/channel numer/sample rate etc */
         close(fd);
         return AUDIO_FORMAT_MULAW;
     }
-	  
-      if (strncmp(format, "amadec_dts", 10) == 0) {
-	  /*TODO: get format/channel numer/sample rate etc */
-	  close(fd);
-	  return AUDIO_FORMAT_DTS;
+
+    if (strncmp(format, "amadec_dts", 10) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_FORMAT_DTS;
     }
 
-      if (strncmp(format, "amadec_flac", 11) == 0) {
-	   /*TODO: get format/channel numer/sample rate etc */
-	   close(fd);
-	   return AUDIO_FORMAT_FLAC;
+    if (strncmp(format, "amadec_flac", 11) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_FORMAT_FLAC;
     }
 
-	if(strncmp(format, "amadec_cook", 11) == 0) {
-	    /*TODO: get format/channel numer/sample rate etc */
-	    close(fd);
-	    return AUDIO_FORMAT_COOK;
+    if (strncmp(format, "amadec_cook", 11) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_FORMAT_COOK;
     }
-	if(strncmp(format, "amadec_amr", 10) == 0) {
-	    /*TODO: get format/channel numer/sample rate etc */
-	    close(fd);
-	    return AUDIO_FORMAT_AMR;
+    if (strncmp(format, "amadec_amr", 10) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_FORMAT_AMR;
     }
-	if(strncmp(format, "amadec_raac", 11) == 0) {
-	    /*TODO: get format/channel numer/sample rate etc */
-	    close(fd);
-	    return AUDIO_FORMAT_RAAC;
+    if (strncmp(format, "amadec_raac", 11) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_FORMAT_RAAC;
     }
-	  
-    if(strncmp(format, "amadec_wmapro", 13) == 0) {
+
+    if (strncmp(format, "amadec_wmapro", 13) == 0) {
         /*TODO: get format/channel numer/sample rate etc */
         close(fd);
         return AUDIO_FORMAT_WMAPRO;
-    }	
-	  if(strncmp(format, "amadec_wma", 10) == 0) {
-	    /*TODO: get format/channel numer/sample rate etc */
-	    close(fd);
-	    return AUDIO_FORMAT_WMA;
+    }
+    if (strncmp(format, "amadec_wma", 10) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_FORMAT_WMA;
     }
 
-	if(strncmp(format, "amadec_pcm_bluray", 10) == 0) {
-	    /*TODO: get format/channel numer/sample rate etc */
-	    close(fd);
-	    return AUDIO_AFORMAT_PCM_BLURAY;
+    if (strncmp(format, "amadec_pcm_bluray", 10) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_AFORMAT_PCM_BLURAY;
     }
-	
+
     close(fd);
 
     log_print(LOG_ERR, "audio format unknow.");
@@ -209,25 +209,24 @@ static int amport_init()
     if ((fd = open(AIFIFO_DEV, O_RDWR)) < 0) {
         log_print(LOG_ERR, "unable to open UIO device, %s", strerror(errno));
         return -4;
-    	}
+    }
 
     amport_reg_addr = (void*)get_num_infile(AIFIFO_ADDR);
     amport_reg_size =(int)get_num_infile(AIFIFO_SIZE);
-	amport_reg_offset=((unsigned long)amport_reg_addr) & ((pagesize-1));
+    amport_reg_offset=((unsigned long)amport_reg_addr) & ((pagesize-1));
 
-    if(amport_reg_addr==NULL || amport_reg_size==0)
-    	{
-    	   log_print(LOG_ERR,"get maped  addr and regs error=%x\n", (unsigned)amport_reg_addr);
-  	   close(fd);
-    	   return -1;
-    	}
+    if (amport_reg_addr==NULL || amport_reg_size==0) {
+        log_print(LOG_ERR,"get maped  addr and regs error=%x\n", (unsigned)amport_reg_addr);
+        close(fd);
+        return -1;
+    }
     log_print(LOG_ERR,"reg offset=%d\n",amport_reg_offset);
     log_print(LOG_INFO, "UIO mmap address: 0x%x, size: 0x%x, offset: 0x%x, pagesize: 0x%x",
-    amport_reg_addr, amport_reg_size, amport_reg_offset, pagesize);
+              amport_reg_addr, amport_reg_size, amport_reg_offset, pagesize);
 
     amport_reg_size = (amport_reg_size + pagesize - 1) & ~(pagesize - 1);
 
-    
+
 
     amport_regs = mmap(NULL, amport_reg_size,
                        PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -236,12 +235,12 @@ static int amport_init()
         close(fd);
         return -5;
     }
-     log_print(LOG_INFO, "maped reg to %x\n",amport_regs);
+    log_print(LOG_INFO, "maped reg to %x\n",amport_regs);
     amport_fd=fd;
     amport_regs = (unsigned *)((unsigned)amport_regs + amport_reg_offset);
     close(fd);
 
-	 return 0;
+    return 0;
 }
 
 static void amport_release(void)
@@ -250,142 +249,134 @@ static void amport_release(void)
         amport_regs = (unsigned *)((unsigned)amport_regs - amport_reg_offset);
 
         munmap((void *)amport_regs, amport_reg_size);
-	//close(amport_fd);
+        //close(amport_fd);
         amport_regs = MAP_FAILED;
-	 amport_fd=-1;
+        amport_fd=-1;
     }
 }
 
 inline static void wait_bits_ready(int len)
 {
-	while(!aififo_bits_ready(len) && !stop_flag)
-		{
-		usleep(1000);
-		}
+    while (!aififo_bits_ready(len) && !stop_flag) {
+        usleep(1000);
+    }
 }
 
 static int amport_get_bits(unsigned long *buf,int len)
 {
-	int fifo_ready_wait = 0;
-	wait_bits_ready(len);
-	while(!AIFIFO_READY){
-		fifo_ready_wait++;
-		usleep(1000);
-		if(fifo_ready_wait > 100){
-			 log_print(LOG_ERR,"FATAL err,AIFIFO is not ready,check!!\n");
-			return 0;
-		}	
-	}
-    	amport_regs[2] = len;
-	buf[0]=amport_regs[2];
-	return 0;
+    int fifo_ready_wait = 0;
+    wait_bits_ready(len);
+    while (!AIFIFO_READY) {
+        fifo_ready_wait++;
+        usleep(1000);
+        if (fifo_ready_wait > 100) {
+            log_print(LOG_ERR,"FATAL err,AIFIFO is not ready,check!!\n");
+            return 0;
+        }
+    }
+    amport_regs[2] = len;
+    buf[0]=amport_regs[2];
+    return 0;
 
 }
 
 
 static int amport_get_bytes(unsigned char *buffer,int size)
 {
-	int fifo_ready_wait = 0;
-	int bytes;
-	int len;
-	unsigned char *p=buffer;
-	int tmp;
-	int space;
-	int i;
-	int wait_times=0;
-	while( size >=  amport_regs[0xb]&&!stop_flag)
-		usleep(1000);
-	for(len=0;len<size;)
-	{
-					space=(size-len);
-					bytes=amport_regs[7];//READ_MPEG_REG(AIU_MEM_AIFIFO_BYTES_AVAIL);
-					wait_times=0;
-					while(bytes==0)
-					{
-							wait_bits_ready((space>128)?128*8:(space*8));		/*wait 32 bytes,
-																																			
+    int fifo_ready_wait = 0;
+    int bytes;
+    int len;
+    unsigned char *p=buffer;
+    int tmp;
+    int space;
+    int i;
+    int wait_times=0;
+    while ( size >=  amport_regs[0xb]&&!stop_flag)
+        usleep(1000);
+    for (len=0;len<size;) {
+        space=(size-len);
+        bytes=amport_regs[7];//READ_MPEG_REG(AIU_MEM_AIFIFO_BYTES_AVAIL);
+        wait_times=0;
+        while (bytes==0) {
+            wait_bits_ready((space>128)?128*8:(space*8));		/*wait 32 bytes,
+
 									if the space is less than 32 bytes,wait the space bits
-																																			
+
 									*/
-							bytes=amport_regs[7];//READ_MPEG_REG(AIU_MEM_AIFIFO_BYTES_AVAIL);
-							wait_times++;
-							if(wait_times>10)
-									goto out;
-					}
-					bytes=min(space,bytes);
-					for(i=0;i<bytes;i++)
-					{
-							//WRITE_MPEG_REG(MREG_AIU_AIFIFO_GBIT,8);
-							//tmp=READ_MPEG_REG(MREG_AIU_AIFIFO_GBIT);
-							while(!AIFIFO_READY){
-								fifo_ready_wait++;
-								usleep(1000);
-								if(fifo_ready_wait > 100){
-									 log_print(LOG_ERR,"FATAL err,AIFIFO is not ready,check!!\n");
-									return 0;
-								}	
-							}
-							amport_regs[2] = 8;
-							tmp=amport_regs[2];
-							*p++=tmp&0xff;
-					}
-					len+=bytes;
-	}
-	out:
-	//stream_in_offset+=len;
-	return len;
+            bytes=amport_regs[7];//READ_MPEG_REG(AIU_MEM_AIFIFO_BYTES_AVAIL);
+            wait_times++;
+            if (wait_times>10)
+                goto out;
+        }
+        bytes=min(space,bytes);
+        for (i=0;i<bytes;i++) {
+            //WRITE_MPEG_REG(MREG_AIU_AIFIFO_GBIT,8);
+            //tmp=READ_MPEG_REG(MREG_AIU_AIFIFO_GBIT);
+            while (!AIFIFO_READY) {
+                fifo_ready_wait++;
+                usleep(1000);
+                if (fifo_ready_wait > 100) {
+                    log_print(LOG_ERR,"FATAL err,AIFIFO is not ready,check!!\n");
+                    return 0;
+                }
+            }
+            amport_regs[2] = 8;
+            tmp=amport_regs[2];
+            *p++=tmp&0xff;
+        }
+        len+=bytes;
+    }
+out:
+    //stream_in_offset+=len;
+    return len;
 }
 
 
 static int amport_reset_bits(void)
 {
-	amport_regs[2]=0x80;
-	return 0;
+    amport_regs[2]=0x80;
+    return 0;
 }
 static int amport_bits_left(void)
 {
-	return amport_regs[1]&0x1f;
+    return amport_regs[1]&0x1f;
 }
 
 static int amport_peek_bits(unsigned  long *buf,int len)
 {
-	unsigned long tmp;
-	wait_bits_ready(len);
-	amport_regs[2] = 0x40;
-	tmp= amport_regs[2] ;
-	buf[0]=((tmp&0xff)<<8|
-			(tmp&0xff00)>>8)>>(16-len);
-	return 0;
+    unsigned long tmp;
+    wait_bits_ready(len);
+    amport_regs[2] = 0x40;
+    tmp= amport_regs[2] ;
+    buf[0]=((tmp&0xff)<<8|
+            (tmp&0xff00)>>8)>>(16-len);
+    return 0;
 }
 unsigned long get_cur_pts(adec_feeder_t *feeder)
 {
-	if(feeder->dsp_on)
-		{
-			return audiodsp_get_pts();
-		}
-	else
-		{
-		    int fd;
-		    char buf[24]="";
-		    unsigned long num=0;
-		    if ((fd = open(AUDIOPTS_PATH, O_RDONLY)) < 0) {
-		        log_print(LOG_ERR, "unable to open file %s,err: %s",AUDIOPTS_PATH, strerror(errno));
-		        return 0;
-		    }
-		    read(fd, buf, sizeof(buf));
-			close(fd);
-			if(buf[0]=='N' && buf[1]=='A')
-				return -1;/*NA is no pts valid*/
-		    num = strtoul(buf, NULL, 0);
-		   // log_print(LOG_INFO, "current audio pts= %x\n",num);
-		   return num;
-		}
+    if (feeder->dsp_on) {
+        return audiodsp_get_pts();
+    } else {
+        int fd;
+        char buf[24]="";
+        unsigned long num=0;
+        if ((fd = open(AUDIOPTS_PATH, O_RDONLY)) < 0) {
+            log_print(LOG_ERR, "unable to open file %s,err: %s",AUDIOPTS_PATH, strerror(errno));
+            return 0;
+        }
+        read(fd, buf, sizeof(buf));
+        close(fd);
+        if (buf[0]=='N' && buf[1]=='A')
+            return -1;/*NA is no pts valid*/
+        num = strtoul(buf, NULL, 0);
+        // log_print(LOG_INFO, "current audio pts= %x\n",num);
+        return num;
+    }
 }
 
-static adec_feeder_t adec_feeder =
-{
+static adec_feeder_t adec_feeder = {
     .get_bits  = amport_get_bits,
-	.get_bytes=amport_get_bytes,
+    .get_bytes=amport_get_bytes,
     .peek_bits = amport_peek_bits,
     .reset_bits=amport_reset_bits,
     .bits_left=amport_bits_left,
@@ -394,50 +385,50 @@ static adec_feeder_t adec_feeder =
 
 adec_feeder_t  *get_default_adec_feeder(void )
 {
-	return &adec_feeder;
+    return &adec_feeder;
 }
 
 adec_feeder_t * feeder_init(int dsp)
 {
-	int ret=0;
+    int ret=0;
 
-	//adec_feeder.sample_rate=44100;
-	//adec_feeder.channel_num=2;
-	//adec_feeder.data_width=16;
-	adec_feeder.format=get_audio_format();
-	adec_feeder.channel_num=get_num_infile(CHANNUM_PATH);
-	adec_feeder.data_width=get_num_infile(DATAWIDTH_PATH);
-	adec_feeder.sample_rate=get_num_infile(SAMPLE_RATE_PATH);
+    //adec_feeder.sample_rate=44100;
+    //adec_feeder.channel_num=2;
+    //adec_feeder.data_width=16;
+    adec_feeder.format=get_audio_format();
+    adec_feeder.channel_num=get_num_infile(CHANNUM_PATH);
+    adec_feeder.data_width=get_num_infile(DATAWIDTH_PATH);
+    adec_feeder.sample_rate=get_num_infile(SAMPLE_RATE_PATH);
 
-    if(adec_feeder.format==AUDIO_FORMAT_UNKNOWN){
+    if (adec_feeder.format==AUDIO_FORMAT_UNKNOWN) {
         return NULL;
     }
 
-    if(dsp == 1){
+    if (dsp == 1) {
         audiodsp_init();
-        if(audiodsp_start(&adec_feeder)==0){
+        if (audiodsp_start(&adec_feeder)==0) {
             adec_feeder.dsp_on=1;
             adec_feeder.dsp_read=audiodsp_stream_read;
-        }else{
+        } else {
             audiodsp_release();
             adec_feeder.dsp_on=0;
             adec_feeder.dsp_read=NULL;
             ret=amport_init();
         }
-    }else{
+    } else {
         adec_feeder.dsp_on=0;
         adec_feeder.dsp_read=NULL;
         ret=amport_init();
     }
 
-	return ret==0?&adec_feeder:NULL;
+    return ret==0?&adec_feeder:NULL;
 }
 
 int feeder_release(void)
 {
-	audiodsp_stop();
-	audiodsp_release();
-	amport_release();
-	adec_feeder.dsp_on=0;
-	return 0;
+    audiodsp_stop();
+    audiodsp_release();
+    amport_release();
+    adec_feeder.dsp_on=0;
+    return 0;
 }

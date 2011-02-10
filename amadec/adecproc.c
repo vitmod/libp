@@ -27,14 +27,14 @@ pthread_mutex_t decode_mutex = PTHREAD_MUTEX_INITIALIZER;
  * - 0: success.
  */
 int audio_decode_start(void)
-{	
-	pthread_mutex_lock(&decode_mutex);
-	if(adec_stat == ADEC_STAT_IDLE){
-		 if (adec_start() == 0)
-			adec_stat = ADEC_STAT_RUN; 
-	}
-	pthread_mutex_unlock(&decode_mutex);
-	return 0;
+{
+    pthread_mutex_lock(&decode_mutex);
+    if (adec_stat == ADEC_STAT_IDLE) {
+        if (adec_start() == 0)
+            adec_stat = ADEC_STAT_RUN;
+    }
+    pthread_mutex_unlock(&decode_mutex);
+    return 0;
 }
 
 /* Stop audio decode.
@@ -47,22 +47,22 @@ int audio_decode_start(void)
  */
 int audio_decode_stop(void)
 {
-	int status;
+    int status;
 
-	status = audio_init_thread_check();
-	if(!status)
-		audio_init_thread_join();
+    status = audio_init_thread_check();
+    if (!status)
+        audio_init_thread_join();
 
-	pthread_mutex_lock(&decode_mutex);
-	if ((adec_stat == ADEC_STAT_RUN) || (adec_stat == ADEC_STAT_PAUSE)){
-		if(adec_stat == ADEC_STAT_PAUSE){
-			adec_resume();
-		}
-		adec_stop();
-	}
-	adec_stat = ADEC_STAT_IDLE;
-	pthread_mutex_unlock(&decode_mutex);
-	return 0;
+    pthread_mutex_lock(&decode_mutex);
+    if ((adec_stat == ADEC_STAT_RUN) || (adec_stat == ADEC_STAT_PAUSE)) {
+        if (adec_stat == ADEC_STAT_PAUSE) {
+            adec_resume();
+        }
+        adec_stop();
+    }
+    adec_stat = ADEC_STAT_IDLE;
+    pthread_mutex_unlock(&decode_mutex);
+    return 0;
 }
 
 /* Pause audio decode.
@@ -75,12 +75,12 @@ int audio_decode_stop(void)
  */
 int audio_decode_pause(void)
 {
-	pthread_mutex_lock(&decode_mutex);
-	if (adec_stat == ADEC_STAT_RUN)
-		adec_pause();
-	adec_stat = ADEC_STAT_PAUSE;
-	pthread_mutex_unlock(&decode_mutex);	
-    	return 0;
+    pthread_mutex_lock(&decode_mutex);
+    if (adec_stat == ADEC_STAT_RUN)
+        adec_pause();
+    adec_stat = ADEC_STAT_PAUSE;
+    pthread_mutex_unlock(&decode_mutex);
+    return 0;
 }
 
 /* Resume audio decode from pause state.
@@ -93,13 +93,13 @@ int audio_decode_pause(void)
  */
 int audio_decode_resume(void)
 {
-	pthread_mutex_lock(&decode_mutex);
-	if(adec_stat == ADEC_STAT_PAUSE){
-		adec_resume();
-		adec_stat = ADEC_STAT_RUN;
-	}
-	pthread_mutex_unlock(&decode_mutex);
-	return 0;
+    pthread_mutex_lock(&decode_mutex);
+    if (adec_stat == ADEC_STAT_PAUSE) {
+        adec_resume();
+        adec_stat = ADEC_STAT_RUN;
+    }
+    pthread_mutex_unlock(&decode_mutex);
+    return 0;
 }
 
 /* Set Auto-Mute state in audio decode..
@@ -113,8 +113,8 @@ int audio_decode_resume(void)
  */
 int audio_decode_automute(int stat)
 {
-	adec_auto_mute(stat);
-	return 0;
+    adec_auto_mute(stat);
+    return 0;
 }
 
 /* Mute audio output.
@@ -128,7 +128,7 @@ int audio_decode_automute(int stat)
  */
 int audio_decode_set_mute(int flag)
 {
-	return 0;
+    return 0;
 }
 
 /* Seta udio volume.
@@ -141,5 +141,5 @@ int audio_decode_set_mute(int flag)
  */
 int audio_decode_set_volume(void)
 {
-	return 0;
+    return 0;
 }

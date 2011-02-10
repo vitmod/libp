@@ -4,16 +4,19 @@
 #include <media/AudioSystem.h>
 #include <media/AudioTrack.h>
 
-extern "C" {
+extern "C"
+{
 #include "feeder.h"
 #include "adec.h"
 #include "log.h"
 #include "libavcodec/avcodec.h"
 }
 
-namespace android {
+namespace android
+{
 
-template <typename T> inline T min(T a, T b) {
+template <typename T> inline T min(T a, T b)
+{
     return a<b ? a : b;
 }
 
@@ -37,27 +40,27 @@ void audioCallback(int event, void* user, void *info)
     char *dst =NULL;/*buffer  is NULL if not AudioTrack::EVENT_MORE_DATA */
 
     if (event != AudioTrack::EVENT_MORE_DATA) {
-	log_print(0, "audioCallback  event = %d \n", event);
+        log_print(0, "audioCallback  event = %d \n", event);
         return;
     }
-	
+
     if (buffer==NULL || buffer->size == 0) return;
-        
+
     //log_print(0, "---------------- Before ---------------");
     adec_refresh_pts();
 //log_print(0, "---------------- %x ---------------\n",buffer->i16);
-    if(pfeeder->dsp_on){
+    if (pfeeder->dsp_on) {
         len = pfeeder->dsp_read((char *)buffer->i16, buffer->size);
         buffer->size = len;
-    }else{
-        if(cur_codec){
+    } else {
+        if (cur_codec) {
             len = cur_codec->decode_frame((char *)buffer->i16, buffer->size, NULL);
             buffer->size = len;
         }
     }
 
 #if 0
-	dst = (char *)buffer->i16;
+    dst = (char *)buffer->i16;
     // DSP driver has the limitation to return at least 128 bytes
 
     // deal with cached data first
@@ -93,8 +96,8 @@ void audioCallback(int event, void* user, void *info)
     //adec_refresh_pts();
 
     buffer->size = filled;
-if(buffer->size == 0)
-	track->pause();
+    if (buffer->size == 0)
+        track->pause();
 #endif
 }
 
@@ -113,25 +116,25 @@ extern "C" int android_init(adec_feeder_t * feed)
     small_buf_init();
 
     Mutex::Autolock _l(mLock);
-    
+
     track = new AudioTrack();
     //if (track == 0 || feed==NULL || !feed->dsp_on || feed->dsp_read==NULL)
-    if (track == 0 || feed==NULL) 
+    if (track == 0 || feed==NULL)
         return -1;
 
     log_print(0, "AudioTrack created");
 
     status = track->set(AudioSystem::MUSIC,
-               feed->sample_rate,
-               AudioSystem::PCM_16_BIT,
-               (feed->channel_num == 1) ? AudioSystem::CHANNEL_OUT_MONO : AudioSystem::CHANNEL_OUT_STEREO,
-               0,       // frameCount
-               0,       // flags
-               audioCallback,
-               feed,    // user when callback
-               0,       // notificationFrames
-               0,       // shared buffer
-               0);
+                        feed->sample_rate,
+                        AudioSystem::PCM_16_BIT,
+                        (feed->channel_num == 1) ? AudioSystem::CHANNEL_OUT_MONO : AudioSystem::CHANNEL_OUT_STEREO,
+                        0,       // frameCount
+                        0,       // flags
+                        audioCallback,
+                        feed,    // user when callback
+                        0,       // notificationFrames
+                        0,       // shared buffer
+                        0);
 
     if (status != NO_ERROR) {
         log_print(0, "track->set returns %d", status);
@@ -139,34 +142,34 @@ extern "C" int android_init(adec_feeder_t * feed)
         log_print(0, "feeder channel_num %d", feed->channel_num);
     }
 
-    if(!feed->dsp_on) {
+    if (!feed->dsp_on) {
 
-        if(cur_codec != NULL && cur_codec->release != NULL){
+        if (cur_codec != NULL && cur_codec->release != NULL) {
             cur_codec->release();
             cur_codec = NULL;
         }
 
-        cur_codec = get_codec_by_fmt(feed->format);        
-        if(cur_codec == NULL){
+        cur_codec = get_codec_by_fmt(feed->format);
+        if (cur_codec == NULL) {
             log_print(1, "No codec for this format found (fmt:%d)\n",feed->format);
-        }else if(cur_codec->init!=NULL && cur_codec->init(feed, avcodecCtx)!=0) {
+        } else if (cur_codec->init!=NULL && cur_codec->init(feed, avcodecCtx)!=0) {
             log_print(1, "Codec init failed: name:%s, fmt:%d)\n",cur_codec->name, cur_codec->format);
             cur_codec = NULL;
-        }else{
+        } else {
             cur_codec->used = 1;
-			log_print(0, "get_codec_by_fmt ok: %s\n",cur_codec->name);
-        }		
+            log_print(0, "get_codec_by_fmt ok: %s\n",cur_codec->name);
+        }
     }
-	
+
 #if 0
     if (track->initCheck() == NO_ERROR) {
         track->start();
 
         log_print(0, "AudioTrack initCheck OK and started.");
 
-	track->setVolume(100.0, 100.0);
-	log_print(0, "AudioTrack set Volume !\n");
-	
+        track->setVolume(100.0, 100.0);
+        log_print(0, "AudioTrack set Volume !\n");
+
         return 0;
     }
 
@@ -184,19 +187,19 @@ extern "C" int android_start(void)
 {
     Mutex::Autolock _l(mLock);
 
-    if(!track) {
-	log_print(0, "track not init !\n");
-	return -1;
+    if (!track) {
+        log_print(0, "track not init !\n");
+        return -1;
     }
 
     if (track->initCheck() == NO_ERROR) {
-	track->start();
-	log_print(0, "AudioTrack initCheck OK and started.");
+        track->start();
+        log_print(0, "AudioTrack initCheck OK and started.");
 
-	track->setVolume(100.0, 100.0);
-	log_print(0, "AudioTrack set Volume !\n");
+        track->setVolume(100.0, 100.0);
+        log_print(0, "AudioTrack set Volume !\n");
 
-	return 0;
+        return 0;
     }
 
     delete track;
@@ -208,13 +211,13 @@ extern "C" int android_start(void)
 extern "C" int android_uninit(void)
 {
     log_print(0, "AudioTrack freed");
-	
+
     Mutex::Autolock _l(mLock);
 
     if (track)
         track->stop();
 
-    if(cur_codec != NULL && cur_codec->release !=NULL) {
+    if (cur_codec != NULL && cur_codec->release !=NULL) {
         cur_codec->release();
         cur_codec = NULL;
     }
@@ -244,7 +247,7 @@ extern "C" void android_pause(void)
 extern "C" void android_resume(void)
 {
     Mutex::Autolock _l(mLock);
-	
+
     if (track)
         return track->start();
 }
@@ -254,7 +257,7 @@ extern "C" void android_mute(int e)
     Mutex::Autolock _l(mLock);
 
     if (track)
-	 return track->mute(e);
+        return track->mute(e);
 }
 
 }
