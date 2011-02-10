@@ -73,34 +73,34 @@
 #define AMSTREAM_IOC_SUB_TYPE    _IOW(AMSTREAM_IOC_MAGIC, 0x1e, int)
 
 struct buf_status {
-        int size;
-        int data_len;
-        int free_len;
-        unsigned int read_pointer;
-        unsigned int write_pointer;
+    int size;
+    int data_len;
+    int free_len;
+    unsigned int read_pointer;
+    unsigned int write_pointer;
 };
 
 
 struct vdec_status {
-        unsigned int width;
-        unsigned int height;
-        unsigned int fps;
-        unsigned int error_count;
-        unsigned int status;
+    unsigned int width;
+    unsigned int height;
+    unsigned int fps;
+    unsigned int error_count;
+    unsigned int status;
 };
 
 struct adec_status {
-        unsigned int channels;
-        unsigned int sample_rate;
-        unsigned int resolution;
-        unsigned int error_count;
-        unsigned int status;
+    unsigned int channels;
+    unsigned int sample_rate;
+    unsigned int resolution;
+    unsigned int error_count;
+    unsigned int status;
 };
 
 struct am_io_param {
     union {
-          int data;
-          int id;//get bufstatus? //or others
+        int data;
+        int id;//get bufstatus? //or others
     };
 
     int len; //buffer size;

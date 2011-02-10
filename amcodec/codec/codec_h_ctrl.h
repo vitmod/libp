@@ -15,10 +15,10 @@
 #define  LOG_TAG    "amcodec"
 #define CODEC_PRINT(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #else
- #define CODEC_PRINT(f,s...)	fprintf(stderr,f,##s)
+#define CODEC_PRINT(f,s...)	fprintf(stderr,f,##s)
 #endif
 #else
- #define CODEC_PRINT(f,s...)
+#define CODEC_PRINT(f,s...)
 #endif
 
 #define CODEC_VIDEO_ES_DEVICE		"/dev/amstream_vbuf"
@@ -35,7 +35,7 @@ int codec_h_close(CODEC_HANDLE h);
 int codec_h_write(CODEC_HANDLE ,void *,int);
 int codec_h_read(CODEC_HANDLE,void *,int);
 int codec_h_control(CODEC_HANDLE h,int cmd,unsigned long paramter);
- 
+
 
 
 #endif

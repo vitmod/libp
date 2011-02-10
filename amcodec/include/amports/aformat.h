@@ -23,7 +23,7 @@
 #define AFORMAT_H
 
 typedef enum {
-	AFORMAT_UNKNOWN = -1,
+    AFORMAT_UNKNOWN = -1,
     AFORMAT_MPEG   = 0,
     AFORMAT_PCM_S16LE = 1,
     AFORMAT_AAC   = 2,
@@ -41,7 +41,7 @@ typedef enum {
     AFORMAT_WMA  = 14,
     AFORMAT_WMAPRO   = 15,
     AFORMAT_PCM_BLURAY	= 16,
-	AFORMAT_MAX    = 17
+    AFORMAT_MAX    = 17
 } aformat_t;
 
 #endif /* AFORMAT_H */

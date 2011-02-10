@@ -19,86 +19,86 @@
 
 void audio_start(void )
 {
-	audio_decode_start();
+    audio_decode_start();
 }
 void audio_stop(void )
 {
-	audio_decode_stop();
+    audio_decode_stop();
 }
-void audio_pause(void )	
+void audio_pause(void )
 {
-	audio_decode_pause();
+    audio_decode_pause();
 }
-void audio_resume(void )	
+void audio_resume(void )
 {
-	audio_decode_resume();
+    audio_decode_resume();
 }
 
-int codec_get_mutesta(codec_para_t *p)	
+int codec_get_mutesta(codec_para_t *p)
 {
     int ret;
-	//ret = amadec_cmd("getmute");    
+    //ret = amadec_cmd("getmute");
     return ret;
 }
 int codec_set_mute(codec_para_t *p,int mute)
 {
-	int ret;
-	//if(mute)
-		//ret=amadec_cmd("mute");
-	//else
-		//ret=amadec_cmd("unmute");
-	return ret;
+    int ret;
+    //if(mute)
+    //ret=amadec_cmd("mute");
+    //else
+    //ret=amadec_cmd("unmute");
+    return ret;
 }
 int codec_get_volume_range(codec_para_t *p,int *min,int *max)
-{	
-	return -CODEC_ERROR_IO;
+{
+    return -CODEC_ERROR_IO;
 }
 int codec_set_volume(codec_para_t *p,int val)
 {
-	int ret;
-	char buf[16];
-	sprintf(buf,"volset:%d",val);
-	//ret=amadec_cmd(buf);
-	return ret;
+    int ret;
+    char buf[16];
+    sprintf(buf,"volset:%d",val);
+    //ret=amadec_cmd(buf);
+    return ret;
 }
 int codec_get_volume(codec_para_t *p)
 {
-	int ret;
-	//ret=amadec_cmd("volget");
-	return ret;
+    int ret;
+    //ret=amadec_cmd("volget");
+    return ret;
 }
 
 int codec_set_volume_balance(codec_para_t *p,int balance)
 {
-	return -CODEC_ERROR_IO;
+    return -CODEC_ERROR_IO;
 }
 
 int codec_swap_left_right(codec_para_t *p)
 {
-	int ret;
-	//ret=amadec_cmd("swap");
-	return ret;
+    int ret;
+    //ret=amadec_cmd("swap");
+    return ret;
 }
 
 int codec_left_mono(codec_para_t *p)
 {
-	int ret;
-	//ret=amadec_cmd("leftmono");
-	return ret;
+    int ret;
+    //ret=amadec_cmd("leftmono");
+    return ret;
 }
 
 int codec_right_mono(codec_para_t *p)
 {
-	int ret;
-	//ret=amadec_cmd("rightmono");
-	return ret;
+    int ret;
+    //ret=amadec_cmd("rightmono");
+    return ret;
 }
 
 int codec_stereo(codec_para_t *p)
 {
-	int ret;
-	//ret=amadec_cmd("stereo");
-	return ret;
+    int ret;
+    //ret=amadec_cmd("stereo");
+    return ret;
 }
 
 int codec_audio_automute(int auto_mute)
@@ -115,14 +115,11 @@ int codec_audio_spectrum_switch(codec_para_t *p,int isStart,int interval)
 {
     int  ret;
     char cmd[32];
-    
-    if(isStart == 1)
-   {
-         snprintf(cmd,32,"spectrumon:%d",interval);
-         //ret=amadec_cmd(cmd);
-    }
-    else if(isStart == 0)
-    {        
+
+    if (isStart == 1) {
+        snprintf(cmd,32,"spectrumon:%d",interval);
+        //ret=amadec_cmd(cmd);
+    } else if (isStart == 0) {
         //ret=amadec_cmd("spectrumoff");
     }
 
