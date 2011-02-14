@@ -11,12 +11,14 @@
 #include <errno.h>
 #include <adecproc.h>
 #include <codec.h>
-//#include <getopt.h>
-static codec_para_t ts_codec_para;
-static codec_para_t *pcodec;
-static char sfilename[]="ahmei-1_feicui.ts";
-static char *filename=sfilename;
-static int file_fd=-1;
+#include <stdbool.h>
+
+static codec_para_t v_codec_para;
+static codec_para_t a_codec_para;
+static codec_para_t *pcodec, *apcodec, *vpcodec;
+static char filename[256]="spectmp.ts";
+FILE* fp = NULL;
+
 
 int osd_blank(char *path,int cmd)
 {
@@ -37,137 +39,150 @@ int osd_blank(char *path,int cmd)
 static void signal_handler(int signum)
 {   
 	printf("Get signum=%x\n",signum);
-	codec_close(pcodec);
-	close(file_fd);
+	codec_close(apcodec);
+	codec_close(vpcodec);
+	fclose(fp);
 	signal(signum, SIG_DFL);
 	raise (signum);
 }
 
 int main(int argc,char *argv[])
 {
-	#define READ_SIZE (32 * 1024)
+	#define READ_SIZE (500 * 1024)
 	int ret = CODEC_ERROR_NONE;
 	char buffer[READ_SIZE];
+
 	int len = 0;	
-	long long pos = 0;
 	int size = READ_SIZE;
-	uint32_t cnt = 0;	
+	uint32_t cnt = 0, pos=0,i,Readlen;	
+	uint32_t  isize,max_size,length,has_sent,type,filesize,totalsize;
+	uint64_t  pts;
+	uint32_t last_tick,tick;
+	bool s_bStopSendStream = false;
+	char  header[32],*buf;
 	
-    	printf("\n*********CODEC PLAYER DEMO************\n\n");	
-	pcodec = &ts_codec_para;
-	memset(pcodec, 0, sizeof(codec_para_t *));		
-	pcodec->video_pid = 851;
-	pcodec->audio_pid = 852;
 
-	if(argc>1)
-		filename=argv[1];
-	if(argc>2)
-		sscanf(argv[2],"%d",&pcodec->video_pid);
-	if(argc>3)
-                sscanf(argv[3],"%d",&pcodec->audio_pid);
-	
-	printf("used vid=%d,aid=%d \n",pcodec->video_pid, pcodec->audio_pid);
 
-	pcodec->video_type = VFORMAT_H264;
-    	pcodec->audio_type = AFORMAT_AAC;
-	pcodec->has_video = 1;
-	pcodec->has_audio = 1;
-	pcodec->stream_type = STREAM_TYPE_TS;	
-	
+	//buf=buffer;
+    printf("\n*********CODEC PLAYER DEMO************\n\n");
 	osd_blank("/sys/class/graphics/fb0/blank",1);
 	osd_blank("/sys/class/graphics/fb1/blank",0);
-	memset(buffer,0, READ_SIZE);
-	
-	file_fd = open(filename, O_RDWR, 0666);
-    if (file_fd < 0)
-    {
-    	printf("can't open file:%s\n",filename);
-    	return -1;
-    }
-	printf("open file:%s ok!\n",filename);
-	if(pcodec->has_audio || pcodec->has_video)
+	osd_blank("/sys/class/tsync/enable",1);
+	apcodec = &a_codec_para;
+	vpcodec = &v_codec_para;
+	memset(apcodec, 0, sizeof(codec_para_t ));	
+	memset(vpcodec, 0, sizeof(codec_para_t ));	
+	vpcodec->has_video = 1;
+	vpcodec->video_pid = 0x1022;
+	vpcodec->video_type = VFORMAT_H264;
+	if(vpcodec->video_type == VFORMAT_H264)
 	{
-again:  
-		ret = codec_init(pcodec);
-		if(ret != CODEC_ERROR_NONE)
-		{
-			printf("codec init failed, ret=-0x%x", -ret);
-			return -1;
-		}	
-		printf("codec init ok!\n");
-		pos = lseek(file_fd, 0, SEEK_SET);
-		printf("seek pos:%lld\n", pos);
-		cnt = 0;
-		do
-		{	
-			cnt++;
-			if(cnt >= 500 )
-			{
-				printf("[amplayer] stephen: test codec close --> init --> close\n");						
-				codec_close(pcodec);
-				osd_blank("/sys/class/graphics/fb0/blank",1);
-				osd_blank("/sys/class/graphics/fb1/blank",0);
-				usleep(1000*1000*10);
-				goto again;
-			}
-			len = read(file_fd, buffer, size);			
-			if(len > 0)
-			{				
-				size = 0;
-				do
-				{				    
-					ret = codec_write(pcodec,buffer,len);
-					if(ret < 0)
-					{
-						printf("codec_write ret=%d errno=%d\n",ret,errno);
-						if(errno != EAGAIN)
-						{
-							printf("codec_write failed! ret=-0x%x errno=%d\n",-ret,-errno);
-							return -2;
-						}
-						else
-							continue;
-					}
-					else
-					{
-						size += ret;
-						if(size == len)
-						{
-							//printf("write %d bytes data\n",ret);
-							break;
-						}
-						else if(size < len)
-							continue;
-						else
-						{
-							printf("write failed, want %d bytes, write %d bytes\n",len,size);
-							return -3;
-						}
-					}
-				}while(1);
-				
-			}
-			else if(len == 0)
-			{
-				printf("read eof\n");
-				sleep(10);
-				break;
-			}
-			else
-			{
-				printf("read failed! len=%d errno=%d\n",len,errno);
-				break;
-			}
-		}while(1);
-		
+#define EXTERNAL_PTS	 (1)
+#define SYNC_OUTSIDE       (2)
+	   vpcodec->am_sysinfo.param = (void *)(EXTERNAL_PTS | SYNC_OUTSIDE);
+	   //vpcodec->am_sysinfo.param = (void *)(EXTERNAL_PTS);
 	}
-	else
-		printf("No audio and No video!\n");		
-error:	
-	printf("will exit!!!!!!!!!!!!\n");
-	codec_close(pcodec);
-	close(file_fd);
-	return 0;
+	vpcodec->stream_type = STREAM_TYPE_ES_VIDEO;
+	vpcodec->am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
+	vpcodec->am_sysinfo.rate = 25;
+	vpcodec->am_sysinfo.height = 576;
+	vpcodec->am_sysinfo.width = 528;
+	vpcodec->has_audio = 1;
+	vpcodec->noblock = 0;
+
+
+	apcodec->audio_type = AFORMAT_MPEG;
+	apcodec->stream_type = STREAM_TYPE_ES_AUDIO;
+	apcodec->audio_pid = 0x1023;
+	apcodec->has_audio = 1;
+	apcodec->audio_channels = 2;
+	apcodec->audio_samplerate = 48000;
+	apcodec->noblock = 0;
+	apcodec->audio_info.channels = 2;
+	apcodec->audio_info.sample_rate = 48000;	
+
+	if((fp = fopen(filename,"rb")) == NULL)
+	{
+	   printf("open file error!\n");
+	   return -1;
+	}
+	ret = codec_init(apcodec);
+	if(ret != CODEC_ERROR_NONE)
+	{
+		printf("codec init failed, ret=-0x%x", -ret);
+		return -1;
+	}
+	ret = codec_init(vpcodec);
+	if(ret != CODEC_ERROR_NONE)
+	{
+		printf("codec init failed, ret=-0x%x", -ret);
+		return -1;
+	}
+	printf("video codec ok!\n");
+
+
+	ret = codec_init_cntl(vpcodec);
+	if( ret != CODEC_ERROR_NONE )
+	{
+		printf("codec_init_cntl error\n");
+		return -1;
+	}
+#define PTS_FREQ    90000
+#define AV_SYNC_THRESH    PTS_FREQ*30
+	codec_set_cntl_avthresh(vpcodec, AV_SYNC_THRESH);
+	codec_set_cntl_syncthresh(vpcodec, vpcodec->has_audio);
+
+//	codec_set_cntl_mode(vpcodec, 0);
 	
+
+	cnt = 0;	
+	while(!feof(fp))
+	{
+	   memset(header,0,sizeof(header));
+	   len = fread(header,1,17,fp);
+	   if(len <= 0) 
+		{
+			printf("no data!\n");
+			return -1;
+		}
+	   type=header[0];
+	   memcpy(&isize,header+1,4);
+	   memcpy(&pts,header+1+4,8);
+	   memcpy(&tick,header+1+4+8,4);
+	//   printf("type=%x,size=%x,pts=%llx,tick=%d\n",type,isize,pts,tick);
+
+	  if(type==0)
+	   {	
+		  pcodec = vpcodec;
+	   }
+	   else
+	   {
+		  pcodec = apcodec;
+	   }
+
+	  Readlen = fread(buffer, 1,isize , fp);
+	  if(Readlen <= 0)
+	  {
+		 printf("read file error!\n");
+		 rewind(fp);
+	  }
+	  codec_checkin_pts(pcodec,pts);
+	 do{
+	  ret = codec_write(pcodec, buffer, Readlen);
+	 }while(ret<0);	 
+	signal(SIGCHLD, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGHUP, signal_handler);
+    signal(SIGTERM, signal_handler);
+	signal(SIGSEGV, signal_handler);
+	}	
+error:	
+	codec_close(apcodec);
+	codec_close(vpcodec);
+	fclose(fp);
+	return 0;
+
 }
 
