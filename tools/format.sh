@@ -23,7 +23,7 @@ fi
 
 #Generate the patch
 suffix=.orig
-list=`find -name "*"${suffix}`
+list=`find ${DIR} -name "*"${suffix}`
 echo $list
 for i in $list;
 do
