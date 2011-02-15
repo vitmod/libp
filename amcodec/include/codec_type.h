@@ -15,7 +15,7 @@ typedef enum {
     STREAM_TYPE_PS,
     STREAM_TYPE_TS,
     STREAM_TYPE_RM,
-}stream_type_t;
+} stream_type_t;
 
 typedef struct {
     unsigned int    format;
@@ -37,7 +37,7 @@ typedef struct {
     int block_align;
     int extradata_size;
     char extradata[2048];;
-}audio_info_t;
+} audio_info_t;
 
 typedef struct {
     CODEC_HANDLE handle;
@@ -65,12 +65,12 @@ unsigned int noblock:
     dec_sysinfo_t am_sysinfo;
     audio_info_t audio_info; // pass to audiodsp
     int packet_size;
-}codec_para_t;
+} codec_para_t;
 
 
-#define IS_VALID_PID(t)		(t>=0 && t<=0x1fff)
-#define IS_VALID_STREAM(t)	(t>0 && t<=0x1fff)
-#define IS_VALID_ATYPE(t)	(t>=0 && t<AFORMAT_MAX)
-#define IS_VALID_VTYPE(t)	(t>=0 && t<VFORMAT_MAX)
+#define IS_VALID_PID(t)     (t>=0 && t<=0x1fff)
+#define IS_VALID_STREAM(t)  (t>0 && t<=0x1fff)
+#define IS_VALID_ATYPE(t)   (t>=0 && t<AFORMAT_MAX)
+#define IS_VALID_VTYPE(t)   (t>=0 && t<VFORMAT_MAX)
 
 #endif

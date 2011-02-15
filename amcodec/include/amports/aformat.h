@@ -27,7 +27,7 @@ typedef enum {
     AFORMAT_MPEG   = 0,
     AFORMAT_PCM_S16LE = 1,
     AFORMAT_AAC   = 2,
-    AFORMAT_AC3   =3,
+    AFORMAT_AC3   = 3,
     AFORMAT_ALAW = 4,
     AFORMAT_MULAW = 5,
     AFORMAT_DTS = 6,
@@ -40,7 +40,7 @@ typedef enum {
     AFORMAT_RAAC  = 13,
     AFORMAT_WMA  = 14,
     AFORMAT_WMAPRO   = 15,
-    AFORMAT_PCM_BLURAY	= 16,
+    AFORMAT_PCM_BLURAY  = 16,
     AFORMAT_MAX    = 17
 } aformat_t;
 

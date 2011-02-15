@@ -55,9 +55,9 @@ const char * codec_error_msg(int error)
         return "invalid operate";
     }
 }
-void print_error_msg(int error,char *func,int line)
+void print_error_msg(int error, char *func, int line)
 {
-    CODEC_PRINT("Error=%x,%s,func=%s,line=%d\n",error,codec_error_msg(error),func,line);
+    CODEC_PRINT("Error=%x,%s,func=%s,line=%d\n", error, codec_error_msg(error), func, line);
 }
 
 
