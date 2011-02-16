@@ -589,6 +589,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             if(!url_is_streamed(pb) && !(s->flags & AVFMT_FLAG_IGNIDX)){
                 memset(&odml_audio_duration, 0, sizeof(odml_audio_duration));
                 read_braindead_odml_indx(s, 0);
+				s->seekable = 1;
             }
             url_fseek(pb, i+size, SEEK_SET);
             break;
