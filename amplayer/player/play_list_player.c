@@ -3,7 +3,6 @@
 #include <time.h> 
 #include <pthread.h>
 #include <player.h>
-
 #include "player_priv.h"
 #include "play_list.h"
 
@@ -61,6 +60,34 @@ static int play_list_play_file(char *filename,unsigned long args,int first)
 	log_print("[%s]list->filename=%s\n",__FUNCTION__,plist_ctrl->file_name);
 	return player_start(plist_ctrl,priv);	
 }
+
+static int match_ext(const char *filename, const char *extensions)
+{
+    const char *ext, *p;
+    char ext1[32], *q;
+
+    if(!filename)
+        return 0;
+
+    ext = strrchr(filename, '.');
+    if (ext) {
+        ext++;
+        p = extensions;
+        for(;;) {
+            q = ext1;
+            while (*p != '\0' && *p != ',' && (unsigned int)(q-ext1)<sizeof(ext1)-1)
+                *q++ = *p++;
+            *q = '\0';
+            if (!strcasecmp(ext1, ext))
+                return 1;
+            if (*p == '\0')
+                break;
+            p++;
+        }
+    }
+    return 0;
+}
+
 int play_list_update_state(int pid,player_info_t *info) 
 {
 	player_info_t new_info;

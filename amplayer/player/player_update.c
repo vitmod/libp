@@ -10,6 +10,7 @@
 #include <player_set_sys.h>
 
 #include "player_update.h"
+#include "player_av.h"
 #include "thread_mgt.h"
 
 
@@ -366,7 +367,7 @@ static unsigned int handle_current_time(play_para_t *para,unsigned int scr, unsi
     //if(sta == PLAYER_STOPED || sta == PLAYER_INITING)    
     if(sta < PLAYER_RUNNING)
         return 0;
-    if(pts == -1)
+    if(pts == 0xffffffff)
 		return 0;
     if(!para->playctrl_info.pts_valid)
     {

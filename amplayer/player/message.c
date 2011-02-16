@@ -7,7 +7,6 @@
 
 #include "player_priv.h"
 #include "player_update.h"
-#include "play_list.h"
 #include "thread_mgt.h"
 
 

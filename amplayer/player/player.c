@@ -21,12 +21,27 @@
 #include "player_hwdec.h"
 #include "thread_mgt.h"
 #include "stream_decoder.h"
+#include "player_ffmpeg_ctrl.h"
 #include <adec.h>
 
 #define BREAK_FLAG      0x01
 #define CONTINUE_FLAG   0x02
 #define NONO_FLAG       0x00
 
+/******************************
+ * reset subtitle prop
+ ******************************/
+static void release_subtitle()
+{
+	set_subtitle_num(0);
+	set_subtitle_fps(0);
+	set_subtitle_subtype(0);
+	set_subtitle_startpts(0);
+}
+
+/******************************
+ * release player play info
+ ******************************/
 static int player_para_release(play_para_t *para)
 {
     int i;
@@ -81,8 +96,7 @@ static int player_para_release(play_para_t *para)
     } 
 	if(para->pFormatCtx!=NULL)
 	{
-		av_close_input_file(para->pFormatCtx);
-		//av_free((p_para->pFormatCtx));
+		av_close_input_file(para->pFormatCtx);		
 		para->pFormatCtx = NULL; 
 	} 
     if(para->decoder && para->decoder->release)
@@ -94,15 +108,17 @@ static int player_para_release(play_para_t *para)
 	{
 		FREE(para->file_name);
 		para->file_name = NULL;
-	}
-	//reset subtitle prop
-	set_subtitle_num(0);
-	set_subtitle_fps(0);
-	set_subtitle_subtype(0);
-	set_subtitle_startpts(0);
+	}	
+	release_subtitle();
+	
     return PLAYER_SUCCESS;
 }
 
+/******************************
+ * check decoder status
+ * if rm decoder error, 
+ * need reset decoder
+ ******************************/
 static int check_decoder_worksta(play_para_t *para)
 {      
     #define PARSER_ERROR_WRONG_PACKAGE_SIZE 0x80
@@ -111,6 +127,7 @@ static int check_decoder_worksta(play_para_t *para)
     codec_para_t *codec;
     struct vdec_status vdec;   
     int ret;
+	
     if ( para->vstream_info.video_format == VFORMAT_SW )
     	return PLAYER_SUCCESS;
     if(para->vstream_info.has_video)
@@ -158,6 +175,9 @@ static int check_decoder_worksta(play_para_t *para)
     return PLAYER_SUCCESS;
 }
 
+/******************************
+ * get audio codec pointer
+ ******************************/
 codec_para_t *get_audio_codec(play_para_t *player)
 {
     if(player->stream_type == STREAM_ES ||
@@ -171,6 +191,9 @@ codec_para_t *get_audio_codec(play_para_t *player)
     }        
 }
 
+/******************************
+ * get video codec pointer
+ ******************************/
 codec_para_t *get_video_codec(play_para_t *player)
 {
     if(player->stream_type == STREAM_ES ||
@@ -280,6 +303,12 @@ int check_flag(play_para_t *p_para)
 {
     player_cmd_t *msg = NULL;	
 	int ret= 0;
+	AVFormatContext *pFormat = p_para->pFormatCtx;
+    AVStream *pStream;
+    AVCodecContext *pCodec;
+	int find_subtitle_index = 0;
+	unsigned int i=0;
+	int subtitle_curr = av_get_subtitle_curr();
   
     msg = get_message(p_para);	//msg: pause, resume, timesearch,add file, rm file, move up, move down,... 
 	if(msg)
@@ -364,18 +393,13 @@ int check_flag(play_para_t *p_para)
 
 	if(p_para->sstream_info.has_sub == 0)
 		return NONO_FLAG;
-
-	int subtitle_curr = av_get_subtitle_curr();
+	
 	if(subtitle_curr >=0 && subtitle_curr < p_para->sstream_num && \
 		subtitle_curr != p_para->sstream_info.cur_subindex)
     {
     	log_print("start change subtitle from %d to %d \n", p_para->sstream_info.cur_subindex,subtitle_curr);
 		//find new stream match subtitle_curr
-		AVFormatContext *pFormat = p_para->pFormatCtx;
-	    AVStream *pStream;
-	    AVCodecContext *pCodec;
-		int find_subtitle_index = 0;
-		int i=0;
+		
 		for (i=0; i<pFormat->nb_streams; i++)
     	{
     		pStream = pFormat->streams[i];

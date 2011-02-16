@@ -16,7 +16,7 @@ typedef enum
 
 typedef struct 
 {
-	int disp_mode;
+	display_mode disp_mode;
 	int osd_disble_coordinate[8];	
 	int osd_enable_coordinate[8];
 	int video_enablecoordinate[4];

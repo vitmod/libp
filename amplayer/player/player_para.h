@@ -39,7 +39,7 @@ typedef struct
     int             vdec_buf_len;
     unsigned int    vdec_buf_rp;
     int             extradata_size;
-    unsigned char   *extradata;
+    uint8_t   			*extradata;
 }v_stream_info_t;
 
 typedef struct
@@ -57,7 +57,7 @@ typedef struct
     unsigned int    adec_buf_rp;
     float		    audio_duration;				
 	int				extradata_size;
-	unsigned char	*extradata;
+	uint8_t			*extradata;
 }a_stream_info_t;
 
 typedef struct

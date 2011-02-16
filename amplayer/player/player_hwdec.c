@@ -88,7 +88,7 @@ int extract_adts_header_info(play_para_t *para)
 	AVCodecContext  *pCodecCtx;
 	int aidx = para->astream_info.audio_index;
 	uint8_t *p ;	
-	char *buf;
+	uint8_t *buf;
 	int i;
 	if (aidx == -1)
     {
@@ -159,16 +159,16 @@ int extract_adts_header_info(play_para_t *para)
 
 void adts_add_header(play_para_t *para, am_packet_t *pkt)
 {		
-	char *buf ;
+	unsigned char *buf ;
 	int i;
 	int size = ADTS_HEADER_SIZE + pkt->data_size;	// 13bit valid	
 	size &= 0x1fff;
 	buf = para->astream_info.extradata;
 	if(para->astream_info.extradata)
 	{
-		buf[3] = buf[3] & 0xfc | (size >> 11);
+		buf[3] = (buf[3] & 0xfc) | (size >> 11);
 		buf[4] = (size >> 3) & 0xff;					
-		buf[5] = buf[5] & 0x1f | ((size & 0x7) << 5);	
+		buf[5] = (buf[5] & 0x1f) | ((size & 0x7) << 5);	
 		if(para->astream_info.extradata_size == ADTS_HEADER_SIZE)
 		{	
 			MEMCPY(pkt->hdr->data,para->astream_info.extradata,para->astream_info.extradata_size);	

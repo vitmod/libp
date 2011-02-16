@@ -342,6 +342,11 @@ static int set_decode_para(play_para_t*am_p)
 	AVCodecContext  *pCodecCtx;		
 	signed short audio_index = am_p->astream_info.audio_index;   
 	int ret = -1;
+	#define REAL_COOKINFO_SIZE (2048)
+	int rev_byte=0;
+	int total_rev_bytes = 0;
+	unsigned char* buf;
+	ByteIOContext *pb = am_p->pFormatCtx->pb;
 	
     get_stream_info(am_p);		
 
@@ -450,12 +455,7 @@ static int set_decode_para(play_para_t*am_p)
     	}       
 		else if(am_p->astream_info.audio_format == AFORMAT_COOK ||
 			    am_p->astream_info.audio_format == AFORMAT_RAAC)
-		{
-			#define REAL_COOKINFO_SIZE (2048)
-			int rev_byte=0;
-			int total_rev_bytes = 0;
-			char* buf;
-			ByteIOContext *pb = am_p->pFormatCtx->pb;
+		{			
 			log_print("[%s:%d]get real auido header info...\n",__FUNCTION__,__LINE__);			
             url_fseek(pb, 0, SEEK_SET); // get cook info from the begginning of the file
 			buf = MALLOC(REAL_COOKINFO_SIZE);
@@ -463,7 +463,8 @@ static int set_decode_para(play_para_t*am_p)
 			{
             	do
 	            {
-	                rev_byte = get_buffer(pb,(buf+total_rev_bytes),(REAL_COOKINFO_SIZE-total_rev_bytes));     
+	            	buf += total_rev_bytes;
+	                rev_byte = get_buffer(pb,buf,(REAL_COOKINFO_SIZE-total_rev_bytes));     
 	                log_print("[%s:%d]rev_byte=%d total=%d\n",__FUNCTION__,__LINE__,rev_byte,total_rev_bytes);
 	                if(rev_byte < 0)
 	                {
@@ -746,11 +747,11 @@ static void subtitle_para_init(play_para_t *player)
 		set_subtitle_subtype(0);
 	if(player->astream_info.start_time != -1){
 		set_subtitle_startpts(player->astream_info.start_time);
-		log_print("player set startpts is %x\n\n",player->astream_info.start_time);
+		log_print("player set startpts is 0x%llx\n",player->astream_info.start_time);
 	}
 	else if(player->vstream_info.start_time != -1){
 		set_subtitle_startpts(player->vstream_info.start_time);
-		log_print("player set startpts is %x\n\n",player->vstream_info.start_time);
+		log_print("player set startpts is 0x%llx\n",player->vstream_info.start_time);
 	}
 	else
 		set_subtitle_startpts(0);
@@ -838,7 +839,7 @@ int player_dec_init(play_para_t *p_para)
 		}
 		
 	}
-    log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld file_type=%d stream_type=%d full_time=%lld(0x%llx)\n",__LINE__,p_para->pFormatCtx->bit_rate,p_para->file_size,p_para->file_type,p_para->stream_type,p_para->state.full_time,p_para->state.full_time);
+    log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld file_type=%d stream_type=%d full_time=%d\n",__LINE__,p_para->pFormatCtx->bit_rate,p_para->file_size,p_para->file_type,p_para->stream_type,p_para->state.full_time);
 	
 	if(p_para->pFormatCtx->iformat->flags & AVFMT_NOFILE) 
     {

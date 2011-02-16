@@ -405,7 +405,9 @@ static int player_status_revert2old(player_status newsta)
 		case PLAYER_PLAYEND:
 			return 8;
 		case PLAYER_STOPED:
-			return 1;
+			return 1;		
+		default: 
+			;
 	}
 	return -1;
 }
