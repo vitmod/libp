@@ -3,6 +3,8 @@
 #include <utils/threads.h>
 #include <media/AudioSystem.h>
 #include <media/AudioTrack.h>
+#include <binder/IPCThreadState.h>
+#include <binder/ProcessState.h>
 
 extern "C"
 {
@@ -261,4 +263,10 @@ extern "C" void android_mute(int e)
         return track->mute(e);
 }
 
+extern "C" void android_basic_init()
+{
+    Mutex::Autolock _l(mLock);
+
+    sp<ProcessState> proc(ProcessState::self());
+}
 }
