@@ -13,7 +13,7 @@ DIR=$PWD
 line=`sed -n 1p /tmp/astyle.log`
 DIR=`dirname $line`
 
-#The needn;t /tmp/astyle.log any more, delete it.
+#We needn't /tmp/astyle.log any more, delete it.
 rm -rf /tmp/astyle.log
 
 #Check if the patch file existed
@@ -27,7 +27,7 @@ list=`find ${DIR} -name "*"${suffix}`
 echo $list
 for i in $list;
 do
-        filename=`echo $i | sed 's/'${suffix}'$//'`;
-        diff -Nura $filename${suffix} $filename >> ${DIR}/linux_style.patch;
+	filename=`echo $i | sed 's/'${suffix}'$//'`;
+	diff -Nura $filename${suffix} $filename >> ${DIR}/linux_style.patch;
 	rm -rf $filename${suffix}
 done
