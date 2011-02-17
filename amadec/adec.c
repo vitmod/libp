@@ -77,6 +77,7 @@ static int audio_init_thread(void)
 
 int adec_start()
 {
+    android_basic_init();
     first_audio_frame = 1;
     if (adec_automute_cmd) {
         adec_automute_stat = 1;
