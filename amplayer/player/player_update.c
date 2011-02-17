@@ -456,7 +456,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 {   
     unsigned int pcr_scr = 0, vpts = 0, apts = 0; 
     unsigned int ctime = 0; 	
-	
+	#if 0
 	if(get_pts_discontinue() && 
 	  ((p_para->stream_type == STREAM_PS)||(p_para->pFormatCtx && p_para->pFormatCtx->pb && url_support_time_seek(p_para->pFormatCtx->pb))))
 	{    
@@ -464,6 +464,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 		set_tsync_discontinue(0);
 		log_info("[%s:%d]pts discontinue, point=%d\n",__FUNCTION__,__LINE__,p_para->discontinue_point);
 	}
+	#endif
     if(p_para->vstream_info.has_video && p_para->astream_info.has_audio)
     {            
         pcr_scr = get_pts_pcrscr();

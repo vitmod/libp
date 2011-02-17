@@ -47,4 +47,5 @@ int set_fb0_scale_width(int width);
 int set_fb0_scale_height(int height);
 int set_fb1_scale_width(int width);
 int set_fb1_scale_height(int height);
+int check_audiodsp_fatal_err();
 #endif
