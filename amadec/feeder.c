@@ -221,7 +221,7 @@ static int amport_init()
         return -1;
     }
     log_print(LOG_ERR,"reg offset=%d\n",amport_reg_offset);
-    log_print(LOG_INFO, "UIO mmap address: 0x%x, size: 0x%x, offset: 0x%x, pagesize: 0x%x",
+    log_print(LOG_INFO, "UIO mmap address: 0x%p, size: 0x%x, offset: 0x%x, pagesize: 0x%x",
               amport_reg_addr, amport_reg_size, amport_reg_offset, pagesize);
 
     amport_reg_size = (amport_reg_size + pagesize - 1) & ~(pagesize - 1);
@@ -235,7 +235,7 @@ static int amport_init()
         close(fd);
         return -5;
     }
-    log_print(LOG_INFO, "maped reg to %x\n",amport_regs);
+    log_print(LOG_INFO, "maped reg to %p\n",amport_regs);
     amport_fd=fd;
     amport_regs = (unsigned *)((unsigned)amport_regs + amport_reg_offset);
     close(fd);

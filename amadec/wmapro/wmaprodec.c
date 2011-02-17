@@ -1,3 +1,4 @@
+#include "log.h"
 #include "adec.h"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -13,6 +14,8 @@ static uint8_t * audio_buf = NULL;
 static adec_feeder_t * wmapro_feeder = NULL;
 static AVCodec * wmapro_codec = NULL;
 static AVCodecContext * wmapro_ctx = NULL;
+
+extern int register_audio_codec(am_codec_struct *codec);
 
 int WMAPro_init(adec_feeder_t *feeder, void * arg)
 {
@@ -52,7 +55,7 @@ int WMAPro_release(void)
 }
 
 
-static inline int WMAPro_read(char *buf,int size)
+static inline int WMAPro_read(unsigned char *buf,int size)
 {
         return wmapro_feeder->get_bytes(buf, size);
 }

@@ -214,8 +214,9 @@ extern "C" int android_uninit(void)
 
     Mutex::Autolock _l(mLock);
 
-    if (track)
+    if (track) {
         track->stop();
+    }
 
     if (cur_codec != NULL && cur_codec->release !=NULL) {
         cur_codec->release();

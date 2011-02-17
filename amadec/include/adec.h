@@ -92,5 +92,13 @@ typedef enum {
         E_INUSED,
         E_NO,
 }register_error_t;
+
 int adec_refresh_pts(void);
+int audio_init_thread_check(void);
+void audio_init_thread_join(void);
+void adec_auto_mute(int auto_mute);
+int avsync_control(int flag);
+int track_switch_pts(void);
+int decode_stopped(void);
+
 #endif /* ADEC_H */

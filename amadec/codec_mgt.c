@@ -10,8 +10,8 @@
 #include "include/log.h"
 #include "include/adec.h"
 
-extern int register_pcm_codec(void);
-extern int register_adpcm_codec(void);
+extern int register_wmapro_codec(void);
+extern int register_aac_codec(void);
 
 static am_codec_struct *audio_codec_list[AUDIO_FORMAT_MAX];
 

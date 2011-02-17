@@ -63,6 +63,8 @@ int pause_flag = 0;
 
 AVCodecContext* avcodecCtx = NULL;
 
+extern int audio_codec_init();
+
 static int audio_init_thread(void)
 {
     int ret;
@@ -150,20 +152,20 @@ int adec_pts_start(void)
 
         read(fd, buf, sizeof(buf));
         close(fd);
-        if (sscanf(buf, "0x%x", &pts) < 1) {
+        if (sscanf(buf, "0x%lx", &pts) < 1) {
             log_print(LOG_ERR, "unable to get apts from: %s", buf);
             return -1;
         }
     }
 
-    log_print(LOG_INFO, "audio pts start from 0x%x", pts);
+    log_print(LOG_INFO, "audio pts start from 0x%lx", pts);
 
     file=TSYNC_EVENT;
     if ((fd = open(file, O_WRONLY)) < 0) {
         log_print(LOG_ERR, "unable to open file %s,err: %s",file, strerror(errno));
         return -1;
     }
-    sprintf(buf,"AUDIO_START:0x%x",pts);
+    sprintf(buf,"AUDIO_START:0x%lx",pts);
     write(fd,buf,strlen(buf));
     close(fd);
     return 0;
@@ -223,7 +225,7 @@ int adec_refresh_pts(void)
     read(fd,buf,sizeof(buf));
     close(fd);
 
-    if (sscanf(buf,"0x%x",&systime) < 1) {
+    if (sscanf(buf,"0x%lx",&systime) < 1) {
         log_print(LOG_ERR, "unable to getsystime %s", buf);
         close(fd);
         return -1;
@@ -241,16 +243,16 @@ int adec_refresh_pts(void)
 
     if ((abs(pts-last_pts) > APTS_DISCONTINUE_THRESHOLD) && (last_pts_valid)) {
         /* report audio time interruption */
-        log_print(LOG_INFO, "pts=%x,last pts=%x\n",pts,last_pts);
+        log_print(LOG_INFO, "pts=%lx,last pts=%lx\n",pts,last_pts);
         file = TSYNC_EVENT;
         if ((fd = open(file, O_RDWR)) < 0) {
             log_print(LOG_ERR, "unable to open file %s,err: %s", file, strerror(errno));
             return -1;
         }
         adec_feeder_t *feeder=get_default_adec_feeder();
-        log_print(LOG_INFO, "audio time interrupt: 0x%x->0x%x, 0x%x\n", last_pts, pts, abs(pts-last_pts));
+        log_print(LOG_INFO, "audio time interrupt: 0x%lx->0x%lx, 0x%lx\n", last_pts, pts, abs(pts-last_pts));
 
-        sprintf(buf, "AUDIO_TSTAMP_DISCONTINUITY:0x%x",pts);
+        sprintf(buf, "AUDIO_TSTAMP_DISCONTINUITY:0x%lx",pts);
         write(fd,buf,strlen(buf));
         close(fd);
 
@@ -274,10 +276,10 @@ int adec_refresh_pts(void)
         return -1;
     }
 
-    log_print(LOG_INFO, "report apts as %d,system pts=%d, difference= %d\n",
+    log_print(LOG_INFO, "report apts as %ld,system pts=%ld, difference= %ld\n",
               pts,systime, pts-systime);
 
-    sprintf(buf,"0x%x",pts);
+    sprintf(buf,"0x%lx",pts);
     write(fd,buf,strlen(buf));
     close(fd);
 
@@ -476,7 +478,7 @@ int adec_init(void * arg)
  *  - -1: failed.
  *  - 0: success.
  */
-void avsync_control(int flag)
+int avsync_control(int flag)
 {
     int fd;
     char *path = "/sys/class/tsync/enable";
@@ -522,7 +524,7 @@ int track_switch_pts(void)
     read(fd,buf,sizeof(buf));
     close(fd);
 
-    if (sscanf(buf,"0x%x",&pcr) < 1) {
+    if (sscanf(buf,"0x%lx",&pcr) < 1) {
         log_print(LOG_ERR, "unable to get pcr %s", buf);
         close(fd);
         return 1;
