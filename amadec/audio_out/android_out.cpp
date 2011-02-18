@@ -267,6 +267,6 @@ extern "C" void android_basic_init()
 {
     Mutex::Autolock _l(mLock);
 
-    sp<ProcessState> proc(ProcessState::self());
+    //sp<ProcessState> proc(ProcessState::self());
 }
 }
