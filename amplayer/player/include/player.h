@@ -27,36 +27,37 @@ int     player_sid(int pid,int sub_id);
 int 	player_progress_exit(void);
 int     player_list_allpid(pid_info_t *pid);
 int     check_pid_valid(int pid);
-player_status 	player_get_state(int pid);
-int 			player_get_play_info(int pid,player_info_t *info);
-int 			player_get_media_info(int pid,media_info_t *minfo);
-unsigned long 	player_get_extern_priv(int pid);
-int player_video_overlay_en(unsigned enable);
-int player_start_play(int pid);
+int 	player_get_play_info(int pid,player_info_t *info);
+int 	player_get_media_info(int pid,media_info_t *minfo);
+int 	player_video_overlay_en(unsigned enable);
+int 	player_start_play(int pid);
 
-int audio_set_mute(int pid,int mute);
-int audio_get_volume_range(int pid,int *min,int *max);
-int audio_set_volume(int pid,int val);
-int audio_get_volume(int pid);
-int audio_set_volume_balance(int pid,int balance);
-int audio_swap_left_right(int pid);
-int audio_left_mono(int pid);
-int audio_right_mono(int pid);
-int audio_stereo(int pid);
-int audio_set_spectrum_switch(int pid,int isStart,int interval);
-int player_register_update_callback(callback_t *cb,update_state_fun_t up_fn,int interval_s);
-char * player_status2str(player_status status);
+player_status 	player_get_state(int pid);
+unsigned int 	player_get_extern_priv(int pid);
+
+int 	audio_set_mute(int pid,int mute);
+int 	audio_get_volume_range(int pid,int *min,int *max);
+int 	audio_set_volume(int pid,int val);
+int 	audio_get_volume(int pid);
+int 	audio_set_volume_balance(int pid,int balance);
+int 	audio_swap_left_right(int pid);
+int 	audio_left_mono(int pid);
+int 	audio_right_mono(int pid);
+int 	audio_stereo(int pid);
+int 	audio_set_spectrum_switch(int pid,int isStart,int interval);
+int 	player_register_update_callback(callback_t *cb,update_state_fun_t up_fn,int interval_s);
+char 	*player_status2str(player_status status);
 
 //control interface
-int         player_loop(int pid);
-int         player_noloop(int pid);
+int     player_loop(int pid);
+int     player_noloop(int pid);
 
-int check_url_type(char *filename);
-int play_list_player(play_control_t *pctrl,unsigned long priv);
+int 	check_url_type(char *filename);
+int 	play_list_player(play_control_t *pctrl,unsigned long priv);
 
 //freescale
-int enable_freescale(int cfg);
-int disable_freescale(int cfg);
+int 	enable_freescale(int cfg);
+int 	disable_freescale(int cfg);
 
 #ifdef  __cplusplus
 }

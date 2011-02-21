@@ -666,11 +666,7 @@ int read_av_packet(play_para_t *para, am_packet_t *pkt)
 			log_print("non raw read failed!\n");
 			return ret;
 		}
-	}
-    if(ret == PLAYER_RD_AGAIN)
-    {                    
-        para->playctrl_info.need_reset = 1;
-    }
+	}    
 	return ret;
 }
 

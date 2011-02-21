@@ -130,6 +130,7 @@ static int check_decoder_worksta(play_para_t *para)
 	
     if ( para->vstream_info.video_format == VFORMAT_SW )
     	return PLAYER_SUCCESS;
+	
     if(para->vstream_info.has_video)
     {
         if(para->vcodec)
@@ -153,17 +154,7 @@ static int check_decoder_worksta(play_para_t *para)
                     if((vdec.status >> 16) & (PARSER_ERROR_WRONG_PACKAGE_SIZE|PARSER_ERROR_WRONG_HEAD_VER))
                     {   
                         log_print("pid[%d]::[%s:%d]find decoder error! curtime=%d lastime=%d \n",para->player_id,__FUNCTION__, __LINE__,para->state.current_time,para->state.last_time);
-                        if(para->playctrl_info.need_reset)
-                        {
-                            para->playctrl_info.time_point = para->state.current_time;                          
-                            para->playctrl_info.need_reset = 0; 
-                            log_print("pid[%d]::[%s:%d]time=%d ret=%d\n",para->player_id,__FUNCTION__, __LINE__,para->playctrl_info.time_point,ret);
-
-                        }
-                        else
-                        {
-                            para->playctrl_info.time_point = para->state.current_time;   
-                        }
+                        para->playctrl_info.time_point = para->state.current_time;               
                         para->playctrl_info.reset_flag = 1;
                         para->playctrl_info.end_flag = 1;                          
                         log_print("pid[%d}::[%s:%d]time=%d ret=%d\n",para->player_id,__FUNCTION__, __LINE__,para->playctrl_info.time_point,ret);
@@ -180,7 +171,6 @@ static int check_decoder_worksta(play_para_t *para)
 			para->playctrl_info.reset_flag = 1;
             para->playctrl_info.end_flag = 1;                          
             log_print("adec err::[%s:%d]time=%d ret=%d\n",__FUNCTION__, __LINE__,para->playctrl_info.time_point,ret);
-                    
 		}
 	}
     return PLAYER_SUCCESS;
@@ -236,7 +226,6 @@ static void check_msg(play_para_t *para,player_cmd_t *msg)
             para->playctrl_info.search_flag = 1;
             para->playctrl_info.time_point = msg->param;      
             para->playctrl_info.end_flag = 1;
-            para->playctrl_info.need_reset = 0;    			
         }
 		else if(msg->param == para->state.full_time)
 		{

@@ -85,12 +85,10 @@ typedef  struct
     unsigned int pts_valid:1;
     unsigned int sync_flag:1;
     unsigned int reset_flag:1;
-    unsigned int need_reset:1;
     unsigned int no_audio_flag:1;
     unsigned int no_video_flag:1;
     unsigned int has_sub_flag:1;
     unsigned int loop_flag:1;
-    unsigned int is_started:1;
     unsigned int black_out:1;
     unsigned int raw_mode:1;
     unsigned int pause_flag:1;
@@ -107,7 +105,6 @@ typedef  struct
 	int	read_max_retry_cnt;
 }p_ctrl_info_t;
 
-//void player_para_init(struct play_para *p_para);
 int player_dec_init(struct play_para *p_para);
 int player_decoder_init(struct play_para *p_para);
 void player_para_reset(struct play_para *para);

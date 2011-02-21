@@ -104,7 +104,7 @@ int check_audiodsp_fatal_err()
         fatal_err = strtol(bcmd, NULL, 16);       
         fatal_err &= 0x1;
     	close(fd);  
-		if(fatal_err)
+		if(fatal_err == 1)
 			log_print("[%s]get audio dsp fatal error:%d, need reset!\n",__FUNCTION__,fatal_err);
 	}
 	return fatal_err;
