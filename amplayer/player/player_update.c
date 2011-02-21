@@ -481,8 +481,10 @@ static unsigned int get_current_time(play_para_t *p_para)
     {
         pcr_scr = get_pts_pcrscr();
         ctime = pcr_scr;
-    }	    
-    log_debug("===[get_current_time] current_time=0x%x (%d)\n",ctime, ctime/PTS_FREQ);
+    }	 
+	if(ctime == 0)
+    	log_print("[get_current_time] curtime=0x%x pcr=0x%x apts=0x%x vpts=0x%x\n",ctime, pcr_scr,apts,vpts);
+	log_debug("===[get_current_time] current_time=0x%x (%d)\n",ctime, ctime/PTS_FREQ);
     return ctime;
 }
 static void update_current_time(play_para_t *p_para)
@@ -497,6 +499,7 @@ static void update_current_time(play_para_t *p_para)
 	        time = (unsigned int)p_para->playctrl_info.time_point;
 			p_para->state.current_time = time;
 			p_para->state.current_ms = time * 1000;
+			log_print("[update_current_time]ff/fb:time=%d\n",time);
 	    }
 	    else  
 	    {        
@@ -531,6 +534,7 @@ static void update_current_time(play_para_t *p_para)
 
 	    		}
 	        }
+			
 			log_debug("[update_current_time:%d]time=%d discontinue=%d\n",__LINE__,time/PTS_FREQ,p_para->discontinue_point);
 	        if((time/PTS_FREQ) < p_para->discontinue_point && p_para->discontinue_point > 0)
 			{
