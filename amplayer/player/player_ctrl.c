@@ -364,7 +364,7 @@ player_status player_get_state(int pid)
     player_close_pid_data(pid);
     return status;
 }
-unsigned long player_get_extern_priv(int pid)
+unsigned int player_get_extern_priv(int pid)
 {
     unsigned long externed;
     play_para_t *player_para;
