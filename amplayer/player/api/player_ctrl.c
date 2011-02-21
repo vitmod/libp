@@ -1,5 +1,5 @@
 /**
- * @file esparser.c
+ * @file player_ctrl.c
  * @brief  
  * @author Xu Hui <hui.xu@amlogic.com>
  * @version 1.0.0
