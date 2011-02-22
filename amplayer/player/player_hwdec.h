@@ -5,29 +5,29 @@
 #include "player_av.h"
 #include "player_priv.h"
 
-#define ADTS_HEADER_SIZE		(7)
-#define HDR_BUF_SIZE				(1024)
+#define ADTS_HEADER_SIZE        (7)
+#define HDR_BUF_SIZE                (1024)
 
-typedef struct{
-		unsigned short syncword;		
-		unsigned short aac_frame_length;
-		unsigned short adts_buffer_fullness;
-		
-		unsigned char id:1;
-		unsigned char layer:2;
-		unsigned char protection_absent:1;		
-		unsigned char profile:2;		
-		unsigned char original_copy:1;
-		unsigned char home:1;
-		
-		unsigned char sample_freq_idx:4;
-		unsigned char private_bit:1;
-		unsigned char channel_configuration:3;
-		
-		unsigned char copyright_identification_bit:1;
-		unsigned char copyright_identification_start:1;			
-		unsigned char number_of_raw_data_blocks_in_frame:2;
-}adts_header_t;
+typedef struct {
+    unsigned short syncword;
+    unsigned short aac_frame_length;
+    unsigned short adts_buffer_fullness;
+
+    unsigned char id: 1;
+    unsigned char layer: 2;
+    unsigned char protection_absent: 1;
+    unsigned char profile: 2;
+    unsigned char original_copy: 1;
+    unsigned char home: 1;
+
+    unsigned char sample_freq_idx: 4;
+    unsigned char private_bit: 1;
+    unsigned char channel_configuration: 3;
+
+    unsigned char copyright_identification_bit: 1;
+    unsigned char copyright_identification_start: 1;
+    unsigned char number_of_raw_data_blocks_in_frame: 2;
+} adts_header_t;
 
 typedef struct AVIStream {
     int64_t frame_offset; /* current frame (video) or byte (audio) counter

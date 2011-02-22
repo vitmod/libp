@@ -116,9 +116,11 @@ int register_update_callback(callback_t *cb,update_state_fun_t up_fn,int interva
 {	
 	if(up_fn!=NULL)
 		cb->update_statue_callback=up_fn;
+	else 
+		return PLAYER_ERROR_CALLBACK;
 	if(interval_s>0)
 		cb->update_interval=interval_s;
-	return 0;
+	return PLAYER_SUCCESS;
 }
 
 int update_player_states(play_para_t *para,int force)
@@ -153,5 +155,187 @@ int update_player_states(play_para_t *para,int force)
         log_print("fn NULL!!!!!!!!!!!!!!!!!\n");
 	return 0;
 }
-	
 
+int cmd2str(player_cmd_t *cmd, char *buf)
+{	
+	int len = 0;
+	
+	if(!cmd)
+		return -1;
+	
+	if(cmd->ctrl_cmd > 0)
+	{
+		switch(cmd->ctrl_cmd)
+		{
+			case CMD_EXIT:
+				len = sprintf(buf, "%s", "PLAYER_EXIT");
+				break;
+				
+			case CMD_PLAY:
+				len = sprintf(buf, "%s:%s", "PLAYER_PLAY", cmd->filename);
+				break;
+
+			case CMD_PLAY_START:
+				len = sprintf(buf, "%s:%s", "PLAYER_PLAY_START", cmd->filename);
+				break;
+
+			case CMD_STOP:
+				len = sprintf(buf, "%s", "PLAYER_STOP");
+				break;
+
+			case CMD_START:
+				len = sprintf(buf, "%s", "PLAYER_START");
+				break;
+
+			case CMD_NEXT:
+				len = sprintf(buf, "%s", "PLAYER_PLAY_NEXT");
+				break;
+
+			case CMD_PREV:
+				len = sprintf(buf, "%s", "PLAYER_PLAY_PREV");
+				break;
+
+			case CMD_PAUSE:
+				len = sprintf(buf, "%s", "PLAYER_PAUSE");
+				break;
+
+			case CMD_RESUME:
+				len = sprintf(buf, "%s", "PLAYER_RESUME");
+				break;
+
+			case CMD_SEARCH:
+				len = sprintf(buf, "%s:%d", "PLAYER_SEEK", cmd->param);
+				break;
+
+			case CMD_FF:
+				len = sprintf(buf, "%s:%d", "PLAYER_FF", cmd->param);
+				break;
+
+			case CMD_FB:
+				len = sprintf(buf, "%s:%d", "PLAYER_FR", cmd->param);
+				break;
+
+			case CMD_SWITCH_AID:
+				len = sprintf(buf, "%s:%d", "SWITCH_AUDIO", cmd->param);
+				break;
+				
+			case CMD_SWITCH_SID:
+				len = sprintf(buf, "%s:%d", "SWITCH_SUBTITLE", cmd->param);
+				break;
+				
+			default:
+				len = sprintf(buf, "%s", "UNKNOW_PLAYER_CTRL_COMMAND");
+				break;
+		}
+	}
+
+	if(cmd->set_mode > 0)
+	{
+		switch(cmd->set_mode)
+		{
+			case CMD_LOOP:
+				len = sprintf(buf, "%s", "SET_LOOP_PLAY");
+				break;
+				
+			case CMD_NOLOOP:
+				len = sprintf(buf, "%s", "CANCLE_LOOP");
+				break;
+
+			case CMD_BLACKOUT:
+				len = sprintf(buf, "%s", "SET_BLACK_OUT");
+				break;
+
+			case CMD_NOBLACK:
+				len = sprintf(buf, "%s", "CANCLE_BLACK");
+				break;
+
+			case CMD_NOAUDIO:
+				len = sprintf(buf, "%s", "CLOSE_AUDIO_PLAY");
+				break;
+
+			case CMD_NOVIDEO:
+				len = sprintf(buf, "%s", "CLOSE_VIDEO_PLAY");
+				break;
+
+			case CMD_MUTE:
+				len = sprintf(buf, "%s", "SET_VOLUME_MUTE");
+				break;
+
+			case CMD_UNMUTE:
+				len = sprintf(buf, "%s", "CANCLE_VOLUME_MUTE");
+				break;
+
+			case CMD_SET_VOLUME:
+				len = sprintf(buf, "%s:%d", "SET_VOLUME", cmd->param);
+				break;
+
+			case CMD_SPECTRUM_SWITCH:
+				len = sprintf(buf, "%s", "SPECTRUM_SWITCH");
+				break;
+
+			case CMD_SET_BALANCE:
+				len = sprintf(buf, "%s", "SET_BALANCE");
+				break;
+
+			case CMD_SWAP_LR:
+				len = sprintf(buf, "%s", "SWAP_CHANNEL");
+				break;
+
+			case CMD_LEFT_MONO:
+				len = sprintf(buf, "%s", "LEFT_MONO");
+				break;
+				
+			case CMD_RIGHT_MONO:
+				len = sprintf(buf, "%s", "RIGHT_MONO");
+				break;
+
+			case CMD_SET_STEREO:
+				len = sprintf(buf, "%s", "SET_STEREO");
+				break;
+				
+			default:
+				len = sprintf(buf, "%s", "UNKNOW_SETMODE_COMMAND");
+				break;
+		}
+	}
+	if(cmd->info_cmd > 0)
+	{
+		switch(cmd->info_cmd)
+		{
+			case CMD_GET_VOLUME:
+				len = sprintf(buf, "%s", "GET_CURRENT_VOLUME");
+				break;
+				
+			case CMD_GET_VOL_RANGE:
+				len = sprintf(buf, "%s", "GET_VOLUME_RANGE");
+				break;
+
+			case CMD_GET_PLAY_STA:
+				len = sprintf(buf, "%s", "GET_PLAYER_STATUS");
+				break;
+
+			case CMD_GET_CURTIME:
+				len = sprintf(buf, "%s", "GET_CURRENT_PLAYTIME");
+				break;
+
+			case CMD_GET_DURATION:
+				len = sprintf(buf, "%s", "GET_PLAY_DURATION");
+				break;
+
+			case CMD_GET_MEDIA_INFO:
+				len = sprintf(buf, "%s", "GET_MEDIA_INFORMATION");
+				break;
+
+			case CMD_LIST_PID:
+				len = sprintf(buf, "%s", "LIST_ALIVED_PID");
+				break;
+
+			default:
+				len = sprintf(buf, "%s", "UNKNOW_GETINFO_COMMAND");				
+		}
+	}	
+	buf[len + 1] = '\0';	
+
+	return 0;
+}
+            

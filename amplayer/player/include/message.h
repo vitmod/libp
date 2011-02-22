@@ -4,6 +4,7 @@
 #define MESSAGE_MAX	4
 
 #define CTRL_CMD_RESPONSE   (0xffff)
+
 typedef enum
 {
     CMD_EXIT            = (1 << 0),
@@ -78,6 +79,7 @@ typedef struct
 
 int message_free(player_cmd_t * cmd);
 player_cmd_t * message_alloc(void);
+int cmd2str(player_cmd_t *cmd, char *buf);
 
 #endif
 

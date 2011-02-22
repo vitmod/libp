@@ -31,9 +31,10 @@ int 	player_get_play_info(int pid,player_info_t *info);
 int 	player_get_media_info(int pid,media_info_t *minfo);
 int 	player_video_overlay_en(unsigned enable);
 int 	player_start_play(int pid);
-
+int 	player_send_message(int pid, player_cmd_t *cmd);
 player_status 	player_get_state(int pid);
 unsigned int 	player_get_extern_priv(int pid);
+
 
 int 	audio_set_mute(int pid,int mute);
 int 	audio_get_volume_range(int pid,int *min,int *max);
