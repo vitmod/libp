@@ -1,6 +1,11 @@
 #ifndef ADEC_H
 #define ADEC_H
 
+#define AMAUDIO_IOC_MAGIC  'A'
+#define AMAUDIO_IOC_SET_LEFT_MONO               _IOW(AMAUDIO_IOC_MAGIC, 0x06, int)
+#define AMAUDIO_IOC_SET_RIGHT_MONO              _IOW(AMAUDIO_IOC_MAGIC, 0x07, int)
+#define AMAUDIO_IOC_SET_STEREO          _IOW(AMAUDIO_IOC_MAGIC, 0x08, int)
+#define AMAUDIO_IOC_SET_CHANNEL_SWAP            _IOW(AMAUDIO_IOC_MAGIC, 0x09, int)
 
 typedef enum {
         AUDIO_FORMAT_UNKNOWN = 0,
@@ -92,6 +97,13 @@ typedef enum {
         E_INUSED,
         E_NO,
 }register_error_t;
+
+typedef enum{
+	HW_CHANNELS_SWAP,
+	HW_LEFT_CHANNEL_MONO,
+	HW_RIGHT_CHANNEL_MONO,
+	HW_STEREO_MODE,
+}hw_command_t;
 
 int adec_refresh_pts(void);
 int audio_init_thread_check(void);

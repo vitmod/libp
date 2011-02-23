@@ -76,28 +76,28 @@ int codec_set_volume_balance(codec_para_t *p, int balance)
 int codec_swap_left_right(codec_para_t *p)
 {
     int ret;
-    //ret=amadec_cmd("swap");
+    ret=audio_channels_swap();
     return ret;
 }
 
 int codec_left_mono(codec_para_t *p)
 {
     int ret;
-    //ret=amadec_cmd("leftmono");
+    ret=audio_channel_left_mono();
     return ret;
 }
 
 int codec_right_mono(codec_para_t *p)
 {
     int ret;
-    //ret=amadec_cmd("rightmono");
+    ret=audio_channel_right_mono();
     return ret;
 }
 
 int codec_stereo(codec_para_t *p)
 {
     int ret;
-    //ret=amadec_cmd("stereo");
+    ret=audio_channel_stereo();
     return ret;
 }
 

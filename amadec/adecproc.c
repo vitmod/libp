@@ -124,7 +124,8 @@ int audio_decode_automute(int stat)
  *  - 0: unmute output.
  *
  * Returned value:
- * - 0: success.
+ *  - -1: failed.
+ *  - 0: success.
  */
 int audio_decode_set_mute(int flag)
 {
@@ -137,9 +138,82 @@ int audio_decode_set_mute(int flag)
  *  none.
  *
  * Returned value:
- * - 0: success.
+ *  - -1: failed.
+ *  - 0: success.
  */
 int audio_decode_set_volume(void)
 {
     return 0;
+}
+
+/* Swap audio left and right channels.
+ *
+ * Parameters:
+ *  none.
+ *  
+ *
+ * Returned value:
+ *  - -1: failed.
+ *  - 0: success.
+ */
+ int audio_channels_swap(void)
+{
+    int ret;
+	
+    ret = set_audio_hardware(HW_CHANNELS_SWAP);
+    return ret;
+}
+
+/* Output Left Channel.
+ *
+ * Parameters:
+ *  none.
+ *  
+ *
+ * Returned value:
+ *  - -1: failed.
+ *  - 0: success.
+ */
+ int audio_channel_left_mono(void)
+{
+    int ret;
+	
+    ret = set_audio_hardware(HW_LEFT_CHANNEL_MONO);
+    return ret;
+}
+
+/* Output Right Channel.
+ *
+ * Parameters:
+ *  none.
+ *  
+ *
+ * Returned value:
+ *  - -1: failed.
+ *  - 0: success.
+ */
+ int audio_channel_right_mono(void)
+{
+    int ret;
+	
+    ret = set_audio_hardware(HW_RIGHT_CHANNEL_MONO);
+    return ret;
+}
+
+/* Output Left And Right Channels.
+ *
+ * Parameters:
+ *  none.
+ *  
+ *
+ * Returned value:
+ *  - -1: failed.
+ *  - 0: success.
+ */
+ int audio_channel_stereo(void)
+{
+    int ret;
+	
+    ret = set_audio_hardware(HW_STEREO_MODE);
+    return ret;
 }

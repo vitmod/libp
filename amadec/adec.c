@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include <pthread.h>
 
 #include "log.h"
@@ -23,6 +24,7 @@
 #define TSYNC_PCRSCR    "/sys/class/tsync/pts_pcrscr"
 #define TSYNC_EVENT     "/sys/class/tsync/event"
 #define TSYNC_APTS      "/sys/class/tsync/pts_audio"
+#define  AUDIO_CTRL_DEVICE    "/dev/amaudio_ctl"
 
 #define abs(x) ({                               \
                 long __x = (x);                 \
@@ -543,4 +545,52 @@ int track_switch_pts(void)
     else
         return 1;
 
+}
+
+/* Set Audio Output Mode.
+ *
+ * Parameters:
+ * hw commands.
+ * 
+ *
+ * Returned value:
+ *  - -1: failed.
+ *  - 0: success.
+ */
+int set_audio_hardware(hw_command_t cmd)
+{
+    int fd;
+
+    fd = open(AUDIO_CTRL_DEVICE, O_RDONLY);
+    if(fd < 0){
+        log_print(LOG_ERR, "Open Device %s Failed!", AUDIO_CTRL_DEVICE);
+        return -1;
+    }
+
+    switch(cmd){
+        case HW_CHANNELS_SWAP:
+            ioctl(fd, AMAUDIO_IOC_SET_CHANNEL_SWAP, 0);
+            break;
+			
+        case HW_LEFT_CHANNEL_MONO:
+            ioctl(fd, AMAUDIO_IOC_SET_LEFT_MONO, 0);
+            break;
+			
+        case HW_RIGHT_CHANNEL_MONO:
+            ioctl(fd, AMAUDIO_IOC_SET_RIGHT_MONO, 0);
+            break;
+			
+        case HW_STEREO_MODE:
+            ioctl(fd, AMAUDIO_IOC_SET_STEREO, 0);
+            break;
+			
+        default:
+            log_print(LOG_ERR, "Unknow Command %d!", cmd);
+            break;
+			
+    };
+
+    close(fd);
+
+    return 0;
 }
