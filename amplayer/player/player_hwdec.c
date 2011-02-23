@@ -888,4 +888,55 @@ int divx3_prefix(am_packet_t *pkt)
     return PLAYER_SUCCESS;
 }
 
+int get_vc1_di(unsigned char *data, int length)
+{
+    int i, j;
+    int profile;
+    int interlace, FCM1;
+
+    if (length < 22) {
+        return 0;
+    }
+
+    if (data[0] == 0x00 && data[1] == 0x00 && data[2] == 0x01 && data[3] == 0x0f) {
+        /* sequence header */
+        profile = (data[4] >> 6) & 0x03;
+        log_print("data[4] 0x%x, profile 0x%x\n", data[4], profile);
+        if (profile != 3) {// not advanced profile
+            return 0;
+        }
+
+        interlace = (data[9] >> 6) & 0x01;
+        log_print("data[9] 0x%x, interlace 0x%x\n", data[9], interlace);
+        if (interlace == 0) {
+            return 0;
+        }
+
+        i = 22;
+        j = i + 4;
+        while (j < length) { // search key word 0x0000010d
+            if (data[i] == 0x00 && data[i+1] == 0x00 && data[i+2] == 0x01 && data[i+3] == 0x0d) {
+                break;
+            }
+
+            i++;
+            j++;
+        }
+
+        if (j >= length) {
+            return 0;
+        }
+
+        FCM1 = (data[j] >> 7) & 0x01;
+        log_print("FCM j %d, data[%d] 0x%x, FCM1 0x%x\n", j, j, data[j], FCM1);
+
+        if (FCM1 == 1) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    return 0;
+}
 

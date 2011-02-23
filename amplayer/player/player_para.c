@@ -304,6 +304,44 @@ static void get_stream_info(play_para_t *p_para)
         }
     }
 
+    if (p_para->vstream_info.video_format == VFORMAT_VC1 && video_index != -1) {
+        /* process vc1 packet to detect interlace or progressive */
+        int64_t cur_pos;
+        AVPacket avpkt;
+        int ret;
+
+        cur_pos = url_ftell(p_para->pFormatCtx->pb);
+        av_init_packet(&avpkt);
+
+        /* get the first video frame */
+        do {
+            ret = av_read_frame(p_para->pFormatCtx, &avpkt);
+            if (ret < 0) {
+                if (AVERROR(EAGAIN) != ret) {
+                    /*if the return is EAGAIN,we need to try more times*/
+                    log_error("[%s:%d]av_read_frame return (%d)\n", __FUNCTION__, __LINE__, ret);
+                    url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+                    av_free_packet(&avpkt);
+                    return;
+                } else {
+                    av_free_packet(&avpkt);
+                    continue;
+                }
+            }
+        } while (avpkt.stream_index != video_index);
+
+        ret = get_vc1_di(avpkt.data, avpkt.size);
+        if (ret == 1) {// interlace, not support
+            log_print("[%s:%d]vc1 interlace video, not support!\n", __FUNCTION__, __LINE__);
+            set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
+            p_para->vstream_info.has_video = 0;
+            p_para->vstream_info.video_index = -1;
+        }
+        av_free_packet(&avpkt);
+
+        url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+    }
+
     return;
 }
 

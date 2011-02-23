@@ -57,4 +57,5 @@ void adts_add_header(play_para_t *para, am_packet_t *pkt);
 int extract_adts_header_info(play_para_t *para);
 int divx3_prefix(am_packet_t *pkt);
 int mpeg_check_sequence(play_para_t *para);
+int get_vc1_di(unsigned char *data, int length);
 #endif
