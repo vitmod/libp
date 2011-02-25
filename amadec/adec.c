@@ -43,6 +43,7 @@ static adec_out_t android_device = {
     .pause              = android_pause,
     .resume             = android_resume,
     .mute			= android_mute,
+    .set_vol		= android_set_volume,
 };
 
 adec_out_t *get_android_device(void)
@@ -332,6 +333,32 @@ void adec_resume()
         //adec_pts_start();
     }
 };
+
+int adec_mute(int flag)
+{
+    if(cur_out && cur_out->mute){
+        log_print(LOG_INFO, "mute/unmute the output!flag = %d", flag);
+        cur_out->mute(flag);
+	 return 0;
+    }
+    else{
+        log_print(LOG_INFO, "mute output failed!");
+	 return -1;
+    }
+}
+
+int adec_volume_set(float vol)
+{
+    if(cur_out && cur_out->set_vol){
+	 log_print(LOG_INFO, "Set Output volume!volume = %f", vol);
+        cur_out->set_vol(vol);
+	 return 0;
+    }
+    else{
+        log_print(LOG_INFO, "Set Output volume failed!");
+        return -1;
+    }
+}
 
 void adec_auto_mute(int auto_mute)
 {

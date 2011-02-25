@@ -890,7 +890,7 @@ int audio_get_volume_range(int pid, int *min, int *max)
  * @details set volume to val
  */
 /* --------------------------------------------------------------------------*/
-int audio_set_volume(int pid, int val)
+int audio_set_volume(int pid, float val)
 {
     return codec_set_volume(NULL, val);
 }

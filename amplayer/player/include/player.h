@@ -38,7 +38,7 @@ unsigned int 	player_get_extern_priv(int pid);
 
 int 	audio_set_mute(int pid,int mute);
 int 	audio_get_volume_range(int pid,int *min,int *max);
-int 	audio_set_volume(int pid,int val);
+int 	audio_set_volume(int pid,float val);
 int 	audio_get_volume(int pid);
 int 	audio_set_volume_balance(int pid,int balance);
 int 	audio_swap_left_right(int pid);

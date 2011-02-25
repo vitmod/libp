@@ -53,6 +53,7 @@ typedef struct {
         void ( *pause)(void);
         void ( *resume)(void);
         void ( *mute)(int);
+	 void ( *set_vol)(float);
         int (*init)(adec_feeder_t *);
         int ( *start)(void);
         int ( *uninit)(void);
@@ -112,5 +113,7 @@ void adec_auto_mute(int auto_mute);
 int avsync_control(int flag);
 int track_switch_pts(void);
 int decode_stopped(void);
+int adec_mute(int flag);
+int adec_volume_set(float vol);
 
 #endif /* ADEC_H */

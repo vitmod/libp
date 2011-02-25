@@ -198,7 +198,7 @@ extern "C" int android_start(void)
         track->start();
         log_print(0, "AudioTrack initCheck OK and started.");
 
-        track->setVolume(100.0, 100.0);
+        //track->setVolume(100.0, 100.0);
         log_print(0, "AudioTrack set Volume !\n");
 
         return 0;
@@ -261,6 +261,14 @@ extern "C" void android_mute(int e)
 
     if (track)
         return track->mute(e);
+}
+
+extern "C" void android_set_volume(float vol)
+{
+    Mutex::Autolock _l(mLock);
+
+    if (track)
+        return track->setVolume(vol, vol);
 }
 
 extern "C" void android_basic_init()

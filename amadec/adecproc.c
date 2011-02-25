@@ -129,21 +129,27 @@ int audio_decode_automute(int stat)
  */
 int audio_decode_set_mute(int flag)
 {
-    return 0;
+    int ret;
+	
+    ret = adec_mute(flag);
+    return ret;
 }
 
-/* Seta udio volume.
+/* Set audio volume.
  *
  * Parameters:
- *  none.
+ *  volume value.
  *
  * Returned value:
  *  - -1: failed.
  *  - 0: success.
  */
-int audio_decode_set_volume(void)
+int audio_decode_set_volume(float vol)
 {
-    return 0;
+    int ret;
+	log_print(LOG_INFO, "vol =========== %f\n",vol);
+    ret = adec_volume_set(vol);
+    return ret;
 }
 
 /* Swap audio left and right channels.
