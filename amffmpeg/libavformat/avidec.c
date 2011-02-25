@@ -171,7 +171,7 @@ static int read_braindead_odml_indx(AVFormatContext *s, int frame_num){
         if(index_type){
             int64_t pos= get_le32(pb) + base - 8;
             int len    = get_le32(pb);
-            int key= len >= 0;
+            int key = (len >= 0);	//len: bit 31=1 not a key frame
             len &= 0x7FFFFFFF;
 
 #ifdef DEBUG_SEEK
@@ -222,6 +222,12 @@ static int read_braindead_odml_indx(AVFormatContext *s, int frame_num){
         }
     }
     avi->index_loaded=1;
+	
+	//add by X.H.
+	//av_log(NULL, AV_LOG_INFO, "[%s:%d]nb_frames=%x nb_index_entries=%d\n",__FUNCTION__, __LINE__, st->nb_frames, st->nb_index_entries);
+	if((st->nb_frames>>3) < st->nb_index_entries){
+		s->seekable = 1;
+	}
     return 0;
 }
 
@@ -589,7 +595,6 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             if(!url_is_streamed(pb) && !(s->flags & AVFMT_FLAG_IGNIDX)){
                 memset(&odml_audio_duration, 0, sizeof(odml_audio_duration));
                 read_braindead_odml_indx(s, 0);
-				s->seekable = 1;
             }
             url_fseek(pb, i+size, SEEK_SET);
             break;
