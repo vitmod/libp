@@ -11,7 +11,7 @@ extern "C"
         int audio_decode_pause(void);
         int audio_decode_resume(void);
         int audio_decode_set_mute(int flag);
-        int audio_decode_set_volume(void);
+        int audio_decode_set_volume(float vol);
         int audio_decode_automute(int stat);
 	 int audio_channels_swap(void);
 	 int audio_channel_left_mono(void);
