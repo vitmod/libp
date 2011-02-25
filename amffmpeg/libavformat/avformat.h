@@ -81,6 +81,9 @@ struct AVFormatContext;
 
 #define AV_METADATA_MATCH_CASE      1
 #define AV_METADATA_IGNORE_SUFFIX   2
+#define AV_METADATA_DONT_STRDUP_KEY 4
+#define AV_METADATA_DONT_STRDUP_VAL 8
+#define AV_METADATA_DONT_OVERWRITE 16   ///< Don't overwrite existing tags.
 
 typedef struct {
     char *key;
@@ -106,6 +109,7 @@ av_metadata_get(AVMetadata *m, const char *key, const AVMetadataTag *prev, int f
  * @return >= 0 on success otherwise an error code <0
  */
 int av_metadata_set(AVMetadata **pm, const char *key, const char *value);
+int av_metadata_set2(AVMetadata **pm, const char *key, const char *value, int flags);
 
 /**
  * Converts all the metadata sets from ctx according to the source and
