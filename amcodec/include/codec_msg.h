@@ -1,3 +1,14 @@
+/**
+* @file codec_msg.h
+* @brief  Function prototype of codec error
+* @author Zhang Chen <chen.zhang@amlogic.com>
+* @version 1.0.0
+* @date 2011-02-24
+*/
+/* Copyright (C) 2007-2011, Amlogic Inc.
+* All right reserved
+* 
+*/
 #ifndef CODEC_MSG_H
 #define CODEC_MSG_H
 

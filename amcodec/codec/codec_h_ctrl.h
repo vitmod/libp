@@ -1,3 +1,14 @@
+/**
+* @file codec_h_ctrl.h
+* @brief  Definition of codec devices and function prototypes
+* @author Zhang Chen <chen.zhang@amlogic.com>
+* @version 1.0.0
+* @date 2011-02-24
+*/
+/* Copyright (C) 2007-2011, Amlogic Inc.
+* All right reserved
+* 
+*/
 
 #ifndef CODEC_HEADER_H_H
 #define CODEC_HEADER_H_H

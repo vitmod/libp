@@ -1,11 +1,14 @@
-/*
- * Amlogic codec ctrl lib
- *
- * Copyright (C) 2010 Amlogic, Inc.
- *
- * author  :  zhouzhi
- * version : 1.0
- */
+/**
+* @file codec_ctrl.c
+* @brief  Codec control lib functions 
+* @author Zhou Zhi <zhi.zhou@amlogic.com>
+* @version 1.0.0
+* @date 2011-02-24
+*/
+/* Copyright (C) 2007-2011, Amlogic Inc.
+* All right reserved
+* 
+*/
 #include <stdio.h>
 #include <stdio.h>
 #include <string.h>
@@ -24,6 +27,15 @@
 #define SUBTITLE_EVENT
 #define TS_PACKET_SIZE 188
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_change_buf_size  Change buffer size of codec device 
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success of fail error type
+*/
+/* --------------------------------------------------------------------------*/
 static int codec_change_buf_size(codec_para_t *pcodec)
 {
     int r;
@@ -41,6 +53,15 @@ static int codec_change_buf_size(codec_para_t *pcodec)
     }
     return CODEC_ERROR_NONE;
 }
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  set_video_format  Set video format to codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or error type
+*/
+/* --------------------------------------------------------------------------*/
 static  int set_video_format(codec_para_t *pcodec)
 {
     int format = pcodec->video_type;
@@ -63,6 +84,15 @@ static  int set_video_format(codec_para_t *pcodec)
     return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  set_video_codec_info  Set video information(width, height...) to codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or error type
+*/
+/* --------------------------------------------------------------------------*/
 static  int set_video_codec_info(codec_para_t *pcodec)
 {
     dec_sysinfo_t am_sysinfo = pcodec->am_sysinfo;
@@ -74,6 +104,15 @@ static  int set_video_codec_info(codec_para_t *pcodec)
     }
     return 0;
 }
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  set_audio_format  Set audio format to codec device 
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or error type
+*/
+/* --------------------------------------------------------------------------*/
 static  int set_audio_format(codec_para_t *pcodec)
 {
     int format = pcodec->audio_type;
@@ -117,6 +156,15 @@ static  int set_audio_format(codec_para_t *pcodec)
     return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  set_audio_info  Set audio information to codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or error type
+*/
+/* --------------------------------------------------------------------------*/
 static int set_audio_info(codec_para_t *pcodec)
 {
     int r;
@@ -132,6 +180,15 @@ static int set_audio_info(codec_para_t *pcodec)
     return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  set_sub_format  Set subtitle format to codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or error type
+*/
+/* --------------------------------------------------------------------------*/
 static int set_sub_format(codec_para_t *pcodec)
 {
     int r;
@@ -151,6 +208,15 @@ static int set_sub_format(codec_para_t *pcodec)
     return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  set_ts_skip_byte  Set the number of ts skip bytes, especially for m2ts file
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or error type
+*/
+/* --------------------------------------------------------------------------*/
 static int set_ts_skip_byte(codec_para_t *pcodec)
 {
     int r, skip_byte;
@@ -169,6 +235,15 @@ static int set_ts_skip_byte(codec_para_t *pcodec)
     return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_video_es_init  Initialize the codec device for es video
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 static inline int codec_video_es_init(codec_para_t *pcodec)
 {
     CODEC_HANDLE handle;
@@ -205,6 +280,15 @@ static inline int codec_video_es_init(codec_para_t *pcodec)
 }
 
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_audio_es_init  Initialize the codec device for es audio
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 static inline int codec_audio_es_init(codec_para_t *pcodec)
 {
     CODEC_HANDLE handle;
@@ -245,6 +329,15 @@ static inline int codec_audio_es_init(codec_para_t *pcodec)
     return CODEC_ERROR_NONE;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_sub_es_init  Initialize the codec device for es subtitle 
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 static inline int codec_sub_es_init(codec_para_t *pcodec)
 {
 #ifdef SUBTITLE_EVENT
@@ -274,6 +367,15 @@ static inline int codec_sub_es_init(codec_para_t *pcodec)
     return CODEC_ERROR_NONE;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_ps_init  Initialize the codec device for PS
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 static inline int codec_ps_init(codec_para_t *pcodec)
 {
     CODEC_HANDLE handle;
@@ -348,6 +450,15 @@ error1:
 }
 
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_ts_init  Initialize the codec device for TS
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 static inline int codec_ts_init(codec_para_t *pcodec)
 {
     CODEC_HANDLE handle;
@@ -425,6 +536,15 @@ error1:
 
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_rm_init  Initialize the codec device for RM
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 static inline int codec_rm_init(codec_para_t *pcodec)
 {
     CODEC_HANDLE handle;
@@ -475,6 +595,15 @@ error1:
     return codec_r;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_init  Initialize the codec device based on stream type
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_init(codec_para_t *pcodec)
 {
     int ret;
@@ -521,15 +650,47 @@ int codec_init(codec_para_t *pcodec)
     return ret;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_write  Write data to codec device 
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  buffer  Buffer for data to be written
+* @param[in]  len     Length of the data to be written
+*
+* @return     Length of the written data, or fail if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_write(codec_para_t *pcodec, void *buffer, int len)
 {
     return codec_h_write(pcodec->handle, buffer, len);
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_read  Read data from codec device 
+*
+* @param[in]   pcodec  Pointer of codec parameter structure
+* @param[out]  buffer  Buffer for data read from codec device
+* @param[in]   len     Length of the data to be read
+*
+* @return      Length of the read data, or fail if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_read(codec_para_t *pcodec, void *buffer, int len)
 {
     return codec_h_read(pcodec->handle, buffer, len);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_close  Close codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_close(codec_para_t *pcodec)
 {
     if (pcodec->has_audio) {
@@ -543,6 +704,13 @@ int codec_close(codec_para_t *pcodec)
     return codec_h_close(pcodec->handle);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_close_audio  Close audio decoder 
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*/
+/* --------------------------------------------------------------------------*/
 void codec_close_audio(codec_para_t *pcodec)
 {
     if (pcodec) {
@@ -552,6 +720,14 @@ void codec_close_audio(codec_para_t *pcodec)
     return;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_resume_audio  Resume audio decoder to work (etc, after pause)
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  orig    Original audio status (has audio or not)
+*/
+/* --------------------------------------------------------------------------*/
 void codec_resume_audio(codec_para_t *pcodec, unsigned int orig)
 {
     pcodec->has_audio = orig;
@@ -561,12 +737,32 @@ void codec_resume_audio(codec_para_t *pcodec, unsigned int orig)
     return;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_checkin_pts  Checkin pts to codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  pts     Pts to be checked in
+*
+* @return     0 for success, or fail type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_checkin_pts(codec_para_t *pcodec, unsigned long pts)
 {
     //CODEC_PRINT("[%s:%d]pts=%x(%d)\n",__FUNCTION__,__LINE__,pts,pts/90000);
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_TSTAMP, pts);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_vbuf_state  Get the state of video buffer by codec device
+*
+* @param[in]   p    Pointer of codec parameter structure
+* @param[out]  buf  Pointer of buffer status structure to get video buffer state
+*
+* @return      Success or fail type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_vbuf_state(codec_para_t *p, struct buf_status *buf)
 {
     int r;
@@ -575,6 +771,16 @@ int codec_get_vbuf_state(codec_para_t *p, struct buf_status *buf)
     memcpy(buf, &am_io.status, sizeof(*buf));
     return system_error_to_codec_error(r);
 }
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_abuf_state  Get the state of audio buffer by codec device
+*
+* @param[in]   p    Pointer of codec parameter structure
+* @param[out]  buf  Pointer of buffer status structure to get audio buffer state
+*
+* @return      Success or fail type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_abuf_state(codec_para_t *p, struct buf_status *buf)
 {
     int r;
@@ -583,6 +789,17 @@ int codec_get_abuf_state(codec_para_t *p, struct buf_status *buf)
     memcpy(buf, &am_io.status, sizeof(*buf));
     return system_error_to_codec_error(r);
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_vdec_state  Get the state of video decoder by codec device
+*
+* @param[in]   p     Pointer of codec parameter structure
+* @param[out]  vdec  Pointer of video decoder status structure
+*
+* @return      Success or fail type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_vdec_state(codec_para_t *p, struct vdec_status *vdec)
 {
     int r;
@@ -594,6 +811,17 @@ int codec_get_vdec_state(codec_para_t *p, struct vdec_status *vdec)
     memcpy(vdec, &am_io.vstatus, sizeof(*vdec));
     return system_error_to_codec_error(r);
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_adec_state  Get the state of audio decoder by codec device
+*
+* @param[in]   p     Pointer of codec parameter structure
+* @param[out]  adec  Pointer of audio decoder status structure
+*
+* @return      Success or fail type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_adec_state(codec_para_t *p, struct adec_status *adec)
 {
     int r;
@@ -603,18 +831,45 @@ int codec_get_adec_state(codec_para_t *p, struct adec_status *adec)
     return system_error_to_codec_error(r);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  video_pause  Pause video playing by codec device 
+*
+* @param[in]  p  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 static int video_pause(codec_para_t *p)
 {
     CODEC_PRINT("video_pause!\n");
     return codec_h_control(p->cntl_handle, AMSTREAM_IOC_VPAUSE, 1);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  video_resume  Resume video playing by codec device
+*
+* @param[in]  p  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 static int video_resume(codec_para_t *p)
 {
     CODEC_PRINT("video_resume!\n");
     return codec_h_control(p->cntl_handle, AMSTREAM_IOC_VPAUSE, 0);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_pause  Pause all playing(A/V) by codec device
+*
+* @param[in]  p  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_pause(codec_para_t *p)
 {
     int ret = CODEC_ERROR_NONE;
@@ -630,6 +885,15 @@ int codec_pause(codec_para_t *p)
     }
     return ret;
 }
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_resume  Resume playing(A/V) by codec device
+*
+* @param[in]  p  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_resume(codec_para_t *p)
 {
     int ret = CODEC_ERROR_NONE;
@@ -645,6 +909,16 @@ int codec_resume(codec_para_t *p)
     }
     return ret;
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_reset  Reset codec device 
+*
+* @param[in]  p  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_reset(codec_para_t *p)
 {
     int ret;
@@ -657,6 +931,15 @@ int codec_reset(codec_para_t *p)
     return system_error_to_codec_error(ret);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_init_sub  Initialize subtile codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_init_sub(codec_para_t *pcodec)
 {
     CODEC_HANDLE sub_handle;
@@ -672,6 +955,13 @@ int codec_init_sub(codec_para_t *pcodec)
     return CODEC_ERROR_NONE;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_open_sub_read   Open read_subtitle device which is special for read subtile data
+*
+* @return   Device handler, or error type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_open_sub_read(void)
 {
     CODEC_HANDLE sub_handle;
@@ -685,6 +975,15 @@ int codec_open_sub_read(void)
     return sub_handle;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_close_sub  Close subtile device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_close_sub(codec_para_t *pcodec)
 {
     if (pcodec) {
@@ -693,11 +992,29 @@ int codec_close_sub(codec_para_t *pcodec)
     return CODEC_ERROR_NONE;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_close_sub_fd  Close subtile device by fd
+*
+* @param[in]  sub_fd  subtile device fd
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_close_sub_fd(CODEC_HANDLE sub_fd)
 {
     return codec_h_close(sub_fd);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_poll_sub  Polling subtile device if subtitle data is ready
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Polling result
+*/
+/* --------------------------------------------------------------------------*/
 int codec_poll_sub(codec_para_t *pcodec)
 {
     struct pollfd sub_poll_fd[1];
@@ -712,6 +1029,16 @@ int codec_poll_sub(codec_para_t *pcodec)
     return poll(sub_poll_fd, 1, 10);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_poll_sub_fd  Polling subtile device if subtitle data is ready by fd
+*
+* @param[in]  sub_fd   Subtitle device fd
+* @param[in]  timeout  Timeout for polling
+*
+* @return     Polling result
+*/
+/* --------------------------------------------------------------------------*/
 int codec_poll_sub_fd(CODEC_HANDLE sub_fd, int timeout)
 {
     struct pollfd sub_poll_fd[1];
@@ -726,6 +1053,15 @@ int codec_poll_sub_fd(CODEC_HANDLE sub_fd, int timeout)
     return poll(sub_poll_fd, 1, timeout);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_sub_size  Get the size of subtitle data which is ready
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Subtile ready data size, or fail error type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_sub_size(codec_para_t *pcodec)
 {
     int sub_size, r;
@@ -743,6 +1079,15 @@ int codec_get_sub_size(codec_para_t *pcodec)
     }
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_sub_size_fd  Get the size of subtitle data which is ready by fd
+*
+* @param[in]  sub_fd  Subtitle device fd
+*
+* @return     Subtile ready data size, or fail error type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_sub_size_fd(CODEC_HANDLE sub_fd)
 {
     int sub_size, r;
@@ -760,6 +1105,17 @@ int codec_get_sub_size_fd(CODEC_HANDLE sub_fd)
     }
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_read_sub_data  Read subtitle data from codec device
+*
+* @param[in]   pcodec  Pointer of codec parameter structure
+* @param[out]  buf     Buffer for data read from subtitle codec device
+* @param[in]   length  Data length to be read from subtitle codec device
+*
+* @return      0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_read_sub_data(codec_para_t *pcodec, char *buf, unsigned int length)
 {
     int data_size = length, r, read_done = 0;
@@ -782,6 +1138,17 @@ int codec_read_sub_data(codec_para_t *pcodec, char *buf, unsigned int length)
     return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_read_sub_data_fd  Read subtitle data from codec device by fd
+*
+* @param[in]   sub_fd  Subtitle device fd
+* @param[out]  buf     Buffer for data read from subtitle codec device
+* @param[in]   length  Data length to be read from subtile codec device
+*
+* @return      0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_read_sub_data_fd(CODEC_HANDLE sub_fd, char *buf, unsigned int length)
 {
     int data_size = length, r, read_done = 0;
@@ -804,6 +1171,17 @@ int codec_read_sub_data_fd(CODEC_HANDLE sub_fd, char *buf, unsigned int length)
     return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_write_sub_data  Write subtile data to subtitle device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  buf     Buffer for data to be written
+* @param[in]  length  Length of the dat to be written
+*
+* @return     Write length, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_write_sub_data(codec_para_t *pcodec, char *buf, unsigned int length)
 {
     if (pcodec->sub_handle == 0) {
@@ -814,6 +1192,15 @@ int codec_write_sub_data(codec_para_t *pcodec, char *buf, unsigned int length)
     return codec_h_write(pcodec->sub_handle, buf, length);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_init_cntl  Initialize the video control device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_init_cntl(codec_para_t *pcodec)
 {
     CODEC_HANDLE cntl;
@@ -828,6 +1215,15 @@ int codec_init_cntl(codec_para_t *pcodec)
     return CODEC_ERROR_NONE;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_close_cntl  Close video control device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
 int codec_close_cntl(codec_para_t *pcodec)
 {
     if (pcodec) {
@@ -836,6 +1232,15 @@ int codec_close_cntl(codec_para_t *pcodec)
     return CODEC_ERROR_NONE;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_poll_cntl  Polling video control device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Polling results
+*/
+/* --------------------------------------------------------------------------*/
 int codec_poll_cntl(codec_para_t *pcodec)
 {
     struct pollfd codec_poll_fd[1];
@@ -850,6 +1255,15 @@ int codec_poll_cntl(codec_para_t *pcodec)
     return poll(codec_poll_fd, 1, 10);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_cntl_state  Get the status of video control device, especially for trickmode 
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Video control device status or fail error type 
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_cntl_state(codec_para_t *pcodec)
 {
     int cntl_state, r;
@@ -867,46 +1281,131 @@ int codec_get_cntl_state(codec_para_t *pcodec)
     }
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_cntl_mode  Set the mode to video control device, especially for trickmode
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  mode    Trick mode to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_set_cntl_mode(codec_para_t *pcodec, unsigned int mode)
 {
     return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_TRICKMODE, (unsigned long)mode);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_cntl_avthresh  Set the AV sync threshold which defines the max time difference between A/V
+*
+* @param[in]  pcodec    Pointer of codec parameter structure
+* @param[in]  avthresh  Threshold to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_set_cntl_avthresh(codec_para_t *pcodec, unsigned int avthresh)
 {
     return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_AVTHRESH, (unsigned long)avthresh);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_cntl_syncthresh  Set sync threshold control which defines the starting system time (hold video or not) 
+*                                    when playing 
+*
+* @param[in]  pcodec      Pointer of codec parameter structure
+* @param[in]  syncthresh  Sync threshold control
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_set_cntl_syncthresh(codec_para_t *pcodec, unsigned int syncthresh)
 {
     return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SYNCTHRESH, (unsigned long)syncthresh);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_reset_audio  Reset audio decoder, especially for audio switch
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_reset_audio(codec_para_t *pcodec)
 {
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_AUDIO_RESET, 0);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_reset_subtile   Reset subtitle device, especially for subtitle swith
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_reset_subtile(codec_para_t *pcodec)
 {
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_SUB_RESET, 0);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_audio_id  Set audio pid by codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_set_audio_pid(codec_para_t *pcodec)
 {
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_AID, pcodec->audio_pid);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_sub_id  Set subtitle pid by codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_set_sub_id(codec_para_t *pcodec)
 {
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_SID, pcodec->sub_pid);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_audio_reinit  Re-initialize audio codec
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_audio_reinit(codec_para_t *pcodec)
 {
     return set_audio_format(pcodec);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_dec_reset  Set decoder reset flag when reset
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_set_dec_reset(codec_para_t *pcodec)
 {
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_DEC_RESET, 0);

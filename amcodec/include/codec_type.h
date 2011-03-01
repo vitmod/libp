@@ -1,3 +1,14 @@
+/**
+* @file codec_type.h
+* @brief  Definitions of codec type and structures
+* @author Zhang Chen <chen.zhang@amlogic.com>
+* @version 1.0.0
+* @date 2011-02-24
+*/
+/* Copyright (C) 2007-2011, Amlogic Inc.
+* All right reserved
+* 
+*/
 #ifndef CODEC_TYPE_H_
 #define CODEC_TYPE_H_
 
@@ -18,53 +29,53 @@ typedef enum {
 } stream_type_t;
 
 typedef struct {
-    unsigned int    format;
-    unsigned int    width;
-    unsigned int    height;
-    unsigned int    rate;
-    unsigned int    extra;
-    unsigned int    status;
-    unsigned int    ratio;
-    void *          param;
+    unsigned int    format;  ///< video format, such as H264, MPEG2...
+    unsigned int    width;   ///< video source width
+    unsigned int    height;  ///< video source height
+    unsigned int    rate;    ///< video source frame duration
+    unsigned int    extra;   ///< extra data information of video stream
+    unsigned int    status;  ///< status of video stream
+    unsigned int    ratio;   ///< aspect ratio of video source
+    void *          param;   ///< other parameters for video decoder
 } dec_sysinfo_t;
 
 typedef struct {
-    int valid;
-    int sample_rate;
-    int channels;
-    int bitrate;
-    int codec_id;
-    int block_align;
-    int extradata_size;
-    char extradata[2048];;
+    int valid;               ///< audio extradata valid(1) or invalid(0), set by dsp
+    int sample_rate;         ///< audio stream sample rate
+    int channels;            ///< audio stream channels
+    int bitrate;             ///< audio stream bit rate
+    int codec_id;            ///< codec format id
+    int block_align;         ///< audio block align from ffmpeg
+    int extradata_size;      ///< extra data size
+    char extradata[2048];;   ///< extra data information for decoder
 } audio_info_t;
 
 typedef struct {
-    CODEC_HANDLE handle;
-    CODEC_HANDLE cntl_handle;
-    CODEC_HANDLE sub_handle;
-    stream_type_t stream_type;
+    CODEC_HANDLE handle;        ///< codec device handler
+    CODEC_HANDLE cntl_handle;   ///< video control device handler
+    CODEC_HANDLE sub_handle;    ///< subtile device handler
+    stream_type_t stream_type;  ///< stream type(es, ps, rm, ts)
 unsigned int has_video:
-    1;
+    1;                          ///< stream has video(1) or not(0)
 unsigned int  has_audio:
-    1;
+    1;                          ///< stream has audio(1) or not(0)
 unsigned int has_sub:
-    1;
+    1;                          ///< stream has subtitle(1) or not(0)
 unsigned int noblock:
-    1;
-    int video_type;
-    int audio_type;
-    int sub_type;
-    int video_pid;
-    int audio_pid;
-    int sub_pid;
-    int audio_channels;
-    int audio_samplerate;
-    int vbuf_size;
-    int abuf_size;
-    dec_sysinfo_t am_sysinfo;
-    audio_info_t audio_info; // pass to audiodsp
-    int packet_size;
+    1;                          ///< codec device is NONBLOCK(1) or not(0)
+    int video_type;             ///< stream video type(H264, VC1...)
+    int audio_type;             ///< stream audio type(PCM, WMA...)
+    int sub_type;               ///< stream subtitle type(TXT, SSA...)
+    int video_pid;              ///< stream video pid
+    int audio_pid;              ///< stream audio pid
+    int sub_pid;                ///< stream subtitle pid
+    int audio_channels;         ///< stream audio channel number
+    int audio_samplerate;       ///< steram audio sample rate
+    int vbuf_size;              ///< video buffer size of codec device
+    int abuf_size;              ///< audio buffer size of codec device
+    dec_sysinfo_t am_sysinfo;   ///< system information for video
+    audio_info_t audio_info;    ///< audio information pass to audiodsp
+    int packet_size;            ///< data size per packet
 } codec_para_t;
 
 

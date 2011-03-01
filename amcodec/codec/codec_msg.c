@@ -1,3 +1,14 @@
+/**
+* @file codec_msg.c
+* @brief  Codec message covertion functions
+* @author Zhang Chen <chen.zhang@amlogic.com>
+* @version 1.0.0
+* @date 2011-02-24
+*/
+/* Copyright (C) 2007-2011, Amlogic Inc.
+* All right reserved
+* 
+*/
 #include <stdio.h>
 #include <stdio.h>
 
@@ -11,6 +22,15 @@
 #include "codec_h_ctrl.h"
 
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  system_error_to_codec_error  Convert system error to codec error types
+*
+* @param[in]  error  System error to be converted
+*
+* @return     Codec error type
+*/
+/* --------------------------------------------------------------------------*/
 int system_error_to_codec_error(int error)
 {
     switch (error) {
@@ -26,6 +46,16 @@ int system_error_to_codec_error(int error)
         return -CODEC_ERROR_INVAL;
     }
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_error_msg  Convert codec type to error message
+*
+* @param[in]  error  Codec error type
+*
+* @return     Error message string
+*/
+/* --------------------------------------------------------------------------*/
 const char * codec_error_msg(int error)
 {
     switch (error) {
@@ -55,6 +85,16 @@ const char * codec_error_msg(int error)
         return "invalid operate";
     }
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  print_error_msg  Print error message in uniform format
+*
+* @param[in]  error  Codec error type
+* @param[in]  func   Function where error happens
+* @param[in]  line   Line where error happens
+*/
+/* --------------------------------------------------------------------------*/
 void print_error_msg(int error, char *func, int line)
 {
     CODEC_PRINT("Error=%x,%s,func=%s,line=%d\n", error, codec_error_msg(error), func, line);
