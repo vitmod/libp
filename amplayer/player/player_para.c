@@ -103,6 +103,7 @@ static void get_av_codec_type(play_para_t *p_para)
             }
         }
     } else {
+    	p_para->vstream_info.has_video = 0;
         log_print("no video specified!\n");
     }
     if (audio_index != -1) {
@@ -158,6 +159,7 @@ static void get_av_codec_type(play_para_t *p_para)
         if ((p_para->astream_info.audio_format < 0) ||
             (p_para->astream_info.audio_format >= AFORMAT_MAX)) {
             p_para->astream_info.has_audio = 0;
+			log_print("audio format not support!\n");
         }
         if (p_para->astream_info.has_audio) {
             if (0 != pStream->time_base.den) {
@@ -167,6 +169,7 @@ static void get_av_codec_type(play_para_t *p_para)
             //p_para->vstream_info.start_time = pStream->start_time;
         }
     } else {
+    	p_para->astream_info.has_audio = 0;
         log_print("no audio specified!\n");
     }
     if (sub_index != -1) {
@@ -181,6 +184,9 @@ static void get_av_codec_type(play_para_t *p_para)
             p_para->sstream_info.start_time = pStream->start_time * PTS_FREQ;
         }
     }
+	else{
+		p_para->sstream_info.has_sub = 0;
+	}
     return;
 }
 
@@ -358,60 +364,55 @@ static int set_decode_para(play_para_t*am_p)
     ByteIOContext *pb = am_p->pFormatCtx->pb;
 
     get_stream_info(am_p);
-
+	log_print("[%s:%d]has_video=%d vformat=%d has_audio=%d aformat=%d",__FUNCTION__, __LINE__,\
+				am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
+				am_p->astream_info.has_audio, am_p->astream_info.audio_format);
+	
     if (am_p->playctrl_info.no_video_flag) {
         set_player_error_no(am_p, PLAYER_SET_NOVIDEO);
         update_player_states(am_p, 1);
-    } else if (am_p->vstream_info.video_index == -1) {
+    } else if (!am_p->vstream_info.has_video) {
         if (am_p->file_type == RM_FILE) {
             log_error("Can't support rm file without video!\n");
             return PLAYER_UNSUPPORT;
-        } else if (am_p->astream_info.has_audio && am_p->astream_info.audio_index != -1) {
+        } else if (am_p->astream_info.has_audio) {
             set_player_error_no(am_p, PLAYER_NO_VIDEO);
             update_player_states(am_p, 1);
         } else {
-            log_error("Can't support the video_format and audio_format!\n");
+            log_error("Can't support the file!\n");
             return PLAYER_UNSUPPORT;
         }
     }
+	
     if (am_p->playctrl_info.no_audio_flag) {
         set_player_error_no(am_p, PLAYER_SET_NOAUDIO);
         update_player_states(am_p, 1);
-    } else if (am_p->astream_info.audio_index == -1) {
-        if (am_p->vstream_info.has_video && (am_p->vstream_info.video_index != -1)) {
+    } else if (!am_p->astream_info.has_audio) {
+        if (am_p->vstream_info.has_video) {
             set_player_error_no(am_p, PLAYER_NO_AUDIO);
             update_player_states(am_p, 1);
         } else {
-            log_error("Can't support the video_format and audio_format!\n");
+            log_error("Can't support the file!\n");
             return PLAYER_UNSUPPORT;
         }
-    }
+    }    
 
-    /*if(((am_p->vstream_info.video_index != -1) && (am_p->vstream_info.has_video == 0))&&
-       ((am_p->astream_info.audio_index != -1) && (am_p->astream_info.has_audio == 0)))
-    {
-        log_error("Can't support the video_format and audio_format!\n");
-        return PLAYER_UNSUPPORT;
-    }*/
-
-    if ((am_p->vstream_info.video_index != -1) &&
-        (am_p->vstream_info.has_video == 0)) {
+    if(am_p->vstream_info.video_format == -1){
         set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);
         update_player_states(am_p, 1);
-    } else if ((am_p->astream_info.audio_index != -1) &&
-               (am_p->astream_info.has_audio == 0)) {  //no audio
+    } else if(am_p->astream_info.audio_format == -1){  //no audio
         set_player_error_no(am_p, PLAYER_UNSUPPORT_AUDIO);
         update_player_states(am_p, 1);
-    }
-
-    if (am_p->playctrl_info.no_audio_flag) {
+    }   
+	
+	if (am_p->playctrl_info.no_audio_flag) {
         am_p->astream_info.has_audio = 0;
     }
 
     if (am_p->playctrl_info.no_video_flag) {
         am_p->vstream_info.has_video = 0;
     }
-
+	
     am_p->sstream_info.has_sub &= am_p->playctrl_info.has_sub_flag;
     am_p->astream_info.resume_audio = am_p->astream_info.has_audio;
 
@@ -761,6 +762,7 @@ int player_dec_init(play_para_t *p_para)
 
     ret = set_decode_para(p_para);
     if (ret != PLAYER_SUCCESS) {
+		log_error("set_decode_para failed, ret = -0x%x\n", -ret);
         goto init_fail;
     }
 
