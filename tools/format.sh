@@ -21,6 +21,7 @@ if [ -e ${DIR}/linux_style.patch ]; then
 	rm -rf ${DIR}/linux_style.patch
 fi
 
+
 #Generate the patch
 suffix=.orig
 list=`find ${DIR} -name "*"${suffix}`
@@ -28,6 +29,6 @@ echo $list
 for i in $list;
 do
 	filename=`echo $i | sed 's/'${suffix}'$//'`;
-	diff -Nura $filename${suffix} $filename >> ${DIR}/linux_style.patch;
+	diff -Nura $filename${suffix} $filename >> ${PWD}/linux_style-$(date '+%H.%M.%S.%N').patch;
 	rm -rf $filename${suffix}
 done
