@@ -302,6 +302,8 @@ int64_t url_ftell(ByteIOContext *s);
  */
 int64_t url_fsize(ByteIOContext *s);
 
+int64_t url_fsize2(ByteIOContext *s);
+
 /**
  * feof() equivalent for ByteIOContext.
  * @return non zero if and only if end of file

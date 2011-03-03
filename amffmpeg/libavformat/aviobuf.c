@@ -241,6 +241,33 @@ int64_t url_fsize(ByteIOContext *s)
     return size;
 }
 
+//add by X.H. for variable file size
+int64_t url_fsize2(ByteIOContext *s)
+{
+    int64_t size;
+
+    if(!s)
+        return AVERROR(EINVAL);
+	
+    if (!s->seek)
+        return AVERROR(EPIPE);
+	
+    size = s->seek(s->opaque, 0, AVSEEK_SIZE);
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]size=0x%llx (%lld)\n",__FUNCTION__,__LINE__,size,size);
+    if(size<0){
+        if ((size = s->seek(s->opaque, -1, SEEK_END)) < 0)
+        {
+        	if(s->file_size == 0)
+				s->file_size = size;
+        	return size;
+        }
+        size++;
+        s->seek(s->opaque, s->pos, SEEK_SET);
+    }
+	s->file_size = size;
+    return size;
+}
+
 int url_feof(ByteIOContext *s)
 {
     if(!s)
