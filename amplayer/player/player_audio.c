@@ -52,11 +52,11 @@ static int stream_audio_init(play_para_t *p_para)
         goto error1;
     }
     log_print("[%s:%d]codec init finished! mute_on:%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_mute);
-    ret = codec_set_mute(codec, p_para->playctrl_info.audio_mute);
+    /*ret = codec_set_mute(codec, p_para->playctrl_info.audio_mute);
     if (ret != CODEC_ERROR_NONE) {
         codec_close(codec);
         goto error1;
-    }
+    }*/
     p_para->acodec = codec;
     return PLAYER_SUCCESS;
 
