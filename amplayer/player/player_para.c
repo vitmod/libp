@@ -41,7 +41,7 @@ static void get_av_codec_type(play_para_t *p_para)
             || (pCodecCtx->codec_id == CODEC_ID_MPEG2VIDEO_XVMC)) {
             mpeg_check_sequence(p_para);
         }
-        if (p_para->stream_type == STREAM_ES) {
+        if (p_para->stream_type == STREAM_ES && pCodecCtx->codec_tag != 0) {
             p_para->vstream_info.video_codec_type = video_codec_type_convert(pCodecCtx->codec_tag);
         } else {
             p_para->vstream_info.video_codec_type = video_codec_type_convert(pCodecCtx->codec_id);
@@ -95,8 +95,10 @@ static void get_av_codec_type(play_para_t *p_para)
                     p_para->vstream_info.video_rate = UNIT_FREQ / pStream->special_fps;
                 }
             } else if (p_para->vstream_info.video_format == VFORMAT_VC1 && p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WMV3) {
-                int i;
-                p_para->vstream_info.video_rate = pFormatCtx->video_avg_frame_time * 96 / 10000;
+                if (pFormatCtx->video_avg_frame_time != 0) {
+                    p_para->vstream_info.video_rate = pFormatCtx->video_avg_frame_time * 96 / 10000;
+                }
+
                 if (!(p_para->vstream_info.extradata[3] & 1)) { // this format is not supported
                     p_para->vstream_info.has_video = 0;
                 }
