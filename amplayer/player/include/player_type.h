@@ -22,7 +22,8 @@ typedef enum
 	* decoder not running
 	******************************/
 	PLAYER_INITING  	= 0x10001,
-	PLAYER_INITOK   	= 0x10002,	
+	PLAYER_TYPE_REDY  = 0x10002,
+	PLAYER_INITOK   	= 0x10003,	
 
 	/******************************
 	* 0x2000x: 
@@ -165,6 +166,14 @@ typedef struct pid_info
     int pid[MAX_PLAYER_THREADS];
 }pid_info_t;
 
+typedef struct player_file_type
+{
+	const char *fmt_string;
+	int video_tracks;
+	int audio_tracks;
+	int subtitle_tracks;
+	/**/
+}player_file_type_t;
 
 
 #define state_pre(sta) (sta>>16)
@@ -173,12 +182,22 @@ typedef struct pid_info
 #define player_thread_stop(sta)	(state_pre(sta)==0x3)
 
 typedef int (*update_state_fun_t)(int pid,player_info_t *) ;
+typedef int (*notify_callback)(int pid,int msg,unsigned long ext1,unsigned long ext2);
+typedef enum
+{      
+	PLAYER_EVENTS_PLAYER_INFO=1,			///<ext1=player_info*,ext2=0,same as update_statue_callback 
+	PLAYER_EVENTS_STATE_CHANGED,			///<ext1=new_state,ext2=0,
+	PLAYER_EVENTS_ERROR,					///<ext1=error_code,ext2=message char *
+	PLAYER_EVENTS_BUFFERING,				///<ext1=buffered=d,d={0-100},ext2=0,
+	PLAYER_EVENTS_FILE_TYPE,				///<ext1=player_file_type_t*,ext2=0
+}player_events;
 
 typedef struct
 {
     update_state_fun_t update_statue_callback;
     int update_interval;
     long callback_old_time;
+	notify_callback	   notify_fn;
 }callback_t;
 
 typedef struct
@@ -198,7 +217,7 @@ typedef struct
 			unsigned int nosound:1;	
 			unsigned int novideo:1;	
 			unsigned int hassub:1;
-			unsigned int need_start:1;       
+			unsigned int need_start:1;
 		};
 		int mode;
 	};  

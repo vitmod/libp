@@ -69,7 +69,16 @@ int ffmpeg_buffering_data(play_para_t *para)
         return -1;
     }
 }
-int ffmpeg_parse_file(play_para_t *am_p)
+int ffmpeg_close_file(play_para_t *am_p)
+{
+    AVFormatContext *pFCtx = am_p->pFormatCtx;
+    if (pFCtx) {
+        av_close_input_file(pFCtx);
+    }
+    am_p->pFormatCtx = NULL;
+    return 0;
+}
+int ffmpeg_open_file(play_para_t *am_p)
 {
     AVFormatContext *pFCtx ;
     int ret = -1;
@@ -92,12 +101,6 @@ Retry_open:
             log_print("ffmpeg error: Couldn't open input file! ret==%x\n", ret);
             return FFMPEG_OPEN_FAILED; // Couldn't open file
         }
-        ret = av_find_stream_info(pFCtx);
-        if (ret < 0) {
-            log_print("ERROR:Couldn't find stream information, ret=====%d\n", ret);
-            av_close_input_file(pFCtx);
-            return FFMPEG_PARSE_FAILED; // Couldn't find stream information
-        }
         am_p->pFormatCtx = pFCtx;
 
         return FFMPEG_SUCCESS;
@@ -106,4 +109,39 @@ Retry_open:
         return FFMPEG_NO_FILE;
     }
 }
+int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
+{
+    AVFormatContext *pFCtx = am_p->pFormatCtx;
+    memset(type, 0, sizeof(*type));
+    if (pFCtx->iformat != NULL) {
+        int i;
+        type->fmt_string = pFCtx->iformat->name;
+        for (i = 0; i < pFCtx->nb_streams; i++) {
+            AVStream *st = pFCtx->streams[i];
+            if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
+                type->video_tracks++;
+            } else if (st->codec->codec_type == CODEC_TYPE_AUDIO) {
+                type->audio_tracks++;
+            } else if (st->codec->codec_type == CODEC_TYPE_SUBTITLE) {
+                type->subtitle_tracks++;
+            }
+        }
+    }
+    return 0;
+
+}
+
+int ffmpeg_parse_file(play_para_t *am_p)
+{
+    AVFormatContext *pFCtx = am_p->pFormatCtx;
+    int ret = -1;
+    // Open video file
+    ret = av_find_stream_info(pFCtx);
+    if (ret < 0) {
+        log_print("ERROR:Couldn't find stream information, ret=====%d\n", ret);
+        return FFMPEG_PARSE_FAILED; // Couldn't find stream information
+    }
+    return FFMPEG_SUCCESS;
+}
+
 

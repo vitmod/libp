@@ -82,10 +82,7 @@ static int player_para_release(play_para_t *para)
             }
         }
     }
-    if (para->pFormatCtx != NULL) {
-        av_close_input_file(para->pFormatCtx);
-        para->pFormatCtx = NULL;
-    }
+    ffmpeg_close_file(para);
     if (para->decoder && para->decoder->release) {
         para->decoder->release(para);
         para->decoder = NULL;
@@ -465,6 +462,7 @@ void *player_thread(play_para_t *player)
     int ret;
     unsigned int exit_flag = 0;
     pkt = &am_pkt;
+    player_file_type_t filetype;
 
     //#define SAVE_YUV_FILE
 
@@ -489,7 +487,16 @@ void *player_thread(play_para_t *player)
     set_player_state(player, PLAYER_INITING);
     update_playing_info(player);
     update_player_states(player, 1);
-
+    /*start open file and get file type*/
+    ret = ffmpeg_open_file(player);
+    if (ret != FFMPEG_SUCCESS) {
+        log_print("[player_dec_init]ffmpeg_open_file failed(%s)*****ret=%x!\n", player->file_name, ret);
+        return ret;
+    }
+    ffmpeg_parse_file_type(player, &filetype);
+    set_player_state(player, PLAYER_TYPE_REDY);
+    send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_TYPE_REDY, 0);
+    send_event(player, PLAYER_EVENTS_FILE_TYPE, &filetype, 0);
     ret = player_dec_init(player);
     if (ret != PLAYER_SUCCESS) {
         if (check_stop_cmd(player) == 1) {
