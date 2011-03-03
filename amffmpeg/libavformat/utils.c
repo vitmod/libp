@@ -1375,6 +1375,11 @@ int av_index_search_timestamp(AVStream *st, int64_t wanted_timestamp,
         if(timestamp <= wanted_timestamp)
             a = m;
     }
+
+	//add by X.H.
+	if(a == -1){
+		a = 0;
+	}
     m= (flags & AVSEEK_FLAG_BACKWARD) ? a : b;
 
     if(!(flags & AVSEEK_FLAG_ANY)){
