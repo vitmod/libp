@@ -298,13 +298,13 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 	offset1 = offset - pos_on_read;/*seek forword or back*/
 	lp_sprint( AV_LOG_INFO, "url_lpseek:pos_on_read=%lld,can seek forwart=%d,can seek bacd=%d,offset1=%lld\n",
 		pos_on_read,valid_data_can_seek_forward,valid_data_can_seek_back,offset1);
-	if(offset1>=0 && (int)offset1<=valid_data_can_seek_forward)
+	if(offset1>=0 && offset1<=valid_data_can_seek_forward)
 	{/*seek forward in lp buffer*/
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer seek forword offset=%lld offset1=%lld whence=%d\n",offset,offset1,whence);
 		lp->rp+=(int)offset1;
 		if(lp->rp>=lp->buffer_end)
 			lp->rp-=lp->buffer_size;
-	}else if(offset1<0 && (-(int)offset1)<=valid_data_can_seek_back)
+	}else if(offset1<0 && (-offset1)<=valid_data_can_seek_back)
 	{/*seek back in lp buffer*/
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer seek back offset=%lld offset1=%lld whence=%d,(int)offset1=%d\n",offset,offset1,whence,(int)offset1);
 		lp->rp+=(int)offset1;
