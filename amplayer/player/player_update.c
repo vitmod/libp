@@ -470,10 +470,10 @@ static unsigned int get_current_time(play_para_t *p_para)
         apts = get_pts_audio();
         ctime = handle_current_time(p_para, pcr_scr, apts);
         log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);
-    } else if (!p_para->astream_info.has_audio) {
+    } else/* if (!p_para->astream_info.has_audio) {
         vpts = get_pts_video();
         ctime = vpts;
-    } else {
+    } else */{
         pcr_scr = get_pts_pcrscr();
         ctime = pcr_scr;
     }
@@ -595,6 +595,7 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         log_print("[%s:%d]abuf=0x%x	(limit=0x%x) audio_low_buffer\n", __FUNCTION__, __LINE__, abuf->data_len, RESERVE_AUDIO_SIZE);
         p_para->playctrl_info.audio_low_buffer = 1;
     }
+    //log_print("[%s:%d]abuf=0x%x   vbuf=0x%x\n", __FUNCTION__, __LINE__, abuf->data_len, abuf->data_len);
 
     if (p_para->playctrl_info.video_low_buffer &&
         p_para->playctrl_info.audio_low_buffer &&
@@ -737,8 +738,8 @@ int update_playing_info(play_para_t *p_para)
         if (p_para->check_end.interval == 0) {
             p_para->check_end.interval = CHECK_END_INTERVAL;
         }
-
         check_force_end(p_para, &vbuf, &abuf);
+        set_tsync_enable(0);
     }
 
     update_buffering_states(p_para, &vbuf, &abuf);
