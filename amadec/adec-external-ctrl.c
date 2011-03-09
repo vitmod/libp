@@ -339,3 +339,19 @@ int audio_output_muted(void *priv)
 
     return audec->muted;
 }
+
+/**
+ * \brief check audiodec ready or not
+ * \param priv pointer to player private data
+ * \return 1 = audiodec is ready, 0 = audiodec not ready
+ */
+int audio_dec_ready(void *priv)
+{
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+
+    if (audec->state > INITTED) {
+        return 1;
+    } else {
+        return 0;
+    }
+}

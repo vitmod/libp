@@ -30,6 +30,7 @@ extern "C"
     int audio_channel_right_mono(void *);
     int audio_channel_stereo(void *);
     int audio_output_muted(void *priv);
+    int audio_dec_ready(void *priv);
 
 #ifdef  __cplusplus
 }
