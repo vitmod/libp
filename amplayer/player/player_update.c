@@ -512,6 +512,7 @@ static void update_current_time(play_para_t *p_para)
                     log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                     p_para->state.start_time = time;
                 }
+
                 if ((unsigned int)p_para->state.start_time > 0) {
                     log_debug("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, p_para->state.start_time);
                     time -= p_para->state.start_time;
@@ -728,8 +729,14 @@ int update_playing_info(play_para_t *p_para)
 
         update_dec_info(p_para, &vdec, &adec);
     }
+
     if (get_player_state(p_para) > PLAYER_INITOK) {
-        update_current_time(p_para);
+        if (p_para->codec && (p_para->playctrl_info.audio_ready != 1)) {
+            p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
+        }
+        if (p_para->playctrl_info.audio_ready == 1) {
+            update_current_time(p_para);
+        }
     }
 
     if (p_para->playctrl_info.read_end_flag && (get_player_state(p_para) != PLAYER_PAUSE)) {

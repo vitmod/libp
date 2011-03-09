@@ -1120,6 +1120,11 @@ int check_in_pts(play_para_t *para, am_packet_t *pkt)
         }
     } else if (para->stream_type == STREAM_AUDIO) {
         if (!para->astream_info.check_first_pts) {
+            if (!url_support_time_seek(para->pFormatCtx->pb) &&
+                (para->playctrl_info.time_point == -1)) {
+
+                para->playctrl_info.time_point = 0;
+            }
             pts = para->playctrl_info.time_point * PTS_FREQ;
             if (codec_checkin_pts(pkt->codec, pts) != 0) {
                 log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);

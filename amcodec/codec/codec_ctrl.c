@@ -1,13 +1,13 @@
 /**
 * @file codec_ctrl.c
-* @brief  Codec control lib functions 
+* @brief  Codec control lib functions
 * @author Zhou Zhi <zhi.zhou@amlogic.com>
 * @version 1.0.0
 * @date 2011-02-24
 */
 /* Copyright (C) 2007-2011, Amlogic Inc.
 * All right reserved
-* 
+*
 */
 #include <stdio.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_change_buf_size  Change buffer size of codec device 
+* @brief  codec_change_buf_size  Change buffer size of codec device
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
 *
@@ -106,7 +106,7 @@ static  int set_video_codec_info(codec_para_t *pcodec)
 }
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  set_audio_format  Set audio format to codec device 
+* @brief  set_audio_format  Set audio format to codec device
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
 *
@@ -331,7 +331,7 @@ static inline int codec_audio_es_init(codec_para_t *pcodec)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_sub_es_init  Initialize the codec device for es subtitle 
+* @brief  codec_sub_es_init  Initialize the codec device for es subtitle
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
 *
@@ -652,7 +652,7 @@ int codec_init(codec_para_t *pcodec)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_write  Write data to codec device 
+* @brief  codec_write  Write data to codec device
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
 * @param[in]  buffer  Buffer for data to be written
@@ -668,7 +668,7 @@ int codec_write(codec_para_t *pcodec, void *buffer, int len)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_read  Read data from codec device 
+* @brief  codec_read  Read data from codec device
 *
 * @param[in]   pcodec  Pointer of codec parameter structure
 * @param[out]  buffer  Buffer for data read from codec device
@@ -706,7 +706,7 @@ int codec_close(codec_para_t *pcodec)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_close_audio  Close audio decoder 
+* @brief  codec_close_audio  Close audio decoder
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
 */
@@ -833,7 +833,7 @@ int codec_get_adec_state(codec_para_t *p, struct adec_status *adec)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  video_pause  Pause video playing by codec device 
+* @brief  video_pause  Pause video playing by codec device
 *
 * @param[in]  p  Pointer of codec parameter structure
 *
@@ -912,7 +912,7 @@ int codec_resume(codec_para_t *p)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_reset  Reset codec device 
+* @brief  codec_reset  Reset codec device
 *
 * @param[in]  p  Pointer of codec parameter structure
 *
@@ -1257,11 +1257,11 @@ int codec_poll_cntl(codec_para_t *pcodec)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_get_cntl_state  Get the status of video control device, especially for trickmode 
+* @brief  codec_get_cntl_state  Get the status of video control device, especially for trickmode
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
 *
-* @return     Video control device status or fail error type 
+* @return     Video control device status or fail error type
 */
 /* --------------------------------------------------------------------------*/
 int codec_get_cntl_state(codec_para_t *pcodec)
@@ -1313,8 +1313,8 @@ int codec_set_cntl_avthresh(codec_para_t *pcodec, unsigned int avthresh)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_set_cntl_syncthresh  Set sync threshold control which defines the starting system time (hold video or not) 
-*                                    when playing 
+* @brief  codec_set_cntl_syncthresh  Set sync threshold control which defines the starting system time (hold video or not)
+*                                    when playing
 *
 * @param[in]  pcodec      Pointer of codec parameter structure
 * @param[in]  syncthresh  Sync threshold control
@@ -1409,4 +1409,27 @@ int codec_audio_reinit(codec_para_t *pcodec)
 int codec_set_dec_reset(codec_para_t *pcodec)
 {
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_DEC_RESET, 0);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_audio_isready  check audio finish init ok
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     1 for ready, or not ready if = 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_audio_isready(codec_para_t *p)
+{
+    int audio_isready = 1;
+    if (!p) {
+        CODEC_PRINT("[%s]ERROR invalid pointer!\n", __FUNCTION__);
+        return -1;
+    }
+    if (p->has_audio) {
+        audio_isready = audio_dec_ready(p->adec_priv);
+    }
+
+    return audio_isready;
 }
