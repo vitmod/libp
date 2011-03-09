@@ -7,7 +7,7 @@
 */
 /* Copyright (C) 2007-2011, Amlogic Inc.
 * All right reserved
-* 
+*
 */
 
 #include <stdio.h>
@@ -18,26 +18,29 @@
 #include <fcntl.h>
 #include <codec_error.h>
 #include <codec.h>
-#include "adecproc.h"
+#include "codec_h_ctrl.h"
+#include "adec-external-ctrl.h"
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  audio_start  Start audio decoder 
+* @brief  audio_start  Start audio decoder
 */
 /* --------------------------------------------------------------------------*/
-void audio_start(void)
+void audio_start(void **priv)
 {
-    audio_decode_start();
+    audio_decode_init(priv);
+    audio_decode_start(*priv);
 }
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  audio_stop  Stop audio decoder 
+* @brief  audio_stop  Stop audio decoder
 */
 /* --------------------------------------------------------------------------*/
-void audio_stop(void)
+void audio_stop(void *priv)
 {
-    audio_decode_stop();
+    audio_decode_stop(priv);
+    audio_decode_release(priv);
 }
 
 /* --------------------------------------------------------------------------*/
@@ -45,9 +48,9 @@ void audio_stop(void)
 * @brief  audio_pause  Pause audio decoder
 */
 /* --------------------------------------------------------------------------*/
-void audio_pause(void)
+void audio_pause(void *priv)
 {
-    audio_decode_pause();
+    audio_decode_pause(priv);
 }
 
 /* --------------------------------------------------------------------------*/
@@ -55,9 +58,9 @@ void audio_pause(void)
 * @brief  audio_resume  Resume audio decoder
 */
 /* --------------------------------------------------------------------------*/
-void audio_resume(void)
+void audio_resume(void *priv)
 {
-    audio_decode_resume();
+    audio_decode_resume(priv);
 }
 
 /* --------------------------------------------------------------------------*/
@@ -72,7 +75,7 @@ void audio_resume(void)
 int codec_get_mutesta(codec_para_t *p)
 {
     int ret;
-    //ret = amadec_cmd("getmute");
+    ret = audio_output_muted(p->adec_priv);
     return ret;
 }
 
@@ -91,8 +94,8 @@ int codec_set_mute(codec_para_t *p, int mute)
     int ret;
 
     /* 1: mut output. 0: unmute output */
-    ret = audio_decode_set_mute(mute);
-	
+    ret = audio_decode_set_mute(p->adec_priv, mute);
+
     return ret;
 }
 
@@ -126,7 +129,7 @@ int codec_set_volume(codec_para_t *p, float val)
 {
     int ret;
 
-    ret=audio_decode_set_volume(val);
+    ret = audio_decode_set_volume(p->adec_priv, val);
     return ret;
 }
 
@@ -173,7 +176,7 @@ int codec_set_volume_balance(codec_para_t *p, int balance)
 int codec_swap_left_right(codec_para_t *p)
 {
     int ret;
-    ret=audio_channels_swap();
+    ret = audio_channels_swap(p->adec_priv);
     return ret;
 }
 
@@ -189,7 +192,7 @@ int codec_swap_left_right(codec_para_t *p)
 int codec_left_mono(codec_para_t *p)
 {
     int ret;
-    ret=audio_channel_left_mono();
+    ret = audio_channel_left_mono(p->adec_priv);
     return ret;
 }
 
@@ -205,7 +208,7 @@ int codec_left_mono(codec_para_t *p)
 int codec_right_mono(codec_para_t *p)
 {
     int ret;
-    ret=audio_channel_right_mono();
+    ret = audio_channel_right_mono(p->adec_priv);
     return ret;
 }
 
@@ -221,26 +224,26 @@ int codec_right_mono(codec_para_t *p)
 int codec_stereo(codec_para_t *p)
 {
     int ret;
-    ret=audio_channel_stereo();
+    ret = audio_channel_stereo(p->adec_priv);
     return ret;
 }
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_audio_automute  Set decoder to automute mode 
+* @brief  codec_audio_automute  Set decoder to automute mode
 *
 * @param[in]  auto_mute  automute mode
 *
 * @return     Command result
 */
 /* --------------------------------------------------------------------------*/
-int codec_audio_automute(int auto_mute)
+int codec_audio_automute(void *priv, int auto_mute)
 {
     int ret;
     //char buf[16];
     //sprintf(buf,"automute:%d",auto_mute);
     //ret=amadec_cmd(buf);
-    ret = audio_decode_automute(auto_mute);
+    ret = audio_decode_automute(priv, auto_mute);
     return ret;
 }
 

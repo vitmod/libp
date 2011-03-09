@@ -7,7 +7,7 @@
 */
 /* Copyright (C) 2007-2011, Amlogic Inc.
 * All right reserved
-* 
+*
 */
 #ifndef CODEC_CTRL_H_
 #define CODEC_CTRL_H_
@@ -66,6 +66,6 @@ int codec_swap_left_right(codec_para_t *);
 int codec_left_mono(codec_para_t *p);
 int codec_right_mono(codec_para_t *p);
 int codec_stereo(codec_para_t *p);
-int codec_audio_automute(int auto_mute);
+int codec_audio_automute(void *priv, int auto_mute);
 int codec_audio_spectrum_switch(codec_para_t *p, int isStart, int interval);
 #endif

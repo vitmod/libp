@@ -7,11 +7,10 @@ LOCAL_CFLAGS := \
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
-	$(LOCAL_PATH)/../amffmpeg
 
 LOCAL_SRC_FILES := \
-        adecproc.c adec.c log.c feeder.c audiodsp_ctl.c audio_out/android_out.cpp \
-		codec_mgt.c wmapro/wmaprodec.c aac_main/aacdec.c
+           adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
+           dsp/audiodsp-ctl.c audio_out/android-out.cpp
 
 LOCAL_MODULE := libamadec
 

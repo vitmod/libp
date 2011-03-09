@@ -564,8 +564,8 @@ int player_dec_reset(play_para_t *p_para)
     if (p_para->vstream_info.has_video
         && (timestamp != pFormatCtx->start_time)
         && (p_para->stream_type == STREAM_ES)) {
-        if (p_para->astream_info.has_audio) {
-            codec_audio_automute(1);
+        if (p_para->astream_info.has_audio && p_para->acodec) {
+            codec_audio_automute(p_para->acodec->adec_priv, 1);
             mute_flag = 1;
         }
         if (p_para->vcodec) {
@@ -641,7 +641,7 @@ int player_dec_reset(play_para_t *p_para)
 
     if (mute_flag) {
         log_print("[%s:%d]audio_mute=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_mute);
-        codec_audio_automute(p_para->playctrl_info.audio_mute);
+        codec_audio_automute(p_para->acodec->adec_priv, p_para->playctrl_info.audio_mute);
     }
     p_para->state.last_time = p_para->playctrl_info.time_point;
     return ret;

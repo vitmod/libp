@@ -11,8 +11,8 @@
 */
 #ifndef CODEC_PRIV_H_
 #define CODEC_PRIV_H_
-void audio_start(void);
-void audio_stop(void);
-void audio_pause(void);
-void audio_resume(void);
+void audio_start(void **priv);
+void audio_stop(void *priv);
+void audio_pause(void *priv);
+void audio_resume(void *priv);
 #endif

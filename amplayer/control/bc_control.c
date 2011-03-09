@@ -15,7 +15,7 @@
 #include "player_id.h"
 
 #include <pthread.h>
-#include "adecproc.h"
+#include "adec-external-ctrl.h"
 
 extern void vm_update_state(player_info_t *info);
 

@@ -27,7 +27,7 @@
 #include <amports/amstream.h>
 #include <amports/jpegdec.h>
 #include <log_print.h>
-#include <adec.h>
+//#include <adec.h>
 
 /****************************************************************************
  * Macro definitions
@@ -1000,7 +1000,7 @@ static AM_ErrorCode_t aml_open(AM_AV_Device_t *dev, const AM_AV_OpenPara_t *para
 	
 	adec_cmd("stop");
 #endif
-	adec_init(NULL);
+	//adec_init(NULL);
 	return AM_SUCCESS;
 }
 
@@ -1114,7 +1114,7 @@ static AM_ErrorCode_t aml_start_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode, vo
 		case AV_PLAY_TS:
 			fd = (int)dev->ts_player.drv_data;
 			tp = (AV_TSPlayPara_t*) para;
-			adec_stop();
+			//adec_stop();
 			//AM_AOUT_SetDriver(AOUT_DEV_NO, &adec_aout_drv, NULL);
 			log_print("############### Start AV_PLAY_TS\n");
 			val = tp->vfmt;
@@ -1148,7 +1148,7 @@ static AM_ErrorCode_t aml_start_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode, vo
 			}
 			//adec_cmd("start");
 			usleep(1500000);
-			adec_start();
+			//adec_start();
 		break;
 #if 0
 		case AV_PLAY_FILE:
@@ -1205,7 +1205,7 @@ static AM_ErrorCode_t aml_close_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode)
 		case AV_PLAY_TS:
 			fd = (int)dev->ts_player.drv_data;
 			//adec_cmd("stop");
-			adec_stop();
+			//adec_stop();
       log_print("aml_close_mode\n");
 			close(fd);
 		break;

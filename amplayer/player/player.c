@@ -22,7 +22,7 @@
 #include "thread_mgt.h"
 #include "stream_decoder.h"
 #include "player_ffmpeg_ctrl.h"
-#include <adec.h>
+//#include <adec.h>
 
 #define BREAK_FLAG      0x01
 #define CONTINUE_FLAG   0x02
@@ -537,7 +537,7 @@ void *player_thread(play_para_t *player)
     }
 
     if (player->astream_info.has_audio) {
-        adec_init(player->pFormatCtx->streams[player->astream_info.audio_index]->codec);
+        //adec_init(player->pFormatCtx->streams[player->astream_info.audio_index]->codec);
     }
 
     ret = player_decoder_init(player);

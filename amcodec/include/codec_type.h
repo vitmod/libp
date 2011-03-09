@@ -76,6 +76,7 @@ unsigned int noblock:
     dec_sysinfo_t am_sysinfo;   ///< system information for video
     audio_info_t audio_info;    ///< audio information pass to audiodsp
     int packet_size;            ///< data size per packet
+    void * adec_priv;          ///<for adec>
 } codec_para_t;
 
 

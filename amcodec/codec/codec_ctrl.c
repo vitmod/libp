@@ -645,7 +645,7 @@ int codec_init(codec_para_t *pcodec)
         return -CODEC_ERROR_INIT_FAILED;
     }
     if (pcodec->has_audio) {
-        audio_start();
+        audio_start(&pcodec->adec_priv);
     }
     return ret;
 }
@@ -694,7 +694,7 @@ int codec_read(codec_para_t *pcodec, void *buffer, int len)
 int codec_close(codec_para_t *pcodec)
 {
     if (pcodec->has_audio) {
-        audio_stop();
+        audio_stop(pcodec->adec_priv);
     }
 #ifdef SUBTITLE_EVENT
     if (pcodec->has_sub && pcodec->sub_handle >= 0) {
@@ -716,7 +716,7 @@ void codec_close_audio(codec_para_t *pcodec)
     if (pcodec) {
         pcodec->has_audio = 0;
     }
-    audio_stop();
+    audio_stop(pcodec->adec_priv);
     return;
 }
 
@@ -732,7 +732,7 @@ void codec_resume_audio(codec_para_t *pcodec, unsigned int orig)
 {
     pcodec->has_audio = orig;
     if (pcodec->has_audio) {
-        audio_start();
+        audio_start(&pcodec->adec_priv);
     }
     return;
 }
@@ -876,7 +876,7 @@ int codec_pause(codec_para_t *p)
     if (p) {
         CODEC_PRINT("[codec_pause]p->has_audio=%d\n", p->has_audio);
         if (p->has_audio) {
-            audio_pause();
+            audio_pause(p->adec_priv);
         } else {
             ret = video_pause(p);
         }
@@ -900,7 +900,7 @@ int codec_resume(codec_para_t *p)
     if (p) {
         CODEC_PRINT("[codec_resume]p->has_audio=%d\n", p->has_audio);
         if (p->has_audio) {
-            audio_resume();
+            audio_resume(p->adec_priv);
         } else {
             ret = video_resume(p);
         }

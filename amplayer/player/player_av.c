@@ -1584,7 +1584,7 @@ void player_switch_audio(play_para_t *para)
     }
 
     /* automute */
-    codec_audio_automute(1);
+    codec_audio_automute(pcodec->adec_priv, 1);
 
     /* close audio */
     codec_close_audio(pcodec);
@@ -1653,7 +1653,7 @@ void player_switch_audio(play_para_t *para)
     codec_resume_audio(pcodec, para->astream_info.resume_audio);
 
     /* unmute*/
-    codec_audio_automute(0);
+    codec_audio_automute(pcodec->adec_priv, 0);
 
     return;
 }
