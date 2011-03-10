@@ -512,6 +512,10 @@ static void update_current_time(play_para_t *p_para)
                     log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                     p_para->state.start_time = time;
                 }
+				else if ((time - (unsigned int)p_para->state.start_time) >  2 && (p_para->state.start_time == 0)) {
+                    log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
+                    p_para->state.start_time = time;
+                }
 
                 if ((unsigned int)p_para->state.start_time > 0) {
                     log_debug("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, p_para->state.start_time);
