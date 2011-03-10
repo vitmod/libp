@@ -91,11 +91,11 @@ typedef  struct {
     unsigned int fast_backward: 1;
     unsigned int init_ff_fr: 1;
     unsigned int audio_switch_flag: 1;
-    unsigned int audio_mute: 1;
-    unsigned int audio_ready: 1;
+    unsigned int audio_mute: 1;    
     unsigned int switch_audio_id;
     unsigned int switch_sub_id;
     unsigned int is_playlist;
+	int audio_ready;
     int time_point;
     int f_step;
     int read_max_retry_cnt;

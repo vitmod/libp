@@ -173,6 +173,7 @@ void clear_all_message(play_para_t *para);
 player_cmd_t * get_message(play_para_t *para);
 int update_player_states(play_para_t *para, int force);
 void set_player_error_no(play_para_t *player, int error_no);
+int send_event(play_para_t *para, int msg, unsigned long ext1, unsigned long ext2);
 int register_update_callback(callback_t *cb, update_state_fun_t up_fn, int interval_s);
 
 #endif
