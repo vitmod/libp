@@ -470,10 +470,10 @@ static unsigned int get_current_time(play_para_t *p_para)
         apts = get_pts_audio();
         ctime = handle_current_time(p_para, pcr_scr, apts);
         log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);
-    } else/* if (!p_para->astream_info.has_audio) {
-        vpts = get_pts_video();
-        ctime = vpts;
-    } else */{
+    } else if (p_para->astream_info.has_audio && p_para->stream_type == STREAM_ES) {
+        apts = get_pts_audio();
+        ctime = apts;
+    } else{
         pcr_scr = get_pts_pcrscr();
         ctime = pcr_scr;
     }
@@ -733,6 +733,7 @@ int update_playing_info(play_para_t *p_para)
     if (get_player_state(p_para) > PLAYER_INITOK) {
         if (p_para->codec && (p_para->playctrl_info.audio_ready != 1)) {
             p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
+			log_print("[%s:%d]audio_ready=%d\n",__FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
         }
         if (p_para->playctrl_info.audio_ready == 1) {
             update_current_time(p_para);
@@ -747,6 +748,7 @@ int update_playing_info(play_para_t *p_para)
         }
         check_force_end(p_para, &vbuf, &abuf);
         set_tsync_enable(0);
+		log_print("[%s:%d]read end ,close av sync!\n",__FUNCTION__, __LINE__);
     }
 
     update_buffering_states(p_para, &vbuf, &abuf);
