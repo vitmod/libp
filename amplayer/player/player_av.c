@@ -244,6 +244,7 @@ vdec_type_t video_codec_type_convert(unsigned int id)
     case CODEC_TAG_RMP4:
     case CODEC_TAG_MPG4:
     case CODEC_TAG_mp4v:
+    case CODEC_ID_MPEG4:
         log_print("VIDEO_DEC_FORMAT_MPEG4_5\n");
         dec_type = VIDEO_DEC_FORMAT_MPEG4_5;
         break;
