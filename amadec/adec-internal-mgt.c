@@ -163,6 +163,7 @@ static void *adec_message_loop(void *args)
             if (audec->state > STOPPED) {
                 audec->state = STOPPED;
                 aout_ops->stop(audec);
+                feeder_release(audec);
             }
             break;
 
