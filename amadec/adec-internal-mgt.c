@@ -65,7 +65,7 @@ static int audio_hardware_ctrl(hw_command_t cmd)
 /**
  * \brief adec main thread
  * \param args pointer to thread private data
- * \return 0 on success otherwise -1 if an error occurred
+ * \return NULL
  */
 static void *adec_message_loop(void *args)
 {

@@ -1,5 +1,5 @@
 /**
- * \file adec-exrnal-mgt.c
+ * \file adec-external-ctrl.c
  * \brief  Audio Dec Lib Functions
  * \version 1.0.0
  * \date 2011-03-08
