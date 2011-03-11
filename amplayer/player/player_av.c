@@ -1182,6 +1182,7 @@ int set_header_info(play_para_t *para, am_packet_t *pkt)
                                 set_player_error_no(para, PLAYER_UNSUPPORT_VIDEO);
                                 update_player_states(para, 1);
                                 set_tsync_enable(0);
+								para->playctrl_info.avsync_enable = 0;
                             }
                         }
                         vld_len = h263vld(pkt->data, vld_buf, pkt->data_size, 0);
