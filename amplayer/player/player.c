@@ -490,8 +490,10 @@ void *player_thread(play_para_t *player)
     /*start open file and get file type*/
     ret = ffmpeg_open_file(player);
     if (ret != FFMPEG_SUCCESS) {
+        set_player_state(player, PLAYER_ERROR);
+        send_event(player, PLAYER_EVENTS_ERROR, ret, "Open File failed");
         log_print("[player_dec_init]ffmpeg_open_file failed(%s)*****ret=%x!\n", player->file_name, ret);
-        return ret;
+        goto release0;
     }
     ffmpeg_parse_file_type(player, &filetype);
     set_player_state(player, PLAYER_TYPE_REDY);
