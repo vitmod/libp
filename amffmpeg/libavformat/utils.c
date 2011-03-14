@@ -849,11 +849,9 @@ static void compute_pkt_fields(AVFormatContext *s, AVStream *st,
 {
     int num, den, presentation_delayed, delay, i;
     int64_t offset;
-
     if (st->codec->codec_id != CODEC_ID_H264 && pc && pc->pict_type == FF_B_TYPE)
         //FIXME Set low_delay = 0 when has_b_frames = 1
         st->codec->has_b_frames = 1;
-
     /* do we have a video B-frame ? */
     delay= st->codec->has_b_frames;
     presentation_delayed = 0;
@@ -867,7 +865,7 @@ static void compute_pkt_fields(AVFormatContext *s, AVStream *st,
        /*&& pkt->dts-(1LL<<st->pts_wrap_bits) < pkt->pts*/){
         pkt->dts -= 1LL<<st->pts_wrap_bits;
     }
-
+/*
     // some mpeg2 in mpeg-ps lack dts (issue171 / input_file.mpg)
     // we take the conservative approach and discard both
     // Note, if this is misbehaving for a H.264 file then possibly presentation_delayed is not set correctly.
@@ -875,7 +873,7 @@ static void compute_pkt_fields(AVFormatContext *s, AVStream *st,
         av_log(s, AV_LOG_WARNING, "invalid dts/pts combination\n");
         pkt->dts= pkt->pts= AV_NOPTS_VALUE;
     }
-
+*/
     if (pkt->duration == 0) {
         compute_frame_duration(&num, &den, st, pc, pkt);
         if (den && num) {
