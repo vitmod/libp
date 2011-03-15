@@ -834,6 +834,7 @@ int player_dec_init(play_para_t *p_para)
     }
     subtitle_para_init(p_para);
     set_tsync_enable(1);        //open av sync
+    p_para->playctrl_info.avsync_enable = 1;
     return PLAYER_SUCCESS;
 
 init_fail:
@@ -858,6 +859,7 @@ int player_decoder_init(play_para_t *p_para)
     }
     p_para->decoder = decoder;
     p_para->check_end.end_count = CHECK_END_COUNT;
+	p_para->playctrl_info.check_audio_rp_cnt = CHECK_AUDIO_HALT_CNT;
 	
     if (p_para->astream_info.has_audio && p_para->acodec) {
         p_para->codec = p_para->acodec;
@@ -869,6 +871,7 @@ int player_decoder_init(play_para_t *p_para)
 
     if (p_para->astream_info.has_audio == 0) {
         set_tsync_enable(0);
+		p_para->playctrl_info.avsync_enable = 0;
     }
     return PLAYER_SUCCESS;
 failed:

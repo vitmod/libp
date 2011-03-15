@@ -91,14 +91,16 @@ typedef  struct {
     unsigned int fast_backward: 1;
     unsigned int init_ff_fr: 1;
     unsigned int audio_switch_flag: 1;
-    unsigned int audio_mute: 1;    
+    unsigned int audio_mute: 1;   
+	unsigned int avsync_enable:1;
     unsigned int switch_audio_id;
     unsigned int switch_sub_id;
-    unsigned int is_playlist;
-	int audio_ready;
+    unsigned int is_playlist;	
     int time_point;
     int f_step;
     int read_max_retry_cnt;
+	int audio_ready;	
+	int check_audio_rp_cnt;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);

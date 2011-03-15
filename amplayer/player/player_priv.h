@@ -41,6 +41,7 @@ struct stream_decoder;
 #define MAX_PACKET_SIZE     (2*1024*1024)
 #define FILE_BUFFER_SIZE    (1024*32)//(1024*512)   
 #define CHECK_END_COUNT     (10)
+#define CHECK_AUDIO_HALT_CNT (5)
 #define CHECK_END_INTERVAL  (100)   //ms
 #define MAX_TRY_READ_COUNT  (50)
 
