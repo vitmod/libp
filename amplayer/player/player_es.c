@@ -15,11 +15,6 @@ static int codec_release(codec_para_t *codec)
 {
     int r = CODEC_ERROR_NONE;
     if (codec) {
-        r = codec_close_cntl(codec);
-        if (r < 0) {
-            log_error("[stream_es_init]close codec control handle failed, r= %x\n", r);
-            return r;
-        }
         r = codec_close(codec);
         if (r < 0) {
             log_error("[stream_es_init]close codec failed, r= %x\n", r);
@@ -116,15 +111,10 @@ static int stream_es_init(play_para_t *p_para)
         }
         MEMSET(v_codec, 0, sizeof(codec_para_t));
 
-        if (codec_init_cntl(v_codec) != CODEC_ERROR_NONE) {
-            goto error1;
-        }
-
         vcodec_info_init(p_para, v_codec);
 
         ret = codec_init(v_codec);
         if (ret != CODEC_ERROR_NONE) {
-            codec_close_cntl(v_codec);
             if (ret != CODEC_OPEN_HANDLE_FAILED) {
                 codec_close(v_codec);
             }
@@ -142,15 +132,11 @@ static int stream_es_init(play_para_t *p_para)
             return PLAYER_EMPTY_P;
         }
         MEMSET(a_codec, 0, sizeof(codec_para_t));
-        if (codec_init_cntl(a_codec) != 0) {
-            goto error2;
-        }
 
         acodec_info_init(p_para, a_codec);
 
         ret = codec_init(a_codec);
         if (ret != CODEC_ERROR_NONE) {
-            codec_close_cntl(a_codec);
             if (ret != CODEC_OPEN_HANDLE_FAILED) {
                 codec_close(a_codec);
             }
@@ -175,9 +161,6 @@ static int stream_es_init(play_para_t *p_para)
         }
 
         MEMSET(s_codec, 0, sizeof(codec_para_t));
-        if (codec_init_cntl(s_codec) != 0) {
-            goto error2;
-        }
         scodec_info_init(p_para, s_codec);
         if (codec_init(s_codec) != 0) {
             goto error3;
@@ -211,11 +194,6 @@ static int stream_es_release(play_para_t *p_para)
 {
     int r = -1;
     if (p_para->acodec) {
-        r = codec_close_cntl(p_para->acodec);
-        if (r < 0) {
-            log_error("[stream_es_init]close codec control handle failed, r= %x\n", r);
-            return r;
-        }
         r = codec_close(p_para->acodec);
         if (r < 0) {
             log_error("[stream_es_release]close acodec failed, r= %x\n", r);
@@ -225,11 +203,6 @@ static int stream_es_release(play_para_t *p_para)
         p_para->acodec = NULL;
     }
     if (p_para->vcodec) {
-        r = codec_close_cntl(p_para->vcodec);
-        if (r < 0) {
-            log_error("[stream_es_release]close vcodec control handle failed, r= %x\n", r);
-            return r;
-        }
         r = codec_close(p_para->vcodec);
         if (r < 0) {
             log_error("[stream_es_release]close vcodec failed, r= %x\n", r);
@@ -239,11 +212,6 @@ static int stream_es_release(play_para_t *p_para)
         p_para->vcodec = NULL;
     }
     if (p_para->scodec) {
-        r = codec_close_cntl(p_para->scodec);
-        if (r < 0) {
-            log_error("[stream_es_release]close scodec control handle failed, r= %x\n", r);
-            return r;
-        }
         r = codec_close(p_para->scodec);
         if (r < 0) {
             log_error("[stream_es_release]close scodec failed, r= %x\n", r);

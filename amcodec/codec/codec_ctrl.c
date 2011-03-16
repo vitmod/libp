@@ -635,6 +635,10 @@ int codec_init(codec_para_t *pcodec)
     if (ret != 0) {
         return ret;
     }
+    ret = codec_init_cntl(pcodec);
+    if (ret != CODEC_ERROR_NONE) {
+        return ret;
+    }
     ret = codec_change_buf_size(pcodec);
     if (ret != 0) {
         return -CODEC_ERROR_SET_BUFSIZE_FAILED;
@@ -701,6 +705,9 @@ int codec_close(codec_para_t *pcodec)
         codec_close_sub_fd(pcodec->sub_handle);
     }
 #endif
+
+    codec_close_cntl(pcodec);
+
     return codec_h_close(pcodec->handle);
 }
 

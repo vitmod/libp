@@ -20,9 +20,7 @@ static int stream_video_init(play_para_t *p_para)
         return PLAYER_EMPTY_P;
     }
     MEMSET(codec, 0, sizeof(codec_para_t));
-    if (codec_init_cntl(codec) != CODEC_ERROR_NONE) {
-        goto error1;
-    }
+
     if (vinfo->has_video) {
         codec->has_video = 1;
         codec->video_type = vinfo->video_format;
@@ -32,7 +30,6 @@ static int stream_video_init(play_para_t *p_para)
     codec->noblock = !!p_para->buffering_enable;
     ret = codec_init(codec);
     if (ret != CODEC_ERROR_NONE) {
-        codec_close_cntl(codec);
         if (ret != CODEC_OPEN_HANDLE_FAILED) {
             codec_close(codec);
         }
@@ -49,7 +46,6 @@ error1:
 static int stream_video_release(play_para_t *p_para)
 {
     if (p_para->vcodec) {
-        codec_close_cntl(p_para->vcodec);
         codec_close(p_para->vcodec);
         codec_free(p_para->vcodec);
     }
