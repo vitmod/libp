@@ -155,16 +155,8 @@ int main(int argc,char *argv[])
     }
     printf("video codec ok!\n");
 
-
-    ret = codec_init_cntl(vpcodec);
-    if( ret != CODEC_ERROR_NONE )
-    {
-        printf("codec_init_cntl error\n");
-        return -1;
-    }
-    
-    codec_set_cntl_avthresh(vpcodec, AV_SYNC_THRESH);
-    codec_set_cntl_syncthresh(vpcodec, 0);
+    //codec_set_cntl_avthresh(vpcodec, AV_SYNC_THRESH);
+    //codec_set_cntl_syncthresh(vpcodec, 0);
 
     set_tsync_enable(0);
 
