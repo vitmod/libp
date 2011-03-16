@@ -882,9 +882,10 @@ int codec_pause(codec_para_t *p)
     int ret = CODEC_ERROR_NONE;
     if (p) {
         CODEC_PRINT("[codec_pause]p->has_audio=%d\n", p->has_audio);
-        if (p->has_audio) {
+        if(p->has_audio) {
             audio_pause(p->adec_priv);
-        } else {
+        } 
+		if(p->has_video){
             ret = video_pause(p);
         }
     } else {
@@ -906,9 +907,10 @@ int codec_resume(codec_para_t *p)
     int ret = CODEC_ERROR_NONE;
     if (p) {
         CODEC_PRINT("[codec_resume]p->has_audio=%d\n", p->has_audio);
-        if (p->has_audio) {
+        if(p->has_audio){
             audio_resume(p->adec_priv);
-        } else {
+        } 
+		if(p->has_video){
             ret = video_resume(p);
         }
     } else {

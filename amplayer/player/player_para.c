@@ -591,6 +591,8 @@ int player_dec_reset(play_para_t *p_para)
 
     if (p_para->astream_info.has_audio && p_para->acodec) {
         p_para->codec = p_para->acodec;
+		if(p_para->vcodec)
+			p_para->codec->has_video = 1;
 		log_print("[%s:%d]para->codec pointer to acodec!\n", __FUNCTION__, __LINE__);
     } else if (p_para->vcodec) {
         p_para->codec = p_para->vcodec;
@@ -863,6 +865,8 @@ int player_decoder_init(play_para_t *p_para)
 	
     if (p_para->astream_info.has_audio && p_para->acodec) {
         p_para->codec = p_para->acodec;
+		if(p_para->vcodec)
+			p_para->codec->has_video = 1;
 		log_print("[%s:%d]para->codec pointer to acodec!\n", __FUNCTION__, __LINE__);
     } else if (p_para->vcodec) {
         p_para->codec = p_para->vcodec;
