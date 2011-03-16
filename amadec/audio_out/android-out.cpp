@@ -230,8 +230,6 @@ extern "C" unsigned long android_latency(struct aml_audio_dec* audec)
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 
-    Mutex::Autolock _l(mLock);
-
     if (track) {
         latency = track->latency();
         return latency;

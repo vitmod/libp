@@ -102,7 +102,7 @@ int adec_send_message(aml_audio_dec_t *audec, adec_cmd_t *cmd)
         ret = 0;
     } else {
         /* message pool is full */
-
+        adec_print("message pool is full! delete the oldest message!");
         adec_cmd_t *oldestcmd;
         oldestcmd = pool->message_lise[pool->message_in_index];
         free(oldestcmd);
