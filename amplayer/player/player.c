@@ -376,7 +376,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     p_para->vstream_info.video_index    = c_para->video_index;
     p_para->astream_info.audio_index    = c_para->audio_index;
     p_para->sstream_info.sub_index      = c_para->sub_index;
-    p_para->playctrl_info.no_audio_flag = 1;//c_para->nosound;
+    p_para->playctrl_info.no_audio_flag = c_para->nosound;
     p_para->playctrl_info.no_video_flag = c_para->novideo;
     p_para->playctrl_info.has_sub_flag  = c_para->hassub;
     p_para->playctrl_info.loop_flag     = c_para->loop_mode;
