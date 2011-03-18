@@ -404,6 +404,14 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
     }
     pbuf = pkt->data;
     cur_offset = url_ftell(pb);
+	
+#ifdef DEBUG_VARIABLE_DUR 
+	if(para->playctrl_info.info_variable){
+		if(cur_offset > para->pFormatCtx->valid_offset)
+			update_variable_info(para);
+	}		
+#endif
+
     if (!para->playctrl_info.read_end_flag && (0 == pkt->data_size)) {
         rev_byte = get_buffer(pb, pbuf, para->max_raw_size);
         if ((rev_byte > 0) && (cur_offset <= para->pFormatCtx->valid_offset)) {
@@ -511,7 +519,7 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
                     return PLAYER_RD_FAILED;
                 } else {
                     para->playctrl_info.read_end_flag = 1;
-					log_print("non_raw_read: read end!\n");
+                    log_print("non_raw_read: read end!\n");
 #if DUMP_READ
                     if (fdr > 0) {
                         close(fdr);
@@ -848,53 +856,38 @@ static int64_t rm_offset_search(play_para_t *am_p, int64_t offset, unsigned int 
 #ifdef DEBUG_VARIABLE_DUR
 int update_variable_info(play_para_t *para)
 {
-	int64_t t_fsize = 0;
-	int t_fulltime = 0;
-	int byte_rate = para->media_info.stream_info.bitrate >> 3;
-	int64_t file_size = para->file_size;
-	int full_time = para->state.full_time;
-	int aac_nb_frames = 0;
+    int64_t t_fsize = 0;
+    int t_fulltime = 0;
+    int byte_rate = para->media_info.stream_info.bitrate >> 3;
+    int64_t file_size = para->file_size;
+    int full_time = para->state.full_time;
+    int aac_nb_frames = 0;
 
-	if(para->stream_type == STREAM_AUDIO){
-		if(para->astream_info.audio_format = AFORMAT_AAC){
-			if(para->playctrl_info.read_end_flag){
-				aac_nb_frames = codec_audio_get_nb_frames(para->acodec);
-				//log_print("[%s:%d]aac_nb_frames=%d \n",__FUNCTION__,__LINE__, aac_nb_frames);
-				if(aac_nb_frames > 0){
-					t_fulltime = 1024 * (double)aac_nb_frames / para->astream_info.audio_samplerate;				
-					para->state.full_time = t_fulltime > para->state.current_time ? t_fulltime : para->state.current_time;
-					para->pFormatCtx->duration = t_fulltime * AV_TIME_BASE;
-					log_print("[%s:%d]aac audio duration=%d cur=%d time=%d\n",__FUNCTION__,__LINE__, para->state.full_time,para->state.current_time,t_fulltime);
-				}
-			}
-		}
-	}
-	else{	
-		if(para && para->pFormatCtx && para->pFormatCtx->pb){
-			t_fsize = url_fsize2(para->pFormatCtx->pb);
-			log_print("[%s:%dtfsize=%lld fsize=%lld\n",__FUNCTION__,__LINE__, t_fsize, file_size);
+    if (para && para->pFormatCtx && para->pFormatCtx->pb) {
+        t_fsize = url_fsize2(para->pFormatCtx->pb);
+        log_print("[%s:%dtfsize=%lld fsize=%lld\n", __FUNCTION__, __LINE__, t_fsize, file_size);
+
+        if (t_fsize > file_size) {
+			para->pFormatCtx->file_size = t_fsize;
+            para->pFormatCtx->valid_offset = t_fsize;
 			
-			if(t_fsize > file_size){			
-				if(byte_rate){
-					if((unsigned int)(file_size/byte_rate) == full_time){
-						t_fulltime = t_fsize/byte_rate;
-					}
-				}
-				else{
-					t_fulltime = (unsigned int)(full_time *((double)t_fsize/(double)file_size));	
-				}
-				log_print("[%s:%d]fulltime=%d tfulltime=%d\n", __FUNCTION__, __LINE__, full_time, t_fulltime);
-				if(t_fulltime > para->state.full_time){
-					para->state.full_time = t_fulltime;
-					para->pFormatCtx->duration = t_fulltime * AV_TIME_BASE;
-					para->pFormatCtx->file_size = t_fsize;
-					para->pFormatCtx->valid_offset = t_fsize;
-				}
-			}
-		}
-	}
-	//log_print("[%s:%d]stream_type=%d fulltime=%d aformat=%d\n", __FUNCTION__, __LINE__, para->stream_type, para->state.full_time,para->astream_info.audio_format = AFORMAT_AAC);
-	return PLAYER_SUCCESS;
+            if (byte_rate) {
+                if ((unsigned int)(file_size / byte_rate) == full_time) {
+                    t_fulltime = t_fsize / byte_rate;
+                }
+            } else {
+                t_fulltime = (unsigned int)(full_time * ((double)t_fsize / (double)file_size));
+            }            
+            log_print("[%s:%d]fulltime=%d tfulltime=%d\n", __FUNCTION__, __LINE__, full_time, t_fulltime);
+            if (t_fulltime > para->state.full_time) {
+                para->state.full_time = t_fulltime;
+                para->pFormatCtx->duration = t_fulltime * AV_TIME_BASE;
+            }
+        }
+    }
+
+    //log_print("[%s:%d]stream_type=%d fulltime=%d aformat=%d\n", __FUNCTION__, __LINE__, para->stream_type, para->state.full_time,para->astream_info.audio_format = AFORMAT_AAC);
+    return PLAYER_SUCCESS;
 }
 #endif
 
@@ -1235,7 +1228,7 @@ int set_header_info(play_para_t *para, am_packet_t *pkt)
                                 set_player_error_no(para, PLAYER_UNSUPPORT_VIDEO);
                                 update_player_states(para, 1);
                                 set_tsync_enable(0);
-								para->playctrl_info.avsync_enable = 0;
+                                para->playctrl_info.avsync_enable = 0;
                             }
                         }
                         vld_len = h263vld(pkt->data, vld_buf, pkt->data_size, 0);
