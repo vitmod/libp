@@ -457,7 +457,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 {
     unsigned int pcr_scr = 0, vpts = 0, apts = 0;
     unsigned int ctime = 0;
-#if 0
+#if 1
     if (get_pts_discontinue() &&
         ((p_para->stream_type == STREAM_PS) || (p_para->pFormatCtx && p_para->pFormatCtx->pb && url_support_time_seek(p_para->pFormatCtx->pb)))) {
         p_para->discontinue_point = p_para->state.last_time;
@@ -487,14 +487,16 @@ static unsigned int get_current_time(play_para_t *p_para)
 static void update_current_time(play_para_t *p_para)
 {
     unsigned int time = 0;
-	
-    if (p_para->playctrl_info.f_step > 0) {
-        time = (unsigned int)p_para->playctrl_info.time_point;
-        p_para->state.current_time = time;
-        p_para->state.current_ms = time * 1000;
-        log_print("[update_current_time]ff/fb:time=%d\n", time);
-    } else {
-        time = get_current_time(p_para);
+#define REFRESH_CURTIME_INTERVAL    (100)
+    if (check_time_interrupt(&p_para->state.curtime_old_time, REFRESH_CURTIME_INTERVAL) ||
+        !p_para->playctrl_info.pts_valid) {
+        if (p_para->playctrl_info.f_step > 0) {
+            time = (unsigned int)p_para->playctrl_info.time_point;
+            p_para->state.current_time = time;
+            p_para->state.current_ms = time * 1000;
+            log_print("[update_current_time]ff/fb:time=%d\n", time);
+        } else {
+            time = get_current_time(p_para);
 
         if (p_para->state.start_time == -1) {
             if (p_para->astream_info.start_time != -1) {
@@ -511,7 +513,7 @@ static void update_current_time(play_para_t *p_para)
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                 p_para->state.start_time = time;
             }
-			else if ((time - (unsigned int)p_para->state.start_time) >  2 && (p_para->state.start_time == 0)) {
+			else if ((time - (unsigned int)p_para->state.start_time) >  20 && (p_para->state.start_time == 0)) {
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                 p_para->state.start_time = time;
             }
@@ -539,7 +541,8 @@ static void update_current_time(play_para_t *p_para)
         p_para->state.current_pts = time;
         time /= PTS_FREQ;
     }
-    if (p_para->state.current_time < p_para->state.full_time) {
+    //if (p_para->state.current_time < p_para->state.full_time) {
+    if (p_para->state.current_time > p_para->state.last_time) {
         p_para->state.last_time = p_para->state.current_time;
     }
     p_para->state.current_time = (int)time;
@@ -551,12 +554,21 @@ static void update_current_time(play_para_t *p_para)
         p_para->state.current_ms = p_para->state.current_time * 1000;
         log_print("[update_current_time:%d]curtime: 0->%d tpos=%d\n", __LINE__, time, p_para->playctrl_info.time_point);
     }
-    if (p_para->state.current_time > p_para->state.full_time) {
-        log_print("[update_current_time:%d]time=%d fulltime=%d\n", __LINE__, time, p_para->state.full_time);
-        p_para->state.current_time = p_para->state.full_time;
-        p_para->state.current_ms = p_para->state.current_time * 1000;
-    }
-    log_debug("[update_current_time]time=%d last_time=%d time_point=%d\n", p_para->state.current_time, p_para->state.last_time, p_para->playctrl_info.time_point);
+        if ((p_para->state.current_time > p_para->state.full_time) && 
+			(p_para->state.full_time > 0)) {			
+            //log_print("[update_current_time:%d]time=%d fulltime=%d\n", __LINE__, time, p_para->state.full_time);
+			if(p_para->state.current_time > p_para->state.full_time){
+				p_para->state.current_time = p_para->state.full_time;
+	            p_para->state.current_ms = p_para->state.current_time * 1000;
+			}
+        }
+        log_debug("[update_current_time]time=%d last_time=%d time_point=%d\n", p_para->state.current_time, p_para->state.last_time, p_para->playctrl_info.time_point);
+#ifdef DEBUG_VARIABLE_DUR
+		if(p_para->playctrl_info.info_variable){
+			update_variable_info(p_para);
+		}
+#endif
+	}
 }
 
 static void update_dec_info(play_para_t *p_para, struct vdec_status *vdec, struct adec_status *adec)

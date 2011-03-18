@@ -22,7 +22,6 @@
 #include "thread_mgt.h"
 #include "stream_decoder.h"
 #include "player_ffmpeg_ctrl.h"
-//#include <adec.h>
 
 #define BREAK_FLAG      0x01
 #define CONTINUE_FLAG   0x02
@@ -182,6 +181,10 @@ codec_para_t *get_video_codec(play_para_t *player)
 
 static void check_msg(play_para_t *para, player_cmd_t *msg)
 {
+#ifdef DEBUG_VARIABLE_DUR
+	int64_t t_fsize = 0;
+	int t_fulltime = 0;
+#endif	
     if ((msg->ctrl_cmd & CMD_EXIT) || (msg->ctrl_cmd & CMD_STOP)) {
         para->playctrl_info.end_flag = 1;
         para->playctrl_info.loop_flag = 0;
@@ -190,6 +193,11 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
         para->playctrl_info.fast_forward = 0;
         para->playctrl_info.fast_backward = 0;
     } else if (msg->ctrl_cmd & CMD_SEARCH) {
+    #ifdef DEBUG_VARIABLE_DUR
+    	if(para->playctrl_info.info_variable && msg->param > para->state.full_time){
+			update_variable_info(para);						
+    	}
+	#endif
         if (msg->param < para->state.full_time && msg->param >= 0) {
             para->playctrl_info.search_flag = 1;
             para->playctrl_info.time_point = msg->param;
@@ -260,6 +268,7 @@ int check_flag(play_para_t *p_para)
         message_free(msg);
         msg = NULL;
     }
+	
     if (p_para->playctrl_info.end_flag) {
         if (!p_para->playctrl_info.search_flag &&
             !p_para->playctrl_info.fast_forward &&
@@ -293,6 +302,7 @@ int check_flag(play_para_t *p_para)
                   p_para->playctrl_info.f_step, p_para->state.current_time, p_para->playctrl_info.time_point);
         return BREAK_FLAG;
     }
+	
     if (p_para->playctrl_info.pause_flag) {
         if (get_player_state(p_para) != PLAYER_PAUSE) {
             ret = codec_pause(p_para->codec);
@@ -366,11 +376,14 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     p_para->vstream_info.video_index    = c_para->video_index;
     p_para->astream_info.audio_index    = c_para->audio_index;
     p_para->sstream_info.sub_index      = c_para->sub_index;
-    p_para->playctrl_info.no_audio_flag = c_para->nosound;
+    p_para->playctrl_info.no_audio_flag = 1;//c_para->nosound;
     p_para->playctrl_info.no_video_flag = c_para->novideo;
     p_para->playctrl_info.has_sub_flag  = c_para->hassub;
     p_para->playctrl_info.loop_flag     = c_para->loop_mode;
     p_para->playctrl_info.time_point    = c_para->t_pos;
+	#ifdef DEBUG_VARIABLE_DUR
+	p_para->playctrl_info.info_variable = c_para->is_variable;
+	#endif
     p_para->playctrl_info.read_max_retry_cnt = c_para->read_max_cnt;
     if (p_para->playctrl_info.read_max_retry_cnt <= 0) {
         p_para->playctrl_info.read_max_retry_cnt = MAX_TRY_READ_COUNT;
@@ -538,9 +551,7 @@ void *player_thread(play_para_t *player)
         } while (1);
     }
 
-    if (player->astream_info.has_audio) {
-        //adec_init(player->pFormatCtx->streams[player->astream_info.audio_index]->codec);
-    }
+    
 
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {

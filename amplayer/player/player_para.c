@@ -432,7 +432,12 @@ static int set_decode_para(play_para_t*am_p)
         }
         am_p->astream_info.audio_channel = pCodecCtx->channels;
         am_p->astream_info.audio_samplerate = pCodecCtx->sample_rate;
-
+		#if DEBUG_VARIABLE_DUR
+		if(am_p->stream_type == STREAM_AUDIO && am_p->astream_info.audio_format == AFORMAT_AAC){
+			am_p->playctrl_info.info_variable = 1;
+			log_print("[%s:%d]***AAC Audio\n", __FUNCTION__, __LINE__);
+		}
+		#endif
         if (!am_p->playctrl_info.raw_mode &&
             am_p->astream_info.audio_format == AFORMAT_AAC) {
             adts_header_t *adts_hdr;
@@ -739,6 +744,7 @@ int player_dec_init(play_para_t *p_para)
         return ret;
     }
     dump_format(p_para->pFormatCtx, 0, p_para->file_name, 0);
+	
     ret = set_file_type(p_para->pFormatCtx->iformat->name, &file_type, &stream_type);
     if (ret != PLAYER_SUCCESS) {
         set_player_state(p_para, PLAYER_ERROR);
@@ -746,6 +752,7 @@ int player_dec_init(play_para_t *p_para)
         log_print("[player_dec_init]set_file_type failed!\n");
         goto init_fail;
     }
+	
     if (STREAM_ES == stream_type) {
         p_para->playctrl_info.raw_mode = 0;
     } else {

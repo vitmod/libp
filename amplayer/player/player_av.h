@@ -57,5 +57,7 @@ void player_switch_sub(play_para_t *para);
 int get_cntl_state(am_packet_t *pkt);
 int time_search(struct play_para *para);
 int player_reset(play_para_t *p_para, am_packet_t *pkt);
-
+#ifdef DEBUG_VARIABLE_DUR
+int update_variable_info(play_para_t *para);
+#endif
 #endif

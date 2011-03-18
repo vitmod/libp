@@ -6,6 +6,8 @@
 
 struct play_para;
 
+//#define DEBUG_VARIABLE_DUR
+
 typedef enum {
     STREAM_UNKNOWN = 0,
     STREAM_TS,
@@ -93,6 +95,9 @@ typedef  struct {
     unsigned int audio_switch_flag: 1;
     unsigned int audio_mute: 1;   
 	unsigned int avsync_enable:1;
+	#ifdef DEBUG_VARIABLE_DUR
+	unsigned int info_variable:1;
+	#endif
     unsigned int switch_audio_id;
     unsigned int switch_sub_id;
     unsigned int is_playlist;	

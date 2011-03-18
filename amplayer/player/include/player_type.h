@@ -14,6 +14,8 @@
 
 #define CALLBACK_INTERVAL			(300)
 
+//#define DEBUG_VARIABLE_DUR
+
 typedef enum
 {      
 	/******************************
@@ -218,6 +220,9 @@ typedef struct
 			unsigned int novideo:1;	
 			unsigned int hassub:1;
 			unsigned int need_start:1;
+			#ifdef DEBUG_VARIABLE_DUR
+			unsigned int is_variable:1;
+			#endif
 		};
 		int mode;
 	};  

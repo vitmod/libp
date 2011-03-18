@@ -68,6 +68,8 @@ struct stream_decoder;
 #define SUBTITLE_SYNC_HIGH  0x414d4c55
 #define SUBTITLE_SYNC_LOW   0xaa000000
 
+//#define DEBUG_VARIABLE_DUR
+
 typedef struct message_pool {
     player_cmd_t *message_list[MESSAGE_MAX];
     int message_in_index;
