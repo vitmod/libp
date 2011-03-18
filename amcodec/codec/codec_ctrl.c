@@ -1442,3 +1442,28 @@ int codec_audio_isready(codec_para_t *p)
 
     return audio_isready;
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_audio_get_nb_frames  get audiodsp decoded frame number
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     n decoded frames number, or return 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_audio_get_nb_frames(codec_para_t *p)
+{
+    int audio_nb_frames = -1;
+    if (!p) {
+        CODEC_PRINT("[%s]ERROR invalid pointer!\n", __FUNCTION__);
+        return -1;
+    }
+	
+    if (p->has_audio) {
+        audio_nb_frames = audio_get_decoded_nb_frames(p->adec_priv);		
+    }
+	//CODEC_PRINT("[%s]get audio decoded frame number[%d]!\n", __FUNCTION__, audio_nb_frames);
+    return audio_nb_frames;
+}
+

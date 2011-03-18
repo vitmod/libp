@@ -305,3 +305,19 @@ unsigned long  audiodsp_get_pts(dsp_operations_t *dsp_ops)
 
     return val;
 }
+
+/**
+ * \brief get decoded audio frame number
+ * \param dsp_ops pointer to dsp operation struct
+ * \return audiodsp decoded frame number, -1 if an error occurred
+ */
+int audiodsp_get_decoded_nb_frames(dsp_operations_t *dsp_ops)
+{
+    int val = -1;
+	if(dsp_ops && dsp_ops->dsp_file_fd){
+	    ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_DECODED_NB_FRAMES, &val);	 		
+	}	
+	//adec_print("get audio decoded frame number==%d\n",val);
+    return val;
+}
+

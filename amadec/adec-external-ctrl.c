@@ -355,3 +355,22 @@ int audio_dec_ready(void *priv)
         return 0;
     }
 }
+
+/**
+ * \brief get audio dsp decoded frame number
+ * \param priv pointer to player private data
+ * \return n = audiodec frame number, -1 = error
+ */
+int audio_get_decoded_nb_frames(void *priv)
+{
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+
+	audec->decoded_nb_frames = audiodsp_get_decoded_nb_frames(&audec->adsp_ops);
+	//adec_print("audio_get_decoded_nb_frames:  %d!", audec->decoded_nb_frames);
+    if (audec->decoded_nb_frames >= 0) {
+        return audec->decoded_nb_frames;
+    } else {
+        return -2;
+    }
+}
+

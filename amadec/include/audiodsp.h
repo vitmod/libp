@@ -32,6 +32,7 @@ ADEC_BEGIN_DECLS
 #define AUDIODSP_GET_SAMPLERATE             _IOR('r',2,long)
 #define AUDIODSP_GET_BITS_PER_SAMPLE            _IOR('r',3,long)
 #define AUDIODSP_GET_PTS                        _IOR('r',4,long)
+#define AUDIODSP_GET_DECODED_NB_FRAMES			_IOR('r',5,long)
 #else
 
 #define AUDIODSP_SET_FMT                        _IOW('a',1,sizeof(long))
@@ -47,6 +48,7 @@ ADEC_BEGIN_DECLS
 #define AUDIODSP_GET_SAMPLERATE             _IOR('r',2,sizeof(long))
 #define AUDIODSP_GET_BITS_PER_SAMPLE            _IOR('r',3,sizeof(long))
 #define AUDIODSP_GET_PTS                        _IOR('r',4,sizeof(long))
+#define AUDIODSP_GET_DECODED_NB_FRAMES			_IOR('r',5,long)
 #endif
 
 
@@ -92,7 +94,7 @@ typedef struct {
 
 int audiodsp_stream_read(dsp_operations_t *dsp_ops, char *buffer, int size);
 unsigned long  audiodsp_get_pts(dsp_operations_t *dsp_ops);
-
+int audiodsp_get_decoded_nb_frames(dsp_operations_t *dsp_ops);
 ADEC_END_DECLS
 
 #endif

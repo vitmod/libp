@@ -31,6 +31,7 @@ extern "C"
     int audio_channel_stereo(void *);
     int audio_output_muted(void *priv);
     int audio_dec_ready(void *priv);
+	int audio_get_decoded_nb_frames(void *priv);
 
 #ifdef  __cplusplus
 }

@@ -43,6 +43,7 @@ struct aml_audio_dec {
     int need_stop;
     int auto_mute;
     int muted;
+	int decoded_nb_frames;
     audio_out_operations_t aout_ops;
     dsp_operations_t adsp_ops;
     message_pool_t message_pool;
