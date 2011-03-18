@@ -61,6 +61,8 @@ int player_init(void)
 
     /*set output black policy to black out--default*/
     set_black_policy(1);
+	set_stb_source_hiu();
+	set_stb_demux_source_hiu();
 
     return PLAYER_SUCCESS;
 }

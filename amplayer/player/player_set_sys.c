@@ -659,3 +659,33 @@ int enable_freescale(int cfg)
     log_print("[enable_freescale]do not need config freescale, exit!");
     return -1;
 }
+
+int set_stb_source_hiu()
+{
+	int fd;
+    char *path = "/sys/class/stb/source";
+    char  bcmd[16];
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        sprintf(bcmd, "%s", "hiu");
+        write(fd, bcmd, strlen(bcmd));
+        close(fd);
+        return 0;
+    }
+    return -1;
+}
+
+int set_stb_demux_source_hiu()
+{
+	int fd;
+    char *path = "/sys/class/stb/demux0_source";
+    char  bcmd[16];
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        sprintf(bcmd, "%s", "hiu");
+        write(fd, bcmd, strlen(bcmd));
+        close(fd);
+        return 0;
+    }
+    return -1;
+}
