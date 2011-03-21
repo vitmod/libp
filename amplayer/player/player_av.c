@@ -404,12 +404,13 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
     }
     pbuf = pkt->data;
     cur_offset = url_ftell(pb);
-	
-#ifdef DEBUG_VARIABLE_DUR 
-	if(para->playctrl_info.info_variable){
-		if(cur_offset > para->pFormatCtx->valid_offset)
-			update_variable_info(para);
-	}		
+
+#ifdef DEBUG_VARIABLE_DUR
+    if (para->playctrl_info.info_variable) {
+        if (cur_offset > para->pFormatCtx->valid_offset) {
+            update_variable_info(para);
+        }
+    }
 #endif
 
     if (!para->playctrl_info.read_end_flag && (0 == pkt->data_size)) {
@@ -868,16 +869,17 @@ int update_variable_info(play_para_t *para)
         log_print("[%s:%dtfsize=%lld fsize=%lld\n", __FUNCTION__, __LINE__, t_fsize, file_size);
 
         if (t_fsize > file_size) {
-			para->pFormatCtx->file_size = t_fsize;
+            para->pFormatCtx->file_size = t_fsize;
             para->pFormatCtx->valid_offset = t_fsize;
-			
+            para->file_size = t_fsize;
+
             if (byte_rate) {
                 if ((unsigned int)(file_size / byte_rate) == full_time) {
                     t_fulltime = t_fsize / byte_rate;
                 }
             } else {
                 t_fulltime = (unsigned int)(full_time * ((double)t_fsize / (double)file_size));
-            }            
+            }
             log_print("[%s:%d]fulltime=%d tfulltime=%d\n", __FUNCTION__, __LINE__, full_time, t_fulltime);
             if (t_fulltime > para->state.full_time) {
                 para->state.full_time = t_fulltime;

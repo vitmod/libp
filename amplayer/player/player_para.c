@@ -432,12 +432,6 @@ static int set_decode_para(play_para_t*am_p)
         }
         am_p->astream_info.audio_channel = pCodecCtx->channels;
         am_p->astream_info.audio_samplerate = pCodecCtx->sample_rate;
-		#if DEBUG_VARIABLE_DUR
-		if(am_p->stream_type == STREAM_AUDIO && am_p->astream_info.audio_format == AFORMAT_AAC){
-			am_p->playctrl_info.info_variable = 1;
-			log_print("[%s:%d]***AAC Audio\n", __FUNCTION__, __LINE__);
-		}
-		#endif
         if (!am_p->playctrl_info.raw_mode &&
             am_p->astream_info.audio_format == AFORMAT_AAC) {
             adts_header_t *adts_hdr;
@@ -596,12 +590,13 @@ int player_dec_reset(play_para_t *p_para)
 
     if (p_para->astream_info.has_audio && p_para->acodec) {
         p_para->codec = p_para->acodec;
-		if(p_para->vcodec)
-			p_para->codec->has_video = 1;
-		log_print("[%s:%d]para->codec pointer to acodec!\n", __FUNCTION__, __LINE__);
+        if (p_para->vcodec) {
+            p_para->codec->has_video = 1;
+        }
+        log_print("[%s:%d]para->codec pointer to acodec!\n", __FUNCTION__, __LINE__);
     } else if (p_para->vcodec) {
         p_para->codec = p_para->vcodec;
-		log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
+        log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
 
     if (p_para->playctrl_info.fast_forward) {
@@ -744,7 +739,7 @@ int player_dec_init(play_para_t *p_para)
         return ret;
     }
     dump_format(p_para->pFormatCtx, 0, p_para->file_name, 0);
-	
+
     ret = set_file_type(p_para->pFormatCtx->iformat->name, &file_type, &stream_type);
     if (ret != PLAYER_SUCCESS) {
         set_player_state(p_para, PLAYER_ERROR);
@@ -752,7 +747,7 @@ int player_dec_init(play_para_t *p_para)
         log_print("[player_dec_init]set_file_type failed!\n");
         goto init_fail;
     }
-	
+
     if (STREAM_ES == stream_type) {
         p_para->playctrl_info.raw_mode = 0;
     } else {
@@ -868,21 +863,22 @@ int player_decoder_init(play_para_t *p_para)
     }
     p_para->decoder = decoder;
     p_para->check_end.end_count = CHECK_END_COUNT;
-	p_para->playctrl_info.check_audio_rp_cnt = CHECK_AUDIO_HALT_CNT;
-	
+    p_para->playctrl_info.check_audio_rp_cnt = CHECK_AUDIO_HALT_CNT;
+
     if (p_para->astream_info.has_audio && p_para->acodec) {
         p_para->codec = p_para->acodec;
-		if(p_para->vcodec)
-			p_para->codec->has_video = 1;
-		log_print("[%s:%d]para->codec pointer to acodec!\n", __FUNCTION__, __LINE__);
+        if (p_para->vcodec) {
+            p_para->codec->has_video = 1;
+        }
+        log_print("[%s:%d]para->codec pointer to acodec!\n", __FUNCTION__, __LINE__);
     } else if (p_para->vcodec) {
         p_para->codec = p_para->vcodec;
-		log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
+        log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
 
     if (p_para->astream_info.has_audio == 0) {
         set_tsync_enable(0);
-		p_para->playctrl_info.avsync_enable = 0;
+        p_para->playctrl_info.avsync_enable = 0;
     }
     return PLAYER_SUCCESS;
 failed:
