@@ -457,7 +457,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 {
     unsigned int pcr_scr = 0, vpts = 0, apts = 0;
     unsigned int ctime = 0;
-#if 1
+#if 0
     if (get_pts_discontinue() &&
         ((p_para->stream_type == STREAM_PS) || (p_para->pFormatCtx && p_para->pFormatCtx->pb && url_support_time_seek(p_para->pFormatCtx->pb)))) {
         p_para->discontinue_point = p_para->state.last_time;
@@ -470,7 +470,9 @@ static unsigned int get_current_time(play_para_t *p_para)
         apts = get_pts_audio();
         ctime = handle_current_time(p_para, pcr_scr, apts);
         log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);
-    } else if (p_para->astream_info.has_audio && p_para->stream_type == STREAM_ES) {
+    } else if(p_para->astream_info.has_audio && 
+    		(p_para->stream_type == STREAM_ES) && 
+    		(p_para->astream_info.audio_format != AFORMAT_WMA)) {
         apts = get_pts_audio();
         ctime = apts;
     } else{
