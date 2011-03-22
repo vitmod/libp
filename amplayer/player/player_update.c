@@ -513,7 +513,9 @@ static void update_current_time(play_para_t *p_para)
             log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
             p_para->state.start_time = time;
         }
-		else if ((time - (unsigned int)p_para->state.start_time) >  20 && (p_para->state.start_time == 0)) {
+		else if 	((time - (unsigned int)p_para->state.start_time) >  20 && 
+					(p_para->state.start_time == 0) &&
+					p_para->playctrl_info.time_point==0) {
             log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
             p_para->state.start_time = time;
         }

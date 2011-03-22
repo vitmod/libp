@@ -832,6 +832,8 @@ int player_dec_init(play_para_t *p_para)
             log_error("[%s:%d]time_search to pos:%ds failed!", __FUNCTION__, __LINE__, p_para->playctrl_info.time_point);
             goto init_fail;
         }
+		p_para->state.current_time=p_para->playctrl_info.time_point;
+		p_para->state.current_ms=p_para->playctrl_info.time_point*1000;
     } else if (p_para->playctrl_info.raw_mode) {
         //log_print("*****data offset 0x%x\n", p_para->data_offset);
         url_fseek(p_para->pFormatCtx->pb, p_para->data_offset, SEEK_SET);
