@@ -446,7 +446,7 @@ AM_ErrorCode_t AM_AV_SetTSSource(int dev_no, AM_AV_TSSource_t src)
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-AM_ErrorCode_t AM_AV_StartTS(int dev_no, uint16_t vpid, uint16_t apid, AM_AV_VFormat_t vfmt, AM_AV_AFormat_t afmt)
+AM_ErrorCode_t AM_AV_StartTS(int dev_no, uint16_t vpid, uint16_t apid, vformat_t vfmt, aformat_t afmt)
 {
 	AM_AV_Device_t *dev;
 	AM_ErrorCode_t ret = AM_SUCCESS;
@@ -1138,7 +1138,7 @@ AM_ErrorCode_t AM_AV_DacodeJPEGData(int dev_no, const uint8_t *data, int len, AM
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-AM_ErrorCode_t AM_AV_StartVideoES(int dev_no, AM_AV_VFormat_t format, const char *fname)
+AM_ErrorCode_t AM_AV_StartVideoES(int dev_no, vformat_t format, const char *fname)
 {
 	AM_AV_Device_t *dev;
 	AM_ErrorCode_t ret = AM_SUCCESS;
@@ -1204,7 +1204,7 @@ AM_ErrorCode_t AM_AV_StartVideoES(int dev_no, AM_AV_VFormat_t format, const char
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-AM_ErrorCode_t AM_AV_StartVideoESData(int dev_no, AM_AV_VFormat_t format, const uint8_t *data, int len)
+AM_ErrorCode_t AM_AV_StartVideoESData(int dev_no, vformat_t format, const uint8_t *data, int len)
 {
 	AM_AV_Device_t *dev;
 	AM_ErrorCode_t ret = AM_SUCCESS;
@@ -1242,7 +1242,7 @@ AM_ErrorCode_t AM_AV_StartVideoESData(int dev_no, AM_AV_VFormat_t format, const 
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-AM_ErrorCode_t AM_AV_StartAudioES(int dev_no, AM_AV_AFormat_t format, const char *fname, int times)
+AM_ErrorCode_t AM_AV_StartAudioES(int dev_no, aformat_t format, const char *fname, int times)
 {
 	AM_AV_Device_t *dev;
 	AM_ErrorCode_t ret = AM_SUCCESS;
@@ -1309,7 +1309,7 @@ AM_ErrorCode_t AM_AV_StartAudioES(int dev_no, AM_AV_AFormat_t format, const char
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-AM_ErrorCode_t AM_AV_StartAudioESData(int dev_no, AM_AV_AFormat_t format, const uint8_t *data, int len, int times)
+AM_ErrorCode_t AM_AV_StartAudioESData(int dev_no, aformat_t format, const uint8_t *data, int len, int times)
 {
 	AM_AV_Device_t *dev;
 	AM_ErrorCode_t ret = AM_SUCCESS;

@@ -24,15 +24,18 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <amports/amstream.h>
 #include <amports/jpegdec.h>
 #include <log_print.h>
-//#include <adec.h>
+#include "player.h"
+#include <audio_priv.h>
 
 /****************************************************************************
  * Macro definitions
  ***************************************************************************/
 #define AOUT_DEV_NO 0
+
+static void * adec_priv;
+static int has_audio = 0;
 
 #define STREAM_VBUF_FILE    "/dev/amstream_vbuf"
 #define STREAM_ABUF_FILE    "/dev/amstream_abuf"
@@ -1147,8 +1150,13 @@ static AM_ErrorCode_t aml_start_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode, vo
 				return AM_AV_ERR_SYS;
 			}
 			//adec_cmd("start");
-			usleep(1500000);
-			//adec_start();
+			if(tp->apid) {
+        log_print("############### has audio\n");
+        has_audio = 1;
+			  usleep(1500000);
+			  //adec_start();
+        audio_start(&adec_priv);
+      }
 		break;
 #if 0
 		case AV_PLAY_FILE:
@@ -1202,11 +1210,16 @@ static AM_ErrorCode_t aml_close_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode)
 			aml_destroy_data_source(src);
 		break;
 #endif
-		case AV_PLAY_TS:
+    case AV_PLAY_TS:
 			fd = (int)dev->ts_player.drv_data;
-			//adec_cmd("stop");
-			//adec_stop();
-      log_print("aml_close_mode\n");
+      log_print("######### aml_close_mode\n");
+      if(has_audio) {
+        //adec_cmd("stop");
+			  //adec_stop();
+        audio_stop(adec_priv);
+        adec_priv = NULL;
+        has_audio = 0;
+      }
 			close(fd);
 		break;
 #if 0

@@ -40,8 +40,8 @@ struct AV_TSPlayer
 	void            *drv_data;       /**< 解码驱动相关数据*/
 	uint16_t         aud_pid;        /**< 音频PID*/
 	uint16_t         vid_pid;        /**< 视频PID*/
-	AM_AV_AFormat_t  aud_fmt;        /**< 音频压缩格式*/
-	AM_AV_VFormat_t  vid_fmt;        /**< 视频压缩格式*/
+	aformat_t        aud_fmt;        /**< 音频压缩格式*/
+	vformat_t        vid_fmt;        /**< 视频压缩格式*/
 	AM_AV_TSSource_t src;            /**< TS源*/
 };
 
@@ -106,8 +106,8 @@ typedef struct
 {
 	uint16_t        vpid;            /**< 视频流PID*/
 	uint16_t        apid;            /**< 音频流PID*/
-	AM_AV_VFormat_t vfmt;            /**< 视频流格式*/
-	AM_AV_AFormat_t afmt;            /**< 音频流格式*/
+	vformat_t       vfmt;            /**< 视频流格式*/
+	aformat_t       afmt;            /**< 音频流格式*/
 } AV_TSPlayPara_t;
 
 /**\brief 文件播放参数*/

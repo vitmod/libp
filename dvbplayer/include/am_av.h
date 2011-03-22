@@ -14,6 +14,8 @@
 #include "am_types.h"
 #include "am_osd.h"
 #include "am_evt.h"
+#include "amports/vformat.h"
+#include "amports/aformat.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -118,39 +120,6 @@ typedef enum
 	AM_AV_TS_SRC_TS2,                    /**< TS输入1*/	
 	AM_AV_TS_SRC_HIU                     /**< HIU 接口*/
 } AM_AV_TSSource_t;
-
-/**\brief 音频压缩格式*/
-typedef enum
-{
-	AFORMAT_MPEG   = 0,
-	AFORMAT_PCM_S16LE = 1,
-	AFORMAT_AAC   = 2,
-	AFORMAT_AC3   =3,
-	AFORMAT_ALAW = 4,
-	AFORMAT_MULAW = 5,
-	AFORMAT_DTS = 6,
-	AFORMAT_PCM_S16BE = 7,
-	AFORMAT_FLAC = 8,
-	AFORMAT_COOK = 9,
-	AFORMAT_PCM_U8 = 10,
-	AFORMAT_ADPCM = 11,
-	AFORMAT_AMR  = 12,
-	AFORMAT_RAAC  = 13,
-	AFORMAT_MAX    = 14
-} AM_AV_AFormat_t;
-
-/**\brief 视频压缩格式*/
-typedef enum
-{
-	VFORMAT_MPEG12 = 0,
-	VFORMAT_MPEG4,
-	VFORMAT_H264,
-	VFORMAT_MJPEG,
-	VFORMAT_REAL,
-	VFORMAT_JPEG,
-	VFORMAT_VC1,
-	VFORMAT_MAX
-} AM_AV_VFormat_t;
 
 /**\brief 视频长宽比*/
 typedef enum
@@ -258,7 +227,7 @@ extern AM_ErrorCode_t AM_AV_SetTSSource(int dev_no, AM_AV_TSSource_t src);
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-extern AM_ErrorCode_t AM_AV_StartTS(int dev_no, uint16_t vpid, uint16_t apid, AM_AV_VFormat_t vfmt, AM_AV_AFormat_t afmt);
+extern AM_ErrorCode_t AM_AV_StartTS(int dev_no, uint16_t vpid, uint16_t apid, vformat_t vfmt, aformat_t afmt);
 
 /**\brief 停止TS流解码
  * \param dev_no 音视频设备号
@@ -418,7 +387,7 @@ extern AM_ErrorCode_t AM_AV_DacodeJPEGData(int dev_no, const uint8_t *data, int 
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-extern AM_ErrorCode_t AM_AV_StartVideoES(int dev_no, AM_AV_VFormat_t format, const char *fname);
+extern AM_ErrorCode_t AM_AV_StartVideoES(int dev_no, vformat_t format, const char *fname);
 
 /**\brief 解码视频基础流数据
  * \param dev_no 音视频设备号
@@ -429,7 +398,7 @@ extern AM_ErrorCode_t AM_AV_StartVideoES(int dev_no, AM_AV_VFormat_t format, con
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-extern AM_ErrorCode_t AM_AV_StartVideoESData(int dev_no, AM_AV_VFormat_t format, const uint8_t *data, int len);
+extern AM_ErrorCode_t AM_AV_StartVideoESData(int dev_no, vformat_t format, const uint8_t *data, int len);
 
 /**\brief 解码音频基础流文件
  * \param dev_no 音视频设备号
@@ -440,7 +409,7 @@ extern AM_ErrorCode_t AM_AV_StartVideoESData(int dev_no, AM_AV_VFormat_t format,
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-extern AM_ErrorCode_t AM_AV_StartAudioES(int dev_no, AM_AV_AFormat_t format, const char *fname, int times);
+extern AM_ErrorCode_t AM_AV_StartAudioES(int dev_no, aformat_t format, const char *fname, int times);
 
 /**\brief 解码音频基础流数据
  * \param dev_no 音视频设备号
@@ -452,7 +421,7 @@ extern AM_ErrorCode_t AM_AV_StartAudioES(int dev_no, AM_AV_AFormat_t format, con
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_av.h)
  */
-extern AM_ErrorCode_t AM_AV_StartAudioESData(int dev_no, AM_AV_AFormat_t format, const uint8_t *data, int len, int times);
+extern AM_ErrorCode_t AM_AV_StartAudioESData(int dev_no, aformat_t format, const uint8_t *data, int len, int times);
 
 /**\brief 停止解码音频基础流
  * \param dev_no 音视频设备号
