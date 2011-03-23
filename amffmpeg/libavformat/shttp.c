@@ -254,19 +254,19 @@ static int process_line(URLContext *h, char *line, int line_count,
         if (!strcasecmp(tag, "Location")) {
             strcpy(s->location, p);
             *new_location = 1;
-        } else if (!strcmp (tag, "Content-Length") && s->filesize == -1) {
+        } else if (!strcasecmp (tag, "Content-Length") && s->filesize == -1) {
             s->filesize = atoll(p);
-        } else if (!strcmp (tag, "Content-Range")) {
+        } else if (!strcasecmp (tag, "Content-Range")) {
             /* "bytes $from-$to/$document_size" */
             const char *slash;
-            if (!strncmp (p, "bytes ", 6)) {
+            if (!strncasecmp (p, "bytes ", 6)) {
                 p += 6;
                 s->off = atoll(p);
                 if ((slash = strchr(p, '/')) && strlen(slash) > 0)
                     s->filesize = atoll(slash+1);
             }
             h->is_streamed = 0; /* we _can_ in fact seek */
-        } else if (!strcmp (tag, "Transfer-Encoding") && !strncasecmp(p, "chunked", 7)) {
+        } else if (!strcasecmp (tag, "Transfer-Encoding") && !strncasecmp(p, "chunked", 7)) {
             s->filesize = -1;
             s->chunksize = 0;
         }
