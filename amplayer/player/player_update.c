@@ -495,6 +495,11 @@ static void update_current_time(play_para_t *p_para)
         p_para->state.current_time = time;
         p_para->state.current_ms = time * 1000;
         log_print("[update_current_time]ff/fb:time=%d\n", time);
+#ifdef DEBUG_VARIABLE_DUR
+		if(p_para->playctrl_info.info_variable){
+			update_variable_info(p_para);
+	}
+#endif
     } else {
         time = get_current_time(p_para);
 

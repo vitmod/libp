@@ -407,7 +407,7 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
 
 #ifdef DEBUG_VARIABLE_DUR
     if (para->playctrl_info.info_variable) {
-        if (cur_offset > para->pFormatCtx->valid_offset) {
+        if ((cur_offset + para->max_raw_size) >= para->pFormatCtx->valid_offset) {
             update_variable_info(para);
         }
     }
@@ -1225,12 +1225,18 @@ int set_header_info(play_para_t *para, am_packet_t *pkt)
                     } else {
                         if (0 == para->vstream_info.h263_decodable) {
                             para->vstream_info.h263_decodable = decodeble_h263(pkt->data);
-                            if (0 == para->vstream_info.h263_decodable) {
+                            if (0 == para->vstream_info.h263_decodable) {								
                                 para->vstream_info.has_video = 0;
-                                set_player_error_no(para, PLAYER_UNSUPPORT_VIDEO);
-                                update_player_states(para, 1);
-                                set_tsync_enable(0);
-                                para->playctrl_info.avsync_enable = 0;
+								if(para->astream_info.has_audio){
+	                                set_player_error_no(para, PLAYER_UNSUPPORT_VIDEO);
+	                                update_player_states(para, 1);
+	                                set_tsync_enable(0);
+	                                para->playctrl_info.avsync_enable = 0;
+								}else{
+								 	set_player_state(para, PLAYER_ERROR); 
+									log_error("[%s]h263 unsupport video and audio, exit\n", __FUNCTION__);
+									return PLAYER_UNSUPPORT;
+								}
                             }
                         }
                         vld_len = h263vld(pkt->data, vld_buf, pkt->data_size, 0);
