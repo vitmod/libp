@@ -678,7 +678,7 @@ int set_stb_source_hiu()
 int set_stb_demux_source_hiu()
 {
 	int fd;
-    char *path = "/sys/class/stb/demux0_source";
+    char *path = "/sys/class/stb/demux1_source"; // use demux0 for record, and demux1 for playback
     char  bcmd[16];
     fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (fd >= 0) {
