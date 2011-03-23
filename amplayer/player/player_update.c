@@ -623,7 +623,7 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         (!p_para->playctrl_info.end_flag)) {
         p_para->vstream_info.vdec_buf_rp = vbuf->read_pointer;
         p_para->astream_info.adec_buf_rp = abuf->read_pointer;
-		if(p_para->playctrl_info.avsync_enable){
+		if(p_para->playctrl_info.avsync_enable){			
 	        set_tsync_enable(0);	
 			p_para->playctrl_info.avsync_enable = 0;
 			log_print("[%s:%d]audio or video low buffer ,close av sync!\n",__FUNCTION__, __LINE__);
@@ -745,7 +745,7 @@ static int check_auido_rp_changed(play_para_t *p_para, struct buf_status *abuf)
 
 static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abuf)
 {
-	if(!p_para->playctrl_info.read_end_flag){
+	if(p_para->vstream_info.has_video && p_para->astream_info.has_audio){
 		if(!check_auido_rp_changed(p_para, abuf)){
 			p_para->playctrl_info.check_audio_rp_cnt --;
 		}
@@ -810,8 +810,7 @@ int update_playing_info(play_para_t *p_para)
             p_para->check_end.interval = CHECK_END_INTERVAL;
         }
         check_force_end(p_para, &vbuf, &abuf);
-        set_tsync_enable(0);
-		log_print("[%s:%d]read end ,close av sync!\n",__FUNCTION__, __LINE__);
+		update_av_sync_for_audio(p_para, &abuf);        
     }
 
     update_buffering_states(p_para, &vbuf, &abuf);
