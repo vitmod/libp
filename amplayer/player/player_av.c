@@ -1230,8 +1230,8 @@ int set_header_info(play_para_t *para, am_packet_t *pkt)
 								if(para->astream_info.has_audio){
 	                                set_player_error_no(para, PLAYER_UNSUPPORT_VIDEO);
 	                                update_player_states(para, 1);
-	                                set_tsync_enable(0);
-	                                para->playctrl_info.avsync_enable = 0;
+	                                /*set_tsync_enable(0);
+	                                para->playctrl_info.avsync_enable = 0;*/
 								}else{
 								 	set_player_state(para, PLAYER_ERROR); 
 									log_error("[%s]h263 unsupport video and audio, exit\n", __FUNCTION__);
