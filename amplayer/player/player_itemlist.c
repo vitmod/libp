@@ -56,18 +56,14 @@ static inline void item_free(struct item *item)
 
 int itemlist_add_tail(struct itemlist *itemlist, struct item *item)
 {
-    if (itemlist->muti_threads_access) {
-        ITEM_LOCK(itemlist);
-    }
+    ITEM_LOCK(itemlist);
     if (itemlist->max_items > 0 && itemlist->max_items <= itemlist->item_count) {
         ITEM_UNLOCK(itemlist);
         return -1;
     }
     list_add_tail(&itemlist->list, &item->list);
     itemlist->item_count++;
-    if (itemlist->muti_threads_access) {
-        ITEM_UNLOCK(itemlist);
-    }
+    ITEM_UNLOCK(itemlist);
     return 0;
 }
 

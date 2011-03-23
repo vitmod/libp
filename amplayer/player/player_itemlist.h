@@ -16,9 +16,9 @@ struct itemlist {
     struct list_head list;
 #ifdef ITEMLIST_WITH_LOCK
     pthread_mutex_t list_mutex;
+    int muti_threads_access;
 #endif
     int item_count;
-    int muti_threads_access;
     int max_items;
     int item_ext_buf_size;
 };
