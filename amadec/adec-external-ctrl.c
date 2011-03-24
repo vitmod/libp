@@ -17,15 +17,15 @@
 
 /**
  * \brief init audio dec
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_init(void **priv)
+int audio_decode_init(void **handle)
 {
     int ret;
     aml_audio_dec_t *audec;
 
-    if (*priv) {
+    if (*handle) {
         adec_print("Existing an audio dec instance!Need not to create it !");
         return -1;
     }
@@ -36,27 +36,27 @@ int audio_decode_init(void **priv)
         return -1;
     }
 
-    ret = adec_init1(audec);
+    ret = audiodec_init(audec);
     if (ret) {
         adec_print("adec init failed!");
         return -1;
     }
 
-    *priv = (void *)audec;
+    *handle = (void *)audec;
 
     return 0;
 }
 
 /**
  * \brief start audio dec
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_start(void *priv)
+int audio_decode_start(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -72,14 +72,14 @@ int audio_decode_start(void *priv)
 
 /**
  * \brief pause audio dec
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_pause(void *priv)
+int audio_decode_pause(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -95,14 +95,14 @@ int audio_decode_pause(void *priv)
 
 /**
  * \brief resume audio dec
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_resume(void *priv)
+int audio_decode_resume(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -118,14 +118,14 @@ int audio_decode_resume(void *priv)
 
 /**
  * \brief stop audio dec
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_stop(void *priv)
+int audio_decode_stop(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     audec->need_stop = 1;
 
@@ -143,14 +143,14 @@ int audio_decode_stop(void *priv)
 
 /**
  * \brief release audio dec
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_release(void *priv)
+int audio_decode_release(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -163,8 +163,8 @@ int audio_decode_release(void *priv)
 
     ret = pthread_join(audec->thread_pid, NULL);
 
-    free(priv);
-    priv = NULL;
+    free(handle);
+    handle = NULL;
 
     return ret;
 
@@ -172,13 +172,13 @@ int audio_decode_release(void *priv)
 
 /**
  * \brief set auto-mute state in audio decode
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \param stat 1 = enable automute, 0 = disable automute
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_automute(void *priv, int stat)
+int audio_decode_automute(void *handle, int stat)
 {
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     audec->auto_mute = 1;
     return 0;
@@ -186,15 +186,15 @@ int audio_decode_automute(void *priv, int stat)
 
 /**
  * \brief mute audio output
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \param en 1 = mute output, 0 = unmute output
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_set_mute(void *priv, int en)
+int audio_decode_set_mute(void *handle, int en)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -212,15 +212,15 @@ int audio_decode_set_mute(void *priv, int en)
 
 /**
  * \brief set audio volume
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \param vol volume value
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_set_volume(void *priv, float vol)
+int audio_decode_set_volume(void *handle, float vol)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -238,14 +238,14 @@ int audio_decode_set_volume(void *priv, float vol)
 
 /**
  * \brief swap audio left and right channels
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_channels_swap(void *priv)
+int audio_channels_swap(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -261,14 +261,14 @@ int audio_channels_swap(void *priv)
 
 /**
  * \brief output left channel
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_channel_left_mono(void *priv)
+int audio_channel_left_mono(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -284,14 +284,14 @@ int audio_channel_left_mono(void *priv)
 
 /**
  * \brief output right channel
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_channel_right_mono(void *priv)
+int audio_channel_right_mono(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -307,14 +307,14 @@ int audio_channel_right_mono(void *priv)
 
 /**
  * \brief output left and right channels
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_channel_stereo(void *priv)
+int audio_channel_stereo(void *handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -330,24 +330,24 @@ int audio_channel_stereo(void *priv)
 
 /**
  * \brief check output mute or not
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 1 = output is mute, 0 = output not mute
  */
-int audio_output_muted(void *priv)
+int audio_output_muted(void *handle)
 {
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     return audec->muted;
 }
 
 /**
  * \brief check audiodec ready or not
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return 1 = audiodec is ready, 0 = audiodec not ready
  */
-int audio_dec_ready(void *priv)
+int audio_dec_ready(void *handle)
 {
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
     if (audec->state > INITTED) {
         return 1;
@@ -358,15 +358,15 @@ int audio_dec_ready(void *priv)
 
 /**
  * \brief get audio dsp decoded frame number
- * \param priv pointer to player private data
+ * \param handle pointer to player private data
  * \return n = audiodec frame number, -1 = error
  */
-int audio_get_decoded_nb_frames(void *priv)
+int audio_get_decoded_nb_frames(void *handle)
 {
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)priv;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
-	audec->decoded_nb_frames = audiodsp_get_decoded_nb_frames(&audec->adsp_ops);
-	//adec_print("audio_get_decoded_nb_frames:  %d!", audec->decoded_nb_frames);
+    audec->decoded_nb_frames = audiodsp_get_decoded_nb_frames(&audec->adsp_ops);
+    //adec_print("audio_get_decoded_nb_frames:  %d!", audec->decoded_nb_frames);
     if (audec->decoded_nb_frames >= 0) {
         return audec->decoded_nb_frames;
     } else {

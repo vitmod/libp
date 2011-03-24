@@ -63,6 +63,124 @@ static int audio_hardware_ctrl(hw_command_t cmd)
 }
 
 /**
+ * \brief start audio dec when receive START command.
+ * \param audec pointer to audec
+ */
+static void start_adec(aml_audio_dec_t *audec)
+{
+    audio_out_operations_t *aout_ops = &audec->aout_ops;
+
+    if (audec->state == INITTED) {
+        audec->state = ACTIVE;
+
+        /*start  the  the pts scr,...*/
+        adec_pts_start(audec);
+
+        if (audec->auto_mute) {
+            avsync_en(0);
+            adec_pts_pause();
+
+            while ((!audec->need_stop) && track_switch_pts(audec)) {
+                usleep(1000);
+            }
+
+            avsync_en(1);
+            adec_pts_resume();
+
+            audec->auto_mute = 0;
+        }
+
+        aout_ops->start(audec);
+
+    }
+}
+
+/**
+ * \brief pause audio dec when receive PAUSE command.
+ * \param audec pointer to audec
+ */
+static void pause_adec(aml_audio_dec_t *audec)
+{
+    audio_out_operations_t *aout_ops = &audec->aout_ops;
+
+    if (audec->state == ACTIVE) {
+        audec->state = PAUSED;
+        adec_pts_pause();
+        aout_ops->pause(audec);
+    }
+}
+
+/**
+ * \brief resume audio dec when receive RESUME command.
+ * \param audec pointer to audec
+ */
+static void resume_adec(aml_audio_dec_t *audec)
+{
+    audio_out_operations_t *aout_ops = &audec->aout_ops;
+
+    if (audec->state == PAUSED) {
+        audec->state = ACTIVE;
+        aout_ops->resume(audec);
+        adec_pts_resume();
+    }
+}
+
+/**
+ * \brief stop audio dec when receive STOP command.
+ * \param audec pointer to audec
+ */
+static void stop_adec(aml_audio_dec_t *audec)
+{
+    audio_out_operations_t *aout_ops = &audec->aout_ops;
+
+    if (audec->state > STOPPED) {
+        audec->state = STOPPED;
+        aout_ops->stop(audec);
+        feeder_release(audec);
+    }
+}
+
+/**
+ * \brief release audio dec when receive RELEASE command.
+ * \param audec pointer to audec
+ */
+static void release_adec(aml_audio_dec_t *audec)
+{
+    audec->state = TERMINATED;
+}
+
+/**
+ * \brief mute audio dec when receive MUTE command.
+ * \param audec pointer to audec
+ * \param en 1 = mute, 0 = unmute
+ */
+static void mute_adec(aml_audio_dec_t *audec, int en)
+{
+    audio_out_operations_t *aout_ops = &audec->aout_ops;
+
+    if (aout_ops->mute) {
+        adec_print("%s the output !\n", (en ? "mute" : "unmute"));
+        aout_ops->mute(audec, en);
+        audec->muted = en;
+    }
+}
+
+/**
+ * \brief set volume to audio dec when receive SET_VOL command.
+ * \param audec pointer to audec
+ * \param vol volume value
+ */
+static void adec_set_volume(aml_audio_dec_t *audec, float vol)
+{
+    audio_out_operations_t *aout_ops = &audec->aout_ops;
+
+    if (aout_ops->set_volume) {
+        adec_print("set audio volume! vol = %f\n", vol);
+        aout_ops->set_volume(audec, vol);
+    }
+}
+
+/**
  * \brief adec main thread
  * \param args pointer to thread private data
  * \return NULL
@@ -112,70 +230,32 @@ static void *adec_message_loop(void *args)
         case CMD_START:
 
             adec_print("Receive START Command!\n");
-            if (audec->state == INITTED) {
-                audec->state = ACTIVE;
-
-                /*start  the  the pts scr,...*/
-                adec_pts_start(audec);
-
-                if (audec->auto_mute) {
-                    avsync_en(0);
-                    adec_pts_pause();
-
-                    while ((!audec->need_stop) && track_switch_pts(audec)) {
-                        usleep(1000);
-                    }
-
-                    avsync_en(1);
-                    adec_pts_resume();
-
-                    audec->auto_mute = 0;
-                }
-
-                aout_ops->start(audec);
-
-            }
+            start_adec(audec);
             break;
 
         case CMD_PAUSE:
 
             adec_print("Receive PAUSE Command!");
-            if (audec->state == ACTIVE) {
-                audec->state = PAUSED;
-                adec_pts_pause();
-                aout_ops->pause(audec);
-            }
+            pause_adec(audec);
             break;
 
         case CMD_RESUME:
 
             adec_print("Receive RESUME Command!");
-            if (audec->state == PAUSED) {
-                audec->state = ACTIVE;
-                aout_ops->resume(audec);
-                adec_pts_resume();
-            }
+            resume_adec(audec);
             break;
 
         case CMD_STOP:
 
             adec_print("Receive STOP Command!");
-            if (audec->state > STOPPED) {
-                audec->state = STOPPED;
-                aout_ops->stop(audec);
-                feeder_release(audec);
-            }
+            stop_adec(audec);
             break;
 
         case CMD_MUTE:
 
             adec_print("Receive Mute Command!");
             if (msg->has_arg) {
-                if (aout_ops->mute) {
-                    adec_print("%s the output !\n", ((msg->value.en) ? "mute" : "unmute"));
-                    aout_ops->mute(audec, msg->value.en);
-                    audec->muted = msg->value.en;
-                }
+                mute_adec(audec, msg->value.en);
             }
             break;
 
@@ -183,10 +263,7 @@ static void *adec_message_loop(void *args)
 
             adec_print("Receive Set Vol Command!");
             if (msg->has_arg) {
-                if (aout_ops->set_volume) {
-                    adec_print("set audio volume! vol = %f\n", msg->value.volume);
-                    aout_ops->set_volume(audec, msg->value.volume);
-                }
+                adec_set_volume(audec, msg->value.volume);
             }
             break;
 
@@ -217,7 +294,7 @@ static void *adec_message_loop(void *args)
         case CMD_RELEASE:
 
             adec_print("Receive RELEASE Command!");
-            audec->state = TERMINATED;
+            release_adec(audec);
             break;
 
         default:
@@ -242,7 +319,7 @@ static void *adec_message_loop(void *args)
  * \param audec pointer to audec
  * \return 0 on success otherwise -1 if an error occurred
  */
-int adec_init1(aml_audio_dec_t *audec)
+int audiodec_init(aml_audio_dec_t *audec)
 {
     int ret = 0;
     pthread_t    tid;

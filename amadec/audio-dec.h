@@ -43,7 +43,7 @@ struct aml_audio_dec {
     int need_stop;
     int auto_mute;
     int muted;
-	int decoded_nb_frames;
+    int decoded_nb_frames;
     audio_out_operations_t aout_ops;
     dsp_operations_t adsp_ops;
     message_pool_t message_pool;
@@ -57,7 +57,7 @@ typedef enum {
 } hw_command_t;
 
 /***********************************************************************************************/
-int adec_init1(aml_audio_dec_t *);
+int audiodec_init(aml_audio_dec_t *);
 int adec_message_pool_init(aml_audio_dec_t *);
 adec_cmd_t *adec_message_alloc(void);
 int adec_message_free(adec_cmd_t *);
