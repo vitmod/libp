@@ -616,8 +616,9 @@ int player_dec_reset(play_para_t *p_para)
             p_para->playctrl_info.init_ff_fr = 0;
             p_para->playctrl_info.f_step = 0;
         }
-        if (p_para->playctrl_info.time_point >= p_para->playctrl_info.f_step) {
-            p_para->playctrl_info.time_point -= p_para->playctrl_info.f_step;
+        if ((p_para->playctrl_info.time_point >= p_para->playctrl_info.f_step) && 
+			(p_para->playctrl_info.time_point > 0)) {
+            	p_para->playctrl_info.time_point -= p_para->playctrl_info.f_step;        	
         } else {
             fb_reach_head(p_para);
             log_print("reach stream head,fast backward stop,play from start!\n");
