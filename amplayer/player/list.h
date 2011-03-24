@@ -29,7 +29,8 @@ static inline void __list_add(struct list_head *new,
 static inline void __list_del(struct list_head *prev,
                               struct list_head *next)
 {
-    ;
+    next->prev = prev;
+    prev->next = next;
 }
 static inline void list_add(struct list_head *new, struct list_head *head)
 {
@@ -62,7 +63,9 @@ static inline int list_empty(const struct list_head *head)
     return head->next == head;
 }
 
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#ifndef offsetof
+#define offsetof(TYPE, MEMBER) ((size_t) (&((TYPE *)0)->MEMBER))
+#endif
 #define prefetch(x) (x)
 /**
  * container_of - cast a member of a structure out to the containing structure

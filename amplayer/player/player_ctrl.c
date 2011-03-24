@@ -61,8 +61,8 @@ int player_init(void)
 
     /*set output black policy to black out--default*/
     set_black_policy(1);
-	set_stb_source_hiu();
-	set_stb_demux_source_hiu();
+    set_stb_source_hiu();
+    set_stb_demux_source_hiu();
 
     return PLAYER_SUCCESS;
 }
@@ -116,8 +116,6 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     p_para->player_id = pid;
     p_para->extern_priv = priv;
     log_debug1("[player_start]player_para=%p,start_param=%p pid=%d\n", p_para, p_para->start_param, pid);
-
-    ffmpeg_uninterrupt();
 
     ret = player_thread_create(p_para) ;
     if (ret != PLAYER_SUCCESS) {
@@ -206,17 +204,15 @@ int player_stop(int pid)
         av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
     }
 
-    ffmpeg_interrupt();
-
     cmd = message_alloc();
     if (cmd) {
         cmd->ctrl_cmd = CMD_STOP;
-        ffmpeg_interrupt();
+        ffmpeg_interrupt(player_para->thread_mgt.pthread_id);
         r = send_message(player_para, cmd);
         r = player_thread_wait_exit(player_para);
         log_print("[player_stop:%d]wait player_theadpid[%d] r = %d\n", __LINE__, player_para->player_id, r);
         clear_all_message(player_para);
-        ffmpeg_uninterrupt();
+        ffmpeg_uninterrupt(player_para->thread_mgt.pthread_id);
     } else {
         r = PLAYER_NOMEM;
     }
@@ -258,7 +254,7 @@ int player_stop_async(int pid)
     cmd = message_alloc();
     if (cmd) {
         cmd->ctrl_cmd = CMD_STOP;
-        ffmpeg_interrupt();
+        ffmpeg_interrupt(player_para->thread_mgt.pthread_id);
         r = send_message(player_para, cmd);
     } else {
         r = PLAYER_NOMEM;
@@ -301,7 +297,7 @@ int player_exit(int pid)
 
         ret = player_thread_wait_exit(para);
         log_print("[player_exit]player thread already exit: %d\n", ret);
-
+        ffmpeg_uninterrupt(para->thread_mgt.pthread_id);
         FREE(para);
         para = NULL;
     }
@@ -619,7 +615,7 @@ int player_send_message(int pid, player_cmd_t *cmd)
     player_cmd_t *mycmd;
     int r = -1;
     play_para_t *player_para;
-	char buf[512];
+    char buf[512];
 
     player_para = player_open_pid_data(pid);
     if (player_para == NULL) {
@@ -634,8 +630,9 @@ int player_send_message(int pid, player_cmd_t *cmd)
     if (mycmd) {
         memcpy(mycmd, cmd, sizeof(*cmd));
         r = send_message_by_pid(pid, mycmd);
-		if(cmd2str(cmd,buf)!= -1)
-        	log_print("[%s]cmd = %s\n", __FUNCTION__, buf);
+        if (cmd2str(cmd, buf) != -1) {
+            log_print("[%s]cmd = %s\n", __FUNCTION__, buf);
+        }
     } else {
         r = PLAYER_NOMEM;
     }

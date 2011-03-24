@@ -9,6 +9,11 @@
 #include <pthread.h>
 #include "player_priv.h"
 #include  <libavformat/avio.h>
+#include "player_itemlist.h"
+
+static struct itemlist kill_item_list;
+
+
 
 int ffmpeg_lock(void **pmutex, enum AVLockOp op)
 {
@@ -43,22 +48,35 @@ int ffmpeg_lock(void **pmutex, enum AVLockOp op)
     return r;
 }
 
+static pthread_t kill_thread_pool[MAX_PLAYER_THREADS];
+static int basic_init = 0;
 static int ffmpeg_interrupt_callback(void)
 {
-    return 1;
+    int pid = pthread_self();
+    return itemlist_have_match_data(&kill_item_list, pid);
 }
-void ffmpeg_interrupt(void)
+void ffmpeg_interrupt(pthread_t thread_id)
 {
-    url_set_interrupt_cb(ffmpeg_interrupt_callback);
+    itemlist_add_tail_data(&kill_item_list, thread_id);
 }
-void ffmpeg_uninterrupt(void)
+void ffmpeg_uninterrupt(pthread_t thread_id)
 {
-    url_set_interrupt_cb(NULL);
+    itemlist_del_match_data_item(&kill_item_list, thread_id);
 }
 int ffmpeg_init(void)
 {
+    if (basic_init > 0) {
+        return 0;
+    }
+    basic_init++;
     av_register_all();
     av_lockmgr_register(ffmpeg_lock);
+    url_set_interrupt_cb(ffmpeg_interrupt_callback);
+    kill_item_list.max_items = MAX_PLAYER_THREADS;
+    kill_item_list.item_ext_buf_size = 0;
+    kill_item_list.muti_threads_access = 1;
+    kill_item_list.reject_same_item_data = 1;
+    itemlist_init(&kill_item_list);
     return 0;
 }
 int ffmpeg_buffering_data(play_para_t *para)

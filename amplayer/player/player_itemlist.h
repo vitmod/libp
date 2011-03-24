@@ -5,7 +5,7 @@
 #include <pthread.h>
 
 
-///#define ITEMLIST_WITH_LOCK
+#define ITEMLIST_WITH_LOCK
 
 struct item {
     struct list_head list;
@@ -21,17 +21,27 @@ struct itemlist {
     int item_count;
     int max_items;
     int item_ext_buf_size;
+    int reject_same_item_data;
 };
 
 typedef void(*data_free_fun)(void *);
-typedef void(*data_cmp_fun)(unsigned long data1, unsigned data2);
+typedef void(*data_is_match)(unsigned long data1, unsigned data2);
 
 int itemlist_init(struct itemlist *itemlist);
+struct item * item_alloc(int ext);
+void item_free(struct item *item);
+
+
 int itemlist_add_tail(struct itemlist *itemlist, struct item *item);
 struct item * itemlist_get_head(struct itemlist *itemlist);
 struct item * itemlist_get_tail(struct itemlist *itemlist);
 struct item * itemlist_peek_head(struct itemlist *itemlist);
 struct item * itemlist_peek_tail(struct itemlist *itemlist);
+struct item *  itemlist_get_match_item(struct itemlist *itemlist, unsigned long data);
+int itemlist_del_match_data_item(struct itemlist *itemlist, unsigned long data);
+int itemlist_have_match_data(struct itemlist *itemlist, unsigned long data);
+
+
 int itemlist_clean(struct itemlist *itemlist, data_free_fun free_fun);
 int itemlist_add_tail_data(struct itemlist *itemlist, unsigned long data);
 int itemlist_get_head_data(struct itemlist *itemlist, unsigned long *data);
