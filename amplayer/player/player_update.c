@@ -469,15 +469,15 @@ static unsigned int get_current_time(play_para_t *p_para)
         pcr_scr = get_pts_pcrscr();
         apts = get_pts_audio();
         ctime = handle_current_time(p_para, pcr_scr, apts);
-        log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);
-    } else if(p_para->astream_info.has_audio && 
+        log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);		
+    } else if(p_para->astream_info.has_audio)/* && 
     		(p_para->stream_type == STREAM_ES) && 
-    		(p_para->astream_info.audio_format != AFORMAT_WMA)) {
+    		(p_para->astream_info.audio_format != AFORMAT_WMA)) */{
         apts = get_pts_audio();
-        ctime = apts;
+        ctime = apts;		
     } else{
         pcr_scr = get_pts_pcrscr();
-        ctime = pcr_scr;
+        ctime = pcr_scr;		
     }
     if (ctime == 0) {
         log_print("[get_current_time] curtime=0x%x pcr=0x%x apts=0x%x vpts=0x%x\n", ctime, pcr_scr, apts, vpts);
