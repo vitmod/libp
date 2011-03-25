@@ -176,9 +176,14 @@ int64_t url_fseek(ByteIOContext *s, int64_t offset, int whence)
         	av_log(NULL, AV_LOG_INFO, "url_fseek:reached eof_reached=%d\n",s->eof_reached);
             return AVERROR(EPIPE);
         }
+		if(s->error){
+			/*erros on read seek,maybe is   TRY AGAIN, try low leve seek*/
+			goto dololeve_seek;
+		}
         s->buf_ptr = s->buf_end + offset - s->pos;
     } else {
-        int64_t res = AVERROR(EPIPE);
+		int64_t res = AVERROR(EPIPE);
+dololeve_seek:    
 #if CONFIG_MUXERS || CONFIG_NETWORK
         if (s->write_flag) {
             flush_buffer(s);
