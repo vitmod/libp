@@ -21,7 +21,7 @@ extern "C"
     int audio_decode_pause(void *handle);
     int audio_decode_resume(void *handle);
     int audio_decode_stop(void *handle);
-    int audio_decode_release(void *handle);
+    int audio_decode_release(void **handle);
     int audio_decode_automute(void *, int);
     int audio_decode_set_mute(void *handle, int);
     int audio_decode_set_volume(void *, float);

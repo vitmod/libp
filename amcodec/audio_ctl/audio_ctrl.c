@@ -37,9 +37,9 @@ void audio_start(void **priv)
 * @brief  audio_stop  Stop audio decoder
 */
 /* --------------------------------------------------------------------------*/
-void audio_stop(void *priv)
+void audio_stop(void **priv)
 {
-    audio_decode_stop(priv);
+    audio_decode_stop(*priv);
     audio_decode_release(priv);
 }
 

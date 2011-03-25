@@ -146,11 +146,11 @@ int audio_decode_stop(void *handle)
  * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_release(void *handle)
+int audio_decode_release(void **handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)*handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
@@ -163,8 +163,8 @@ int audio_decode_release(void *handle)
 
     ret = pthread_join(audec->thread_pid, NULL);
 
-    free(handle);
-    handle = NULL;
+    free(*handle);
+    *handle = NULL;
 
     return ret;
 

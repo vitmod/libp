@@ -1216,7 +1216,7 @@ static AM_ErrorCode_t aml_close_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode)
       if(has_audio) {
         //adec_cmd("stop");
 			  //adec_stop();
-        audio_stop(adec_priv);
+        audio_stop(&adec_priv);
         adec_priv = NULL;
         has_audio = 0;
       }

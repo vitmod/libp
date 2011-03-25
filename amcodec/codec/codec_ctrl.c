@@ -698,7 +698,7 @@ int codec_read(codec_para_t *pcodec, void *buffer, int len)
 int codec_close(codec_para_t *pcodec)
 {
     if (pcodec->has_audio) {
-        audio_stop(pcodec->adec_priv);
+        audio_stop(&pcodec->adec_priv);
     }
 #ifdef SUBTITLE_EVENT
     if (pcodec->has_sub && pcodec->sub_handle >= 0) {
@@ -723,7 +723,7 @@ void codec_close_audio(codec_para_t *pcodec)
     if (pcodec) {
         pcodec->has_audio = 0;
     }
-    audio_stop(pcodec->adec_priv);
+    audio_stop(&pcodec->adec_priv);
     return;
 }
 
