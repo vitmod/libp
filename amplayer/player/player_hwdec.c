@@ -447,6 +447,36 @@ static int avi_write_header(play_para_t *para, am_packet_t *pkt)
     return ret;
 }
 /*************************************************************************/
+static int mkv_write_header(play_para_t *para, am_packet_t *pkt)
+{
+    int head_size = para->vstream_info.extradata_size;
+
+    if (para->vcodec) {
+        pkt->codec = para->vcodec;
+    } else {
+        log_print("[pre_header_feeding]invalid codec!");
+        return PLAYER_EMPTY_P;
+    }
+
+    if (head_size > pkt->hdr->size) {
+        FREE(pkt->hdr->data);
+        pkt->hdr->size = 0;
+
+        pkt->hdr->data = (char *)MALLOC(head_size);
+        if (!pkt->hdr->data) {
+            log_print("[mkv_write_header] NOMEM!");
+            return PLAYER_FAILED;
+        }
+    }
+
+    pkt->hdr->size = head_size;
+    pkt->type = CODEC_VIDEO;
+    MEMCPY(pkt->hdr->data, para->vstream_info.extradata, head_size);
+
+    pkt->avpkt_newflag = 1;
+    return write_av_packet(para, pkt);
+}
+/*************************************************************************/
 static int wmv3_write_header(play_para_t *para, am_packet_t *pkt)
 {
     unsigned i, check_sum = 0;
@@ -749,7 +779,13 @@ int pre_header_feeding(play_para_t *para, am_packet_t *pkt)
             if (ret != PLAYER_SUCCESS) {
                 return ret;
             }
+        } else if ((MKV_FILE == para->file_type) && (VFORMAT_MPEG4 == para->vstream_info.video_format)) {
+            ret = mkv_write_header(para, pkt);
+            if (ret != PLAYER_SUCCESS) {
+                return ret;
+            }
         }
+
         if (pkt->hdr) {
             if (pkt->hdr->data) {
                 FREE(pkt->hdr->data);
