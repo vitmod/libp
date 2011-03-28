@@ -158,8 +158,10 @@ typedef struct player_info
 	long curtime_old_time;    
 	unsigned int video_error_cnt;
 	unsigned int audio_error_cnt;
-	float		    audio_bufferlevel;
-	float		    video_bufferlevel;
+	float audio_bufferlevel; // relative value
+	float video_bufferlevel; // relative value
+	int   audio_datalevel;   // real audio data length
+	int   video_datalevel;   // real video data length
 }player_info_t;
 
 typedef struct pid_info

@@ -1036,9 +1036,23 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
         write_bytes = codec_write(pkt->codec, (char *)buf, size);
         if (write_bytes < 0 || write_bytes > size) {
             if (-errno != AVERROR(EAGAIN)) {
+                para->playctrl_info.check_lowlevel_eagain_cnt = 0;
                 log_print("write codec data failed!\n");
                 return PLAYER_WR_FAILED;
             } else {
+                /* EAGAIN to see if decoder stopped */
+                if ((para->state.video_datalevel < 16*1024)
+                    && ((para->state.audio_datalevel < 16*1024))) {
+                    /* low level buffer, EAGAIN should not happen */
+                    if (++para->playctrl_info.check_lowlevel_eagain_cnt > 10) {
+                        /* reset decoder */
+                        para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+                        para->playctrl_info.reset_flag = 1;
+                        para->playctrl_info.end_flag = 1;
+                        para->playctrl_info.time_point = para->state.pts_video / PTS_FREQ;
+                        log_print("$$$$$$data write blocked, need reset decoder!$$$$$$\n");
+                    }
+                }
                 pkt->data += len;
                 pkt->data_size -= len;
                 player_thread_wait(para, RW_WAIT_TIME);
@@ -1056,6 +1070,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 }
             }
 #endif
+            para->playctrl_info.check_lowlevel_eagain_cnt = 0;
             len += write_bytes;
             if (len == pkt->data_size) {
                 if ((pkt->type == CODEC_VIDEO) && (!para->playctrl_info.raw_mode)) {

@@ -106,6 +106,7 @@ typedef  struct {
     int read_max_retry_cnt;
 	int audio_ready;	
 	int check_audio_rp_cnt;
+    int check_lowlevel_eagain_cnt;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);

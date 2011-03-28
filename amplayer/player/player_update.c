@@ -693,6 +693,8 @@ static int  update_buffering_states(play_para_t *p_para,
     vlevel = (float)vbuf->data_len / vbuf->size;
     p_para->state.audio_bufferlevel = alevel;
     p_para->state.video_bufferlevel = vlevel;
+    p_para->state.audio_datalevel = abuf->data_len;
+    p_para->state.video_datalevel = vbuf->data_len;
     if (p_para->astream_info.has_audio && 0)
         log_print("update_buffering_states,alevel=%d,asize=%d,level=%f,status=%d\n",
                   abuf->data_len, abuf->size, alevel, get_player_state(p_para));
