@@ -1767,10 +1767,10 @@ static void av_update_stream_timings(AVFormatContext *ic)
     }
     if (start_time != INT64_MAX) {
         ic->start_time = start_time;
-        if (end_time != INT64_MIN) {
+       /* if (end_time != INT64_MIN) {
             if (end_time - start_time > duration)
                 duration = end_time - start_time;
-        }
+        }*/
     }
     if (duration != INT64_MIN) {
         ic->duration = duration;
@@ -1988,7 +1988,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     AVStream *st;
     int read_size, i, ret;
     int64_t end_time, start_time[MAX_STREAMS];
-    int64_t filesize, offset, duration;
+    int64_t valid_offset, offset, duration;
     int retry=0;
     unsigned int ori_nb_streams;
     int break_flag=0;
@@ -2016,10 +2016,10 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 
     /* estimate the end time (duration) */
     /* XXX: may need to support wrapping */
-    filesize = ic->file_size;
+    valid_offset = ic->valid_offset;
     end_time = AV_NOPTS_VALUE;
     do{
-    offset = filesize - (DURATION_MAX_READ_SIZE<<retry);
+    offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
     if (offset < 0)
         offset = 0;
 
@@ -2054,8 +2054,8 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
         }
         av_free_packet(pkt);
     }
-    }while(   end_time==AV_NOPTS_VALUE
-           && filesize > (DURATION_MAX_READ_SIZE<<retry)
+    }while(end_time==AV_NOPTS_VALUE
+           && valid_offset > (DURATION_MAX_READ_SIZE<<retry)
            && ++retry <= DURATION_MAX_RETRY);
 
     for (i=0;i<ic->nb_streams;i++)
@@ -2196,20 +2196,7 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     ic->file_size = file_size;
     ic->valid_offset = file_size ? file_size : 0x7fffffffffffffff;
 
-    if ((!strcmp(ic->iformat->name, "mpeg") ||
-         !strcmp(ic->iformat->name, "mpegts")) &&
-        file_size && !url_is_streamed(ic->pb)) {
-        /* get accurate estimate from the PTSes */
-        av_estimate_timings_from_pts(ic, old_offset);
-    } else if (av_has_duration(ic)) {
-        /* at least one component has timings - we use them for all
-           the components */
-        fill_all_stream_timings(ic);
-    } else {
-        /* less precise: use bitrate info */
-        av_estimate_timings_from_bit_rate(ic);
-    }
-    av_update_stream_timings(ic);
+	/* find valid_offset*/
 	cur_offset = url_ftell(ic->pb);
 	if(check_last_blk_valid(ic))
 		valid_offset = ic->file_size;
@@ -2226,6 +2213,24 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
         av_log(NULL, AV_LOG_INFO, "[av_estimate_timings]valid_offset 0x%llx\n", ic->valid_offset);
     }
 	url_fseek(ic->pb,cur_offset,SEEK_SET);
+	
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]file_size=%lld valid_offset=%d\n", __FUNCTION__, __LINE__,ic->file_size, ic->valid_offset);
+	
+    if ((!strcmp(ic->iformat->name, "mpeg") ||
+         !strcmp(ic->iformat->name, "mpegts")) &&
+        file_size && !url_is_streamed(ic->pb)) {
+        /* get accurate estimate from the PTSes */
+        av_estimate_timings_from_pts(ic, old_offset);
+    } else if (av_has_duration(ic)) {
+        /* at least one component has timings - we use them for all
+           the components */
+        fill_all_stream_timings(ic);
+    } else {
+        /* less precise: use bitrate info */
+        av_estimate_timings_from_bit_rate(ic);
+    }
+    av_update_stream_timings(ic);
+	
 #if 0
     {
         int i;
@@ -2635,8 +2640,7 @@ int av_find_stream_info(AVFormatContext *ic)
             if(!st->codec->bits_per_coded_sample)
                 st->codec->bits_per_coded_sample= av_get_bits_per_sample(st->codec->codec_id);
         }
-    }
-	av_log(NULL, AV_LOG_INFO, "[%s:%d]\n",__FUNCTION__, __LINE__);
+    }	
     av_estimate_timings(ic, old_offset);
 
     compute_chapters_end(ic);
