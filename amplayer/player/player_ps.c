@@ -43,7 +43,8 @@ static int stream_ps_init(play_para_t *p_para)
             (codec->audio_type == AFORMAT_WMA) ||
             (codec->audio_type == AFORMAT_PCM_S16BE) ||
             (codec->audio_type == AFORMAT_PCM_S16LE) ||
-            (codec->audio_type == AFORMAT_PCM_U8)) {
+            (codec->audio_type == AFORMAT_PCM_U8)	||	
+            (codec->audio_type == AFORMAT_AMR)) {
             if (codec->audio_type == AFORMAT_ADPCM) {
                 codec->audio_info.bitrate = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->sample_fmt;
             } else {

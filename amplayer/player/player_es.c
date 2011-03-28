@@ -68,7 +68,8 @@ static void acodec_info_init(play_para_t *p_para, codec_para_t *a_codec)
               __FUNCTION__, __LINE__, a_codec->stream_type, a_codec->audio_type, a_codec->audio_pid,
               a_codec->audio_samplerate, a_codec->audio_channels);
 
-    if ((a_codec->audio_type == AFORMAT_ADPCM) || (a_codec->audio_type == AFORMAT_WMA) || (a_codec->audio_type == AFORMAT_WMAPRO) || (a_codec->audio_type == AFORMAT_PCM_S16BE) || (a_codec->audio_type == AFORMAT_PCM_S16LE) || (a_codec->audio_type == AFORMAT_PCM_U8)) {
+    if ((a_codec->audio_type == AFORMAT_ADPCM) || (a_codec->audio_type == AFORMAT_WMA) || (a_codec->audio_type == AFORMAT_WMAPRO) || (a_codec->audio_type == AFORMAT_PCM_S16BE) || (a_codec->audio_type == AFORMAT_PCM_S16LE) || (a_codec->audio_type == AFORMAT_PCM_U8) \
+		||(a_codec->audio_type == AFORMAT_AMR)) {
         if (a_codec->audio_type == AFORMAT_ADPCM) {
             a_codec->audio_info.bitrate = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->sample_fmt;
         } else {

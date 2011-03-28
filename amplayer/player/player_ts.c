@@ -46,7 +46,7 @@ static int stream_ts_init(play_para_t *p_para)
         if ((codec->audio_type == AFORMAT_ADPCM) || (codec->audio_type == AFORMAT_WMA)
             || (codec->audio_type == AFORMAT_WMAPRO) || (codec->audio_type == AFORMAT_PCM_S16BE)
             || (codec->audio_type == AFORMAT_PCM_S16LE) || (codec->audio_type == AFORMAT_PCM_U8)
-            || (codec->audio_type == AFORMAT_PCM_BLURAY)) {
+            || (codec->audio_type == AFORMAT_PCM_BLURAY)||(codec->audio_type == AFORMAT_AMR)) {
 
             codec->audio_info.bitrate = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->sample_fmt;
             codec->audio_info.sample_rate = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->sample_rate;
