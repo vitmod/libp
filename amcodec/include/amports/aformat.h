@@ -56,5 +56,15 @@ typedef enum {
     AFORMAT_MAX    = 17
 } aformat_t;
 
+    
+#define IS_AUIDO_NEED_EXT_INFO(afmt) ((afmt == AFORMAT_ADPCM) \
+								 ||(afmt == AFORMAT_WMA) \
+								 ||(afmt == AFORMAT_WMAPRO) \
+								 ||(afmt == AFORMAT_PCM_S16BE) \
+								 ||(afmt == AFORMAT_PCM_S16LE) \
+								 ||(afmt == AFORMAT_PCM_U8) \
+								 ||(afmt == AFORMAT_PCM_BLURAY) \
+								 ||(afmt == AFORMAT_AMR))
+
 #endif /* AFORMAT_H */
 
