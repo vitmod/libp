@@ -1657,21 +1657,7 @@ void player_switch_audio(play_para_t *para)
         pcodec = para->acodec;
     } else {
         pcodec = para->codec;
-    }
-
-    /* automute */
-    codec_audio_automute(pcodec->adec_priv, 1);
-
-    /* close audio */
-    codec_close_audio(pcodec);
-
-    /* first set an invalid audio id */
-    pcodec->audio_pid = 0xffff;
-    para->astream_info.audio_index = -1;
-    if (codec_set_audio_pid(pcodec)) {
-        log_print("[%s:%d]set invalid audio pid failed\n", __FUNCTION__, __LINE__);
-        return;
-    }
+    }    
 
     /* get new information */
     audio_index = pstream->index;
@@ -1689,6 +1675,7 @@ void player_switch_audio(play_para_t *para)
         para->astream_info.has_audio = 0;
         return;
     }
+	
     if (0 != pstream->time_base.den) {
         para->astream_info.audio_duration = PTS_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
         para->astream_info.start_time = pstream->start_time * pstream->time_base.num * PTS_FREQ / pstream->time_base.den;
@@ -1706,14 +1693,46 @@ void player_switch_audio(play_para_t *para)
             return;
         }
     }
+	
+	/* automute */
+    codec_audio_automute(pcodec->adec_priv, 1);
 
+    /* close audio */
+    codec_close_audio(pcodec);
+
+    /* first set an invalid audio id */
+    pcodec->audio_pid = 0xffff;
+    para->astream_info.audio_index = -1;
+    if (codec_set_audio_pid(pcodec)) {
+        log_print("[%s:%d]set invalid audio pid failed\n", __FUNCTION__, __LINE__);
+        return;
+    }
+	
     /* reinit audio info */
     pcodec->has_audio = 1;
     pcodec->audio_type = para->astream_info.audio_format;
     pcodec->audio_pid = pstream->id;
     pcodec->audio_channels = para->astream_info.audio_channel;
     pcodec->audio_samplerate = para->astream_info.audio_samplerate;
-
+	
+	/*if ((pcodec->audio_type == AFORMAT_ADPCM) || (pcodec->audio_type == AFORMAT_WMA)
+     || (pcodec->audio_type == AFORMAT_WMAPRO) || (pcodec->audio_type == AFORMAT_PCM_S16BE)
+     || (pcodec->audio_type == AFORMAT_PCM_S16LE) || (pcodec->audio_type == AFORMAT_PCM_U8)
+     || (pcodec->audio_type == AFORMAT_PCM_BLURAY)||(pcodec->audio_type == AFORMAT_AMR)) {*/
+     if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type)){
+            pcodec->audio_info.bitrate = pCodecCtx->sample_fmt;
+            pcodec->audio_info.sample_rate = pCodecCtx->sample_rate;
+            pcodec->audio_info.channels = pCodecCtx->channels;
+            pcodec->audio_info.codec_id = pCodecCtx->codec_id;
+            pcodec->audio_info.block_align = pCodecCtx->block_align;
+            pcodec->audio_info.extradata_size = pCodecCtx->extradata_size;
+            if (pcodec->audio_info.extradata_size > 0) {
+                MEMCPY((char*)pcodec->audio_info.extradata, pCodecCtx->extradata, pcodec->audio_info.extradata_size);
+            }
+            pcodec->audio_info.valid = 1;
+			log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, pcodec->audio_type,\
+						pcodec->audio_info.sample_rate, pcodec->audio_info.channels,pcodec->audio_info.extradata_size);
+        }
     if (codec_audio_reinit(pcodec)) {
         log_print("[%s:%d]audio reinit failed\n", __FUNCTION__, __LINE__);
         return;
