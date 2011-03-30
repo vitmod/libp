@@ -68,13 +68,19 @@ static int audio_hardware_ctrl(hw_command_t cmd)
  */
 static void start_adec(aml_audio_dec_t *audec)
 {
+    int ret;
     audio_out_operations_t *aout_ops = &audec->aout_ops;
+    dsp_operations_t *dsp_ops = &audec->adsp_ops;
 
     if (audec->state == INITTED) {
         audec->state = ACTIVE;
 
+        while ((!audiodsp_get_first_pts_flag(dsp_ops)) && (!audec->need_stop)) {
+            usleep(100000);
+        }
+
         /*start  the  the pts scr,...*/
-        adec_pts_start(audec);
+        ret = adec_pts_start(audec);
 
         if (audec->auto_mute) {
             avsync_en(0);

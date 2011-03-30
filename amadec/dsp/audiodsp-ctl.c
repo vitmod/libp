@@ -314,10 +314,23 @@ unsigned long  audiodsp_get_pts(dsp_operations_t *dsp_ops)
 int audiodsp_get_decoded_nb_frames(dsp_operations_t *dsp_ops)
 {
     int val = -1;
-	if(dsp_ops && dsp_ops->dsp_file_fd){
-	    ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_DECODED_NB_FRAMES, &val);	 		
-	}	
-	//adec_print("get audio decoded frame number==%d\n",val);
+    if (dsp_ops && dsp_ops->dsp_file_fd) {
+        ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_DECODED_NB_FRAMES, &val);
+    }
+    //adec_print("get audio decoded frame number==%d\n",val);
     return val;
 }
 
+int audiodsp_get_first_pts_flag(dsp_operations_t *dsp_ops)
+{
+    int val;
+
+    if (dsp_ops->dsp_file_fd < 0) {
+        adec_print("read error!! audiodsp have not opened\n");
+        return -1;
+    }
+
+    ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_FIRST_PTS_FLAG, &val);
+
+    return val;
+}
