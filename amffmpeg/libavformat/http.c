@@ -37,8 +37,7 @@
 
 #define MAX_RETRY	10
 #define OPEN_RETRY 3
-#define IPAD_IDENT	"Mozilla/5.0 (iPad; U; CPU OS_3_2_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B500 Safari/531.21.10"
-
+#define IPAD_IDENT	"AppleCoreMedia/1.0.0.8C148 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh_cn)"
 
 typedef struct {
     URLContext *hd;
