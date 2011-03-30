@@ -600,8 +600,10 @@ int player_dec_reset(play_para_t *p_para)
     }
 
     if (p_para->playctrl_info.fast_forward) {
-        if (p_para->playctrl_info.time_point >= p_para->state.full_time) {
+        if (p_para->playctrl_info.time_point >= p_para->state.full_time) {			
             p_para->playctrl_info.end_flag = 1;
+			set_black_policy(p_para->playctrl_info.black_out);
+			log_print("[%s]ff end: tpos=%d black=%d\n", __FUNCTION__, p_para->playctrl_info.time_point, p_para->playctrl_info.black_out);
             return ret;
         }
 
