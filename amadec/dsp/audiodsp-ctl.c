@@ -23,7 +23,7 @@
 #include <log-print.h>
 
 firmware_s_t firmware_list[] = {
-    {0, MCODEC_FMT_MPEG123, "audiodsp_codec_mp3_lp.bin"},
+    {0, MCODEC_FMT_MPEG123, "audiodsp_codec_mad.bin"},
     {1, MCODEC_FMT_AAC, "audiodsp_codec_aac_helix.bin"},
     {2, MCODEC_FMT_AC3, "audiodsp_codec_ac3.bin"},
     {3, MCODEC_FMT_DTS, "audiodsp_codec_dca.bin"},
