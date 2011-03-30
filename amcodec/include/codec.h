@@ -70,4 +70,5 @@ int codec_audio_automute(void *priv, int auto_mute);
 int codec_audio_spectrum_switch(codec_para_t *p, int isStart, int interval);
 int codec_audio_isready(codec_para_t *p);
 int codec_audio_get_nb_frames(codec_para_t *p);
+int codec_audio_set_audioinfo(codec_para_t *p);
 #endif
