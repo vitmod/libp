@@ -545,7 +545,7 @@ void player_para_reset(play_para_t *para)
     }
     para->discontinue_flag = 0;
     para->playctrl_info.pts_valid = 0;
-    log_print("[player_para_reset]para->discontinue_point=%d\n", para->discontinue_point);
+    //log_print("[player_para_reset]para->discontinue_point=%d\n", para->discontinue_point);
     MEMSET(&para->write_size, 0, sizeof(read_write_size));
     MEMSET(&para->read_size, 0, sizeof(read_write_size));
 }

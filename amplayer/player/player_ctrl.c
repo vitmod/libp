@@ -590,11 +590,87 @@ int player_sid(int pid, int sub_id)
     cmd.param = sub_id;
 
     ret = player_send_message(pid, &cmd);
-    log_print("[player_sid:enter]pid=%d sub_id=%d\n", pid, sub_id);
+    log_print("[player_sid:exit]pid=%d sub_id=%d\n", pid, sub_id);
 
     return ret;
 
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+ * @brief   player_enable_autobuffer
+ *
+ * @param[in]   pid     player tag which get from player_start return value
+ * @param[in]   enable  enable/disable auto buffer function
+ *
+ * @return  PLAYER_NOT_VALID_PID    playet tag invalid
+ *          PLAYER_NOMEM            alloc memory failed
+ *          PLAYER_SUCCESS          success
+ *
+ * @details enable/disable auto buffering
+ */
+/* --------------------------------------------------------------------------*/
+int player_enable_autobuffer(int pid, int enable)
+{
+    player_cmd_t cmd;
+    int ret;
+
+    log_print("[%s:enter]pid=%d enable=%d\n", __FUNCTION__, pid, enable);
+
+    MEMSET(&cmd, 0, sizeof(player_cmd_t));
+
+    cmd.ctrl_cmd = CMD_EN_AUTOBUF;
+    cmd.param = enable;
+
+    ret = player_send_message(pid, &cmd);
+    log_print("[%s:exit]pid=%d enable=%d\n", __FUNCTION__, pid, enable);
+
+    return ret;
+
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+ * @brief   player_set_autobuffer_level
+ *
+ * @param[in]   pid     player tag which get from player_start return value
+ * @param[in]   min     buffer min percent (less than min, enter buffering, av pause)
+ * @param[in]   middle  buffer middle percent(more than middler, exit buffering, av resume)
+ * @param[in]   max     buffer max percent(more than max, do not feed data)
+ *
+ * @return  PLAYER_NOT_VALID_PID    playet tag invalid
+ *          PLAYER_NOMEM            alloc memory failed
+ *          PLAYER_SUCCESS          success
+ *
+ * @details enable/disable auto buffering
+ */
+/* --------------------------------------------------------------------------*/
+int player_set_autobuffer_level(int pid, float min, float middle, float max)
+{
+    player_cmd_t cmd;
+    int ret;
+
+    log_print("[%s:enter]pid=%d min=%.3f middle=%.3f max=%.3f\n", __FUNCTION__, pid, min, middle, max);
+
+    if (min <  middle && middle < max && max < 1) {
+        MEMSET(&cmd, 0, sizeof(player_cmd_t));
+
+        cmd.ctrl_cmd = CMD_SET_AUTOBUF_LEV;
+        cmd.f_param = min;
+        cmd.f_param1 = middle;
+        cmd.f_param2 = max;
+
+        ret = player_send_message(pid, &cmd);
+    } else {
+        ret = -1;
+        log_error("[%s]invalid param, please check!\n", __FUNCTION__);
+    }
+    log_print("[%s:exit]pid=%d min=%.3f middle=%.3f max=%.3f\n", __FUNCTION__, pid, min, middle, max);
+
+    return ret;
+
+}
+
 
 /* --------------------------------------------------------------------------*/
 /**

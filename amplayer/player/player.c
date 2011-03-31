@@ -241,7 +241,13 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
     } else if (msg->ctrl_cmd & CMD_SWITCH_AID) {
         para->playctrl_info.audio_switch_flag = 1;
         para->playctrl_info.switch_audio_id = msg->param;
-    }
+    } else if (msg->ctrl_cmd & CMD_EN_AUTOBUF) {
+        para->buffering_enable = msg->param;        
+    } else if (msg->ctrl_cmd & CMD_SET_AUTOBUF_LEV) {
+		para->buffering_threshhold_min = msg->f_param;
+		para->buffering_threshhold_middle = msg->f_param1;
+		para->buffering_threshhold_max = msg->f_param2;    
+    }		
 #if 0
     else if (msg->ctrl_cmd & CMD_SWITCH_SID) {
         para->playctrl_info.switch_sub_id = msg->param;
@@ -714,7 +720,8 @@ write_packet:
                     player->state.current_time = player->state.full_time;
                 }
                 if (player->state.current_time < player->state.last_time) {
-                    player->state.current_time = player->state.last_time;
+					log_print("[%s]curtime<lasttime curtime=%d lastime=%d\n", __FUNCTION__, player->state.current_time, player->state.last_time);
+                    player->state.current_time = player->state.last_time;					
                 }
                 player->state.last_time = player->state.current_time;
             }
@@ -826,6 +833,7 @@ release:
     set_cntl_mode(player, TRICKMODE_NONE);
 
 release0:
+	set_black_policy(player->playctrl_info.black_out);
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
     if (get_player_state(player) == PLAYER_ERROR) {
         set_player_error_no(player, ret);

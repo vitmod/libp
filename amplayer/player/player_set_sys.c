@@ -204,6 +204,7 @@ int set_subtitle_subtype(int subtype)
         close(fd);
         return 0;
     }
+    log_error("[%s]open %s error!\n", __FUNCTION__, path);
     return -1;
 
 }

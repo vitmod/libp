@@ -135,14 +135,15 @@ int update_player_states(play_para_t *para, int force)
         player_info_t state;
         MEMCPY(&state, &para->state, sizeof(state));
         //if(force == 1)
-        log_print("**[update_state]pid:%d status=%s(last:%s) err=0x%x curtime=%d (ms:%d) fulltime=%d\n",
+        log_print("**[update_state]pid:%d status=%s(last:%s) err=0x%x curtime=%d (ms:%d) fulltime=%d lsttime=%d\n",
                   para->player_id,
                   player_status2str(state.status),
                   player_status2str(state.last_sta),
                   (-state.error_no),
                   state.current_time,
                   state.current_ms,
-                  state.full_time);
+                  state.full_time,
+                  state.last_time);
         fn = cb->update_statue_callback;
         if (fn) {
             fn(para->player_id, &state);

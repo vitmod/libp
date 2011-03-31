@@ -40,7 +40,9 @@ typedef enum
     CMD_SWAP_LR         = (1 << 11),
     CMD_LEFT_MONO       = (1 << 12),
     CMD_RIGHT_MONO      = (1 << 13),
-    CMD_SET_STEREO      = (1 << 14),    
+    CMD_SET_STEREO      = (1 << 14),
+    CMD_EN_AUTOBUF      = (1 << 15),
+    CMD_SET_AUTOBUF_LEV = (1 << 15),
     CMD_MODE_MAX        = (1 << 31),
 }ctrl_mode_t;
 
@@ -68,14 +70,22 @@ typedef struct
     get_info_t info_cmd;    
     ctrl_mode_t set_mode;
     int pid;
-    int cid;    
-	union{
-		char *filename;
-		char *file_list;		
-        int param;	
-		};
-    int param1;
-}player_cmd_t;
+    int cid;
+    union {
+        char *filename;
+        char *file_list;
+        int param;
+        float f_param;
+    };
+    union {
+        int param1;
+        float f_param1;
+    };
+    union {
+        int param2;
+        float f_param2;
+    };
+} player_cmd_t;
 
 int message_free(player_cmd_t * cmd);
 player_cmd_t * message_alloc(void);
