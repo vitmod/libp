@@ -1,12 +1,11 @@
 #ifndef PLAYER_MESSAGE_H
 #define PLAYER_MESSAGE_H
 
-#define MESSAGE_MAX	4
+#define MESSAGE_MAX 4
 
 #define CTRL_CMD_RESPONSE   (0xffff)
 
-typedef enum
-{
+typedef enum {
     CMD_EXIT            = (1 << 0),
     CMD_PLAY            = (1 << 1),
     CMD_PLAY_START      = (1 << 2),
@@ -22,10 +21,9 @@ typedef enum
     CMD_SWITCH_AID      = (1 << 12),
     CMD_SWITCH_SID      = (1 << 13),
     CMD_CTRL_MAX        = (1 << 31),
-}ctrl_cmd_t;
+} ctrl_cmd_t;
 
-typedef enum
-{
+typedef enum {
     CMD_LOOP            = (1 << 0),
     CMD_NOLOOP          = (1 << 1),
     CMD_BLACKOUT        = (1 << 2),
@@ -33,8 +31,8 @@ typedef enum
     CMD_NOAUDIO         = (1 << 4),
     CMD_NOVIDEO         = (1 << 5),
     CMD_MUTE            = (1 << 6),
-    CMD_UNMUTE          = (1 << 7),   
-    CMD_SET_VOLUME      = (1 << 8), 
+    CMD_UNMUTE          = (1 << 7),
+    CMD_SET_VOLUME      = (1 << 8),
     CMD_SPECTRUM_SWITCH = (1 << 9),
     CMD_SET_BALANCE     = (1 << 10),
     CMD_SWAP_LR         = (1 << 11),
@@ -44,30 +42,27 @@ typedef enum
     CMD_EN_AUTOBUF      = (1 << 15),
     CMD_SET_AUTOBUF_LEV = (1 << 15),
     CMD_MODE_MAX        = (1 << 31),
-}ctrl_mode_t;
+} ctrl_mode_t;
 
-typedef enum
-{
-   CMD_GET_VOLUME     = (1 << 0),
-   CMD_GET_VOL_RANGE  = (1 << 1),
-   CMD_GET_PLAY_STA   = (1 << 2),
-   CMD_GET_CURTIME    = (1 << 3),
-   CMD_GET_DURATION   = (1 << 4),
-   CMD_GET_MEDIA_INFO = (1 << 5),
-   CMD_LIST_PID       = (1 << 6),
-   CMD_GET_MAX        = (1 << 31),
-}get_info_t;
+typedef enum {
+    CMD_GET_VOLUME     = (1 << 0),
+    CMD_GET_VOL_RANGE  = (1 << 1),
+    CMD_GET_PLAY_STA   = (1 << 2),
+    CMD_GET_CURTIME    = (1 << 3),
+    CMD_GET_DURATION   = (1 << 4),
+    CMD_GET_MEDIA_INFO = (1 << 5),
+    CMD_LIST_PID       = (1 << 6),
+    CMD_GET_MAX        = (1 << 31),
+} get_info_t;
 
-typedef struct
-{
+typedef struct {
     int min;
     int max;
-}volume_range_t;
+} volume_range_t;
 
-typedef struct
-{        
-    ctrl_cmd_t ctrl_cmd;       
-    get_info_t info_cmd;    
+typedef struct {
+    ctrl_cmd_t ctrl_cmd;
+    get_info_t info_cmd;
     ctrl_mode_t set_mode;
     int pid;
     int cid;
