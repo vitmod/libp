@@ -619,7 +619,7 @@ int player_enable_autobuffer(int pid, int enable)
 
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
 
-    cmd.ctrl_cmd = CMD_EN_AUTOBUF;
+    cmd.set_mode = CMD_EN_AUTOBUF;
     cmd.param = enable;
 
     ret = player_send_message(pid, &cmd);
@@ -655,7 +655,7 @@ int player_set_autobuffer_level(int pid, float min, float middle, float max)
     if (min <  middle && middle < max && max < 1) {
         MEMSET(&cmd, 0, sizeof(player_cmd_t));
 
-        cmd.ctrl_cmd = CMD_SET_AUTOBUF_LEV;
+        cmd.set_mode = CMD_SET_AUTOBUF_LEV;
         cmd.f_param = min;
         cmd.f_param1 = middle;
         cmd.f_param2 = max;
