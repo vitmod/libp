@@ -1694,19 +1694,8 @@ void player_switch_audio(play_para_t *para)
         }
     }
 	
-	/* automute */
-    codec_audio_automute(pcodec->adec_priv, 1);
+						
 
-    /* close audio */
-    codec_close_audio(pcodec);
-
-    /* first set an invalid audio id */
-    pcodec->audio_pid = 0xffff;
-    para->astream_info.audio_index = -1;
-    if (codec_set_audio_pid(pcodec)) {
-        log_print("[%s:%d]set invalid audio pid failed\n", __FUNCTION__, __LINE__);
-        return;
-    }
 	
     /* reinit audio info */
     pcodec->has_audio = 1;
@@ -1733,6 +1722,27 @@ void player_switch_audio(play_para_t *para)
 			log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, pcodec->audio_type,\
 						pcodec->audio_info.sample_rate, pcodec->audio_info.channels,pcodec->audio_info.extradata_size);
         }
+
+
+	para->playctrl_info.reset_flag = 1;
+	para->playctrl_info.end_flag = 1;
+	para->playctrl_info.time_point = para->state.pts_pcrscr/ PTS_FREQ;
+	return ;
+
+		/* automute */
+    codec_audio_automute(pcodec->adec_priv, 1);
+
+    /* close audio */
+    codec_close_audio(pcodec);
+
+    /* first set an invalid audio id */
+    pcodec->audio_pid = 0xffff;
+    para->astream_info.audio_index = -1;
+    if (codec_set_audio_pid(pcodec)) {
+        log_print("[%s:%d]set invalid audio pid failed\n", __FUNCTION__, __LINE__);
+        return;
+    }
+	
     if (codec_audio_reinit(pcodec)) {
         log_print("[%s:%d]audio reinit failed\n", __FUNCTION__, __LINE__);
         return;
