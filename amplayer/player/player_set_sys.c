@@ -56,218 +56,134 @@ static freescale_setting_t freescale_setting[] = {
     }
 };
 
-int set_black_policy(int blackout)
+int set_sysfs_str(const char *path, const char *val)
 {
     int fd;
     int bytes;
-    char *path = "/sys/class/video/blackout_policy";
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        bytes = write(fd, val, strlen(val));
+        close(fd);
+        return 0;
+    } else {
+    }
+    return -1;
+}
+int  get_sysfs_str(const char *path, char *valstr, int size)
+{
+    int fd;
+    fd = open(path, O_RDONLY);
+    if (fd >= 0) {
+        read(fd, valstr, size - 1);
+        valstr[strlen(valstr)] = '\0';
+        close(fd);
+    } else {
+        sprintf(valstr, "%s", "fail");
+        return -1;
+    };
+    log_print("get_sysfs_str=%s\n", valstr);
+    return 0;
+}
+
+int set_sysfs_int(const char *path, int val)
+{
+    int fd;
+    int bytes;
     char  bcmd[16];
     fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (fd >= 0) {
-        sprintf(bcmd, "%d", blackout);
+        sprintf(bcmd, "%d", val);
         bytes = write(fd, bcmd, strlen(bcmd));
         close(fd);
         return 0;
     }
     return -1;
 }
-
-int get_black_policy()
+int get_sysfs_int(const char *path)
 {
     int fd;
-    int black_out = 0;
-    char *path = "/sys/class/video/blackout_policy";
+    int val = 0;
     char  bcmd[16];
     fd = open(path, O_RDONLY);
     if (fd >= 0) {
         read(fd, bcmd, sizeof(bcmd));
-        black_out = strtol(bcmd, NULL, 16);
-        black_out &= 0x1;
+        val = strtol(bcmd, NULL, 16);
         close(fd);
     }
-    return black_out;
+    return val;
+}
+
+
+int set_black_policy(int blackout)
+{
+    return set_sysfs_int("/sys/class/video/blackout_policy", blackout);
+}
+
+int get_black_policy()
+{
+    return get_sysfs_int("/sys/class/video/blackout_policy") & 1;
 }
 
 int check_audiodsp_fatal_err()
 {
-    int fd;
     int fatal_err = 0;
-    char *path = "/sys/class/audiodsp/codec_fatal_err";
-    char  bcmd[16];
-    fd = open(path, O_RDONLY);
-    if (fd >= 0) {
-        read(fd, bcmd, sizeof(bcmd));
-        fatal_err = strtol(bcmd, NULL, 16);
-        fatal_err &= 0x1;
-        close(fd);
-        if (fatal_err == 1) {
-            log_print("[%s]get audio dsp fatal error:%d, need reset!\n", __FUNCTION__, fatal_err);
-        }
+    fatal_err = get_sysfs_int("/sys/class/audiodsp/codec_fatal_err") & 1;
+    if (fatal_err == 1) {
+        log_print("[%s]get audio dsp fatal error:%d, need reset!\n", __FUNCTION__, fatal_err);
     }
     return fatal_err;
 }
 
 int set_tsync_enable(int enable)
 {
-    int fd;
-    char *path = "/sys/class/tsync/enable";
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", enable);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return set_sysfs_int("/sys/class/tsync/enable", enable);
 
 }
 int set_tsync_discontinue(int discontinue)      //kernel set to 1,player clear to 0
 {
-    int fd;
-    char *path = "/sys/class/tsync/discontinue";
-    char  bcmd[16];
-    if (discontinue) {
-        return -1;
-    }
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", discontinue);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    } else {
-        log_error("[%s:%d]open %s failed! errno=%d\n", __FUNCTION__, __LINE__, path, errno);
-    }
-    return -1;
+    return set_sysfs_int("/sys/class/tsync/discontinue", discontinue);
 
 }
 int get_pts_discontinue()
 {
-    int fd;
-    int discontinue = 0;
-    char *path = "/sys/class/tsync/discontinue";
-    char  bcmd[16];
-    fd = open(path, O_RDONLY);
-    if (fd >= 0) {
-        read(fd, bcmd, sizeof(bcmd));
-        discontinue = strtol(bcmd, NULL, 16);
-        discontinue &= 0x1;
-        close(fd);
-    } else {
-        log_error("[%s:%d]open %s failed!\n", __FUNCTION__, __LINE__, path);
-    }
-    return discontinue;
+    return get_sysfs_int("/sys/class/tsync/discontinue") & 1;
 }
 
 int set_subtitle_num(int num)
 {
-    int fd;
-    char *path = "/sys/class/subtitle/total";
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", num);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return set_sysfs_int("/sys/class/subtitle/total", num);
 
 }
 
 int set_subtitle_fps(int fps)
 {
-    int fd;
-    char *path = "/sys/class/subtitle/fps";
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", fps);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return  set_sysfs_int("/sys/class/subtitle/fps", fps);
 
 }
 
 int set_subtitle_subtype(int subtype)
 {
-    int fd;
-    char *path = "/sys/class/subtitle/subtype";
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", subtype);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    log_error("[%s]open %s error!\n", __FUNCTION__, path);
-    return -1;
-
+    return  set_sysfs_int("/sys/class/subtitle/subtype", subtype);
 }
 
 int av_get_subtitle_curr()
 {
-    int fd;
-    int subtitle_cur = 0;
-    char *path = "/sys/class/subtitle/curr";
-    char  bcmd[16];
-    fd = open(path, O_RDONLY);
-    if (fd >= 0) {
-        read(fd, bcmd, sizeof(bcmd));
-        sscanf(bcmd, "%d", &subtitle_cur);
-        close(fd);
-    }
-    return subtitle_cur;
+    return get_sysfs_int("/sys/class/subtitle/curr");
 }
 
 int set_subtitle_startpts(int pts)
 {
-    int fd;
-    char *path = "/sys/class/subtitle/startpts";
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", pts);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
-
+    return  set_sysfs_int("/sys/class/subtitle/startpts", pts);
 }
 
 int set_fb0_blank(int blank)
 {
-    int fd;
-    char *path = "/sys/class/graphics/fb0/blank" ;
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", blank);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return  set_sysfs_int("/sys/class/graphics/fb0/blank", blank);
 }
 
 int set_fb1_blank(int blank)
 {
-    int fd;
-    char *path = "/sys/class/graphics/fb1/blank" ;
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", blank);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return  set_sysfs_int("/sys/class/graphics/fb1/blank", blank);
 }
 
 void get_display_mode(char *mode)
@@ -293,32 +209,13 @@ void get_display_mode(char *mode)
 
 int set_fb0_freescale(int freescale)
 {
-    int fd;
-    char *path = "/sys/class/graphics/fb0/free_scale" ;
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", freescale);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return  set_sysfs_int("/sys/class/graphics/fb0/free_scale", freescale);
 }
 
 int set_fb1_freescale(int freescale)
 {
-    int fd;
-    char *path = "/sys/class/graphics/fb1/free_scale" ;
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", freescale);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return  set_sysfs_int("/sys/class/graphics/fb1/free_scale", freescale);
+
 }
 
 int set_display_axis(int *coordinate)
@@ -663,7 +560,7 @@ int enable_freescale(int cfg)
 
 int set_stb_source_hiu()
 {
-	int fd;
+    int fd;
     char *path = "/sys/class/stb/source";
     char  bcmd[16];
     fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
@@ -678,7 +575,7 @@ int set_stb_source_hiu()
 
 int set_stb_demux_source_hiu()
 {
-	int fd;
+    int fd;
     char *path = "/sys/class/stb/demux1_source"; // use demux0 for record, and demux1 for playback
     char  bcmd[16];
     fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
