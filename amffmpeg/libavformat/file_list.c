@@ -300,7 +300,7 @@ retry:
 		else if(item->flags & DISCONTINUE_FLAG){
 			av_log(NULL, AV_LOG_INFO, "Discontiue item \n");
 			//1 TODO:need to notify uper level stream is changed
-			return 0;
+			goto retry;
 		}
 		else{	
 			goto retry;
