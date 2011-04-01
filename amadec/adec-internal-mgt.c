@@ -76,6 +76,7 @@ static void start_adec(aml_audio_dec_t *audec)
         audec->state = ACTIVE;
 
         while ((!audiodsp_get_first_pts_flag(dsp_ops)) && (!audec->need_stop)) {
+	     adec_print("wait first pts checkin complete !");
             usleep(100000);
         }
 
