@@ -1653,7 +1653,8 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
                     distance = 0;
                 sample_size = sc->sample_size > 0 ? sc->sample_size : sc->sample_sizes[current_sample];
                 if(sc->pseudo_stream_id == -1 ||
-                   sc->stsc_data[stsc_index].id - 1 == sc->pseudo_stream_id) {
+                   sc->stsc_data[stsc_index].id - 1 == sc->pseudo_stream_id ||
+                   st->codec->codec_type == CODEC_TYPE_VIDEO) {
                     AVIndexEntry *e = &st->index_entries[st->nb_index_entries++];
                     e->pos = current_offset;
                     e->timestamp = current_dts;
