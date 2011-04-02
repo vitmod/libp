@@ -646,6 +646,7 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
                 p_para->vstream_info.vdec_buf_rp = vbuf->read_pointer;
             } else {
                 check_flag = 1;
+				log_print("[%s]vrp not move,vrp=vbufrp=0x%x\n", __FUNCTION__, vbuf->read_pointer);
             }
         }
         if (p_para->astream_info.has_audio) {
@@ -654,6 +655,7 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
                 p_para->astream_info.adec_buf_rp = abuf->read_pointer;
             } else {
                 check_flag = 1;
+				log_print("[%s]arp not move,arp=abufrp=0x%x\n", __FUNCTION__, abuf->read_pointer);
             }
         }
 
@@ -794,7 +796,7 @@ int update_playing_info(play_para_t *p_para)
     if (get_player_state(p_para) > PLAYER_INITOK) {
         if (p_para->codec && (p_para->playctrl_info.audio_ready != 1)) {
             p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
-            log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
+            //log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
         }
         if (p_para->playctrl_info.audio_ready == 1) {
             if (!p_para->playctrl_info.pts_valid) {
