@@ -237,6 +237,7 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
     } else if (msg->ctrl_cmd & CMD_SWITCH_AID) {
         para->playctrl_info.audio_switch_flag = 1;
         para->playctrl_info.switch_audio_id = msg->param;
+		set_black_policy(0);
     } else if (msg->set_mode & CMD_LOOP) {
         para->playctrl_info.loop_flag = 1;
     } else if (msg->set_mode & CMD_NOLOOP) {
@@ -500,12 +501,13 @@ void *player_thread(play_para_t *player)
     av_packet_init(pkt);
 
     pkt->avpkt = &avpkt;
-    av_init_packet(pkt->avpkt);
-
+    av_init_packet(pkt->avpkt);	
+	
     player_thread_wait(player, 100 * 1000);    //wait pid send finish
     set_player_state(player, PLAYER_INITING);
     update_playing_info(player);
     update_player_states(player, 1);
+	
     /*start open file and get file type*/
     ret = ffmpeg_open_file(player);
     if (ret != FFMPEG_SUCCESS) {
@@ -513,11 +515,14 @@ void *player_thread(play_para_t *player)
         send_event(player, PLAYER_EVENTS_ERROR, ret, "Open File failed");
         log_print("[player_dec_init]ffmpeg_open_file failed(%s)*****ret=%x!\n", player->file_name, ret);
         goto release0;
-    }
+    }	
+	
     ffmpeg_parse_file_type(player, &filetype);
     set_player_state(player, PLAYER_TYPE_REDY);
     send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_TYPE_REDY, 0);
     send_event(player, PLAYER_EVENTS_FILE_TYPE, &filetype, 0);
+
+	log_print("pid[%d]::parse ok , prepare parameters\n", player->player_id);
     ret = player_dec_init(player);
     if (ret != PLAYER_SUCCESS) {
         if (check_stop_cmd(player) == 1) {
@@ -528,7 +533,7 @@ void *player_thread(play_para_t *player)
         goto release0;
     }
 
-    ret = set_media_info(player);
+	ret = set_media_info(player);
     if (ret != PLAYER_SUCCESS) {
         log_error("pid[%d::player_set_media_info failed!\n", player->player_id);
         set_player_state(player, PLAYER_ERROR);
@@ -556,17 +561,14 @@ void *player_thread(play_para_t *player)
             }
         } while (1);
     }
-
     
-
+	log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {
         log_error("pid[%d]::player_decoder_init failed!\n", player->player_id);
         set_player_state(player, PLAYER_ERROR);
         goto release;
     }
-
-
 
     set_cntl_mode(player, TRICKMODE_NONE);
     set_cntl_avthresh(player, AV_SYNC_THRESH);
@@ -617,6 +619,7 @@ void *player_thread(play_para_t *player)
         }
     }
 
+	log_print("pid[%d]::playback loop...\n", player->player_id);
     //player loop
     do {
         if ((!(player->vstream_info.video_format == VFORMAT_SW)
@@ -777,6 +780,7 @@ write_packet:
                     (!player->playctrl_info.fast_forward) &&
                     (!player->playctrl_info.fast_backward) &&
                     (!player->playctrl_info.reset_flag);
+		
         if (exit_flag) {
             break;
         } else {
@@ -785,6 +789,7 @@ write_packet:
                 update_playing_info(player);
                 update_player_states(player, 1);
             }
+			
             ret = player_reset(player, pkt);
             if (ret != PLAYER_SUCCESS) {
                 log_error("pid[%d]::player reset failed(-0x%x)!", player->player_id, -ret);
@@ -796,6 +801,7 @@ write_packet:
                 set_player_state(player, PLAYER_PLAYEND);
                 break;
             }
+			
             if (player->playctrl_info.search_flag) {
                 set_player_state(player, PLAYER_SEARCHOK);
                 update_playing_info(player);
@@ -805,6 +811,10 @@ write_packet:
                     set_black_policy(player->playctrl_info.black_out);
                 }
             }
+
+			if(player->playctrl_info.reset_flag){
+				 set_black_policy(player->playctrl_info.black_out);
+			}
 
             player->playctrl_info.search_flag = 0;
             player->playctrl_info.reset_flag = 0;
