@@ -71,4 +71,11 @@ int codec_audio_spectrum_switch(codec_para_t *p, int isStart, int interval);
 int codec_audio_isready(codec_para_t *p);
 int codec_audio_get_nb_frames(codec_para_t *p);
 int codec_audio_set_audioinfo(codec_para_t *p);
+
+int codec_get_apts(codec_para_t *pcodec);
+int codec_get_vpts(codec_para_t *pcodec);
+int codec_get_pcrscr(codec_para_t *pcodec);
+int codec_set_syncenable(codec_para_t *pcodec, int enable);
+int codec_set_syncdiscont(codec_para_t *pcodec, int discontinue);
+int codec_get_syncdiscont(codec_para_t *pcodec);
 #endif

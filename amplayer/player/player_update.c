@@ -392,13 +392,14 @@ static unsigned int handle_current_time(play_para_t *para, unsigned int scr, uns
 
 }
 
-unsigned int get_pts_pcrscr()
+unsigned int get_pts_pcrscr(play_para_t *p_para)
 {
     int handle;
     int size;
     char s[16];
     unsigned int value = 0;
-
+    codec_para_t *pcodec;
+#if 0
     handle = open("/sys/class/tsync/pts_pcrscr", O_RDONLY);
     if (handle < 0) {
         log_error("[player_get_ctime]open pts_pcrscr error!\n");
@@ -410,15 +411,32 @@ unsigned int get_pts_pcrscr()
         log_debug("\npcrscr=%x(%d) ", value, value / PTS_FREQ);
     }
     close(handle);
+#else
+    if (p_para->codec) {
+        pcodec = p_para->codec;
+    } else if (p_para->vcodec) {
+        pcodec = p_para->vcodec;
+    } else if (p_para->acodec) {
+        pcodec = p_para->acodec;
+    } else {
+        log_print("[%s]No codec handler\n", __FUNCTION__);
+        return -1;
+    }
+
+    value = codec_get_pcrscr(pcodec);
+#endif
     return value;
 }
 
-unsigned int get_pts_video()
+unsigned int get_pts_video(play_para_t *p_para)
 {
     int handle;
     int size;
     char s[16];
     unsigned int value = 0;
+    codec_para_t *pcodec;
+
+#if 0
     handle = open("/sys/class/tsync/pts_video", O_RDONLY);
     if (handle < 0) {
         log_print("[player_get_ctime]open pts_pcrscr error!\n");
@@ -430,15 +448,30 @@ unsigned int get_pts_video()
         log_debug("video=%x(%d)\n", value, value / PTS_FREQ);
     }
     close(handle);
+#else
+    if (p_para->codec) {
+        pcodec = p_para->codec;
+    } else if (p_para->vcodec) {
+        pcodec = p_para->vcodec;
+    } else {
+        log_print("[%s]No codec handler\n", __FUNCTION__);
+        return -1;
+    }
+
+    value = codec_get_vpts(pcodec);
+#endif
     return value;
 }
 
-static unsigned int get_pts_audio()
+static unsigned int get_pts_audio(play_para_t *p_para)
 {
     int handle;
     int size;
     char s[16];
     unsigned int value;
+    codec_para_t *pcodec;
+
+#if 0
     handle = open("/sys/class/tsync/pts_audio", O_RDONLY);
     if (handle < 0) {
         log_error("[player_get_ctime]open pts_audio error!\n");
@@ -450,6 +483,18 @@ static unsigned int get_pts_audio()
         log_debug("audio=%x(%d)\n", value, value / PTS_FREQ);
     }
     close(handle);
+#else
+    if (p_para->codec) {
+        pcodec = p_para->codec;
+    } else if (p_para->acodec) {
+        pcodec = p_para->acodec;
+    } else {
+        log_print("[%s]No codec handler\n", __FUNCTION__);
+        return -1;
+    }
+
+    value = codec_get_apts(pcodec);
+#endif
     return value;
 }
 
@@ -466,17 +511,17 @@ static unsigned int get_current_time(play_para_t *p_para)
     }
 
     if (p_para->vstream_info.has_video && p_para->astream_info.has_audio) {
-        pcr_scr = get_pts_pcrscr();
-        apts = get_pts_audio();
+        pcr_scr = get_pts_pcrscr(p_para);
+        apts = get_pts_audio(p_para);
         ctime = handle_current_time(p_para, pcr_scr, apts);
         log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);
     } else if (p_para->astream_info.has_audio)/* &&
             (p_para->stream_type == STREAM_ES) &&
             (p_para->astream_info.audio_format != AFORMAT_WMA)) */{
-        apts = get_pts_audio();
+        apts = get_pts_audio(p_para);
         ctime = apts;
     } else {
-        pcr_scr = get_pts_pcrscr();
+        pcr_scr = get_pts_pcrscr(p_para);
         ctime = pcr_scr;
     }
     if (ctime == 0) {

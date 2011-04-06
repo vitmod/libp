@@ -1874,3 +1874,13 @@ int player_reset(play_para_t *p_para, am_packet_t *pkt)
     return ret;
 }
 
+void set_tsync_enable_codec(play_para_t *p_para, int enable)
+{
+    if (p_para->codec) {
+        codec_set_syncenable(p_para->codec, enable);
+    } else if (p_para->vcodec) {
+        codec_set_syncenable(p_para->vcodec, enable);
+    }
+
+    return;
+}

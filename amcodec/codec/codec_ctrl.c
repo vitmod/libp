@@ -1475,3 +1475,139 @@ int codec_audio_get_nb_frames(codec_para_t *p)
     return audio_nb_frames;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_apts  get audio pts
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     audio pts, or -1 if it failed
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_apts(codec_para_t *pcodec)
+{
+    unsigned int apts;
+    int ret;
+    
+    if (!pcodec) {
+        CODEC_PRINT("[%s]ERROR invalid pointer!\n", __FUNCTION__);
+        return -1;
+    }
+	
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_APTS, (unsigned long)&apts);
+    if (ret < 0) {
+        CODEC_PRINT("[%s]ioctl failed %d\n", __FUNCTION__, ret);
+        return -1;
+    }
+
+    return apts;
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_vpts  get video pts
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     video pts, or -1 if it failed
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_vpts(codec_para_t *pcodec)
+{
+    unsigned int vpts;
+    int ret;
+    
+    if (!pcodec) {
+        CODEC_PRINT("[%s]ERROR invalid pointer!\n", __FUNCTION__);
+        return -1;
+    }
+	
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_VPTS, (unsigned long)&vpts);
+    if (ret < 0) {
+        CODEC_PRINT("[%s]ioctl failed %d\n", __FUNCTION__, ret);
+        return -1;
+    }
+
+    return vpts;
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_pcrscr  get system pcrscr
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     system pcrscr, or -1 it failed
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_pcrscr(codec_para_t *pcodec)
+{
+    unsigned int pcrscr;
+    int ret;
+    
+    if (!pcodec) {
+        CODEC_PRINT("[%s]ERROR invalid pointer!\n", __FUNCTION__);
+        return -1;
+    }
+	
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_PCRSCR, (unsigned long)&pcrscr);
+    if (ret < 0) {
+        CODEC_PRINT("[%s]ioctl failed %d\n", __FUNCTION__, ret);
+        return -1;
+    }
+
+    return pcrscr;
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_syncenable  enable or disable av sync
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  enable  Enable or disable to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_syncenable(codec_para_t *pcodec, int enable)
+{
+    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SYNCENABLE, (unsigned long)enable);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_syncdiscont  set sync discontinue state
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+* @param[in]  discontinue  Discontinue state to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_syncdiscont(codec_para_t *pcodec, int discontinue)
+{
+    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_SYNCDISCON, (unsigned long)discontinue);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_syncdiscont  get sync discontinue state
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+*
+* @return     discontiue state, or fail if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_syncdiscont(codec_para_t *pcodec)
+{
+    int discontinue = 0;
+    int ret;
+
+    ret = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_SYNCDISCON, (unsigned long)&discontinue);
+    if (ret < 0) {
+        return ret;
+    } else {
+        return discontinue;
+    }
+}
+

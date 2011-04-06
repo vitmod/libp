@@ -130,8 +130,8 @@ int update_player_states(play_para_t *para, int force)
     para->state.status = get_player_state(para);
 
     if (check_time_interrupt(&cb->callback_old_time, cb->update_interval) || force) {
-        para->state.pts_video = get_pts_video();
-        para->state.pts_pcrscr = get_pts_pcrscr();
+        para->state.pts_video = get_pts_video(para);
+        para->state.pts_pcrscr = get_pts_pcrscr(para);
         player_info_t state;
         MEMCPY(&state, &para->state, sizeof(state));
         //if(force == 1)
