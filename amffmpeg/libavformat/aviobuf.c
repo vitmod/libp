@@ -439,8 +439,10 @@ get_data:
         else
         {
 			// return 0;
-			if (url_interrupt_cb())       
+			if (url_interrupt_cb()){     
+				av_log(NULL, AV_LOG_ERROR,"[%s]interrupt, return\n",__FUNCTION__);
             	return AVERROR(EINTR);
+			}
 			if(s->eof_reached || s->error)
 				av_log(NULL, AV_LOG_ERROR,"[%s]fill buffer: eof=%d error=%d retry_fill_cnt=%d\n",__FUNCTION__,s->eof_reached,s->error,retry_fill_cnt);
 			if(retry_fill_cnt >= 1000)
