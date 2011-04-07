@@ -754,14 +754,17 @@ static int64_t rm_offset_search(play_para_t *am_p, int64_t offset, unsigned int 
 
     if (i < s->nb_streams) {
         if (s->index_builded && (pStream->nb_index_entries > 1)) {
-            return rm_offset_search_pts(pStream, time_point);
+			cur_offset = rm_offset_search_pts(pStream, time_point);
+			log_info("rm time search by index:pos=%d offset=%lld\n", time_point, cur_offset);
+            return cur_offset;
         }
     }
 
     /* no index, then search byte by byte */
     data = MALLOC(read_size + 12);
     if (!data) {
-        return 0;
+		log_error("[%s]malloc failed \n", __FUNCTION__);
+        return am_p->data_offset;
     }
     cur_offset = offset;
     while (1) {
@@ -776,7 +779,7 @@ static int64_t rm_offset_search(play_para_t *am_p, int64_t offset, unsigned int 
                 } else {
                     FREE(data);
                     log_error("[%s]get data failed. ret=%d\n", __FUNCTION__, read_length);
-                    return 0;
+                    return am_p->data_offset;
                 }
             } else {
                 break;
@@ -840,7 +843,7 @@ static int64_t rm_offset_search(play_para_t *am_p, int64_t offset, unsigned int 
                     } else {
                         FREE(data);
                         log_error("[%s]get data failed. ret=%d\n", __FUNCTION__, read_length);
-                        return 0;
+                        return am_p->data_offset;
                     }
                 } else {
                     break;
@@ -851,7 +854,7 @@ static int64_t rm_offset_search(play_para_t *am_p, int64_t offset, unsigned int 
     }
     FREE(data);
     log_error("[%s]not found key frame. ret=0\n", __FUNCTION__);
-    return 0;
+    return am_p->data_offset;
 }
 
 #ifdef DEBUG_VARIABLE_DUR
@@ -1056,7 +1059,9 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 pkt->data += len;
                 pkt->data_size -= len;
                 player_thread_wait(para, RW_WAIT_TIME);
-                //log_print("[%s:%d]eagain---data_size=%d!type=%d\n",__FUNCTION__, __LINE__,pkt->data_size,pkt->type);
+                //log_print("[%s:%d]vlevel=%d alevel=%d\n",__FUNCTION__, __LINE__,para->state.video_datalevel,para->state.audio_datalevel );
+                //log_print("[%s:%d]eagain---data_size=%d!type=%d read_size=%lld write_size=%lld\n",__FUNCTION__, __LINE__,\
+						pkt->data_size,pkt->type, para->read_size.total_bytes, para->write_size.total_bytes);
                 return PLAYER_SUCCESS;
             }
         } else {
@@ -1884,3 +1889,4 @@ void set_tsync_enable_codec(play_para_t *p_para, int enable)
 
     return;
 }
+
