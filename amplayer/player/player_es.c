@@ -74,7 +74,7 @@ static void acodec_info_init(play_para_t *p_para, codec_para_t *a_codec)
 		||(a_codec->audio_type == AFORMAT_AMR)) {*/
 	  if(IS_AUIDO_NEED_EXT_INFO(a_codec->audio_type)){
 	  	pCodecCtx = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec;
-        if (a_codec->audio_type == AFORMAT_ADPCM) {
+               if ((a_codec->audio_type == AFORMAT_ADPCM)||(a_codec->audio_type == AFORMAT_ALAC)) {
             a_codec->audio_info.bitrate = pCodecCtx->sample_fmt;
         } else {
             a_codec->audio_info.bitrate = pCodecCtx->bit_rate;

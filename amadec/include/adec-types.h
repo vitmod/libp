@@ -30,6 +30,7 @@ typedef enum {
     AUDIO_FORMAT_WMA,
     AUDIO_FORMAT_WMAPRO,
     AUDIO_AFORMAT_PCM_BLURAY,
+    AUDIO_AFORMAT_ALAC,
     AUDIO_FORMAT_MAX,
 } audio_format_t;
 

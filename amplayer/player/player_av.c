@@ -44,6 +44,7 @@ static const media_type media_array[] = {
     {"mpegvideo", M2V_FILE, STREAM_VIDEO},
     {"p2p", P2P_FILE, STREAM_ES},
     {"asf", ASF_FILE, STREAM_ES},
+    {"m4a", MP4_FILE, STREAM_ES},
 };
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
@@ -122,7 +123,9 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
     case CODEC_ID_PCM_BLURAY:
         format = AFORMAT_PCM_BLURAY;
         break;
-
+    case CODEC_ID_ALAC:
+        format = AFORMAT_ALAC;
+        break;
     default:
         format = -1;
         log_print("audio codec_id=0x%x\n", id);
@@ -1429,6 +1432,34 @@ int set_header_info(play_para_t *para, am_packet_t *pkt)
                     }
                 }
                 adts_add_header(para, pkt);
+            }
+            if ((!para->playctrl_info.raw_mode) &&
+                (para->astream_info.audio_format == AFORMAT_ALAC)) {
+                if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
+                    FREE(pkt->hdr->data);
+                    pkt->hdr->data = NULL;
+                }
+                if (pkt->hdr == NULL) {
+                    	pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+	                    if (!pkt->hdr) {
+	                        return PLAYER_NOMEM;
+	                    }
+                        	pkt->hdr->data = NULL;
+                        	pkt->hdr->size = 0;		
+                	}
+			if(!pkt->hdr->data){	
+	                    pkt->hdr->data = (char *)MALLOC(6);
+	                    if (!pkt->hdr->data) {
+	                        return PLAYER_NOMEM;
+	                    }
+			}
+			pkt->hdr->data[0] = 	0x11;
+			pkt->hdr->data[1] = 	0x22;
+			pkt->hdr->data[2] = 	0x33;
+			pkt->hdr->data[3] = 	0x44;
+			pkt->hdr->data[4] = 	(pkt->data_size>>8)& 0xff;	
+			pkt->hdr->data[5] = 	(pkt->data_size)& 0xff;
+			pkt->hdr->size = 6;
             }
         }
     }

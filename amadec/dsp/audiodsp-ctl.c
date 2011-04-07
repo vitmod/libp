@@ -35,6 +35,7 @@ firmware_s_t firmware_list[] = {
     {9, MCODEC_FMT_WMA, "audiodsp_codec_wma.bin"},
     {10, MCODEC_FMT_PCM, "audiodsp_codec_pcm.bin"},
     {11, MCODEC_FMT_WMAPRO, "audiodsp_codec_wmapro.bin"},
+    {11, MCODEC_FMT_ALAC, "audiodsp_codec_alac.bin"},
 };
 
 /**
@@ -105,7 +106,8 @@ static int switch_audiodsp(audio_format_t fmt)
 
     case  AUDIO_FORMAT_WMAPRO:
         return MCODEC_FMT_WMAPRO;
-
+    case  AUDIO_AFORMAT_ALAC:
+        return MCODEC_FMT_ALAC;
     default:
         return 0;
     }
