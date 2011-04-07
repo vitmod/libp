@@ -621,17 +621,23 @@ static void update_current_time(play_para_t *p_para)
 #endif
 }
 
-static void update_dec_info(play_para_t *p_para, struct vdec_status *vdec, struct adec_status *adec)
+static void update_dec_info(play_para_t *p_para, 
+							struct vdec_status *vdec, 
+							struct adec_status *adec,
+							struct buf_status *vbuf, 
+							struct buf_status *abuf)
 {
     if (p_para->vstream_info.has_video) {
         if (p_para->vstream_info.video_width == 0) {
             p_para->vstream_info.video_width = vdec->width;
             p_para->vstream_info.video_height = vdec->height;
         }
-        p_para->state.video_error_cnt = vdec->error_count;
+        p_para->state.video_error_cnt = vdec->error_count;		 
+    	p_para->state.video_datalevel = vbuf->data_len;
     }
     if (p_para->astream_info.has_audio) {
         p_para->state.audio_error_cnt = adec->error_count;
+		p_para->state.audio_datalevel = abuf->data_len;
     }
 }
 
@@ -744,8 +750,7 @@ static int  update_buffering_states(play_para_t *p_para,
     vlevel = (float)vbuf->data_len / vbuf->size;
     p_para->state.audio_bufferlevel = alevel;
     p_para->state.video_bufferlevel = vlevel;
-    p_para->state.audio_datalevel = abuf->data_len;
-    p_para->state.video_datalevel = vbuf->data_len;
+	
     if (p_para->astream_info.has_audio && 0)
         log_print("update_buffering_states,alevel=%d,asize=%d,level=%f,status=%d\n",
                   abuf->data_len, abuf->size, alevel, get_player_state(p_para));
@@ -835,7 +840,7 @@ int update_playing_info(play_para_t *p_para)
             return PLAYER_FAILED;
         }
 
-        update_dec_info(p_para, &vdec, &adec);
+        update_dec_info(p_para, &vdec, &adec, &vbuf, &abuf);
     }
 
     if (get_player_state(p_para) > PLAYER_INITOK) {
