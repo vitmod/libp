@@ -53,7 +53,8 @@ typedef enum {
     AFORMAT_WMA  = 14,
     AFORMAT_WMAPRO   = 15,
     AFORMAT_PCM_BLURAY  = 16,
-    AFORMAT_MAX    = 17
+    AFORMAT_ALAC  = 17,
+    AFORMAT_MAX    = 18
 } aformat_t;
 
     
@@ -64,7 +65,8 @@ typedef enum {
 								 ||(afmt == AFORMAT_PCM_S16LE) \
 								 ||(afmt == AFORMAT_PCM_U8) \
 								 ||(afmt == AFORMAT_PCM_BLURAY) \
-								 ||(afmt == AFORMAT_AMR))
+								 ||(afmt == AFORMAT_AMR)\
+								 ||(afmt == AFORMAT_ALAC))
 
 #endif /* AFORMAT_H */
 

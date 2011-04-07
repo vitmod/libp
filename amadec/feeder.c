@@ -145,7 +145,11 @@ static audio_format_t get_audio_format(void)
         close(fd);
         return AUDIO_AFORMAT_PCM_BLURAY;
     }
-
+    if (strncmp(format, "amadec_alac", 11) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_AFORMAT_ALAC;
+    }
     close(fd);
 
     adec_print("audio format unknow.");
