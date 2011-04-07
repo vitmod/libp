@@ -72,11 +72,11 @@ public class amplayer {
 		return 0;
 	}
 
-	public int getcurrenttime() {
+	public int Getcurrenttime() {
 		return mavjni.getcurrenttime();
 	}
 
-	public int getduration() {
+	public int Getduration() {
 		return mavjni.getduration();
 	}
 
