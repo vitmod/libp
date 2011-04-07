@@ -835,6 +835,7 @@ int update_playing_info(play_para_t *p_para)
 
     if (get_player_state(p_para) == PLAYER_RUNNING ||
         get_player_state(p_para) == PLAYER_BUFFERING ||
+	get_player_state(p_para) == PLAYER_SEARCHING ||
         get_player_state(p_para) == PLAYER_PAUSE) {
         if (update_codec_info(p_para, &vbuf, &abuf, &vdec, &adec) != 0) {
             return PLAYER_FAILED;
