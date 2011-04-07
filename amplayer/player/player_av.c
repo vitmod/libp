@@ -1044,8 +1044,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 return PLAYER_WR_FAILED;
             } else {
                 /* EAGAIN to see if decoder stopped */
-                if ((para->state.video_datalevel < 16*1024)
-                    && ((para->state.audio_datalevel < 16*1024))) {
+                if (!check_buffer_rp_changed(para)) {
                     /* low level buffer, EAGAIN should not happen */
                     if (++para->playctrl_info.check_lowlevel_eagain_cnt > 10) {
                         /* reset decoder */
