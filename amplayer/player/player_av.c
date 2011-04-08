@@ -1704,16 +1704,6 @@ void player_switch_audio(play_para_t *para)
         pCodecCtx = pFCtx->streams[audio_index]->codec;
     }
 
-	/***************************************************************
-	 * for aac switch time too long, change switch audio to do reset
-	 **************************************************************/
-	para->astream_info.audio_index = audio_index;
-	para->playctrl_info.reset_flag = 1;
-	para->playctrl_info.end_flag = 1;
-	para->playctrl_info.time_point = para->state.current_time;	
-	return ;
-
-#if 0	
     para->astream_info.audio_format = audio_type_convert(pCodecCtx->codec_id, para->file_type);
     if (para->astream_info.audio_format < 0 || para->astream_info.audio_format >= AFORMAT_MAX) {
         log_error("[%s:%d]unkown audio format\n", __FUNCTION__, __LINE__);
@@ -1744,7 +1734,16 @@ void player_switch_audio(play_para_t *para)
         }
     }
 	
+	/***************************************************************
+	 * for aac switch time too long, change switch audio to do reset
+	 **************************************************************/
+	para->astream_info.audio_index = audio_index;
+	para->playctrl_info.reset_flag = 1;
+	para->playctrl_info.end_flag = 1;
+	para->playctrl_info.time_point = para->state.current_time;	
+	return ;
 	
+#if 0		
     /* reinit audio info */
     pcodec->has_audio = 1;
     pcodec->audio_type = para->astream_info.audio_format;
