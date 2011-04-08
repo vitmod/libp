@@ -370,6 +370,18 @@ static int set_decode_para(play_para_t*am_p)
               am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
               am_p->astream_info.has_audio, am_p->astream_info.audio_format);
 
+	if (am_p->playctrl_info.no_video_flag || (!am_p->vstream_info.has_video)){
+		am_p->vstream_num = 0;
+	}
+	
+	if (am_p->playctrl_info.no_audio_flag || (!am_p->astream_info.has_audio)){
+		am_p->astream_num = 0;
+	}
+
+	if ((!am_p->playctrl_info.has_sub_flag) && (!am_p->sstream_info.has_sub)){
+		am_p->sstream_num = 0;
+	}
+	
     if (am_p->playctrl_info.no_video_flag) {
         set_player_error_no(am_p, PLAYER_SET_NOVIDEO);
         update_player_states(am_p, 1);
@@ -552,7 +564,7 @@ void player_para_reset(play_para_t *para)
     }
     para->discontinue_flag = 0;
     para->playctrl_info.pts_valid = 0;
-    //log_print("[player_para_reset]para->discontinue_point=%d\n", para->discontinue_point);
+    
     MEMSET(&para->write_size, 0, sizeof(read_write_size));
     MEMSET(&para->read_size, 0, sizeof(read_write_size));
 }
