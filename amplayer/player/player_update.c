@@ -784,7 +784,7 @@ static int  update_buffering_states(play_para_t *p_para,
                   (maxlevel > p_para->buffering_threshhold_max) ||
                   p_para->playctrl_info.read_end_flag)) {
             codec_resume(p_para->codec);
-            set_player_state(p_para, PLAYER_RUNNING);
+            set_player_state(p_para, PLAYER_BUFFER_OK);
             update_player_states(p_para, 1);
             log_print("leave buffering!!!\n");
         }
@@ -869,6 +869,8 @@ int update_playing_info(play_para_t *p_para)
                 update_av_sync_for_audio(p_para, &abuf);
             }
         }
+		p_para->state.pts_video = get_pts_video(p_para);
+	    p_para->state.pts_pcrscr = get_pts_pcrscr(p_para);
     }
 
     if (p_para->playctrl_info.read_end_flag && (get_player_state(p_para) != PLAYER_PAUSE)) {

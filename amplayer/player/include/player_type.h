@@ -43,6 +43,7 @@ typedef enum
 	PLAYER_FB_END   	= 0x20008,
 
 	PLAYER_PLAY_NEXT	= 0x20009,	
+	PLAYER_BUFFER_OK	= 0x2000a,	
 
 	/******************************
 	* 0x3000x: 
