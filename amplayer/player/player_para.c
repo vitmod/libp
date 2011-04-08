@@ -304,13 +304,14 @@ static void get_stream_info(play_para_t *p_para)
             p_para->data_offset = p_para->pFormatCtx->data_offset;
         }
         log_print("[%s:%d]real offset %lld\n", __FUNCTION__, __LINE__, p_para->data_offset);
+		
         if (p_para->vstream_info.video_height > 720) {
             log_print("[%s:%d]real video_height=%d, exceed 720 not support!\n", __FUNCTION__, __LINE__, p_para->vstream_info.video_height);
             p_para->vstream_info.has_video = 0;
             p_para->vstream_info.video_index = -1;
         }
     }
-
+	
     if (p_para->vstream_info.video_format == VFORMAT_VC1 && video_index != -1) {
         /* process vc1 packet to detect interlace or progressive */
         int64_t cur_pos;
@@ -398,6 +399,12 @@ static int set_decode_para(play_para_t*am_p)
         }
     }
 
+	if ((am_p->stream_type == STREAM_ES) && 
+		(am_p->vstream_info.video_format == VFORMAT_REAL)){
+		log_print("[%s:%d]real ES not support!\n", __FUNCTION__, __LINE__);      
+        return PLAYER_UNSUPPORT;
+	}
+	
     if (am_p->vstream_info.video_format == -1) {
         set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);
         update_player_states(am_p, 1);
