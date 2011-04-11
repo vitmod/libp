@@ -18,6 +18,7 @@
 
 int codec_init(codec_para_t *);
 int codec_close(codec_para_t *);
+void codec_audio_basic_init(void);
 void codec_close_audio(codec_para_t *);
 void codec_resume_audio(codec_para_t *, unsigned int);
 int codec_reset(codec_para_t *);

@@ -21,6 +21,11 @@
 #include "codec_h_ctrl.h"
 #include "adec-external-ctrl.h"
 
+void audio_basic_init(void)
+{
+    audio_decode_basic_init();
+}
+
 /* --------------------------------------------------------------------------*/
 /**
 * @brief  audio_start  Start audio decoder
