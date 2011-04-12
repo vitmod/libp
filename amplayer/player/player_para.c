@@ -47,12 +47,11 @@ static void get_av_codec_type(play_para_t *p_para)
             p_para->vstream_info.video_codec_type = video_codec_type_convert(pCodecCtx->codec_id);
         }
 
-        if (p_para->vstream_info.video_format < 0 ||
-            p_para->vstream_info.video_format >= VFORMAT_MAX ||
-            (((p_para->vstream_info.video_format == VFORMAT_MPEG4) ||
-              (p_para->vstream_info.video_format == VFORMAT_REAL)) &&
+        if ((p_para->vstream_info.video_format < 0) ||
+            (p_para->vstream_info.video_format >= VFORMAT_MAX) ||
+            (IS_NEED_VDEC_INFO(p_para->vstream_info.video_format)&&
              p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_UNKNOW)) {
-            p_para->vstream_info.has_video = 0;
+            p_para->vstream_info.has_video = 0;            
         }
         if (p_para->vstream_info.has_video) {
             p_para->vstream_info.video_pid      = (unsigned short)pStream->id;
@@ -100,7 +99,7 @@ static void get_av_codec_type(play_para_t *p_para)
                 }
 
                 if (!(p_para->vstream_info.extradata[3] & 1)) { // this format is not supported
-                    p_para->vstream_info.has_video = 0;
+                    p_para->vstream_info.has_video = 0;                    
                 }
             }
         }
@@ -114,11 +113,12 @@ static void get_av_codec_type(play_para_t *p_para)
         p_para->astream_info.audio_pid      = (unsigned short)pStream->id;
         p_para->astream_info.audio_format   = audio_type_convert(pCodecCtx->codec_id, p_para->file_type);
 
-        /* only support 2ch flac */
-        if ((p_para->astream_info.audio_channel > 2) &&
-            (p_para->astream_info.audio_format == AFORMAT_FLAC)) {
-            log_print(" flac channel = %d ******** we do not support \n", p_para->astream_info.audio_channel);
-            p_para->astream_info.has_audio = 0;
+        /* only support 2ch flac,cook,raac */
+        if ((p_para->astream_info.audio_channel > 2) && 
+			(IS_AUDIO_NOT_SUPPORT_EXCEED_2CH(p_para->astream_info.audio_format))) {
+            log_print(" afmt=%d channel=%d ******** we do not support more than 2ch \n", \
+				p_para->astream_info.audio_format, p_para->astream_info.audio_channel);
+            p_para->astream_info.has_audio = 0;           
         }
 
         if (p_para->astream_info.audio_format == AFORMAT_AAC) {
@@ -160,7 +160,7 @@ static void get_av_codec_type(play_para_t *p_para)
         }
         if ((p_para->astream_info.audio_format < 0) ||
             (p_para->astream_info.audio_format >= AFORMAT_MAX)) {
-            p_para->astream_info.has_audio = 0;
+            p_para->astream_info.has_audio = 0;           
             log_print("audio format not support!\n");
         }
         if (p_para->astream_info.has_audio) {
@@ -168,7 +168,6 @@ static void get_av_codec_type(play_para_t *p_para)
                 p_para->astream_info.audio_duration = PTS_FREQ * ((float)pStream->time_base.num / pStream->time_base.den);
             }
             p_para->astream_info.start_time = pStream->start_time * pStream->time_base.num * PTS_FREQ / pStream->time_base.den;
-            //p_para->vstream_info.start_time = pStream->start_time;
         }
     } else {
         p_para->astream_info.has_audio = 0;
@@ -370,19 +369,7 @@ static int set_decode_para(play_para_t*am_p)
               am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
               am_p->astream_info.has_audio, am_p->astream_info.audio_format);
 
-	if (am_p->playctrl_info.no_video_flag || (!am_p->vstream_info.has_video)){
-		am_p->vstream_num = 0;
-	}
-	
-	if (am_p->playctrl_info.no_audio_flag || (!am_p->astream_info.has_audio)){
-		am_p->astream_num = 0;
-	}
-
-	if ((!am_p->playctrl_info.has_sub_flag) && (!am_p->sstream_info.has_sub)){
-		am_p->sstream_num = 0;
-	}
-	
-    if (am_p->playctrl_info.no_video_flag) {
+	if (am_p->playctrl_info.no_video_flag) {
         set_player_error_no(am_p, PLAYER_SET_NOVIDEO);
         update_player_states(am_p, 1);
     } else if (!am_p->vstream_info.has_video) {
@@ -390,8 +377,13 @@ static int set_decode_para(play_para_t*am_p)
             log_error("Can't support rm file without video!\n");
             return PLAYER_UNSUPPORT;
         } else if (am_p->astream_info.has_audio) {
-            set_player_error_no(am_p, PLAYER_NO_VIDEO);
-            update_player_states(am_p, 1);
+        	if(IS_VFMT_VALID(am_p->vstream_info.video_format)){
+				set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);
+	            update_player_states(am_p, 1);
+        	}else{
+	            set_player_error_no(am_p, PLAYER_NO_VIDEO);
+	            update_player_states(am_p, 1);
+        	}
         } else {
             log_error("Can't support the file!\n");
             return PLAYER_UNSUPPORT;
@@ -403,8 +395,14 @@ static int set_decode_para(play_para_t*am_p)
         update_player_states(am_p, 1);
     } else if (!am_p->astream_info.has_audio) {
         if (am_p->vstream_info.has_video) {
-            set_player_error_no(am_p, PLAYER_NO_AUDIO);
-            update_player_states(am_p, 1);
+			//log_print("[%s:%d]afmt=%d IS_AFMT_VALID(afmt)=%d\n", __FUNCTION__, __LINE__, am_p->astream_info.audio_format, IS_AFMT_VALID(am_p->astream_info.audio_format));
+			if(IS_AFMT_VALID(am_p->astream_info.audio_format)){
+				set_player_error_no(am_p, PLAYER_UNSUPPORT_AUDIO);
+	            update_player_states(am_p, 1);
+			}else{
+	            set_player_error_no(am_p, PLAYER_NO_AUDIO);
+	            update_player_states(am_p, 1);
+			}
         } else {
             log_error("Can't support the file!\n");
             return PLAYER_UNSUPPORT;
@@ -415,16 +413,8 @@ static int set_decode_para(play_para_t*am_p)
 		(am_p->vstream_info.video_format == VFORMAT_REAL)){
 		log_print("[%s:%d]real ES not support!\n", __FUNCTION__, __LINE__);      
         return PLAYER_UNSUPPORT;
-	}
+	}	
 	
-    if (am_p->vstream_info.video_format == -1) {
-        set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);
-        update_player_states(am_p, 1);
-    } else if (am_p->astream_info.audio_format == -1) { //no audio
-        set_player_error_no(am_p, PLAYER_UNSUPPORT_AUDIO);
-        update_player_states(am_p, 1);
-    }
-
     if (am_p->playctrl_info.no_audio_flag) {
         am_p->astream_info.has_audio = 0;
     }
@@ -432,6 +422,18 @@ static int set_decode_para(play_para_t*am_p)
     if (am_p->playctrl_info.no_video_flag) {
         am_p->vstream_info.has_video = 0;
     }
+
+	if (!am_p->vstream_info.has_video){
+		am_p->vstream_num = 0;
+	}
+	
+	if (!am_p->astream_info.has_audio){
+		am_p->astream_num = 0;
+	}
+
+	if ((!am_p->playctrl_info.has_sub_flag) && (!am_p->sstream_info.has_sub)){
+		am_p->sstream_num = 0;
+	}
 
     am_p->sstream_info.has_sub &= am_p->playctrl_info.has_sub_flag;
     am_p->astream_info.resume_audio = am_p->astream_info.has_audio;

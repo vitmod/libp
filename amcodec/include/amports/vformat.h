@@ -65,6 +65,9 @@ typedef enum {
     VFORMAT_MAX
 } vformat_t;
 
+#define IS_VFMT_VALID(vfmt)	((vfmt > VFORMAT_UNKNOWN) && (vfmt < VFORMAT_MAX))
+#define IS_NEED_VDEC_INFO(vfmt) ((vfmt == VFORMAT_MPEG4) || (vfmt == VFORMAT_REAL))
+
 #define CODEC_TAG_MJPEG     (0x47504a4d)
 #define CODEC_TAG_mjpeg     (0x47504a4c)
 #define CODEC_TAG_jpeg      (0x6765706a)

@@ -132,7 +132,7 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
     AVFormatContext *pFCtx = am_p->pFormatCtx;
     memset(type, 0, sizeof(*type));
     if (pFCtx->iformat != NULL) {
-        int i;
+        unsigned int i;
         type->fmt_string = pFCtx->iformat->name;
         for (i = 0; i < pFCtx->nb_streams; i++) {
             AVStream *st = pFCtx->streams[i];
