@@ -51,6 +51,7 @@ int player_init(void)
 
     player_id_pool_init();
 
+    codec_audio_basic_init();
     /*register all support decoder */
     ts_register_stream_decoder();
     es_register_stream_decoder();

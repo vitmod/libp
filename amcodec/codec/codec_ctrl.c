@@ -657,6 +657,11 @@ int codec_init(codec_para_t *pcodec)
     return ret;
 }
 
+void codec_audio_basic_init(void)
+{
+    audio_basic_init();
+}
+
 /* --------------------------------------------------------------------------*/
 /**
 * @brief  codec_write  Write data to codec device

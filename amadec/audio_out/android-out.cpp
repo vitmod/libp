@@ -288,6 +288,15 @@ extern "C" int android_set_volume(struct aml_audio_dec* audec, float vol)
     return 0;
 }
 
+extern "C" void android_basic_init()
+{
+    adec_print("android basic init!");
+
+    Mutex::Autolock _l(mLock);
+
+    sp<ProcessState> proc(ProcessState::self());
+}
+
 /**
  * \brief get output handle
  * \param audec pointer to audec

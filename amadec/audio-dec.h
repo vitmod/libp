@@ -57,6 +57,7 @@ typedef enum {
 } hw_command_t;
 
 /***********************************************************************************************/
+extern void android_basic_init(void);
 int audiodec_init(aml_audio_dec_t *);
 int adec_message_pool_init(aml_audio_dec_t *);
 adec_cmd_t *adec_message_alloc(void);

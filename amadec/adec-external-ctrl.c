@@ -15,6 +15,14 @@
 #include <audio-dec.h>
 
 
+int audio_decode_basic_init(void)
+{
+#ifndef ALSA_OUT
+    android_basic_init();
+#endif
+    return 0;
+}
+
 /**
  * \brief init audio dec
  * \param handle pointer to player private data
@@ -150,7 +158,7 @@ int audio_decode_release(void **handle)
 {
     int ret;
     adec_cmd_t *cmd;
-    aml_audio_dec_t *audec = (aml_audio_dec_t *)*handle;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *) * handle;
 
     cmd = adec_message_alloc();
     if (cmd) {
