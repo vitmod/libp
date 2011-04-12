@@ -171,7 +171,7 @@ static int set_audio_info(codec_para_t *pcodec)
     int codec_r;
     audio_info_t *audio_info = &pcodec->audio_info;
     CODEC_PRINT("set_audio_info\n");
-    r = codec_h_control(pcodec->handle, AMSTREAM_IOC_AUDIO_INFO, audio_info);
+    r = codec_h_control(pcodec->handle, AMSTREAM_IOC_AUDIO_INFO, (unsigned long)audio_info);
     if (r < 0) {
         codec_r = system_error_to_codec_error(r);
         print_error_msg(codec_r, __FUNCTION__, __LINE__);

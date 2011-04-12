@@ -16,5 +16,6 @@ void audio_start(void **priv);
 void audio_stop(void **priv);
 void audio_pause(void *priv);
 void audio_resume(void *priv);
+void audio_basic_init(void);
 #endif
 

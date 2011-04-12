@@ -12,7 +12,8 @@
 #ifndef CODEC_MSG_H
 #define CODEC_MSG_H
 
-
 const char * codec_error_msg(int error);
+int system_error_to_codec_error(int error);
+void print_error_msg(int error, char *func, int line);
 
 #endif
