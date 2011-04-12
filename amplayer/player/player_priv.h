@@ -93,6 +93,12 @@ typedef union {
     unsigned int spkt_num;
 } read_write_size;
 
+typedef struct{
+	unsigned int	data_level;   // real audio data length	
+    unsigned int	buffer_rp;
+	unsigned int	rp_is_changed;
+} decbuf_status_t;
+
 typedef struct {
     long old_time_ms;
     int end_count;
@@ -118,6 +124,9 @@ typedef struct play_para {
 
     read_write_size read_size;
     read_write_size write_size;
+
+	decbuf_status_t vbuffer;
+	decbuf_status_t abuffer;
 
     p_ctrl_info_t   playctrl_info;
     v_stream_info_t vstream_info;

@@ -399,7 +399,7 @@ unsigned int get_pts_pcrscr(play_para_t *p_para)
     char s[16];
     unsigned int value = 0;
     codec_para_t *pcodec;
-#if 0
+#if 1
     handle = open("/sys/class/tsync/pts_pcrscr", O_RDONLY);
     if (handle < 0) {
         log_error("[player_get_ctime]open pts_pcrscr error!\n");
@@ -436,7 +436,7 @@ unsigned int get_pts_video(play_para_t *p_para)
     unsigned int value = 0;
     codec_para_t *pcodec;
 
-#if 0
+#if 1
     handle = open("/sys/class/tsync/pts_video", O_RDONLY);
     if (handle < 0) {
         log_print("[player_get_ctime]open pts_pcrscr error!\n");
@@ -471,7 +471,7 @@ static unsigned int get_pts_audio(play_para_t *p_para)
     unsigned int value;
     codec_para_t *pcodec;
 
-#if 0
+#if 1
     handle = open("/sys/class/tsync/pts_audio", O_RDONLY);
     if (handle < 0) {
         log_error("[player_get_ctime]open pts_audio error!\n");
@@ -633,17 +633,18 @@ static void update_dec_info(play_para_t *p_para,
             p_para->vstream_info.video_height = vdec->height;
         }
         p_para->state.video_error_cnt = vdec->error_count;		 
-    	p_para->state.video_datalevel = vbuf->data_len;
+    	p_para->vbuffer.data_level = vbuf->data_len;
     }
     if (p_para->astream_info.has_audio) {
         p_para->state.audio_error_cnt = adec->error_count;
-		p_para->state.audio_datalevel = abuf->data_len;
+		p_para->abuffer.data_level = abuf->data_len;
     }
 }
 
 static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct buf_status *abuf)
 {
     int vlimit = 0;
+	
     if (p_para->vstream_info.has_video) {
         if ((p_para->vstream_info.video_format == VFORMAT_MPEG4) &&
             (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_H263)) {
@@ -668,11 +669,11 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
     }
     //log_print("[%s:%d]abuf=0x%x   vbuf=0x%x\n", __FUNCTION__, __LINE__, abuf->data_len, abuf->data_len);
 
-    if (p_para->playctrl_info.video_low_buffer &&
-        p_para->playctrl_info.audio_low_buffer &&
+    if ((p_para->playctrl_info.video_low_buffer ||
+        p_para->playctrl_info.audio_low_buffer) &&
         (!p_para->playctrl_info.end_flag)) {
-        p_para->state.vdec_buf_rp = vbuf->read_pointer;
-        p_para->state.adec_buf_rp = abuf->read_pointer;
+        //p_para->state.vdec_buf_rp = vbuf->read_pointer;
+        //p_para->state.adec_buf_rp = abuf->read_pointer;
         if (p_para->playctrl_info.avsync_enable) {
             set_tsync_enable(0);
             p_para->playctrl_info.avsync_enable = 0;
@@ -692,18 +693,16 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
         //log_print("v:%d vlen=0x%x a:%d alen=0x%x count=%d, vrp 0x%x, arp 0x%x\n",
         //    p_para->vstream_info.has_video,vbuf->data_len, p_para->astream_info.has_audio,abuf->data_len,p_para->check_end.end_count,vbuf->read_pointer,abuf->read_pointer);
         if (p_para->vstream_info.has_video) {
-            if (vbuf->read_pointer != p_para->state.vdec_buf_rp) {
-                p_para->check_end.end_count = CHECK_END_COUNT;
-                p_para->state.vdec_buf_rp = vbuf->read_pointer;
+            if (p_para->vbuffer.rp_is_changed) {
+                p_para->check_end.end_count = CHECK_END_COUNT;               
             } else {
                 check_flag = 1;
 				log_print("[%s]vrp not move,vrp=vbufrp=0x%x\n", __FUNCTION__, vbuf->read_pointer);
             }
         }
         if (p_para->astream_info.has_audio) {
-            if (abuf->read_pointer != p_para->state.adec_buf_rp) {
-                p_para->check_end.end_count = CHECK_END_COUNT;
-                p_para->state.adec_buf_rp = abuf->read_pointer;
+            if (p_para->abuffer.rp_is_changed) {
+                p_para->check_end.end_count = CHECK_END_COUNT;                
             } else {
                 check_flag = 1;
 				log_print("[%s]arp not move,arp=abufrp=0x%x\n", __FUNCTION__, abuf->read_pointer);
@@ -791,7 +790,28 @@ static int  update_buffering_states(play_para_t *p_para,
     }
     return 0;
 }
-static int check_auido_rp_changed(play_para_t *p_para, struct buf_status *abuf)
+
+static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, struct buf_status *abuf)
+{
+	if(p_para->astream_info.has_audio){
+		if (abuf->read_pointer != p_para->abuffer.buffer_rp) {
+			p_para->abuffer.rp_is_changed = 1;			
+	        p_para->abuffer.buffer_rp = abuf->read_pointer;	      
+	    }else{
+	    	p_para->abuffer.rp_is_changed = 0;	
+	    }
+	}
+	if(p_para->vstream_info.has_video){
+		if (vbuf->read_pointer != p_para->vbuffer.buffer_rp) {
+			p_para->vbuffer.rp_is_changed = 1;			
+	        p_para->vbuffer.buffer_rp = vbuf->read_pointer;	      
+	    }else{
+	    	p_para->vbuffer.rp_is_changed = 0;	
+	    }
+	}	
+}
+
+/*static int check_auido_rp_changed(play_para_t *p_para, struct buf_status *abuf)
 {
     //log_print("audio rp=0x%x old_rp=0x%x \n", abuf->read_pointer, p_para->state.adec_buf_rp);
     if (abuf->read_pointer != p_para->state.adec_buf_rp) {
@@ -809,12 +829,12 @@ static int check_video_rp_changed(play_para_t *p_para, struct buf_status *vbuf)
         return 1;
     }
     return 0;
-}
+}*/
 
 static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abuf)
 {
     if (p_para->vstream_info.has_video && p_para->astream_info.has_audio) {
-        if (!check_auido_rp_changed(p_para, abuf)) {
+        if (!p_para->abuffer.rp_is_changed) {
             p_para->playctrl_info.check_audio_rp_cnt --;
         } else {
             p_para->playctrl_info.check_audio_rp_cnt = CHECK_AUDIO_HALT_CNT;
@@ -843,15 +863,20 @@ int update_playing_info(play_para_t *p_para)
     MEMSET(&vbuf, 0, sizeof(struct buf_status));
     MEMSET(&abuf, 0, sizeof(struct buf_status));
 
-    if (get_player_state(p_para) == PLAYER_RUNNING ||
+    /*if (get_player_state(p_para) == PLAYER_RUNNING ||
         get_player_state(p_para) == PLAYER_BUFFERING ||
-	get_player_state(p_para) == PLAYER_SEARCHING ||
-        get_player_state(p_para) == PLAYER_PAUSE) {
+		get_player_state(p_para) == PLAYER_SEARCHING ||
+        get_player_state(p_para) == PLAYER_PAUSE) {*/
+      if (get_player_state(p_para) > PLAYER_INITOK){
         if (update_codec_info(p_para, &vbuf, &abuf, &vdec, &adec) != 0) {
             return PLAYER_FAILED;
         }
 
         update_dec_info(p_para, &vdec, &adec, &vbuf, &abuf);
+
+		update_decbuf_states(p_para, &vbuf, &abuf);
+
+		update_buffering_states(p_para, &vbuf, &abuf);
     }
 
     if (get_player_state(p_para) > PLAYER_INITOK) {
@@ -869,8 +894,7 @@ int update_playing_info(play_para_t *p_para)
                 update_av_sync_for_audio(p_para, &abuf);
             }
         }
-		p_para->state.pts_video = get_pts_video(p_para);
-	    p_para->state.pts_pcrscr = get_pts_pcrscr(p_para);
+		p_para->state.pts_video = get_pts_video(p_para);	    
     }
 
     if (p_para->playctrl_info.read_end_flag && (get_player_state(p_para) != PLAYER_PAUSE)) {
@@ -883,7 +907,8 @@ int update_playing_info(play_para_t *p_para)
         update_av_sync_for_audio(p_para, &abuf);
     }
 
-    update_buffering_states(p_para, &vbuf, &abuf);
+    	
+	
     return PLAYER_SUCCESS;
 }
 
@@ -905,7 +930,7 @@ int check_buffer_rp_changed(play_para_t *p_para)
 {
     int audio_rp_changed = 0;
     int video_rp_changed = 0;
-    struct buf_status vbuf, abuf;
+    /*struct buf_status vbuf, abuf;
     codec_para_t    *vcodec = NULL;
     codec_para_t    *acodec = NULL;
     int ret;
@@ -945,7 +970,13 @@ int check_buffer_rp_changed(play_para_t *p_para)
         }
 
         audio_rp_changed = check_auido_rp_changed(p_para, &abuf);
+    }*/
+    if	((get_player_state(p_para) != PLAYER_PAUSE) && 
+		 (get_player_state(p_para) != PLAYER_BUFFERING)){
+	    video_rp_changed = p_para->vstream_info.has_video && p_para->vbuffer.rp_is_changed;
+		audio_rp_changed = p_para->astream_info.has_audio && p_para->abuffer.rp_is_changed;
+	    return (video_rp_changed | audio_rp_changed);
+    }else{
+    	return 1;
     }
-
-    return (video_rp_changed | audio_rp_changed);
 }

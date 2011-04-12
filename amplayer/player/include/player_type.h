@@ -161,10 +161,6 @@ typedef struct player_info
 	unsigned int audio_error_cnt;
 	float audio_bufferlevel; // relative value
 	float video_bufferlevel; // relative value
-	int   audio_datalevel;   // real audio data length
-	int   video_datalevel;   // real video data length
-    unsigned int    vdec_buf_rp;
-    unsigned int    adec_buf_rp;
 }player_info_t;
 
 typedef struct pid_info
