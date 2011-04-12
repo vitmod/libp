@@ -16,6 +16,7 @@
 #include "player_set_sys.h"
 #include "h263vld.h"
 #include "thread_mgt.h"
+#include "player_update.h"
 
 #define DUMP_WRITE   (0)
 #define DUMP_READ    (0)
@@ -1047,7 +1048,9 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 return PLAYER_WR_FAILED;
             } else {
                 /* EAGAIN to see if decoder stopped */
-                if (!check_buffer_rp_changed(para)) {
+                if (!check_buffer_rp_changed(para)
+                    || (get_player_state(para) != PLAYER_PAUSE)
+                    || (get_player_state(para) != PLAYER_BUFFERING)){
                     /* low level buffer, EAGAIN should not happen */
                     if (++para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
                         /* reset decoder */
