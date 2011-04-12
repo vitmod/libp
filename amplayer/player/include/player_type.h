@@ -154,7 +154,7 @@ typedef struct player_info
 	int error_no;  
 	int start_time;
 	int pts_video;
-	int pts_pcrscr;
+	//int pts_pcrscr;
 	int current_pts;
 	long curtime_old_time;    
 	unsigned int video_error_cnt;

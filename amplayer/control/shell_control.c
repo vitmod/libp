@@ -331,9 +331,9 @@ static int shell_update_state(int pid,player_info_t *player_info)
 								player_info->full_time%60,
 								//player_info->video_error_cnt,
 								//player_info->audio_error_cnt); 								
-								player_info->pts_pcrscr,
+								player_info->current_pts,
 								player_info->pts_video,
-								player_info->pts_pcrscr - player_info->pts_video);
+								player_info->current_pts - player_info->pts_video);
     }
 	#endif
     //we need to blank the osd every seconds.becase the Android can auto change it.
