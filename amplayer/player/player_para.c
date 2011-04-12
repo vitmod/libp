@@ -310,7 +310,10 @@ static void get_stream_info(play_para_t *p_para)
             p_para->vstream_info.video_index = -1;
         }
     }
-	
+     else{
+	 	p_para->data_offset = p_para->pFormatCtx->data_offset;
+		log_print("[%s:%d]data start offset %lld\n", __FUNCTION__, __LINE__, p_para->data_offset);
+     }		
     if (p_para->vstream_info.video_format == VFORMAT_VC1 && video_index != -1) {
         /* process vc1 packet to detect interlace or progressive */
         int64_t cur_pos;

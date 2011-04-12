@@ -910,7 +910,7 @@ int time_search(play_para_t *am_p)
     int stream_index = -1;
     int64_t ret;
     int seek_flags = AVSEEK_FLAG_BACKWARD;
-
+    int sample_size;	
     temp = (unsigned int)(s->duration / AV_TIME_BASE);
     log_info("[time_search:%d]time_point =%d temp=%d duration= %lld\n", __LINE__, time_point, temp, s->duration);
     /* if seeking requested, we execute it */
@@ -975,6 +975,19 @@ int time_search(play_para_t *am_p)
                 } else {
                     offset = am_p->data_offset;
                 }
+            }
+            if (am_p->file_type == WAV_FILE&&am_p->astream_info.audio_format == AFORMAT_ADPCM) {
+			AVCodecContext *codec = 	s->streams[am_p->astream_info.audio_index]->codec;
+			if(codec->sample_fmt == 0)//AV_SAMPLE_FMT_U8
+				sample_size = 1;
+			else if (codec->sample_fmt == 2)//AV_SAMPLE_FMT_S32
+				sample_size = 4;
+			else
+				sample_size = 2;
+			offset = /*am_p->data_offset + */((int64_t)time_point * (s->bit_rate >> 3));
+			offset -= offset%codec->block_align;
+			offset -= (offset % (codec->channels* sample_size) );
+			offset += am_p->data_offset;
             }
             log_info("time_point = %d  offset=%llx \n", time_point, offset);
             if (offset > s->valid_offset) {
