@@ -1062,9 +1062,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 return PLAYER_WR_FAILED;
             } else {
                 /* EAGAIN to see if decoder stopped */
-                if (!check_buffer_rp_changed(para)
-                    || (get_player_state(para) != PLAYER_PAUSE)
-                    || (get_player_state(para) != PLAYER_BUFFERING)){
+                if (!check_buffer_rp_changed(para)){
                     /* low level buffer, EAGAIN should not happen */
                     if (++para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
                         /* reset decoder */
@@ -1072,8 +1070,10 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                         para->playctrl_info.reset_flag = 1;
                         para->playctrl_info.end_flag = 1;
                         para->playctrl_info.time_point = para->state.pts_video / PTS_FREQ;
-                        log_print("$$$$$$data write blocked, need reset decoder!$$$$$$\n");
+                        log_print("$$$$$$data [type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
                     }
+                } else{
+                	para->playctrl_info.check_lowlevel_eagain_cnt = 0;
                 }
                 pkt->data += len;
                 pkt->data_size -= len;
@@ -1110,17 +1110,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 }
                 pkt->avpkt_isvalid = 0;
                 pkt->data_size = 0;
-                //log_print("[%s:%d]write finish pkt->data_size=%d\r",__FUNCTION__, __LINE__,pkt->data_size);
-                /*if(para->playctrl_info.fast_backward)
-                {
-                    if(para->playctrl_info.raw_mode)
-                        log_print("[write_av_packet:%d]twrite=%lld(tread=%lld)\n",__LINE__,
-                        para->write_size.total_bytes,para->read_size.total_bytes);
-                    else
-                        printf("[write_av_packet:%d]vpkt=%d(%d) apkt=%d(%d)\n",__LINE__,
-                        para->write_size.vpkt_num, para->read_size.vpkt_num,
-                        para->write_size.apkt_num, para->read_size.apkt_num);
-                }*/
+                //log_print("[%s:%d]write finish pkt->data_size=%d\r",__FUNCTION__, __LINE__,pkt->data_size);               
                 break;
             } else if (len < pkt->data_size) {
                 buf += write_bytes;
@@ -1736,11 +1726,6 @@ void player_switch_audio(play_para_t *para)
     para->astream_info.audio_channel = pCodecCtx->channels;
     para->astream_info.audio_samplerate = pCodecCtx->sample_rate;
     para->astream_info.audio_index = audio_index;
-
-	para->playctrl_info.reset_flag = 1;
-	para->playctrl_info.end_flag = 1;
-	para->playctrl_info.time_point = para->state.current_time;	
-	return ;
 	
     if (!para->playctrl_info.raw_mode
         && para->astream_info.audio_format == AFORMAT_AAC) {
@@ -1758,6 +1743,7 @@ void player_switch_audio(play_para_t *para)
 	para->playctrl_info.reset_flag = 1;
 	para->playctrl_info.end_flag = 1;
 	para->playctrl_info.time_point = para->state.current_time;	
+	log_print("[%s]reset decoder!curtime=%d\n", __FUNCTION__, para->playctrl_info.time_point);
 	return ;
 	
 #if 0		
