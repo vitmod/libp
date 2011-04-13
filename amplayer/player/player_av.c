@@ -951,7 +951,8 @@ int time_search(play_para_t *am_p)
             log_info("[time_search:%d] stream_index %d, time_point=%d timestamp=%lld start_time=%lld\n",
                      __LINE__, stream_index, time_point, timestamp, s->start_time);
 
-            if (am_p->vstream_info.video_index == -1 || !am_p->vstream_info.has_video) {
+            if ((am_p->vstream_info.video_index == -1 || !am_p->vstream_info.has_video)
+                && am_p->stream_type != STREAM_ES) {
                 offset = ((int64_t)time_point * (s->bit_rate >> 3));
                 ret = url_fseek(s->pb, offset, SEEK_SET);
                 if (ret < 0) {
