@@ -127,6 +127,9 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
     case CODEC_ID_ALAC:
         format = AFORMAT_ALAC;
         break;
+    case CODEC_ID_VORBIS:
+	format = 	AFORMAT_VORBIS;
+	break;
     default:
         format = -1;
         log_print("audio codec_id=0x%x\n", id);

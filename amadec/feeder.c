@@ -150,6 +150,11 @@ static audio_format_t get_audio_format(void)
         close(fd);
         return AUDIO_AFORMAT_ALAC;
     }
+    if (strncmp(format, "amadec_vorbis", 13) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return AUDIO_AFORMAT_VORBIS;
+    }
     close(fd);
 
     adec_print("audio format unknow.");

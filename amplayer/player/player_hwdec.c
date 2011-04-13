@@ -674,22 +674,82 @@ static int mpeg_add_header(play_para_t *para, am_packet_t *pkt)
     pkt->avpkt_newflag = 1;
     return write_av_packet(para, pkt);
 }
-static int flac_add_header(play_para_t *para, am_packet_t *pkt)
+static int generate_vorbis_header(unsigned char *extra_data, unsigned size,unsigned char** vorbis_headers,unsigned *vorbis_header_sizes)
+{
+    unsigned char *c;
+    uint32_t offset, length;
+    int i;
+
+    c = extra_data;
+    if (*c != 2){
+        return -1;
+    }
+
+    offset = 1;
+    for (i=0; i < 2; i++){
+        length = 0;
+        while (c[offset] == (unsigned char) 0xFF
+                && length < size){
+            length += 255;
+            offset++;
+        }
+        if (offset >= (size - 1)){
+            return -1;
+        }
+        length += c[offset];
+        offset++;
+        vorbis_header_sizes[i] = length;
+    }
+
+    vorbis_headers[0] = &c[offset];
+    vorbis_headers[1] = &c[offset + vorbis_header_sizes[0]];
+    vorbis_headers[2] = &c[offset + vorbis_header_sizes[0] + vorbis_header_sizes[1]];
+    vorbis_header_sizes[2] = size - offset- vorbis_header_sizes[0] - vorbis_header_sizes[1];
+
+    return 0;
+}
+static int audio_add_header(play_para_t *para, am_packet_t *pkt)
 {
     unsigned ext_size = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata_size;
     unsigned char *extradata = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata;
 
     if (ext_size > 0) {
-        MEMCPY(pkt->hdr->data, extradata , ext_size);
-        pkt->hdr->size = ext_size;
+        log_print("==============audio add header =======================\n");
+	 if(para->astream_info.audio_format == 	AFORMAT_VORBIS){
+		unsigned char* vorbis_headers[3]; 
+		unsigned int vorbis_header_sizes[3] = {0,0,0};
+		if(generate_vorbis_header(extradata,ext_size,vorbis_headers,vorbis_header_sizes)){
+			log_print("general vorbis header failed,audio not support\n");
+			return PLAYER_UNSUPPORT_AUDIO;
+		}
+		if(pkt->hdr->data)
+			FREE(pkt->hdr->data);
+		pkt->hdr->data = (char *)MALLOC(vorbis_header_sizes[0]+vorbis_header_sizes[1]+vorbis_header_sizes[2]);
+		if(!pkt->hdr->data){
+			log_print("malloc %d mem failed,at func %s,line %d\n",\
+			(vorbis_header_sizes[0]+vorbis_header_sizes[1]+vorbis_header_sizes[2]),__FUNCTION__,__LINE__);
+			return PLAYER_NOMEM;
+		}
+		MEMCPY(pkt->hdr->data,vorbis_headers[0],vorbis_header_sizes[0]);
+		MEMCPY(pkt->hdr->data+vorbis_header_sizes[0],vorbis_headers[1],vorbis_header_sizes[1]);
+		MEMCPY(pkt->hdr->data+vorbis_header_sizes[0]+vorbis_header_sizes[1],\
+			vorbis_headers[2],vorbis_header_sizes[2]);
+		pkt->hdr->size = (vorbis_header_sizes[0]+vorbis_header_sizes[1]+vorbis_header_sizes[2]);
+
+
+	 }
+	 else{
+        	MEMCPY(pkt->hdr->data, extradata , ext_size);
+        	pkt->hdr->size = ext_size;
+	 }		
         pkt->avpkt_newflag = 1;
         if (para->acodec) {
             pkt->codec = para->acodec;
 
         }
         pkt->type = CODEC_AUDIO;
-        log_print("==============flac add header =======================\n");
-
+	 if(ext_size > 4)	
+        	log_print("audio header first four bytes[0x%x],[0x%x],[0x%x],[0x%x]\n",extradata[0],extradata[1],extradata[2],extradata[3]);
         return write_av_packet(para, pkt);
     }
     return 0;
@@ -702,23 +762,27 @@ int pre_header_feeding(play_para_t *para, am_packet_t *pkt)
     AVStream *pStream = NULL;
     AVCodecContext *avcodec;
     int index = para->vstream_info.video_index;
+    int extra_size = 0;	
     if (-1 == index) {
         return PLAYER_ERROR_PARAM;
     }
 
     pStream = para->pFormatCtx->streams[index];
     avcodec = pStream->codec;
-    if (para->astream_info.audio_format == AFORMAT_FLAC && para->astream_info.has_audio) {
+    if (IS_AUIDO_NEED_PREFEED_HEADER(para->astream_info.audio_format)&& para->astream_info.has_audio) {
 
         if (pkt->hdr == NULL) {
             pkt->hdr = MALLOC(sizeof(hdr_buf_t));
-            pkt->hdr->data = (char *)MALLOC(HDR_BUF_SIZE);
-            if (!pkt->hdr->data) {
-                log_print("[pre_header_feeding] NOMEM!");
-                return PLAYER_NOMEM;
-            }
+	     extra_size = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata_size;		
+	     if(extra_size > 0){		
+                   pkt->hdr->data = (char *)MALLOC(extra_size);
+	            if (!pkt->hdr->data) {
+	                log_print("[pre_header_feeding] NOMEM!");
+	                return PLAYER_NOMEM;
+	            }
+	     	}
         }
-        flac_add_header(para, pkt);
+        ret = audio_add_header(para, pkt);
         if (pkt->hdr) {
             if (pkt->hdr->data) {
                 FREE(pkt->hdr->data);
@@ -727,6 +791,8 @@ int pre_header_feeding(play_para_t *para, am_packet_t *pkt)
             FREE(pkt->hdr);
             pkt->hdr = NULL;
         }
+	  if(	ret != PLAYER_SUCCESS)
+	  	return ret;
     }
     if (para->stream_type == STREAM_ES && para->vstream_info.has_video) {
         if (pkt->hdr == NULL) {

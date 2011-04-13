@@ -35,7 +35,9 @@ firmware_s_t firmware_list[] = {
     {9, MCODEC_FMT_WMA, "audiodsp_codec_wma.bin"},
     {10, MCODEC_FMT_PCM, "audiodsp_codec_pcm.bin"},
     {11, MCODEC_FMT_WMAPRO, "audiodsp_codec_wmapro.bin"},
-    {11, MCODEC_FMT_ALAC, "audiodsp_codec_alac.bin"},
+    {12, MCODEC_FMT_ALAC, "audiodsp_codec_alac.bin"},
+    {13, MCODEC_FMT_VORBIS, "audiodsp_codec_vorbis.bin"},
+
 };
 
 /**
@@ -108,6 +110,8 @@ static int switch_audiodsp(audio_format_t fmt)
         return MCODEC_FMT_WMAPRO;
     case  AUDIO_AFORMAT_ALAC:
         return MCODEC_FMT_ALAC;
+    case  AUDIO_AFORMAT_VORBIS:
+        return MCODEC_FMT_VORBIS;
     default:
         return 0;
     }
