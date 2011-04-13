@@ -1220,6 +1220,9 @@ char *player_status2str(player_status status)
     case PLAYER_BUFFERING:
         return "BUFFERING";
 
+	case PLAYER_BUFFER_OK:
+        return "BUFFEROK";
+
     case PLAYER_PAUSE:
         return "PAUSE";
 
