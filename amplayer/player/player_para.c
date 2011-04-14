@@ -560,6 +560,7 @@ static void player_ctrl_flag_reset(p_ctrl_info_t *cflag)
     cflag->read_end_flag = 0;
     cflag->video_low_buffer = 0;
     cflag->audio_low_buffer = 0;
+	cflag->audio_ready = 0;
     //cflag->pause_flag = 0;
 }
 
