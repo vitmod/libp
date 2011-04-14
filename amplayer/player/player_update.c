@@ -632,12 +632,10 @@ static void update_dec_info(play_para_t *p_para,
             p_para->vstream_info.video_width = vdec->width;
             p_para->vstream_info.video_height = vdec->height;
         }
-        p_para->state.video_error_cnt = vdec->error_count;		 
-    	p_para->vbuffer.data_level = vbuf->data_len;
+        p_para->state.video_error_cnt = vdec->error_count;		    	
     }
     if (p_para->astream_info.has_audio) {
-        p_para->state.audio_error_cnt = adec->error_count;
-		p_para->abuffer.data_level = abuf->data_len;
+        p_para->state.audio_error_cnt = adec->error_count;		
     }
 }
 
@@ -794,6 +792,12 @@ static int  update_buffering_states(play_para_t *p_para,
 static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, struct buf_status *abuf)
 {
 	if(p_para->astream_info.has_audio){
+		if (p_para->abuffer.buffer_size == 0){
+			p_para->abuffer.buffer_size = abuf->size;
+		}
+
+		p_para->abuffer.data_level = abuf->data_len;
+		
 		if (abuf->read_pointer != p_para->abuffer.buffer_rp) {
 			p_para->abuffer.rp_is_changed = 1;			
 	        p_para->abuffer.buffer_rp = abuf->read_pointer;	      
@@ -801,7 +805,14 @@ static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, s
 	    	p_para->abuffer.rp_is_changed = 0;	
 	    }
 	}
+	
 	if(p_para->vstream_info.has_video){
+		if (p_para->vbuffer.buffer_size == 0){
+			p_para->vbuffer.buffer_size = vbuf->size;
+		}
+		
+		p_para->vbuffer.data_level = vbuf->data_len;
+		
 		if (vbuf->read_pointer != p_para->vbuffer.buffer_rp) {
 			p_para->vbuffer.rp_is_changed = 1;			
 	        p_para->vbuffer.buffer_rp = vbuf->read_pointer;	      
@@ -810,26 +821,6 @@ static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, s
 	    }
 	}	
 }
-
-/*static int check_auido_rp_changed(play_para_t *p_para, struct buf_status *abuf)
-{
-    //log_print("audio rp=0x%x old_rp=0x%x \n", abuf->read_pointer, p_para->state.adec_buf_rp);
-    if (abuf->read_pointer != p_para->state.adec_buf_rp) {
-        p_para->state.adec_buf_rp = abuf->read_pointer;
-        return 1;
-    }
-    return 0;
-}
-
-static int check_video_rp_changed(play_para_t *p_para, struct buf_status *vbuf)
-{
-    //log_print("video rp=0x%x old_rp=0x%x \n", vbuf->read_pointer, p_para->state.vdec_buf_rp);
-    if (vbuf->read_pointer != p_para->state.vdec_buf_rp) {
-        p_para->state.vdec_buf_rp = vbuf->read_pointer;
-        return 1;
-    }
-    return 0;
-}*/
 
 static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abuf)
 {
@@ -926,57 +917,3 @@ int check_time_interrupt(long *old_msecond, int interval_ms)
     return ret;
 }
 
-int check_buffer_rp_changed(play_para_t *p_para)
-{
-    int audio_rp_changed = 0;
-    int video_rp_changed = 0;
-    /*struct buf_status vbuf, abuf;
-    codec_para_t    *vcodec = NULL;
-    codec_para_t    *acodec = NULL;
-    int ret;
-
-    if ((p_para->stream_type == STREAM_ES)
-        || (p_para->stream_type == STREAM_AUDIO)
-        || (p_para->stream_type == STREAM_VIDEO)) {
-        if (p_para->astream_info.has_audio && p_para->acodec) {
-            acodec = p_para->acodec;
-        }
-        if (p_para->vstream_info.has_video && p_para->vcodec) {
-            vcodec = p_para->vcodec;
-        }
-    } else if (p_para->codec) {
-        vcodec = p_para->codec;
-        acodec = p_para->codec;
-    }
-
-    MEMSET(&vbuf, 0, sizeof(struct buf_status));
-    MEMSET(&abuf, 0, sizeof(struct buf_status));
-
-    if (p_para->vstream_info.has_video && vcodec) {
-        ret = codec_get_vbuf_state(vcodec, &vbuf);
-        if (ret != 0) {
-            log_error("[%s]codec_get_vbuf_state error: %x\n", __FUNCTION__, -ret);
-            return 0;
-        }
-
-        video_rp_changed = check_video_rp_changed(p_para, &vbuf);
-    }
-
-    if (p_para->astream_info.has_audio && acodec) {
-        ret = codec_get_abuf_state(acodec, &abuf);
-        if (ret != 0) {
-            log_error("[%s]codec_get_abuf_state error: %x\n", __FUNCTION__, -ret);
-            return 0;
-        }
-
-        audio_rp_changed = check_auido_rp_changed(p_para, &abuf);
-    }*/
-    if	((get_player_state(p_para) != PLAYER_PAUSE) && 
-		 (get_player_state(p_para) != PLAYER_BUFFERING)){
-	    video_rp_changed = p_para->vstream_info.has_video && p_para->vbuffer.rp_is_changed;
-		audio_rp_changed = p_para->astream_info.has_audio && p_para->abuffer.rp_is_changed;
-	    return (video_rp_changed | audio_rp_changed);
-    }else{
-    	return 1;
-    }
-}

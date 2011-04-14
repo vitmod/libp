@@ -94,8 +94,9 @@ typedef union {
 } read_write_size;
 
 typedef struct{
-	unsigned int	data_level;   // real audio data length	
-    unsigned int	buffer_rp;
+	int		data_level;   // real audio data length	    
+	int		buffer_size;
+	unsigned int	buffer_rp;
 	unsigned int	rp_is_changed;
 } decbuf_status_t;
 

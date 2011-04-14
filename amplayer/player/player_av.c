@@ -1043,6 +1043,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
         }
         pkt->avpkt_newflag = 0;
     }
+	
     buf = pkt->data;
     size = pkt->data_size ;
     if (size == 0 && pkt->avpkt_isvalid) {
@@ -1064,26 +1065,28 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 log_print("write codec data failed!\n");
                 return PLAYER_WR_FAILED;
             } else {
-                /* EAGAIN to see if decoder stopped */
-                if (!check_buffer_rp_changed(para)){
-                    /* low level buffer, EAGAIN should not happen */
-                    if (++para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
-                        /* reset decoder */
-                        para->playctrl_info.check_lowlevel_eagain_cnt = 0;
-                        para->playctrl_info.reset_flag = 1;
-                        para->playctrl_info.end_flag = 1;
-                        para->playctrl_info.time_point = para->state.pts_video / PTS_FREQ;
-                        log_print("$$$$$$data [type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
-                    }
-                } else{
-                	para->playctrl_info.check_lowlevel_eagain_cnt = 0;
-                }
+                /* EAGAIN to see if buffer full or write time out too much */				
+				if(check_avbuffer_enough(para, pkt)){
+					++ para->playctrl_info.check_lowlevel_eagain_cnt;
+				}else{
+					para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+				}
+				
+				if (para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
+                    /* reset decoder */
+                    para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+                    para->playctrl_info.reset_flag = 1;
+                    para->playctrl_info.end_flag = 1;
+                    para->playctrl_info.time_point = para->state.pts_video / PTS_FREQ;
+                    log_print("$$$$$$[type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
+                }				
                 pkt->data += len;
                 pkt->data_size -= len;
                 player_thread_wait(para, RW_WAIT_TIME);
-                //log_print("[%s:%d]vlevel=%d alevel=%d\n",__FUNCTION__, __LINE__,para->state.video_datalevel,para->state.audio_datalevel );
-                //log_print("[%s:%d]eagain---data_size=%d!type=%d read_size=%lld write_size=%lld\n",__FUNCTION__, __LINE__,\
-						pkt->data_size,pkt->type, para->read_size.total_bytes, para->write_size.total_bytes);
+                log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
+							__FUNCTION__, pkt->data_size, pkt->type, para->read_size.total_bytes, \
+							para->write_size.total_bytes, para->playctrl_info.check_lowlevel_eagain_cnt);
+			
                 return PLAYER_SUCCESS;
             }
         } else {
@@ -1925,3 +1928,35 @@ void set_tsync_enable_codec(play_para_t *p_para, int enable)
     return;
 }
 
+int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
+{
+	int vbuf_enough = 1;
+	int abuf_enough = 1;
+
+	if(pkt->type == CODEC_COMPLEX){
+		if (para->vstream_info.has_video &&
+			(para->state.video_bufferlevel >= para->buffering_threshhold_max)){			
+				vbuf_enough = 0;					
+		}
+
+		if (para->astream_info.has_audio &&
+			(para->state.audio_bufferlevel >= para->buffering_threshhold_max)){			
+				abuf_enough = 0;				
+		}
+	}else if(pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO){		
+		if(para->vstream_info.has_video && (pkt->type == CODEC_VIDEO) &&
+			((para->vbuffer.data_level + pkt->data_size) >= para->vbuffer.buffer_size)){			
+				vbuf_enough = 0;			
+		}
+	
+		if(para->astream_info.has_audio && (pkt->type == CODEC_AUDIO) &&
+			((para->abuffer.data_level + pkt->data_size) >= para->abuffer.buffer_size)){			
+				abuf_enough = 0;			
+		}
+	}
+	if(!abuf_enough)
+		log_print("[%s]abuf not enough!\n", __FUNCTION__);
+	if(!vbuf_enough)
+		log_print("[%s]vbuf not enough!\n", __FUNCTION__);
+	return (vbuf_enough && abuf_enough);
+}
