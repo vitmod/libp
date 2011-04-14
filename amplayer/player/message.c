@@ -285,7 +285,14 @@ int cmd2str(player_cmd_t *cmd, char *buf)
         case CMD_SET_STEREO:
             len = sprintf(buf, "%s", "SET_STEREO");
             break;
-
+		case CMD_EN_AUTOBUF:
+			len = sprintf(buf, "%s", "ENABLE_AUTOBUF");
+            break;
+			
+		case CMD_SET_AUTOBUF_LEV:
+			len = sprintf(buf, "%s:%.03f:%.03f:%.03f", "SET_AUTOBUF_LEVEL", cmd->f_param, cmd->f_param1, cmd->f_param2);
+            break;	
+			
         default:
             len = sprintf(buf, "%s", "UNKNOW_SETMODE_COMMAND");
             break;
