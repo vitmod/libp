@@ -26,7 +26,8 @@ static void get_av_codec_type(play_para_t *p_para)
     int audio_index = p_para->astream_info.audio_index;
     int sub_index = p_para->sstream_info.sub_index;
     log_print("[%s:%d]vidx=%d aidx=%d sidx=%d\n", __FUNCTION__, __LINE__, video_index, audio_index, sub_index);
-    if (video_index != -1) {
+
+	if (video_index != -1) {
         pStream = pFormatCtx->streams[video_index];
         pCodecCtx = pStream->codec;
         p_para->vstream_info.video_format   = video_type_convert(pCodecCtx->codec_id);
@@ -61,8 +62,12 @@ static void get_av_codec_type(play_para_t *p_para)
             }
             p_para->vstream_info.video_width    = pCodecCtx->width;
             p_para->vstream_info.video_height   = pCodecCtx->height;
-            p_para->vstream_info.video_ratio    = pStream->sample_aspect_ratio.num / pStream->sample_aspect_ratio.den;
-            log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d\n", __FUNCTION__, __LINE__, pCodecCtx->time_base.num, pCodecCtx->time_base.den, pStream->r_frame_rate.den, pStream->r_frame_rate.num);
+            p_para->vstream_info.video_ratio    = (float)pStream->sample_aspect_ratio.num / pStream->sample_aspect_ratio.den;
+            log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d ratio=%.3f\n", __FUNCTION__, __LINE__, \
+						pCodecCtx->time_base.num, pCodecCtx->time_base.den, \
+						pStream->r_frame_rate.den, pStream->r_frame_rate.num, \
+						p_para->vstream_info.video_ratio);
+			
             if (0 != pCodecCtx->time_base.den) {
                 p_para->vstream_info.video_codec_rate = (int64_t)UNIT_FREQ * pCodecCtx->time_base.num / pCodecCtx->time_base.den;
             }
@@ -77,7 +82,7 @@ static void get_av_codec_type(play_para_t *p_para)
                 p_para->vstream_info.extradata      = pCodecCtx->extradata;
             }
             p_para->vstream_info.start_time = pStream->start_time * pStream->time_base.num * PTS_FREQ / pStream->time_base.den;
-            //p_para->vstream_info.start_time = pStream->start_time;
+          
             /* added by Z.C for mov file frame duration */
             if ((p_para->file_type == MOV_FILE) || (p_para->file_type == MP4_FILE)) {
                 if (pStream->nb_frames && pStream->duration && pStream->time_base.den && pStream->time_base.num) {
@@ -306,8 +311,7 @@ static void get_stream_info(play_para_t *p_para)
 		
         if (p_para->vstream_info.video_height > 720) {
             log_print("[%s:%d]real video_height=%d, exceed 720 not support!\n", __FUNCTION__, __LINE__, p_para->vstream_info.video_height);
-            p_para->vstream_info.has_video = 0;
-            p_para->vstream_info.video_index = -1;
+            p_para->vstream_info.has_video = 0;            
         }
     }
      else{
@@ -315,41 +319,48 @@ static void get_stream_info(play_para_t *p_para)
 		log_print("[%s:%d]data start offset %lld\n", __FUNCTION__, __LINE__, p_para->data_offset);
      }		
     if (p_para->vstream_info.video_format == VFORMAT_VC1 && video_index != -1) {
-        /* process vc1 packet to detect interlace or progressive */
-        int64_t cur_pos;
-        AVPacket avpkt;
-        int ret;
 
-        cur_pos = url_ftell(p_para->pFormatCtx->pb);
-        av_init_packet(&avpkt);
+		if (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WVC1 &&
+			p_para->vstream_info.video_width > 1920){
+			log_error("[%s]can't support wvc1 exceed 1920\n", __FUNCTION__);
+			p_para->vstream_info.has_video = 0; 
+		}else{		
+			/* process vc1 packet to detect interlace or progressive */
+	        int64_t cur_pos;
+	        AVPacket avpkt;
+	        int ret;
+			
+	        cur_pos = url_ftell(p_para->pFormatCtx->pb);
+	        av_init_packet(&avpkt);
 
-        /* get the first video frame */
-        do {
-            ret = av_read_frame(p_para->pFormatCtx, &avpkt);
-            if (ret < 0) {
-                if (AVERROR(EAGAIN) != ret) {
-                    /*if the return is EAGAIN,we need to try more times*/
-                    log_error("[%s:%d]av_read_frame return (%d)\n", __FUNCTION__, __LINE__, ret);
-                    url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
-                    av_free_packet(&avpkt);
-                    return;
-                } else {
-                    av_free_packet(&avpkt);
-                    continue;
-                }
-            }
-        } while (avpkt.stream_index != video_index);
+	        /* get the first video frame */
+	        do {
+	            ret = av_read_frame(p_para->pFormatCtx, &avpkt);
+	            if (ret < 0) {
+	                if (AVERROR(EAGAIN) != ret) {
+	                    /*if the return is EAGAIN,we need to try more times*/
+	                    log_error("[%s:%d]av_read_frame return (%d)\n", __FUNCTION__, __LINE__, ret);
+	                    url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+	                    av_free_packet(&avpkt);
+	                    return;
+	                } else {
+	                    av_free_packet(&avpkt);
+	                    continue;
+	                }
+	            }
+	        } while (avpkt.stream_index != video_index);
 
-        ret = get_vc1_di(avpkt.data, avpkt.size);
-        if (ret == 1) {// interlace, not support
-            log_print("[%s:%d]vc1 interlace video, not support!\n", __FUNCTION__, __LINE__);
-            set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
-            p_para->vstream_info.has_video = 0;
-            p_para->vstream_info.video_index = -1;
-        }
-        av_free_packet(&avpkt);
+	        ret = get_vc1_di(avpkt.data, avpkt.size);
+	        if (ret == 1) {// interlace, not support
+	            log_print("[%s:%d]vc1 interlace video, not support!\n", __FUNCTION__, __LINE__);
+	            set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
+	            p_para->vstream_info.has_video = 0;
+	            p_para->vstream_info.video_index = -1;
+	        }
+	        av_free_packet(&avpkt);
 
-        url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+	        url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+		}
     }
 
     return;
