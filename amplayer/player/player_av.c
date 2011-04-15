@@ -1083,10 +1083,11 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 pkt->data += len;
                 pkt->data_size -= len;
                 player_thread_wait(para, RW_WAIT_TIME);
-                log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
-							__FUNCTION__, pkt->data_size, pkt->type, para->read_size.total_bytes, \
-							para->write_size.total_bytes, para->playctrl_info.check_lowlevel_eagain_cnt);
-			
+				if(para->playctrl_info.check_lowlevel_eagain_cnt > 0){
+                	log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
+								__FUNCTION__, pkt->data_size, pkt->type, para->read_size.total_bytes, \
+								para->write_size.total_bytes, para->playctrl_info.check_lowlevel_eagain_cnt);
+				}
                 return PLAYER_SUCCESS;
             }
         } else {
@@ -1954,9 +1955,9 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 				abuf_enough = 0;			
 		}
 	}
-	if(!abuf_enough)
+	/*if(!abuf_enough)
 		log_print("[%s]abuf not enough!\n", __FUNCTION__);
 	if(!vbuf_enough)
-		log_print("[%s]vbuf not enough!\n", __FUNCTION__);
+		log_print("[%s]vbuf not enough!\n", __FUNCTION__);*/
 	return (vbuf_enough && abuf_enough);
 }

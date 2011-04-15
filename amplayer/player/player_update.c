@@ -581,7 +581,7 @@ static void update_current_time(play_para_t *p_para)
 
         log_debug("[update_current_time:%d]time=%d discontinue=%d\n", __LINE__, time / PTS_FREQ, p_para->discontinue_point);
         if ((time / PTS_FREQ) < p_para->discontinue_point && p_para->discontinue_point > 0) {
-            log_print("[update_current_time:%d]time=%d discontinue_point=%d\n", __LINE__, time / PTS_FREQ, p_para->discontinue_point);
+            //log_print("[update_current_time:%d]time=%d discontinue_point=%d\n", __LINE__, time / PTS_FREQ, p_para->discontinue_point);
             if (url_support_time_seek(p_para->pFormatCtx->pb) && (time / PTS_FREQ > 0) && (!p_para->discontinue_flag)) {
                 p_para->discontinue_point = p_para->discontinue_point - time / PTS_FREQ;
                 p_para->discontinue_flag = 1;
