@@ -1214,8 +1214,13 @@ static int mpegts_resync(AVFormatContext *s)
 
     for(i = 0;i < MAX_RESYNC_SIZE; i++) {
         c = url_fgetc(pb);
+		if(pb->pos > s->valid_offset){
+			av_log(s, AV_LOG_ERROR, "exceed valid offset\n");
+			return AVERROR_EOF;
+		}
         if (c < 0)
             return -1;
+		
         if (c == 0x47) {
             url_fseek(pb, -1, SEEK_CUR);
             return 0;
@@ -1231,6 +1236,7 @@ static int read_packet(AVFormatContext *s, uint8_t *buf, int raw_packet_size)
 {
     ByteIOContext *pb = s->pb;
     int skip, len;
+	int ret;
 
     for(;;) {
         len = get_buffer(pb, buf, TS_PACKET_SIZE);
@@ -1240,8 +1246,13 @@ static int read_packet(AVFormatContext *s, uint8_t *buf, int raw_packet_size)
         if (buf[0] != 0x47) {
             /* find a new packet start */
             url_fseek(pb, -TS_PACKET_SIZE, SEEK_CUR);
-            if (mpegts_resync(s) < 0)
-                return AVERROR(EAGAIN);
+			ret = mpegts_resync(s) ;
+            if (ret < 0){
+				if(ret == AVERROR_EOF)
+					return ret;
+				else
+					return AVERROR(EAGAIN);
+            }
             else
                 continue;
         } else {
