@@ -1747,6 +1747,7 @@ void player_switch_audio(play_para_t *para)
 	 * for aac switch time too long, change switch audio to do reset
 	 **************************************************************/
 	para->astream_info.audio_index = audio_index;
+    para->astream_info.audio_pid = pstream->id;
 	para->playctrl_info.reset_flag = 1;
 	para->playctrl_info.end_flag = 1;
 	para->playctrl_info.time_point = para->state.current_time;	
