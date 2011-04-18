@@ -1214,7 +1214,7 @@ static int mpegts_resync(AVFormatContext *s)
 
     for(i = 0;i < MAX_RESYNC_SIZE; i++) {
         c = url_fgetc(pb);
-		if(pb->pos > s->valid_offset){
+		if(0 && pb->pos > s->valid_offset){
 			av_log(s, AV_LOG_ERROR, "exceed valid offset\n");
 			return AVERROR_EOF;
 		}
