@@ -1931,6 +1931,8 @@ void set_tsync_enable_codec(play_para_t *p_para, int enable)
 
 int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 {
+#define VIDEO_RESERVED_SPACE	(0x10000)	// 64k
+#define AUDIO_RESERVED_SPACE	(0x2000)	// 8k
 	int vbuf_enough = 1;
 	int abuf_enough = 1;
 
@@ -1944,14 +1946,19 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 			(para->state.audio_bufferlevel >= para->buffering_threshhold_max)){			
 				abuf_enough = 0;				
 		}
-	}else if(pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO){		
+	}else if(pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO){	
+		/*if(pkt->type == CODEC_VIDEO)
+			log_print("[%s]type:%d data=%x size=%x total=%x\n", __FUNCTION__, pkt->type, para->vbuffer.data_level,pkt->data_size,para->vbuffer.buffer_size);
+		if(pkt->type == CODEC_AUDIO)
+			log_print("[%s]type:%d data=%x size=%x total=%x\n", __FUNCTION__, pkt->type, para->abuffer.data_level,pkt->data_size,para->abuffer.buffer_size);
+		*/
 		if(para->vstream_info.has_video && (pkt->type == CODEC_VIDEO) &&
-			((para->vbuffer.data_level + pkt->data_size) >= para->vbuffer.buffer_size)){			
+			((para->vbuffer.data_level + pkt->data_size) >= (para->vbuffer.buffer_size - VIDEO_RESERVED_SPACE))){			
 				vbuf_enough = 0;			
 		}
 	
 		if(para->astream_info.has_audio && (pkt->type == CODEC_AUDIO) &&
-			((para->abuffer.data_level + pkt->data_size) >= para->abuffer.buffer_size)){			
+			((para->abuffer.data_level + pkt->data_size) >= (para->abuffer.buffer_size - AUDIO_RESERVED_SPACE))){			
 				abuf_enough = 0;			
 		}
 	}
