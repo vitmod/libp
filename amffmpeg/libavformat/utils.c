@@ -1858,7 +1858,7 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 	end_offset = filesize;
 	for(;;)
 	{
-	   	av_log(NULL, AV_LOG_INFO, "[%s:%d]start=0x%llx end=0x%llx end-start=0x%llx\n",__FUNCTION__,__LINE__,start_offset,end_offset,end_offset - start_offset);
+	   	//av_log(NULL, AV_LOG_INFO, "[%s:%d]start=0x%llx end=0x%llx end-start=0x%llx\n",__FUNCTION__,__LINE__,start_offset,end_offset,end_offset - start_offset);
 		if(start_offset >= end_offset)
 			break;
 		if((end_offset - start_offset)<(CHECK_FULL_ZERO_SIZE << 1))
@@ -1870,7 +1870,7 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 		}
 		
 		offset = (start_offset + end_offset) >> 1;		
-	   	av_log(NULL, AV_LOG_INFO, "[%s:%d]offset=0x%llx\n",__FUNCTION__,__LINE__,offset);
+	   	//av_log(NULL, AV_LOG_INFO, "[%s:%d]offset=0x%llx\n",__FUNCTION__,__LINE__,offset);
 		url_fseek(ic->pb, offset, SEEK_SET);
 		do{
             ret = get_buffer(ic->pb, buf1,CHECK_FULL_ZERO_SIZE);
@@ -1915,7 +1915,7 @@ static int64_t seek_last_valid_pkt(AVFormatContext *ic)
 			}
 			else
 			{
-	        	av_log(NULL, AV_LOG_INFO, "[%s:%d]second block buf1<>0\n",__FUNCTION__,__LINE__);
+	        	//av_log(NULL, AV_LOG_INFO, "[%s:%d]second block buf1<>0\n",__FUNCTION__,__LINE__);
 				start_offset = offset;
 				continue;
 			}
