@@ -535,8 +535,10 @@ static unsigned int get_current_time(play_para_t *p_para)
 
 static void update_current_time(play_para_t *p_para)
 {
+	#define REFRESH_CURTIME_INTERVAL    (100)
     unsigned int time = 0;
-
+	if (check_time_interrupt(&p_para->state.curtime_old_time, REFRESH_CURTIME_INTERVAL) || 
+		!p_para->playctrl_info.pts_valid) {
     if (p_para->playctrl_info.f_step > 0) {
         time = (unsigned int)p_para->playctrl_info.time_point;
         p_para->state.current_time = time;
@@ -621,6 +623,7 @@ static void update_current_time(play_para_t *p_para)
         update_variable_info(p_para);
     }
 #endif
+	}
 }
 
 static void update_dec_info(play_para_t *p_para, 
@@ -870,22 +873,15 @@ int update_playing_info(play_para_t *p_para)
 		update_decbuf_states(p_para, &vbuf, &abuf);
 
 		update_buffering_states(p_para, &vbuf, &abuf);
-    }
 
-    if (get_player_state(p_para) > PLAYER_INITOK) {
+		update_av_sync_for_audio(p_para, &abuf);
+
         if (p_para->codec && (p_para->playctrl_info.audio_ready != 1)) {
             p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
             //log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
         }
         if (p_para->playctrl_info.audio_ready == 1) {
-            if (!p_para->playctrl_info.pts_valid) {
                 update_current_time(p_para);
-            }
-#define REFRESH_CURTIME_INTERVAL    (100)
-            if (check_time_interrupt(&p_para->state.curtime_old_time, REFRESH_CURTIME_INTERVAL)) {
-                update_current_time(p_para);
-                update_av_sync_for_audio(p_para, &abuf);
-            }
         }
 		p_para->state.pts_video = get_pts_video(p_para);	    
     }
@@ -897,7 +893,7 @@ int update_playing_info(play_para_t *p_para)
             p_para->check_end.interval = CHECK_END_INTERVAL;
         }
         check_force_end(p_para, &vbuf, &abuf);
-        update_av_sync_for_audio(p_para, &abuf);
+        //update_av_sync_for_audio(p_para, &abuf);
     }
 
     	
