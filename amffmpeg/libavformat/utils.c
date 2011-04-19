@@ -2548,7 +2548,8 @@ static void compute_chapters_end(AVFormatContext *s)
         }
 
     if (s->nb_chapters && s->chapters[i]->end == AV_NOPTS_VALUE) {
-        assert(s->start_time != AV_NOPTS_VALUE);
+       // assert(s->start_time != AV_NOPTS_VALUE);
+        av_log(s, AV_LOG_INFO, "start time=%lld,duration=%lld\n",s->start_time,s->duration);
         assert(s->duration > 0);
         s->chapters[i]->end = av_rescale_q(s->start_time + s->duration,
                                            AV_TIME_BASE_Q,
