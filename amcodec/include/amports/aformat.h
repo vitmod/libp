@@ -69,7 +69,8 @@ typedef enum {
 								 ||(afmt == AFORMAT_PCM_U8) \
 								 ||(afmt == AFORMAT_PCM_BLURAY) \
 								 ||(afmt == AFORMAT_AMR)\
-								 ||(afmt == AFORMAT_ALAC))
+								 ||(afmt == AFORMAT_ALAC)\
+								 ||(afmt == AFORMAT_AC3))
 
 
 #define IS_AUDIO_NOT_SUPPORT_EXCEED_2CH(afmt) ((afmt == AFORMAT_RAAC) \
