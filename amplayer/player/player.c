@@ -132,7 +132,7 @@ static int check_decoder_worksta(play_para_t *para)
                     ((vdec.status >> 16) & DECODER_ERROR)) {
                     log_print("pid[%d]::[%s:%d]find vdec error! curtime=%d lastime=%d \n", para->player_id, __FUNCTION__, __LINE__, para->state.current_time, para->state.last_time);
                     if (((para->state.current_time - para->state.last_time) >= 1 || (para->state.current_ms == 0)) 
-						&& (!para->playctrl_info.read_end_flag)) {
+						/*&& (!para->playctrl_info.read_end_flag)*/) {
                         para->playctrl_info.time_point = para->state.current_time;
                         para->playctrl_info.reset_flag = 1;
                         para->playctrl_info.end_flag = 1;
@@ -666,19 +666,19 @@ void *player_thread(play_para_t *player)
                     log_error("pid[%d]::set_header_info failed! ret=%x\n", player->player_id, -ret);
                     set_player_state(player, PLAYER_ERROR);
                     goto release;
-                }
-                if ((player->playctrl_info.f_step == 0) &&
-                    (ret == PLAYER_SUCCESS) &&
-                    (get_player_state(player) != PLAYER_RUNNING) &&
-                    (get_player_state(player) != PLAYER_BUFFERING) &&
-                    (get_player_state(player) != PLAYER_PAUSE)) {
-                    set_player_state(player, PLAYER_RUNNING);
-                    update_playing_info(player);
-                    update_player_states(player, 1);
-                }
+                }                
             } else {
                 /*packet is full ,do buffering only*/
                 ffmpeg_buffering_data(player);
+            }
+			if ((player->playctrl_info.f_step == 0) &&
+                (ret == PLAYER_SUCCESS) &&
+                (get_player_state(player) != PLAYER_RUNNING) &&
+                (get_player_state(player) != PLAYER_BUFFERING) &&
+                (get_player_state(player) != PLAYER_PAUSE)) {
+                set_player_state(player, PLAYER_RUNNING);
+                update_playing_info(player);
+                update_player_states(player, 1);
             }
 write_packet:
             if ((player->vstream_info.video_format == VFORMAT_SW) && (pkt->type == CODEC_VIDEO)) {
@@ -706,6 +706,7 @@ write_packet:
                 ret = write_av_packet(player, pkt);
                 if (ret == PLAYER_WR_FINISH) {
                     if (player->playctrl_info.f_step == 0) {
+						log_print("[player_thread]write end!\n");						
                         break;
                     }
                 } else if (ret != PLAYER_SUCCESS) {
@@ -758,7 +759,7 @@ write_packet:
         //wait for play end...
         while (!player->playctrl_info.end_flag) {
             player_thread_wait(player, 100 * 1000);
-
+			check_decoder_worksta(player);
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
                 break;
