@@ -178,8 +178,8 @@ vformat_t video_type_convert(enum CodecID id)
 
     case CODEC_ID_VC1:
     case CODEC_ID_WMV3:
-        //case CODEC_ID_WMV1:           //not support
-        //case CODEC_ID_WMV2:           //not support
+    case CODEC_ID_WMV1:           //not support
+    case CODEC_ID_WMV2:           //not support
         format = VFORMAT_VC1;
         break;
 
