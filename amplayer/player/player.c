@@ -132,7 +132,7 @@ static int check_decoder_worksta(play_para_t *para)
                     ((vdec.status >> 16) & DECODER_ERROR)) {
                     log_print("pid[%d]::[%s:%d]find vdec error! curtime=%d lastime=%d \n", para->player_id, __FUNCTION__, __LINE__, para->state.current_time, para->state.last_time);
                     if (((para->state.current_time - para->state.last_time) >= 1 || (para->state.current_ms == 0)) 
-						/*&& (!para->playctrl_info.read_end_flag)*/) {
+						&& (!para->playctrl_info.read_end_flag)) {
                         para->playctrl_info.time_point = para->state.current_time;
                         para->playctrl_info.reset_flag = 1;
                         para->playctrl_info.end_flag = 1;
@@ -759,7 +759,7 @@ write_packet:
         //wait for play end...
         while (!player->playctrl_info.end_flag) {
             player_thread_wait(player, 100 * 1000);
-			check_decoder_worksta(player);
+
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
                 break;
