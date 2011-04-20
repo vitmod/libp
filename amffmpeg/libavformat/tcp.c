@@ -42,6 +42,8 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     struct timeval tv;
     socklen_t optlen;
     char hostname[1024],proto[1024],path[1024];
+	int rcvbuf_len;
+    int len = sizeof(rcvbuf_len);
 
     if(!ff_network_init())
         return AVERROR(EIO);
@@ -60,7 +62,11 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     if (fd < 0)
         return AVERROR(EIO);
     ff_socket_nonblock(fd, 1);
-
+	rcvbuf_len=128*1024;
+	if(setsockopt( fd, SOL_SOCKET, SO_RCVBUF, (void *)&rcvbuf_len, &len ) < 0 ){
+        av_log(NULL, AV_LOG_ERROR,"setsockopt: ");
+        return -1;
+    }
  redo:
     ret = connect(fd, (struct sockaddr *)&dest_addr,
                   sizeof(dest_addr));
@@ -97,6 +103,11 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     s = av_malloc(sizeof(TCPContext));
     if (!s)
         return AVERROR(ENOMEM);
+	if( getsockopt( fd, SOL_SOCKET, SO_RCVBUF, (void *)&rcvbuf_len, &len ) < 0 ){
+        av_log(NULL, AV_LOG_ERROR,"getsockopt: ");
+        return -1;
+    }
+    av_log(NULL, AV_LOG_ERROR,"set the recevice TCP buf length to : %d\n", rcvbuf_len );
     h->priv_data = s;
     h->is_streamed = 1;
     s->fd = fd;
