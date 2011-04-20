@@ -11,6 +11,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
 	$(LOCAL_PATH)/../../amffmpeg
 
 LOCAL_MODULE := libamplayer
+LOCAL_MODULE_TAGS := optional
+
 LOCAL_ARM_MODE := arm
 
 include $(BUILD_STATIC_LIBRARY)
@@ -28,6 +30,8 @@ LOCAL_STATIC_LIBRARIES := libamcodec libavformat libavcodec libavutil libamadec
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder
 
 LOCAL_MODULE := libamplayer
+LOCAL_MODULE_TAGS := optional
+
 LOCAL_ARM_MODE := arm
 LOCAL_PRELINK_MODULE := false
 include $(BUILD_SHARED_LIBRARY)

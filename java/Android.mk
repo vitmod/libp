@@ -20,6 +20,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_SDK_VERSION := current
 
 LOCAL_MODULE:= amlogic.libplayer
+LOCAL_MODULE_TAGS := optional
 #LOCAL_JAVA_LIBRARIES := 
 
 #LOCAL_PROGUARD_ENABLED := disabled
@@ -34,6 +35,7 @@ include $(BUILD_STATIC_JAVA_LIBRARY)
 #MAKE_XML
 include $(CLEAR_VARS)
 LOCAL_MODULE := amlogic.libplayer.xml
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/permissions
 LOCAL_SRC_FILES := $(LOCAL_MODULE)

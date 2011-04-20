@@ -11,5 +11,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/include $(LOCAL_PATH)/codec $(LOCAL_PATH)/audi
 LOCAL_ARM_MODE := arm
 LOCAL_STATIC_LIBRARIES := libamadec
 LOCAL_MODULE:= libamcodec
+LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_STATIC_LIBRARY)

@@ -1568,7 +1568,7 @@ SUBAPI subdata_t *internal_sub_open(char *filename, unsigned int rate)
         return NULL;
     }
     srp = sr + subdata->sub_format;
-    log_print(("SUB: Detected subtitle file format: %s\n", srp->name));
+    //log_print(("SUB: Detected subtitle file format: %s\n", srp->name));
 
     lseek(fd, 0, SEEK_SET);
     if (subfile_buffer) {
