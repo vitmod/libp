@@ -14,7 +14,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <sys/soundcard.h>
-#include <config.h>
+//#include <config.h>
 #include <alsa/asoundlib.h>
 
 #include <audio-dec.h>
@@ -130,7 +130,7 @@ static int set_params(alsa_param_t *alsa_params)
     snd_pcm_hw_params_alloca(&hwparams);
     snd_pcm_sw_params_alloca(&swparams);
 
-    err = snd_pcm_hw_params_any(handle, hwparams);
+    err = snd_pcm_hw_params_any(alsa_params->handle, hwparams);
     if (err < 0) {
         adec_print("Broken configuration for this PCM: no configurations available");
         return err;
@@ -178,7 +178,7 @@ static int set_params(alsa_param_t *alsa_params)
 #endif
     alsa_params->bits_per_sample = snd_pcm_format_physical_width(alsa_params->format);
     //bits_per_frame = bits_per_sample * hwparams.realchanl;
-    alsa_params->bits_per_frame = bits_per_sample * alsa_params->channelcount;
+    alsa_params->bits_per_frame = alsa_params->bits_per_sample * alsa_params->channelcount;
 
     err = snd_pcm_hw_params_set_period_size_near(alsa_params->handle, hwparams, &chunk_size, NULL);
     if (err < 0) {
@@ -450,9 +450,9 @@ static void *alsa_playback_loop(void *args)
     int offset = 0;
     aml_audio_dec_t *audec;
     alsa_param_t *alsa_params;
-    unsigned char *buffer = (unsigned char *)(((unsigned long)decode_buffer + 32) & (~0x1f))
+    unsigned char *buffer = (unsigned char *)(((unsigned long)decode_buffer + 32) & (~0x1f));
 
-                            audec = (aml_audio_dec_t *)args;
+    audec = (aml_audio_dec_t *)args;
     alsa_params = (alsa_param_t *)audec->aout_ops.private_data;
 
     pthread_mutex_init(&alsa_params->playback_mutex, NULL);
@@ -514,7 +514,7 @@ int alsa_init(struct aml_audio_dec* audec)
         adec_print("alloc alsa_param failed, not enough memory!");
         return -1;
     }
-    memset(alsa_param_t, 0, sizeof(alsa_param_t));
+    memset(alsa_param, 0, sizeof(alsa_param_t));
 
     if (audec->samplerate >= (88200 + 96000) / 2) {
         alsa_param->flag = 1;
@@ -539,7 +539,7 @@ int alsa_init(struct aml_audio_dec* audec)
     } else if (audec->samplerate >= (32000 + 44100) / 2) {
         alsa_param->oversample = 0;
         alsa_param->rate = 44100;
-        if (audec->channel_num == 1) {
+        if (audec->channels == 1) {
             alsa_param->flag = 1;
         } else if (audec->channels == 2) {
             alsa_param->flag = 0;
