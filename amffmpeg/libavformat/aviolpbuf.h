@@ -31,5 +31,7 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence);
 int url_lpfree(URLContext *s);
 int url_lp_intelligent_buffering(URLContext *s,int size);
 int url_lp_getbuffering_size(URLContext *s,int *forward_data,int *back_data);
+int64_t url_lp_get_buffed_pos(URLContext *s);
+
 #endif
 

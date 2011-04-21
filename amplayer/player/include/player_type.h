@@ -161,6 +161,7 @@ typedef struct player_info
 	unsigned int audio_error_cnt;
 	float audio_bufferlevel; // relative value
 	float video_bufferlevel; // relative value
+	int64_t	bufed_pos;
 }player_info_t;
 
 typedef struct pid_info

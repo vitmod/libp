@@ -380,6 +380,9 @@ static inline int url_support_time_seek(ByteIOContext *s)
 }
 
 
+/*Get Buffered pos*/
+int64_t url_buffed_pos(ByteIOContext *s);
+
 int url_buffering_data(ByteIOContext *s,int size);
 /** @note when opened as read/write, the buffers are only used for
     writing */

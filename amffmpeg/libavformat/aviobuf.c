@@ -479,6 +479,19 @@ int url_buffering_data(ByteIOContext *s,int size)
 	else
 		return -1;
 }
+int64_t url_buffed_pos(ByteIOContext *s)
+{
+	if(!s)
+		return 0;
+	if(s->enabled_lp_buffer)
+		return url_lp_get_buffed_pos(s->opaque);
+	else
+		return s->pos;
+}
+
+
+
+
 int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
 {
     int len, size1;

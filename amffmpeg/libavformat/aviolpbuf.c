@@ -376,6 +376,20 @@ int url_lp_getbuffering_size(URLContext *s,int *forward_data,int *back_data)
 	return (valid_data_can_seek_back+valid_data_can_seek_forward);
 }
 
+
+int64_t url_lp_get_buffed_pos(URLContext *s)
+{
+	url_lpbuf_t *lp;
+	int64_t pos;
+	if(!s || !s->lpbuf)
+			return AVERROR(EINVAL);
+	lp=s->lpbuf;
+	lp_lock(&lp->mutex);
+	pos=lp->pos;
+	lp_unlock(&lp->mutex);
+	return pos;
+}
+
 int url_lp_intelligent_buffering(URLContext *s,int size)
 {
 	int forward_data,back_data;

@@ -752,6 +752,11 @@ static int  update_buffering_states(play_para_t *p_para,
     vlevel = (float)vbuf->data_len / vbuf->size;
     p_para->state.audio_bufferlevel = alevel;
     p_para->state.video_bufferlevel = vlevel;
+	if (p_para->pFormatCtx && p_para->pFormatCtx->pb) {
+        p_para->state.bufed_pos=url_buffed_pos(p_para->pFormatCtx->pb);
+		}
+	else
+		p_para->state.bufed_pos=0;
 	
     if (p_para->astream_info.has_audio && 0)
         log_print("update_buffering_states,alevel=%d,asize=%d,level=%f,status=%d\n",
