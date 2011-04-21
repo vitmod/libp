@@ -102,8 +102,7 @@ typedef  struct {
     int time_point;
     int f_step;
     int read_max_retry_cnt;
-	int audio_ready;	
-	int check_audio_rp_cnt;
+	int audio_ready;		
     int check_lowlevel_eagain_cnt;
 } p_ctrl_info_t;
 

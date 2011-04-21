@@ -916,7 +916,9 @@ int player_decoder_init(play_para_t *p_para)
     }
     p_para->decoder = decoder;
     p_para->check_end.end_count = CHECK_END_COUNT;
-    p_para->playctrl_info.check_audio_rp_cnt = CHECK_AUDIO_HALT_CNT;
+	p_para->check_end.interval = CHECK_END_INTERVAL;	 
+    p_para->abuffer.check_rp_change_cnt = CHECK_AUDIO_HALT_CNT;
+	p_para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;	
 
     if (p_para->astream_info.has_audio && p_para->acodec) {
         p_para->codec = p_para->acodec;

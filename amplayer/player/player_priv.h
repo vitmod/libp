@@ -40,8 +40,9 @@ struct stream_decoder;
 #define RESERVE_AUDIO_SIZE  (64)
 #define MAX_PACKET_SIZE     (2*1024*1024)
 #define FILE_BUFFER_SIZE    (1024*32)//(1024*512)   
-#define CHECK_END_COUNT     (10)
+#define CHECK_END_COUNT     (30)
 #define CHECK_AUDIO_HALT_CNT (50)
+#define CHECK_VIDEO_HALT_CNT (20)
 #define CHECK_END_INTERVAL  (100)   //ms
 #define MAX_TRY_READ_COUNT  (50)
 
@@ -95,7 +96,8 @@ typedef union {
 
 typedef struct{
 	int		data_level;   // real audio data length	    
-	int		buffer_size;
+	int		buffer_size;	
+	int 	check_rp_change_cnt;
 	unsigned int	buffer_rp;
 	unsigned int	rp_is_changed;
 } decbuf_status_t;

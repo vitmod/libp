@@ -683,7 +683,7 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
             log_print("[%s:%d]audio or video low buffer ,close av sync!\n", __FUNCTION__, __LINE__);
             if (!p_para->playctrl_info.loop_flag) {
                 set_black_policy(p_para->playctrl_info.black_out);
-                log_print("[%s]av low buffer,black=%d!\n", __FUNCTION__, p_para->playctrl_info.black_out);
+                log_print("[%s]low buffer, black=%d\n", __FUNCTION__, p_para->playctrl_info.black_out);
             }
         }
     }
@@ -759,37 +759,40 @@ static int  update_buffering_states(play_para_t *p_para,
     if (p_para->vstream_info.has_video && 0)
         log_print("update_buffering_states,vlevel=%d,vsize=%d,level=%f,status=%d\n",
                   vbuf->data_len, vbuf->size, vlevel, get_player_state(p_para));
-    if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
-        if (p_para->astream_info.has_audio && p_para->vstream_info.has_video) {
-            minlevel = MIN(alevel, vlevel);
-            maxlevel = MAX(alevel, vlevel);
-        } else if (p_para->astream_info.has_audio) {
-            minlevel = alevel;
-            maxlevel = alevel;
-        } else {
-            minlevel = vlevel;
-            maxlevel = vlevel;
-        }
 
-        if ((get_player_state(p_para) == PLAYER_RUNNING) &&
-            (minlevel < p_para->buffering_threshhold_min)  &&
-            (maxlevel < p_para->buffering_threshhold_max) &&
-            !p_para->playctrl_info.read_end_flag) {
-            codec_pause(p_para->codec);
-            set_player_state(p_para, PLAYER_BUFFERING);
-            update_player_states(p_para, 1);
-            log_print("enter buffering!!!\n");
-        }
+	if (!p_para->playctrl_info.read_end_flag){
+	    if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
+	        if (p_para->astream_info.has_audio && p_para->vstream_info.has_video) {
+	            minlevel = MIN(alevel, vlevel);
+	            maxlevel = MAX(alevel, vlevel);
+	        } else if (p_para->astream_info.has_audio) {
+	            minlevel = alevel;
+	            maxlevel = alevel;
+	        } else {
+	            minlevel = vlevel;
+	            maxlevel = vlevel;
+	        }
 
-        else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
-                 ((minlevel > p_para->buffering_threshhold_middle)  ||
-                  (maxlevel > p_para->buffering_threshhold_max) ||
-                  p_para->playctrl_info.read_end_flag)) {
-            codec_resume(p_para->codec);
-            set_player_state(p_para, PLAYER_BUFFER_OK);
-            update_player_states(p_para, 1);
-            log_print("leave buffering!!!\n");
-        }
+	        if ((get_player_state(p_para) == PLAYER_RUNNING) &&
+	            (minlevel < p_para->buffering_threshhold_min)  &&
+	            (maxlevel < p_para->buffering_threshhold_max) &&
+	            !p_para->playctrl_info.read_end_flag) {
+	            codec_pause(p_para->codec);
+	            set_player_state(p_para, PLAYER_BUFFERING);
+	            update_player_states(p_para, 1);
+	            log_print("enter buffering!!!\n");
+	        }
+
+	        else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
+	                 ((minlevel > p_para->buffering_threshhold_middle)  ||
+	                  (maxlevel > p_para->buffering_threshhold_max) ||
+	                  p_para->playctrl_info.read_end_flag)) {
+	            codec_resume(p_para->codec);
+	            set_player_state(p_para, PLAYER_BUFFER_OK);
+	            update_player_states(p_para, 1);
+	            log_print("leave buffering!!!\n");
+	        }
+    	}
     }
     return 0;
 }
@@ -831,9 +834,9 @@ static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abu
 {
     if (p_para->vstream_info.has_video && p_para->astream_info.has_audio) {
         if (!p_para->abuffer.rp_is_changed) {
-            p_para->playctrl_info.check_audio_rp_cnt --;
+            p_para->abuffer.check_rp_change_cnt --;
         } else {
-            p_para->playctrl_info.check_audio_rp_cnt = CHECK_AUDIO_HALT_CNT;
+            p_para->abuffer.check_rp_change_cnt = CHECK_AUDIO_HALT_CNT;
             if (!p_para->playctrl_info.avsync_enable) {
                 set_tsync_enable(1);
                 p_para->playctrl_info.avsync_enable = 1;
@@ -841,11 +844,11 @@ static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abu
             }
         }
         if (p_para->playctrl_info.avsync_enable &&
-            p_para->playctrl_info.check_audio_rp_cnt <= 0) {
+            p_para->abuffer.check_rp_change_cnt <= 0) {
             set_tsync_enable(0);
             p_para->playctrl_info.avsync_enable = 0;
             log_print("[%s:%d]arp not alived, disable sync\n", __FUNCTION__, __LINE__);
-            p_para->playctrl_info.check_audio_rp_cnt = CHECK_AUDIO_HALT_CNT;
+            p_para->abuffer.check_rp_change_cnt = CHECK_AUDIO_HALT_CNT;
         }
     }
 }
@@ -886,12 +889,10 @@ int update_playing_info(play_para_t *p_para)
 		p_para->state.pts_video = get_pts_video(p_para);	    
     }
 
-    if (p_para->playctrl_info.read_end_flag && (get_player_state(p_para) != PLAYER_PAUSE)) {
-        check_avbuf_end(p_para, &vbuf, &abuf);
-
-        if (p_para->check_end.interval == 0) {
-            p_para->check_end.interval = CHECK_END_INTERVAL;
-        }
+    if (p_para->playctrl_info.read_end_flag && (get_player_state(p_para) != PLAYER_PAUSE)){
+		
+        check_avbuf_end(p_para, &vbuf, &abuf);       
+		
         check_force_end(p_para, &vbuf, &abuf);
         //update_av_sync_for_audio(p_para, &abuf);
     }
