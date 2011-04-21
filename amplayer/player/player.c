@@ -758,7 +758,7 @@ write_packet:
 
         //wait for play end...
         while (!player->playctrl_info.end_flag) {
-            player_thread_wait(player, 100 * 1000);
+            player_thread_wait(player, 50 * 1000);
 
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {

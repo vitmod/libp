@@ -681,18 +681,28 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
             set_tsync_enable(0);
             p_para->playctrl_info.avsync_enable = 0;
             log_print("[%s:%d]audio or video low buffer ,close av sync!\n", __FUNCTION__, __LINE__);
-            if (!p_para->playctrl_info.loop_flag) {
+        }
+
+		if (p_para->playctrl_info.video_low_buffer && p_para->playctrl_info.audio_low_buffer){
+			if (!p_para->playctrl_info.loop_flag) {
+                set_player_state(p_para, PLAYER_PLAYEND);
+                p_para->state.status = get_player_state(p_para);
+                player_clear_ctrl_flags(&p_para->playctrl_info);
                 set_black_policy(p_para->playctrl_info.black_out);
                 log_print("[%s]low buffer, black=%d\n", __FUNCTION__, p_para->playctrl_info.black_out);
             }
-        }
+		}
     }
 }
 
 static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct buf_status *abuf)
 {
     int check_flag = 0;
-    if (check_time_interrupt(&p_para->check_end.old_time_ms, p_para->check_end.interval)) {
+	//log_print("[%s]vlevel=%.03f alevel=%.03f count=%d\n", __FUNCTION__, p_para->state.video_bufferlevel,p_para->state.audio_bufferlevel, p_para->check_end.end_count);
+    //if (check_time_interrupt(&p_para->check_end.old_time_ms, p_para->check_end.interval)) {
+    if (!p_para->playctrl_info.end_flag && (
+		(p_para->vstream_info.has_video && (p_para->state.video_bufferlevel < 0.04)) ||
+		(p_para->astream_info.has_audio && (p_para->state.audio_bufferlevel < 0.04)))){
         //log_print("v:%d vlen=0x%x a:%d alen=0x%x count=%d, vrp 0x%x, arp 0x%x\n",
         //    p_para->vstream_info.has_video,vbuf->data_len, p_para->astream_info.has_audio,abuf->data_len,p_para->check_end.end_count,vbuf->read_pointer,abuf->read_pointer);
         if (p_para->vstream_info.has_video) {
@@ -700,7 +710,7 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
                 p_para->check_end.end_count = CHECK_END_COUNT;               
             } else {
                 check_flag = 1;
-				log_print("[%s]vrp not move,vrp=vbufrp=0x%x\n", __FUNCTION__, vbuf->read_pointer);
+				log_print("[%s]vrp not move,vrp=vbufrp=0x%x,vlevel=%.03f cnt=%d\n", __FUNCTION__, vbuf->read_pointer,p_para->state.video_bufferlevel, p_para->check_end.end_count);
             }
         }
         if (p_para->astream_info.has_audio) {
@@ -708,12 +718,15 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
                 p_para->check_end.end_count = CHECK_END_COUNT;                
             } else {
                 check_flag = 1;
-				log_print("[%s]arp not move,arp=abufrp=0x%x\n", __FUNCTION__, abuf->read_pointer);
+				log_print("[%s]arp not move,arp=abufrp=0x%x alevel=%.03f cnt=%d\n", __FUNCTION__, abuf->read_pointer, p_para->state.audio_bufferlevel, p_para->check_end.end_count);
             }
         }
 
         if (check_flag) {
-            p_para->check_end.end_count --;
+            p_para->check_end.end_count --;	
+			/*if	(!p_para->playctrl_info.reset_flag){
+				player_thread_wait(p_para, 40 * 1000);	//40ms
+			}*/
             if (p_para->check_end.end_count <= 0) {
                 if (!p_para->playctrl_info.video_end_flag) {
                     p_para->playctrl_info.video_end_flag = 1;
