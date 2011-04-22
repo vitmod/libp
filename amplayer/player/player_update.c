@@ -378,7 +378,7 @@ static unsigned int handle_current_time(play_para_t *para, unsigned int scr, uns
         return 0;
     }
     if (!para->playctrl_info.pts_valid) {
-        if (scr > 0 && (scr - pts) <= PTS_FREQ) { //in tsync_avevent, pts as u32
+        if (scr > 0 && abs(scr - pts) <= PTS_FREQ) { //in tsync_avevent, pts as u32
             para->playctrl_info.pts_valid = 1;
             log_print("[%s:%d]scr=0x%x pts=0x%x diff=0x%x \n", __FUNCTION__, __LINE__, scr, pts, (scr - pts));
         }
@@ -897,12 +897,19 @@ int update_playing_info(play_para_t *p_para)
 
 		update_av_sync_for_audio(p_para, &abuf);
 
-        if (p_para->codec && (p_para->playctrl_info.audio_ready != 1)) {
-            p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
+        if (p_para->astream_info.has_audio 	&& 
+			p_para->codec 					&&
+			(p_para->playctrl_info.audio_ready != 1)) {
+			if (check_audiodsp_fatal_err() == AUDIO_DSP_INIT_ERROR){
+				p_para->playctrl_info.audio_ready = 1;
+	            log_print("[%s]dsp init failed, set audio_ready for time update\n", __FUNCTION__);
+			} else{
+            	p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);			
+			}
             //log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
         }
         if (p_para->playctrl_info.audio_ready == 1) {
-                update_current_time(p_para);
+        	update_current_time(p_para);
         }
 		p_para->state.pts_video = get_pts_video(p_para);	    
     }

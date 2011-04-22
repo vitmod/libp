@@ -56,6 +56,9 @@ struct stream_decoder;
 #define TRICKMODE_I          0x01
 #define TRICKMODE_FFFB       0x02
 
+#define AUDIO_DSP_INIT_ERROR	(0x1)
+#define AUDIO_DSP_FATAL_ERROR	(0x2)
+
 #define UNIT_FREQ   96000
 #define PTS_FREQ    90000
 #define PTS_FREQ_MS 90
