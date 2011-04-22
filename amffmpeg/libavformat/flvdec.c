@@ -118,6 +118,62 @@ static int amf_get_string(ByteIOContext *ioc, char *buffer, int buffsize) {
     return length;
 }
 
+static int parse_keyframes_index(AVFormatContext *s, ByteIOContext *ioc, AVStream *vstream, int64_t max_pos) {
+    unsigned int timeslen = 0, fileposlen = 0, i;
+    char str_val[256];
+    int64_t *times = NULL;
+    int64_t *filepositions = NULL;
+    int ret = 0;
+
+    while (url_ftell(ioc) < max_pos - 2 && amf_get_string(ioc, str_val, sizeof(str_val)) > 0) {
+        int64_t** current_array;
+        unsigned int arraylen;
+
+        // Expect array object in context
+        if (get_byte(ioc) != AMF_DATA_TYPE_ARRAY)
+            break;
+
+        arraylen = get_be32(ioc);
+        if(arraylen>>28)
+            break;
+
+        if       (!strcmp(KEYFRAMES_TIMESTAMP_TAG , str_val) && !times){
+            current_array= &times;
+            timeslen= arraylen;
+        }else if (!strcmp(KEYFRAMES_BYTEOFFSET_TAG, str_val) && !filepositions){
+            current_array= &filepositions;
+            fileposlen= arraylen;
+        }else // unexpected metatag inside keyframes, will not use such metadata for indexing
+            break;
+
+        if (!(*current_array = av_mallocz(sizeof(**current_array) * arraylen))) {
+            ret = AVERROR(ENOMEM);
+            goto finish;
+        }
+
+        for (i = 0; i < arraylen && url_ftell(ioc) < max_pos - 1; i++) {
+            if (get_byte(ioc) != AMF_DATA_TYPE_NUMBER)
+                goto finish;
+            current_array[0][i] = av_int2dbl(get_be64(ioc));
+        }
+    }
+
+    if (timeslen == fileposlen) {
+         for(i = 0; i < timeslen; i++){
+             av_add_index_entry(vstream, filepositions[i], times[i]*1000, 0, 0, AVINDEX_KEYFRAME);
+			/// av_log(s, AV_LOG_WARNING, "Add keyFrame-[%lld,%lld]\n",filepositions[i],times[i]*1000);
+         }
+    } else
+        av_log(s, AV_LOG_WARNING, "Invalid keyframes object, skipping.\n");
+
+finish:
+    av_freep(&times);
+    av_freep(&filepositions);
+    url_fseek(ioc, max_pos, SEEK_SET);
+    return ret;
+}
+
+
 static int amf_parse_object(AVFormatContext *s, AVStream *astream, AVStream *vstream, const char *key, int64_t max_pos, int depth) {
     AVCodecContext *acodec, *vcodec;
     ByteIOContext *ioc;
@@ -141,7 +197,9 @@ static int amf_parse_object(AVFormatContext *s, AVStream *astream, AVStream *vst
             break;
         case AMF_DATA_TYPE_OBJECT: {
             unsigned int keylen;
-
+			if (!strcmp(KEYFRAMES_TAG, key) && depth == 1)
+                if (parse_keyframes_index(s, ioc, vstream, max_pos) < 0)
+                    return -1;
             while(url_ftell(ioc) < max_pos - 2 && (keylen = get_be16(ioc))) {
                 url_fskip(ioc, keylen); //skip key string
                 if(amf_parse_object(s, NULL, NULL, NULL, max_pos, depth + 1) < 0)
@@ -271,7 +329,7 @@ static int flv_read_header(AVFormatContext *s,
 
     offset = get_be32(s->pb);
     url_fseek(s->pb, offset, SEEK_SET);
-
+	url_fskip(s->pb, 4);
     s->start_time = 0;
 
     return 0;
@@ -296,9 +354,9 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
     int64_t dts, pts = AV_NOPTS_VALUE;
     AVStream *st = NULL;
 
- for(;;){
+ for(;;url_fskip(s->pb, 4)){/* size of previous packet */
     pos = url_ftell(s->pb);
-    url_fskip(s->pb, 4); /* size of previous packet */
+     
     type = get_byte(s->pb);
     size = get_be24(s->pb);
     dts = get_be24(s->pb);
@@ -418,7 +476,8 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
                         st->codec->channels, st->codec->sample_rate);
             }
 
-            return AVERROR(EAGAIN);
+           ret=AVERROR(EAGAIN);
+		   goto leave;
         }
     }
 
@@ -440,7 +499,10 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
     if (is_audio || ((flags & FLV_VIDEO_FRAMETYPE_MASK) == FLV_FRAME_KEY))
         pkt->flags |= PKT_FLAG_KEY;
 
-    return ret;
+leave:
+	url_fskip(s->pb, 4);
+	return ret;
+
 }
 
 AVInputFormat flv_demuxer = {
