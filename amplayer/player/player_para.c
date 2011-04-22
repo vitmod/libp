@@ -63,7 +63,7 @@ static void get_av_codec_type(play_para_t *p_para)
                     p_para->vstream_info.video_rate = pFormatCtx->video_avg_frame_time * 96 / 10000;
                 }
 
-                if (!(p_para->vstream_info.extradata[3] & 1)) { // this format is not supported
+                if (pCodecCtx->extradata && !(pCodecCtx->extradata[3] & 1)) { // this format is not supported
                     p_para->vstream_info.has_video = 0;                    
                 }
         	}				
