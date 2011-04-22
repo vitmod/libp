@@ -210,6 +210,7 @@ static void *adec_message_loop(void *args)
             ret = aout_ops->init(audec);
             if (ret) {
                 adec_print("Audio out device init failed!");
+                feeder_release(audec);
                 continue;
             }
             audec->state = INITTED;
