@@ -130,14 +130,25 @@ static int check_decoder_worksta(play_para_t *para)
             } else {
                 if ((vdec.status & 0x20) &&
                     ((vdec.status >> 16) & DECODER_ERROR)) {
-                    log_print("pid[%d]::[%s:%d]find vdec error! curtime=%d lastime=%d \n", para->player_id, __FUNCTION__, __LINE__, para->state.current_time, para->state.last_time);
-                    if (((para->state.current_time - para->state.last_time) >= 1 || (para->state.current_ms == 0)) 
-						&& (!para->playctrl_info.read_end_flag)) {
-                        para->playctrl_info.time_point = para->state.current_time;
+                    //log_print("pid[%d]::[%s:%d]find vdec error! ctime=%d ltime=%d cnt=%d\n", \
+					//		para->player_id, __FUNCTION__, __LINE__, para->state.current_time, para->state.last_time, para->vbuffer.check_rp_change_cnt);
+
+					if (!para->vbuffer.rp_is_changed){
+						para->vbuffer.check_rp_change_cnt --;								
+						player_thread_wait(para, 50 * 1000);
+						
+					}else{
+						para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
+					}
+					if (((para->vbuffer.check_rp_change_cnt <= 0) ||
+						(para->vbuffer.check_rp_change_cnt < CHECK_VIDEO_HALT_CNT && para->playctrl_info.video_low_buffer)) && 
+						((para->state.full_time - para->state.current_time) > 6 )){
+						para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
+						para->playctrl_info.time_point = para->state.current_time;
                         para->playctrl_info.reset_flag = 1;
-                        para->playctrl_info.end_flag = 1;
-                        log_print("pid[%d]:[%s]time=%d ret=%d vdec err, need reset\n", para->player_id, __FUNCTION__, para->playctrl_info.time_point, ret);
-                    }
+                        para->playctrl_info.end_flag = 1;							
+                        log_print("[%s]time=%d cnt=%d vlevel=%.03f vdec err, need reset\n", __FUNCTION__, para->playctrl_info.time_point, para->vbuffer.check_rp_change_cnt, para->state.video_bufferlevel);
+					}                  
                 }
             }
         }
@@ -758,8 +769,10 @@ write_packet:
 
         //wait for play end...
         while (!player->playctrl_info.end_flag) {
-            player_thread_wait(player, 50 * 1000);
+            //player_thread_wait(player, 50 * 1000);
 
+			check_decoder_worksta(player);
+				
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
                 break;
