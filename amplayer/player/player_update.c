@@ -684,6 +684,10 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         }
 
 		if (p_para->playctrl_info.video_low_buffer && p_para->playctrl_info.audio_low_buffer){
+			p_para->playctrl_info.end_flag = 1;           
+            if ((p_para->state.full_time - p_para->state.current_time) < 20) {
+                p_para->state.current_time = p_para->state.full_time;
+            }
 			if (!p_para->playctrl_info.loop_flag) {
                 set_player_state(p_para, PLAYER_PLAYEND);
                 p_para->state.status = get_player_state(p_para);
