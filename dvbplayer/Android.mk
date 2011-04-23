@@ -24,7 +24,7 @@ LOCAL_C_INCLUDES := \
   
 LOCAL_ARM_MODE := arm
 LOCAL_MODULE := libamdvb
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_TAGS := user eng debug
 
 include $(BUILD_STATIC_LIBRARY)
 

@@ -8,7 +8,7 @@ LOCAL_C_INCLUDES :=		\
 	external/zlib
 LOCAL_CFLAGS += $(FFCFLAGS)
 LOCAL_MODULE := $(FFNAME)
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_TAGS := user eng debug
 include $(BUILD_STATIC_LIBRARY)
 # Reset CC as it's overwritten by common.mk
 CC := $(HOST_CC)

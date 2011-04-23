@@ -13,7 +13,7 @@ LOCAL_SRC_FILES := \
            dsp/audiodsp-ctl.c audio_out/android-out.cpp
 
 LOCAL_MODULE := libamadec
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_TAGS := user eng debug
 
 LOCAL_ARM_MODE := arm
 
