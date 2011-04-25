@@ -1102,7 +1102,11 @@ static void asf_build_simple_index(AVFormatContext *s, int stream_index)
             av_log(s, AV_LOG_DEBUG, "pktnum:%d, pktct:%d\n", pktnum, pktct);
             av_add_index_entry(s->streams[stream_index], pos, index_pts, s->packet_size, 0, AVINDEX_KEYFRAME);
         }
-        asf->index_read= 1;
+		
+        //add by X.H. need index more than 1
+		if (ict > 1){
+        	asf->index_read= 1;
+		}
     }
     url_fseek(s->pb, current_pos, SEEK_SET);
 }
