@@ -156,6 +156,8 @@ int64_t av_url_read_seek(URLContext *h, int stream_index,
 #define AVSEEK_SIZE 0x10000
 #define AVSEEK_FULLTIME 0x20000
 #define AVSEEK_TO_TIME 	0x30000
+#define AVSEEK_BUFFERED_TIME 	0x40000
+
 
 
 /*command fomat
@@ -188,6 +190,7 @@ typedef struct URLProtocol {
 	
 	int (*url_getbuflevel)(URLContext *h);
 	int (*url_ioctl)(URLContext *h,int cmd,unsigned long param1,int size);
+	int64_t (*url_exseek)(void *opaque,int64_t offset, int whence);
 } URLProtocol;
 
 #if LIBAVFORMAT_VERSION_MAJOR < 53
@@ -244,6 +247,7 @@ typedef struct {
     int (*read_pause)(void *opaque, int pause);
     int64_t (*read_seek)(void *opaque, int stream_index,
                          int64_t timestamp, int flags);
+	int64_t (*exseek)(void *opaque,int64_t offset, int whence);
 	int64_t file_size;
 } ByteIOContext;
 
@@ -382,6 +386,11 @@ static inline int url_support_time_seek(ByteIOContext *s)
 
 /*Get Buffered pos*/
 int64_t url_buffed_pos(ByteIOContext *s);
+int64_t url_fbuffered_time(ByteIOContext *s);
+
+int64_t url_fseektotime(ByteIOContext *s,int totime_s,int flags);
+
+
 
 int url_buffering_data(ByteIOContext *s,int size);
 /** @note when opened as read/write, the buffers are only used for
