@@ -26,6 +26,7 @@ typedef struct  url_lpbuf{
 
 int url_lpopen(URLContext *s,int size);
 int url_lpfillbuffer(URLContext *s,int size);
+int64_t url_lpexseek(URLContext *s, int64_t offset, int whence); 
 int url_lpread(URLContext *s,unsigned char * buf,int size);
 int64_t url_lpseek(URLContext *s, int64_t offset, int whence);
 int url_lpfree(URLContext *s);

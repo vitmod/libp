@@ -137,20 +137,7 @@ int64_t url_fseek(ByteIOContext *s, int64_t offset, int whence)
         return AVERROR(EINVAL);
 
     pos = s->pos - (s->write_flag ? 0 : (s->buf_end - s->buffer));
-	if(whence == AVSEEK_TO_TIME ){
-		if(s->seek){
-	 		if((offset1=s->seek(s->opaque, offset, AVSEEK_TO_TIME))>=0)
-	 		{
-	 			if (!s->write_flag)
-	            	s->buf_end = s->buffer;
-		        s->buf_ptr = s->buffer;
-		        s->pos = 0;/*I think it is the first,pos now*/
-				s->eof_reached=0;/*clear eof error*/
-				return offset1;
-	 		}
-	 	}
-		return AVERROR(EPIPE);
-	}
+	
     if (whence != SEEK_CUR && whence != SEEK_SET)
         return AVERROR(EINVAL);
 
@@ -213,11 +200,40 @@ int64_t url_ftell(ByteIOContext *s)
 int64_t url_ffulltime(ByteIOContext *s)
 {
 	int64_t size;
-	if (!s->seek)
+	if (!s->exseek)
         return AVERROR(EPIPE);
-	size = s->seek(s->opaque, 0, AVSEEK_FULLTIME);
+	size = s->exseek(s->opaque, 0, AVSEEK_FULLTIME);
 	return size;
 }
+
+int64_t url_fseektotime(ByteIOContext *s,int totime_s,int flags)
+{
+	int64_t offset1;
+	if(s->exseek){
+	 	if((offset1=s->exseek(s->opaque, totime_s, AVSEEK_TO_TIME))>=0)
+	 	{
+ 			if (!s->write_flag)
+            	s->buf_end = s->buffer;
+	        s->buf_ptr = s->buffer;
+	        s->pos = 0;/*I think it is the first,pos now*/
+			s->eof_reached=0;/*clear eof error*/
+			return offset1;
+	 	}
+	}
+	return AVERROR(EPIPE);
+}
+
+int64_t url_fbuffered_time(ByteIOContext *s)
+{
+	int64_t bufferedtime;
+	if (!s->exseek)
+        return AVERROR(EPIPE);
+	bufferedtime = s->exseek(s->opaque,0,AVSEEK_BUFFERED_TIME);
+	return bufferedtime;
+}
+
+
+
 
 int64_t url_fsize(ByteIOContext *s)
 {
@@ -713,6 +729,7 @@ int url_fdopen(ByteIOContext **s, URLContext *h)
 			av_freep(s);
 			return AVERROR(EIO);
 		}
+		(*s)->exseek=url_lpexseek;
 	}
 	else
 	{
