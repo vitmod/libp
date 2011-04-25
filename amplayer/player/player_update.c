@@ -915,7 +915,8 @@ int update_playing_info(play_para_t *p_para)
 			}
             //log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
         }
-        if (p_para->playctrl_info.audio_ready == 1) {
+        if ((p_para->playctrl_info.audio_ready == 1)
+            || (p_para->astream_info.has_audio == 0)){
         	update_current_time(p_para);
         }
 		p_para->state.pts_video = get_pts_video(p_para);	    
