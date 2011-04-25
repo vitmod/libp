@@ -322,23 +322,6 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 {
 	struct list_mgt *mgt = h->priv_data;
 	struct list_item *item,*item1;
-	if (whence == AVSEEK_BUFFERED_TIME)
-	{
-		int64_t buffed_time=0;
-		if(mgt->current_item && mgt->current_item->duration>0){
-			//av_log(NULL, AV_LOG_INFO, "list_seek uui=%ld,size=%lld\n",mgt->cur_uio,url_fsize(mgt->cur_uio));
-			if(mgt->cur_uio && url_fsize(mgt->cur_uio)>0){
-				//av_log(NULL, AV_LOG_INFO, "list_seek start_time=%ld,pos=%lld\n",mgt->current_item->start_time,url_buffed_pos(mgt->cur_uio));
-				buffed_time=mgt->current_item->start_time+url_buffed_pos(mgt->cur_uio)*mgt->current_item->duration/url_fsize(mgt->cur_uio);
-			}
-			else{
-				buffed_time=mgt->current_item->start_time;
-			}
-		}
-		av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
-		return buffed_time;
-	}
-	
 	av_log(NULL, AV_LOG_INFO, "list_seek pos=%lld,whence=%x\n",pos,whence);
 	if (whence == AVSEEK_SIZE)
         return mgt->file_size;
@@ -349,7 +332,6 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 		else
 			return -1;
 	}
-	
 	if(whence == AVSEEK_TO_TIME && pos>=0 && pos<mgt->full_time)
 	{
 		av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x\n",pos,whence);
@@ -400,7 +382,6 @@ URLProtocol file_list_protocol = {
     list_write,
     list_seek,
     list_close,
-    .url_exseek=list_seek,/*same as seek is ok*/ 
     .url_get_file_handle = list_get_handle,
 };
 

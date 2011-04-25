@@ -248,6 +248,27 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 		lp_unlock(&lp->mutex);
 		return offset1;
 	}
+	else if (whence == AVSEEK_FULLTIME)
+	{
+		offset1=s->prot->url_seek(s,0, AVSEEK_FULLTIME);/*clear the lowlevel errors*/
+		lp_unlock(&lp->mutex);
+		return offset1;
+	}
+	else if(whence == AVSEEK_TO_TIME ){
+	 	if(s->prot->url_seek){
+			if((offset1=s->prot->url_seek(s, offset, AVSEEK_TO_TIME))>=0)
+			{
+				lp->rp=lp->buffer;
+				lp->wp=lp->buffer;
+				lp->valid_data_size=0;
+				lp->pos=0;
+				lp_unlock(&lp->mutex);
+				return offset1;
+			}
+	 	}
+		lp_unlock(&lp->mutex);
+		return AVERROR(EPIPE);
+	}
     if (whence != SEEK_CUR && whence != SEEK_SET)
     {
       		lp_unlock(&lp->mutex);
@@ -323,42 +344,6 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 	LP_ASSERT(lp->rp<lp->buffer_end);
 	lp_unlock(&lp->mutex);
 	return offset;
-}
-
-int64_t url_lpexseek(URLContext *s, int64_t offset, int whence)
-{
-	url_lpbuf_t *lp;
-	int64_t ret;
-
-	if(!s || !s->lpbuf || !s->prot->url_exseek)
-		return AVERROR(EINVAL);
-
-	lp=s->lpbuf;
-	lp_lock(&lp->mutex);
-	if (whence == AVSEEK_FULLTIME)
-	{
-		ret=s->prot->url_exseek(s,0, AVSEEK_FULLTIME);/*clear the lowlevel errors*/
-	}
-	else if (whence == AVSEEK_BUFFERED_TIME)
-	{
-		ret=s->prot->url_exseek(s,0, AVSEEK_BUFFERED_TIME);/*clear the lowlevel errors*/
-	}
-	else if(whence == AVSEEK_TO_TIME ){
-	 	if(s->prot->url_exseek){
-			if((ret=s->prot->url_exseek(s, offset, AVSEEK_TO_TIME))>=0)
-			{
-				lp->rp=lp->buffer;
-				lp->wp=lp->buffer;
-				lp->valid_data_size=0;
-				lp->pos=0; 
-				goto seek_end;
-			}
-	 	}
-		ret= AVERROR(EPIPE);
-	}
-seek_end:
-	lp_unlock(&lp->mutex);
-	return ret;
 }
 
 int url_lp_getbuffering_size(URLContext *s,int *forward_data,int *back_data)

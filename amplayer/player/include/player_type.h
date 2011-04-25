@@ -162,7 +162,6 @@ typedef struct player_info
 	float audio_bufferlevel; // relative value
 	float video_bufferlevel; // relative value
 	int64_t	bufed_pos;
-	int	bufed_time;/* Second*/
 }player_info_t;
 
 typedef struct pid_info
