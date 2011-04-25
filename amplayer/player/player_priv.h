@@ -22,6 +22,7 @@
 
 
 struct stream_decoder;
+struct am_packet;
 
 #define  MALLOC(s)      malloc(s)
 #define  FREE(d)        free(d)
@@ -168,6 +169,8 @@ typedef struct play_para {
     float buffering_threshhold_min;
     float buffering_threshhold_middle;
     float buffering_threshhold_max;
+
+    struct am_packet *p_pkt;
 } play_para_t;
 
 typedef struct media_type_t {

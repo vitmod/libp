@@ -377,6 +377,62 @@ int set_file_type(const char *name, pfile_type *ftype, pstream_type *stype)
     log_info("[set_file_type]file_type=%d stream_type=%d\n", *ftype, *stype);
     return PLAYER_SUCCESS;
 }
+
+static int compare_pkt(AVPacket *src, AVPacket *dst)
+{
+    if (dst->pts != AV_NOPTS_VALUE) {
+        if (dst->pts == src->pts) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else if (dst->dts != AV_NOPTS_VALUE) {
+        if (dst->dts == src->dts) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        int compare_size = MIN(src->size, dst->size);
+        compare_size = compare_size > 1024 ? 1024 : compare_size;
+
+        //log_print("dst size %d, src size %d, dst data 0x%x, src data 0x%x\n", 
+        //    dst->size, src->size, dst->data, src->data);
+        if (memcmp(dst->data, src->data, compare_size) == 0) {
+            return 1;
+        } else {
+            //log_print("Packet is different\n");
+            return 0;
+        }
+    }
+}
+
+static int backup_packet(play_para_t *para, AVPacket *src, AVPacket *dst)
+{
+    if (dst->data != NULL) {
+        if (dst->pos >= url_ftell(para->pFormatCtx->pb)) {
+			log_print("[%s:%d]dst->pos >= url_ftell(pb)\n", __FUNCTION__, __LINE__);       
+            return 0;
+        } else {
+            FREE(dst->data);
+        }
+    }
+    
+    dst->data = MALLOC(src->size);
+    if (dst->data == NULL) {
+        log_error("[%s:%d]No memory!\n", __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    dst->pts = src->pts;
+    dst->dts = src->dts;
+    dst->size = src->size;
+    dst->pos = url_ftell(para->pFormatCtx->pb);
+    MEMCPY(dst->data, src->data, src->size);
+
+    return 0;
+}
+
 static int raw_read(play_para_t *para, am_packet_t *pkt)
 {
     int rev_byte = -1;
@@ -567,6 +623,18 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
         }
         if (para->stream_type == STREAM_ES && !para->playctrl_info.read_end_flag) {
             if (has_video && video_idx == pkt->avpkt->stream_index) {
+                if (para->playctrl_info.audio_switch_vmatch) {
+                    if (compare_pkt(pkt->avpkt, &pkt->bak_avpkt) == 0) {
+                        pkt->codec = NULL;
+                        pkt->type = CODEC_UNKNOW;
+                        av_free_packet(pkt->avpkt);
+                        continue;
+                    } else {
+                        //FREE(pkt->bak_avpkt.data);
+                        pkt->bak_avpkt.pos = 0;
+                        para->playctrl_info.audio_switch_vmatch = 0;
+                    }
+                }
                 pkt->codec = para->vcodec;
                 pkt->type = CODEC_VIDEO;
                 para->read_size.vpkt_num ++;
@@ -576,6 +644,18 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
                 para->read_size.apkt_num ++;
             } else if (has_sub && sub_idx == pkt->avpkt->stream_index) {
                 /* here we get the subtitle data, something should to be done */
+                if (para->playctrl_info.audio_switch_smatch) {
+                    if (compare_pkt(pkt->avpkt, &pkt->bak_spkt) == 0) {
+                        pkt->codec = NULL;
+                        pkt->type = CODEC_UNKNOW;
+                        av_free_packet(pkt->avpkt);
+                        continue;
+                    } else {
+                        //FREE(pkt->bak_avpkt.data);
+                        pkt->bak_avpkt.pos = 0;
+                        para->playctrl_info.audio_switch_smatch = 0;
+                    }
+                }
                 para->read_size.spkt_num ++;
                 pkt->type = CODEC_SUBTITLE;
                 pkt->codec = para->scodec;
@@ -913,7 +993,13 @@ int time_search(play_para_t *am_p)
     int stream_index = -1;
     int64_t ret;
     int seek_flags = AVSEEK_FLAG_BACKWARD;
-    int sample_size;	
+	int sample_size;
+
+    /* If swith audio, then use audio stream index */
+    if (am_p->playctrl_info.audio_switch_flag) {
+        seek_flags = 0;
+    }
+    
     temp = (unsigned int)(s->duration / AV_TIME_BASE);
     log_info("[time_search:%d]time_point =%d temp=%d duration= %lld\n", __LINE__, time_point, temp, s->duration);
     /* if seeking requested, we execute it */
@@ -1077,7 +1163,12 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                     para->playctrl_info.check_lowlevel_eagain_cnt = 0;
                     para->playctrl_info.reset_flag = 1;
                     para->playctrl_info.end_flag = 1;
-                    para->playctrl_info.time_point = para->state.pts_video / PTS_FREQ;
+                    if (para->state.start_time != -1) {
+                        para->playctrl_info.time_point = (para->state.pts_video - para->state.start_time)/ PTS_FREQ;
+                    } else {
+                        para->playctrl_info.time_point = para->state.pts_video/ PTS_FREQ;
+                    }
+                    
                     log_print("$$$$$$[type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
                 }				
                 pkt->data += len;
@@ -1495,6 +1586,14 @@ void av_packet_release(am_packet_t *pkt)
         FREE(pkt->hdr);
         pkt->hdr = NULL;
     }
+    if (pkt->bak_avpkt.data != NULL) {
+        FREE(pkt->bak_avpkt.data);
+        pkt->bak_avpkt.data = NULL;
+    }
+    if (pkt->bak_spkt.data != NULL) {
+        FREE(pkt->bak_spkt.data);
+        pkt->bak_spkt.data = NULL;
+    }
     pkt->codec = NULL;
 }
 
@@ -1720,8 +1819,10 @@ void player_switch_audio(play_para_t *para)
 
     para->astream_info.audio_format = audio_type_convert(pCodecCtx->codec_id, para->file_type);
     if (para->astream_info.audio_format < 0 || para->astream_info.audio_format >= AFORMAT_MAX) {
-        log_error("[%s:%d]unkown audio format\n", __FUNCTION__, __LINE__);
-        para->astream_info.has_audio = 0;
+        log_error("[%s:%d]unkown audio format id 0x%x\n", __FUNCTION__, __LINE__, pCodecCtx->codec_id);
+        //para->astream_info.has_audio = 0;
+        set_player_error_no(para, PLAYER_UNSUPPORT_AUDIO);
+        update_player_states(para, 1);
         return;
     }
 	
@@ -1733,6 +1834,7 @@ void player_switch_audio(play_para_t *para)
     para->astream_info.audio_channel = pCodecCtx->channels;
     para->astream_info.audio_samplerate = pCodecCtx->sample_rate;
     para->astream_info.audio_index = audio_index;
+    para->astream_info.audio_pid = pstream->id;
 	
     if (!para->playctrl_info.raw_mode
         && para->astream_info.audio_format == AFORMAT_AAC) {
@@ -1742,19 +1844,29 @@ void player_switch_audio(play_para_t *para)
             return;
         }
     }
-	
-	/***************************************************************
-	 * for aac switch time too long, change switch audio to do reset
-	 **************************************************************/
-	para->astream_info.audio_index = audio_index;
-    para->astream_info.audio_pid = pstream->id;
-	para->playctrl_info.reset_flag = 1;
-	para->playctrl_info.end_flag = 1;
-	para->playctrl_info.time_point = para->state.current_time;	
-	log_print("[%s]reset decoder!curtime=%d\n", __FUNCTION__, para->playctrl_info.time_point);
-	return ;
-	
-#if 0		
+
+    if (para->playctrl_info.raw_mode 
+        && para->astream_info.audio_format == AFORMAT_PCM_BLURAY) {
+    	para->playctrl_info.reset_flag = 1;
+	    para->playctrl_info.end_flag = 1;
+	    para->playctrl_info.time_point = para->state.current_time;
+        return;
+    }
+
+    /* automute */
+    codec_audio_automute(pcodec->adec_priv, 1);
+
+    /* close audio */
+    codec_close_audio(pcodec);
+
+    /* first set an invalid audio id */
+    pcodec->audio_pid = 0xffff;
+    //para->astream_info.audio_index = -1;
+    if (codec_set_audio_pid(pcodec)) {
+        log_print("[%s:%d]set invalid audio pid failed\n", __FUNCTION__, __LINE__);
+        return;
+    }
+		
     /* reinit audio info */
     pcodec->has_audio = 1;
     pcodec->audio_type = para->astream_info.audio_format;
@@ -1780,20 +1892,6 @@ void player_switch_audio(play_para_t *para)
 			log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, pcodec->audio_type,\
 						pcodec->audio_info.sample_rate, pcodec->audio_info.channels,pcodec->audio_info.extradata_size);
         }
-
-		/* automute */
-    codec_audio_automute(pcodec->adec_priv, 1);
-
-    /* close audio */
-    codec_close_audio(pcodec);
-
-    /* first set an invalid audio id */
-    pcodec->audio_pid = 0xffff;
-    para->astream_info.audio_index = -1;
-    if (codec_set_audio_pid(pcodec)) {
-        log_print("[%s:%d]set invalid audio pid failed\n", __FUNCTION__, __LINE__);
-        return;
-    }
 	
     if (codec_audio_reinit(pcodec)) {
         log_print("[%s:%d]audio reinit failed\n", __FUNCTION__, __LINE__);
@@ -1806,12 +1904,104 @@ void player_switch_audio(play_para_t *para)
         return;
     }
 
+    /* backup next video packet and time search if it is ES */
+    if (para->stream_type == STREAM_ES && para->vstream_info.has_video) {
+        AVPacket *avPkt = para->p_pkt->avpkt;
+        int end_flag = para->playctrl_info.read_end_flag;
+
+		log_print("[%s:%d]vidx=%d sidx=%d\n", __FUNCTION__, __LINE__, para->vstream_info.video_index, para->sstream_info.sub_index);
+
+        para->playctrl_info.audio_switch_vmatch = 0;
+        para->playctrl_info.audio_switch_smatch = 0;
+        
+        /* find the next video packet and save it */
+        while (!para->playctrl_info.read_end_flag) {
+            ret = av_read_frame(para->pFormatCtx, avPkt);
+			log_print("[%s:%d]av_read_frame return (%d) idx=%d, vmatch %d, smatch %d\n", 
+               __FUNCTION__, __LINE__, ret, avPkt->stream_index, 
+               para->playctrl_info.audio_switch_vmatch, para->playctrl_info.audio_switch_smatch);
+            if (ret < 0) {
+                if (AVERROR(EAGAIN) != ret) {
+                    /*if the return is EAGAIN,we need to try more times*/
+                    log_error("[%s:%d]av_read_frame return (%d)\n", __FUNCTION__, __LINE__, ret);
+
+                    if (AVERROR_EOF != ret) {
+                        return;
+                    } else {
+                        para->playctrl_info.read_end_flag = 1;
+                        log_print("player_switch_audio: read end!\n");
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else { //read success
+                if (avPkt->size >= MAX_PACKET_SIZE) {
+                    log_print("non_raw_read error:packet size exceed malloc memory! size %d\n", avPkt->size);
+                    return;
+                }
+
+                if ((!para->playctrl_info.audio_switch_vmatch)
+                    && (avPkt->stream_index == para->vstream_info.video_index)){
+                    /* back up this packet */
+                    AVPacket *bakpkt = &para->p_pkt->bak_avpkt;
+
+                    if (backup_packet(para, avPkt, bakpkt) == 0) {
+                        av_free_packet(avPkt);
+                        para->playctrl_info.audio_switch_vmatch = 1;
+                        if (para->sstream_info.has_sub && (!para->playctrl_info.audio_switch_smatch)) {
+                            log_print("[%s:%d]Backup video, to backup sub\n", __FUNCTION__, __LINE__);
+                            continue;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        av_free_packet(avPkt);
+                        return;
+                    }
+                } else if ((para->sstream_info.has_sub) 
+                    && (!para->playctrl_info.audio_switch_smatch)
+                    && (avPkt->stream_index == para->sstream_info.sub_index)){
+                    AVPacket *bakpkt = &para->p_pkt->bak_spkt;
+                    
+                    if (backup_packet(para, avPkt, bakpkt) == 0) {
+                        av_free_packet(avPkt);
+                        para->playctrl_info.audio_switch_smatch = 1;
+                        if (!para->playctrl_info.audio_switch_vmatch) {
+                            log_print("[%s:%d]Backup sub, to backup video\n", __FUNCTION__, __LINE__);
+                            continue;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        av_free_packet(avPkt);
+                        return;
+                    }
+                } else {
+                    av_free_packet(avPkt);
+                    continue;
+                }
+            }
+        }
+
+		log_print("[%s:%d]finish bakup packet,do seek\n", __FUNCTION__, __LINE__);
+
+        /* time search based on audio */
+        para->playctrl_info.time_point = para->state.current_time;
+        ret = time_search(para);
+        if (ret != PLAYER_SUCCESS) {
+            log_error("[%s:%d]time_search to pos:%ds failed!", __FUNCTION__, __LINE__, para->playctrl_info.time_point);
+        } 
+
+        para->playctrl_info.read_end_flag = end_flag;
+    }
+
     /* resume audio */
     codec_resume_audio(pcodec, para->astream_info.resume_audio);
 
     /* unmute*/
     codec_audio_automute(pcodec->adec_priv, 0);
-#endif
+
     return;
 }
 void player_switch_sub(play_para_t *para)
@@ -1901,6 +2091,8 @@ void av_packet_init(am_packet_t *pkt)
     pkt->buf_size = 0;
     pkt->data   = NULL;
     pkt->data_size  = 0;
+    MEMSET(&pkt->bak_avpkt, 0, sizeof(AVPacket));
+    MEMSET(&pkt->bak_spkt, 0, sizeof(AVPacket));
 }
 
 static void av_packet_reset(am_packet_t *pkt)
@@ -1936,17 +2128,23 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 #define AUDIO_RESERVED_SPACE	(0x2000)	// 8k
 	int vbuf_enough = 1;
 	int abuf_enough = 1;
+    int ret = 1;
+    float high_limit = (para->buffering_threshhold_max > 0) ? para->buffering_threshhold_max : 0.8; 
 
+    log_print("check_avbuffer_enough audio_bufferlevel %f, buffering_threshhold_max %f\n",
+        para->state.audio_bufferlevel, high_limit);
 	if(pkt->type == CODEC_COMPLEX){
 		if (para->vstream_info.has_video &&
-			(para->state.video_bufferlevel >= para->buffering_threshhold_max)){			
+			(para->state.video_bufferlevel >= high_limit)){			
 				vbuf_enough = 0;					
 		}
 
 		if (para->astream_info.has_audio &&
-			(para->state.audio_bufferlevel >= para->buffering_threshhold_max)){			
+			(para->state.audio_bufferlevel >= high_limit)){			
 				abuf_enough = 0;				
 		}
+
+        ret = vbuf_enough || abuf_enough;
 	}else if(pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO){	
 		/*if(pkt->type == CODEC_VIDEO)
 			log_print("[%s]type:%d data=%x size=%x total=%x\n", __FUNCTION__, pkt->type, para->vbuffer.data_level,pkt->data_size,para->vbuffer.buffer_size);
@@ -1962,10 +2160,12 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 			((para->abuffer.data_level + pkt->data_size) >= (para->abuffer.buffer_size - AUDIO_RESERVED_SPACE))){			
 				abuf_enough = 0;			
 		}
+
+        ret = vbuf_enough && abuf_enough;
 	}
 	/*if(!abuf_enough)
 		log_print("[%s]abuf not enough!\n", __FUNCTION__);
 	if(!vbuf_enough)
 		log_print("[%s]vbuf not enough!\n", __FUNCTION__);*/
-	return (vbuf_enough && abuf_enough);
+	return ret;
 }

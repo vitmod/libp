@@ -30,6 +30,8 @@ typedef struct am_packet {
     int buf_size;
     hdr_buf_t *hdr;
     codec_para_t *codec;
+    AVPacket bak_avpkt;
+    AVPacket bak_spkt;
 } am_packet_t;
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type);

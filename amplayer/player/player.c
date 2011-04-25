@@ -517,6 +517,7 @@ void *player_thread(play_para_t *player)
 
     pkt->avpkt = &avpkt;
     av_init_packet(pkt->avpkt);	
+    player->p_pkt = pkt;
 	
     player_thread_wait(player, 100 * 1000);    //wait pid send finish
     set_player_state(player, PLAYER_INITING);

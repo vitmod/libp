@@ -96,6 +96,8 @@ typedef  struct {
 	#ifdef DEBUG_VARIABLE_DUR
 	unsigned int info_variable:1;
 	#endif
+    unsigned int audio_switch_vmatch:1;
+    unsigned int audio_switch_smatch:1;
     unsigned int switch_audio_id;
     unsigned int switch_sub_id;
     unsigned int is_playlist;	
