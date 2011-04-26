@@ -584,7 +584,10 @@ static void update_current_time(play_para_t *p_para)
         log_debug("[update_current_time:%d]time=%d discontinue=%d\n", __LINE__, time / PTS_FREQ, p_para->discontinue_point);
         if ((time / PTS_FREQ) < p_para->discontinue_point && p_para->discontinue_point > 0) {
             //log_print("[update_current_time:%d]time=%d discontinue_point=%d\n", __LINE__, time / PTS_FREQ, p_para->discontinue_point);
-            if (url_support_time_seek(p_para->pFormatCtx->pb) && (time / PTS_FREQ > 0) && (!p_para->discontinue_flag)) {
+	            if (p_para->pFormatCtx && p_para->pFormatCtx->pb && 
+					url_support_time_seek(p_para->pFormatCtx->pb) && 
+					(time / PTS_FREQ > 0) && 
+					(!p_para->discontinue_flag)) {
                 p_para->discontinue_point = p_para->discontinue_point - time / PTS_FREQ;
                 p_para->discontinue_flag = 1;
                 log_print("[update_current_time:%d]url_support_time_seek:discontinue_point=%d\n", __LINE__, p_para->discontinue_point);
@@ -785,7 +788,7 @@ static int  update_buffering_states(play_para_t *p_para,
         log_print("update_buffering_states,vlevel=%d,vsize=%d,level=%f,status=%d\n",
                   vbuf->data_len, vbuf->size, vlevel, get_player_state(p_para));
 
-	if (!p_para->playctrl_info.read_end_flag){
+	//if (!p_para->playctrl_info.read_end_flag){
 	    if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
 	        if (p_para->astream_info.has_audio && p_para->vstream_info.has_video) {
 	            minlevel = MIN(alevel, vlevel);
