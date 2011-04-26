@@ -821,7 +821,7 @@ static int  update_buffering_states(play_para_t *p_para,
 	            log_print("leave buffering!!!\n");
 	        }
     	}
-    }
+    //}
     return 0;
 }
 
@@ -860,7 +860,9 @@ static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, s
 
 static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abuf)
 {
-    if (p_para->vstream_info.has_video && p_para->astream_info.has_audio) {
+    if (p_para->playctrl_info.audio_ready && 
+		p_para->vstream_info.has_video && 
+		p_para->astream_info.has_audio) {
         if (!p_para->abuffer.rp_is_changed) {
             p_para->abuffer.check_rp_change_cnt --;
         } else {
