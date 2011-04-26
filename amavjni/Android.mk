@@ -18,7 +18,7 @@ LOCAL_SHARED_LIBRARIES += libandroid_runtime   libnativehelper
 LOCAL_SHARED_LIBRARIES += libamplayer
 
 LOCAL_MODULE := libamavjni
-LOCAL_MODULE_TAGS := user eng debug
+LOCAL_MODULE_TAGS := optional
 LOCAL_ARM_MODE := arm
 LOCAL_PRELINK_MODULE := false
 include $(BUILD_SHARED_LIBRARY)
