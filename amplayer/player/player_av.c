@@ -178,8 +178,8 @@ vformat_t video_type_convert(enum CodecID id)
 
     case CODEC_ID_VC1:
     case CODEC_ID_WMV3:
-    case CODEC_ID_WMV1:           //not support
-    case CODEC_ID_WMV2:           //not support
+    //case CODEC_ID_WMV1:           //not support
+   // case CODEC_ID_WMV2:           //not support
         format = VFORMAT_VC1;
         break;
 
@@ -188,8 +188,8 @@ vformat_t video_type_convert(enum CodecID id)
         break;
 
     default:
-        format = -1;
-        log_print("video_type_convert failed:video codec_id=0x%x\n", id);
+        format = VFORMAT_UNSUPPORT;
+        log_print("video_type_convert failed:unsupport video,codec_id=0x%x\n", id);
     }
     log_print("[video_type_convert]video codec_id=0x%x format=%d\n", id, format);
     return format;
