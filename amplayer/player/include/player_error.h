@@ -39,6 +39,7 @@
 #define PLAYER_NO_AUDIO         (-(P_PRE|0x45))
 #define PLAYER_SET_NOVIDEO      (-(P_PRE|0x46))
 #define PLAYER_SET_NOAUDIO      (-(P_PRE|0x47))
+#define PLAYER_FFFB_UNSUPPORT   (-(P_PRE|0x48))
 
 #define FFMPEG_SUCCESS          (0)
 #define FFMPEG_OPEN_FAILED      (-(F_PRE|0x1))
