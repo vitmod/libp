@@ -731,9 +731,9 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
 
         if (check_flag) {
             p_para->check_end.end_count --;	
-			/*if	(!p_para->playctrl_info.reset_flag){
+			if	(!p_para->playctrl_info.reset_flag){
 				player_thread_wait(p_para, 40 * 1000);	//40ms
-			}*/
+			}
             if (p_para->check_end.end_count <= 0) {
                 if (!p_para->playctrl_info.video_end_flag) {
                     p_para->playctrl_info.video_end_flag = 1;
