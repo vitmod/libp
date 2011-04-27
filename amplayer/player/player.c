@@ -228,27 +228,37 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
     } else if (msg->ctrl_cmd & CMD_RESUME) {
         para->playctrl_info.pause_flag = 0;
     } else if (msg->ctrl_cmd & CMD_FF) {
-        para->playctrl_info.init_ff_fr = 0;
-        if (msg->param == 0) {
-            para->playctrl_info.f_step = 0;
-        } else {
-            para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
-            para->playctrl_info.fast_forward = 1;
-            para->playctrl_info.fast_backward = 0;
-			para->playctrl_info.pause_flag = 0;
-			set_player_state(para, PLAYER_RUNNING);
-        }
+    	if (para->vstream_info.has_video){
+	        para->playctrl_info.init_ff_fr = 0;
+	        if (msg->param == 0) {
+	            para->playctrl_info.f_step = 0;
+	        } else {
+	            para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
+	            para->playctrl_info.fast_forward = 1;
+	            para->playctrl_info.fast_backward = 0;
+				para->playctrl_info.pause_flag = 0;
+				set_player_state(para, PLAYER_RUNNING);
+	        }
+    	} else{
+    		log_error("pid[%d]::no video, can't support ff!\n", para->player_id);
+			set_player_error_no(para, PLAYER_FFFB_UNSUPPORT);
+    	}
     } else if (msg->ctrl_cmd & CMD_FB) {
-        para->playctrl_info.init_ff_fr = 0;
-        if (msg->param == 0) {
-            para->playctrl_info.f_step = 0;
-        } else {
-            para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
-            para->playctrl_info.fast_backward = 1;
-            para->playctrl_info.fast_forward = 0;
-			para->playctrl_info.pause_flag = 0;
-			set_player_state(para, PLAYER_RUNNING);
-        }
+    	if (para->vstream_info.has_video){
+	        para->playctrl_info.init_ff_fr = 0;
+	        if (msg->param == 0) {
+	            para->playctrl_info.f_step = 0;
+	        } else {
+	            para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
+	            para->playctrl_info.fast_backward = 1;
+	            para->playctrl_info.fast_forward = 0;
+				para->playctrl_info.pause_flag = 0;
+				set_player_state(para, PLAYER_RUNNING);
+	        }
+    	} else{
+    		log_error("pid[%d]::no video, can't support fb!\n", para->player_id);
+			set_player_error_no(para, PLAYER_FFFB_UNSUPPORT);
+    	}
     } else if (msg->ctrl_cmd & CMD_SWITCH_AID) {
         para->playctrl_info.audio_switch_flag = 1;
         para->playctrl_info.switch_audio_id = msg->param;
