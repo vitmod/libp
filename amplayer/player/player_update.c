@@ -536,7 +536,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 static void update_current_time(play_para_t *p_para)
 {
 	#define REFRESH_CURTIME_INTERVAL    (100)
-    unsigned int time = 0;
+    unsigned int time = p_para->state.current_time;
 	if (check_time_interrupt(&p_para->state.curtime_old_time, REFRESH_CURTIME_INTERVAL) || 
 		!p_para->playctrl_info.pts_valid) {
     if (p_para->playctrl_info.f_step > 0) {
@@ -598,6 +598,9 @@ static void update_current_time(play_para_t *p_para)
         p_para->state.current_ms = time / PTS_FREQ_MS;
         p_para->state.current_pts = time;
         time /= PTS_FREQ;
+    } else{
+    	time = p_para->state.full_time;
+        log_print("[update_current_time:%d]play end, curtime: %d\n", __LINE__, time);
     }
 
     if (p_para->state.current_time > p_para->state.last_time) {
