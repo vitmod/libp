@@ -252,7 +252,7 @@ static int mpegps_read_pes_header(AVFormatContext *s,
         last_sync = url_ftell(s->pb);
     //printf("startcode=%x pos=0x%"PRIx64"\n", startcode, url_ftell(s->pb));
     if (startcode < 0){
-        if(url_feof(s->pb))
+        if(url_feof(s->pb) || (s->valid_offset > 0 && last_sync > s->valid_offset))
             return AVERROR_EOF;
         //FIXME we should remember header_state
         return AVERROR(EAGAIN);
