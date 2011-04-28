@@ -1844,7 +1844,7 @@ void player_switch_audio(play_para_t *para)
             return;
         }
     }
-
+/*
     if (para->playctrl_info.raw_mode 
         && para->astream_info.audio_format == AFORMAT_PCM_BLURAY) {
     	para->playctrl_info.reset_flag = 1;
@@ -1852,7 +1852,7 @@ void player_switch_audio(play_para_t *para)
 	    para->playctrl_info.time_point = para->state.current_time;
         return;
     }
-
+*/
     /* automute */
     codec_audio_automute(pcodec->adec_priv, 1);
 
