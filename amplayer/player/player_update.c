@@ -824,6 +824,8 @@ static int  update_buffering_states(play_para_t *p_para,
 	            set_player_state(p_para, PLAYER_BUFFER_OK);
 	            update_player_states(p_para, 1);
 	            log_print("leave buffering!!!\n");
+				set_player_state(p_para, PLAYER_RUNNING);
+	            update_player_states(p_para, 1);
 	        }
     	}
     //}
