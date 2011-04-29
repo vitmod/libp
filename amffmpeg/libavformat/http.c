@@ -355,9 +355,9 @@ retry:
 
             for(;;) {
                 do {
-                    if (http_get_line(s, line, sizeof(line)) < 0)
+                     if ((len=http_get_line(s, line, sizeof(line))) < 0)
                     	{
-			   goto errors;
+			   					return len;
                     	}
                 } while (!*line);    /* skip CR LF from last chunk */
                 s->chunksize = strtoll(line, NULL, 16);
