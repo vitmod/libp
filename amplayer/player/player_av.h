@@ -24,6 +24,7 @@ typedef struct am_packet {
     AVPacket *avpkt;
     int avpkt_isvalid;
     int avpkt_newflag;
+	int pts_checkin_ok;
     unsigned char *data;
     unsigned char *buf;
     int data_size;

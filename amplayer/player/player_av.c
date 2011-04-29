@@ -380,13 +380,13 @@ int set_file_type(const char *name, pfile_type *ftype, pstream_type *stype)
 
 static int compare_pkt(AVPacket *src, AVPacket *dst)
 {
-    if (dst->pts != AV_NOPTS_VALUE) {
+    if (dst->pts != (int64_t)AV_NOPTS_VALUE) {
         if (dst->pts == src->pts) {
             return 1;
         } else {
             return 0;
         }
-    } else if (dst->dts != AV_NOPTS_VALUE) {
+    } else if (dst->dts != (int64_t)AV_NOPTS_VALUE) {
         if (dst->dts == src->dts) {
             return 1;
         } else {
@@ -625,8 +625,6 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
             if (has_video && video_idx == pkt->avpkt->stream_index) {
                 if (para->playctrl_info.audio_switch_vmatch) {
                     if (compare_pkt(pkt->avpkt, &pkt->bak_avpkt) == 0) {
-                        pkt->codec = NULL;
-                        pkt->type = CODEC_UNKNOW;
                         av_free_packet(pkt->avpkt);
                         continue;
                     } else {
@@ -685,6 +683,7 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
 #endif
             pkt->avpkt_newflag = 1;
             pkt->avpkt_isvalid = 1;
+			pkt->pts_checkin_ok = 0;
             //log_print("[%s:%d]read finish-data_size=%d!\r",__FUNCTION__, __LINE__,pkt->data_size);
         }
         break;
@@ -733,7 +732,9 @@ static int write_header(play_para_t *para, am_packet_t *pkt)
                     log_print("ERROR:write header failed!\n");
                     return PLAYER_WR_FAILED;
                 } else {
-                    continue;
+                	log_print("[write_header]need write again\n");
+                    //continue;
+                    return PLAYER_WR_AGAIN;
                 }
             } else {
 #if DUMP_WRITE
@@ -1114,15 +1115,22 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
     if (pkt->avpkt_newflag) {
         if (pkt->type != CODEC_SUBTITLE) {
             if (pkt->avpkt_isvalid) {
-                ret = check_in_pts(para, pkt);
-                if (ret != PLAYER_SUCCESS) {
-                    log_error("check in pts failed\n");
-                    return PLAYER_WR_FAILED;
-                }
+				if (!pkt->pts_checkin_ok) {
+	                ret = check_in_pts(para, pkt);
+	                if (ret != PLAYER_SUCCESS) {
+	                    log_error("check in pts failed\n");
+	                    return PLAYER_WR_FAILED;
+	                }
+					pkt->pts_checkin_ok = 1;
+				}
             }
-            if (write_header(para, pkt) == PLAYER_WR_FAILED) {
+
+			ret = write_header(para, pkt);
+            if (ret == PLAYER_WR_FAILED) {
                 log_error("[%s]write header failed!\n", __FUNCTION__);
                 return PLAYER_WR_FAILED;
+            } else if (ret == PLAYER_WR_AGAIN){
+            	return PLAYER_SUCCESS;
             }
         } else {
             process_es_subtitle(para, pkt);
