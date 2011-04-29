@@ -291,7 +291,7 @@ int check_flag(play_para_t *p_para)
     AVCodecContext *pCodec;
     int find_subtitle_index = 0;
     unsigned int i = 0;
-    int subtitle_curr = av_get_subtitle_curr();
+    int subtitle_curr = 0;
 
     msg = get_message(p_para);  //msg: pause, resume, timesearch,add file, rm file, move up, move down,...
     if (msg) {
@@ -367,6 +367,9 @@ int check_flag(play_para_t *p_para)
         return NONO_FLAG;
     }
 
+	if (p_para->sstream_info.has_sub){
+		subtitle_curr = av_get_subtitle_curr();
+	}
     if (subtitle_curr >= 0 && subtitle_curr < p_para->sstream_num && \
         subtitle_curr != p_para->sstream_info.cur_subindex) {
         log_print("start change subtitle from %d to %d \n", p_para->sstream_info.cur_subindex, subtitle_curr);

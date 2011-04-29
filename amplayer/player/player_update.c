@@ -673,7 +673,9 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
 
     if ((p_para->astream_info.has_audio && abuf->data_len < RESERVE_AUDIO_SIZE) ||
         (!p_para->astream_info.has_audio)) {
-        log_print("[%s:%d]abuf=0x%x	(limit=0x%x) audio_low_buffer\n", __FUNCTION__, __LINE__, abuf->data_len, RESERVE_AUDIO_SIZE);
+        if (p_para->astream_info.has_audio){
+        	log_print("[%s:%d]abuf=0x%x	(limit=0x%x) audio_low_buffer\n", __FUNCTION__, __LINE__, abuf->data_len, RESERVE_AUDIO_SIZE);
+        }
         p_para->playctrl_info.audio_low_buffer = 1;
     }
     //log_print("[%s:%d]abuf=0x%x   vbuf=0x%x\n", __FUNCTION__, __LINE__, abuf->data_len, abuf->data_len);
