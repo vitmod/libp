@@ -20,6 +20,7 @@
 
 #define PLAYER_WR_FAILED        (-(P_PRE|0x21))
 #define PLAYER_WR_EMPTYP        (-(P_PRE|0x22))
+#define PLAYER_WR_AGAIN			(-(P_PRE|0x23))
 #define PLAYER_WR_FINISH        (P_PRE|0x1)
 
 #define PLAYER_PTS_ERROR        (-(P_PRE|0x31))
