@@ -240,6 +240,7 @@ typedef struct {
     int enabled_lp_buffer;
     int lp_buffer_size;
     int max_packet_size;
+	char *reallocation;
     unsigned long checksum;
     unsigned char *checksum_ptr;
     unsigned long (*update_checksum)(unsigned long checksum, const uint8_t *buf, unsigned int size);

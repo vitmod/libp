@@ -59,6 +59,7 @@ typedef struct list_item
 typedef struct list_mgt
 {
 	char *filename;
+	char *location;
 	int flags;
 	lock_t mutex;
 	struct list_item *item_list;

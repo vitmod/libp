@@ -274,7 +274,7 @@ int64_t url_fsize2(ByteIOContext *s)
         return AVERROR(EPIPE);
 	
     size = s->seek(s->opaque, 0, AVSEEK_SIZE);
-	av_log(NULL, AV_LOG_INFO, "[%s:%d]size=0x%llx (%lld)\n",__FUNCTION__,__LINE__,size,size);
+	///av_log(NULL, AV_LOG_INFO, "[%s:%d]size=0x%llx (%lld)\n",__FUNCTION__,__LINE__,size,size);
     if(size<0){
         if ((size = s->seek(s->opaque, -1, SEEK_END)) < 0)
         {
@@ -745,6 +745,7 @@ int url_fdopen(ByteIOContext **s, URLContext *h)
     (*s)->is_streamed = h->is_streamed;
 	(*s)->is_slowmedia = h->is_slowmedia;
 	(*s)->support_time_seek = h->support_time_seek;
+	(*s)->reallocation=h->location;
     (*s)->max_packet_size = max_packet_size;
     if(h->prot) {
         (*s)->read_pause = (int (*)(void *, int))h->prot->url_read_pause;

@@ -44,6 +44,7 @@
 #define EXT_X_DISCONTINUITY		"#EXT-X-DISCONTINUITY"
 
 #define is_TAG(l,tag)	(!strncmp(l,tag,strlen(tag)))
+#define is_NET_URL(url)		(!strncmp(url,"http://",7) || !strncmp(url,"shttp://",8))
 
 struct m3u_info{
 	int duration;
@@ -123,14 +124,18 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
  	char prefix[1024]="";
 	int prefix_len=0;
 	int start_time=mgt->full_time;
-
+	char *oprefix=mgt->location!=NULL?mgt->location:mgt->filename;
 	
-	if(mgt->filename){
+	
+	if(oprefix){
 		char *tail;
-		tail=strrchr(mgt->filename,'/');
+		if(is_NET_URL(oprefix))
+			tail=strchr(oprefix+9,'/');/*skip Http:// and shttp:*/
+		else
+			tail=strchr(oprefix,'/');
 		if(tail!=NULL){
-			prefix_len=tail-mgt->filename;
-			memcpy(prefix,mgt->filename,prefix_len);
+			prefix_len=tail-oprefix;
+			memcpy(prefix,oprefix,prefix_len);
 			prefix[prefix_len]='\0';
 		}
 	}
@@ -146,8 +151,8 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			tmpitem.start_time=start_time;
 			start_time+=tmpitem.duration;
 			if(tmpitem.file && 
-				((!strncmp(prefix,"http",4) || !strncmp(prefix,"shttp",5)) && 
-				(strncmp(tmpitem.file,"http",4)!=0) ))
+				(is_NET_URL(prefix)) && /*net protocal*/
+				!(is_NET_URL(tmpitem.file)))/*if item is not net protocal*/
 			{/*if m3u is http,item is not http,add prefix*/
 				need_prefix=1;
 				size_file+=prefix_len;

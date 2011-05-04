@@ -144,6 +144,7 @@ static int list_open_internet(ByteIOContext **pbio,struct list_mgt *mgt,const ch
 		{
 			return AVERROR(EIO); 
 		}
+	mgt->location=bio->reallocation;
 	demux=probe_demux(bio,filename);
 	if(!demux)
 	{
