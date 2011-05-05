@@ -80,10 +80,10 @@ static void get_av_codec_type(play_para_t *p_para)
             p_para->vstream_info.video_width    = pCodecCtx->width;
             p_para->vstream_info.video_height   = pCodecCtx->height;
             p_para->vstream_info.video_ratio    = (float)pStream->sample_aspect_ratio.num / pStream->sample_aspect_ratio.den;
-            log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d ratio=%.3f\n", __FUNCTION__, __LINE__, \
+            log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d ratio=%.3f video_pts=%.3f\n", __FUNCTION__, __LINE__, \
 						pCodecCtx->time_base.num, pCodecCtx->time_base.den, \
 						pStream->r_frame_rate.den, pStream->r_frame_rate.num, \
-						p_para->vstream_info.video_ratio);
+						p_para->vstream_info.video_ratio, p_para->vstream_info.video_pts);
 			
             if (0 != pCodecCtx->time_base.den) {
                 p_para->vstream_info.video_codec_rate = (int64_t)UNIT_FREQ * pCodecCtx->time_base.num / pCodecCtx->time_base.den;
@@ -539,6 +539,16 @@ static int set_decode_para(play_para_t*am_p)
 
     }
 
+	if (am_p->vstream_info.has_video) {
+		if (am_p->vstream_info.video_format == VFORMAT_MJPEG && 
+			am_p->vstream_info.video_width >= 1280) {
+			am_p->vstream_info.discard_pkt = 1;
+            log_error("[%s:%d]HD mjmpeg, discard some vpkt, rate=%d\n", __FUNCTION__, __LINE__,am_p->vstream_info.video_rate);
+			am_p->vstream_info.video_rate <<= 1;
+            log_error("[%s:%d]HD mjmpeg, set vrate=%d\n", __FUNCTION__, __LINE__, am_p->vstream_info.video_rate);
+		}
+	}
+	
     return PLAYER_SUCCESS;
 }
 

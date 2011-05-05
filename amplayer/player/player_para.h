@@ -30,6 +30,7 @@ typedef struct {
     int             check_first_pts;
     int             flv_flag;
     int             h263_decodable;
+	int				discard_pkt;
     int64_t         start_time;
     float           video_duration;
     float           video_pts;

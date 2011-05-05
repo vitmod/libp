@@ -632,6 +632,12 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
                         pkt->bak_avpkt.pos = 0;
                         para->playctrl_info.audio_switch_vmatch = 0;
                     }
+                } else if (para->vstream_info.discard_pkt == 1) {                	
+	                av_free_packet(pkt->avpkt);
+					para->vstream_info.discard_pkt = 2;				
+	                continue;
+                } else if (para->vstream_info.discard_pkt == 2) {
+                	para->vstream_info.discard_pkt = 1;					
                 }
                 pkt->codec = para->vcodec;
                 pkt->type = CODEC_VIDEO;
