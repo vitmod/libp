@@ -693,7 +693,7 @@ static int adts_aac_probe(AVProbeData *p)
     else if(max_frames>=1) return 1;
     else                   return 0;
 }
-
+#if 0
 static int adif_header_parse(AVStream *st,uint8_t *buf)
 {       
     if(buf[4]&0x80)             //byte4,bit7: copyright_id_present
@@ -713,10 +713,11 @@ static int adif_header_parse(AVStream *st,uint8_t *buf)
     //av_log(NULL, AV_LOG_INFO, "[adif_header_parse]bit_rate=%x (%d)\n",st->codec->bit_rate,st->codec->bit_rate);
     return 0;
 }
-
+#endif
 static int adts_aac_read_header(AVFormatContext *s,
                                 AVFormatParameters *ap)
 {
+    int err;
     AVStream *st;   
     uint8_t *buf=s->pb->buffer;
     
@@ -729,11 +730,18 @@ static int adts_aac_read_header(AVFormatContext *s,
     st->need_parsing = AVSTREAM_PARSE_FULL;
     ff_id3v1_read(s);
     ff_id3v2_read(s);
-    
     //add by xh,2010-08-24
     if (buf[0]=='A' && buf[1]=='D' && buf[2]=='I' && buf[3]=='F')
     {
-      adif_header_parse(st,buf);
+		err = adif_header_parse(st,s->pb);
+		if(err){
+			av_log(NULL, AV_LOG_INFO," adif parser header  failed\n");
+			return err;
+		}
+		else{
+			st->need_parsing = AVSTREAM_PARSE_NONE;
+			st->codec->codec_id = CODEC_ID_AAC;
+		}
     }  
     //end of add
     
