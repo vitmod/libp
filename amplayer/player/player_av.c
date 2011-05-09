@@ -131,7 +131,7 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
 	format = 	AFORMAT_VORBIS;
 	break;
     default:
-        format = -1;
+        format = AFORMAT_UNSUPPORT;
         log_print("audio codec_id=0x%x\n", id);
     }
     log_print("[audio_type_convert]audio codec_id=0x%x format=%d\n", id, format);

@@ -176,7 +176,10 @@ static void get_av_codec_type(play_para_t *p_para)
             (p_para->astream_info.audio_format >= AFORMAT_MAX)) {
             p_para->astream_info.has_audio = 0;           
             log_print("audio format not support!\n");
+        }else if (p_para->astream_info.audio_format == AFORMAT_UNSUPPORT){
+        	p_para->astream_info.has_audio = 0;     
         }
+		
         if (p_para->astream_info.has_audio) {
             if (0 != pStream->time_base.den) {
                 p_para->astream_info.audio_duration = PTS_FREQ * ((float)pStream->time_base.num / pStream->time_base.den);
