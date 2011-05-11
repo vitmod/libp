@@ -276,8 +276,13 @@ int64_t av_url_read_seek(URLContext *h,
 
 int url_ioctl(URLContext *h,int cmd,unsigned long param1,int size)
 {
-    if(!h || !h->prot || !h->prot->url_ioctl)
+    if(!h)
         return AVERROR(ENOSYS);
+	if(!h->prot)
+		return AVERROR(ENOSYS);
+	if(!h->prot->url_ioctl)
+		return AVERROR(ENOSYS);
+	
     return h->prot->url_ioctl(h,cmd,param1,size);
 }
 
