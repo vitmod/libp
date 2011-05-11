@@ -484,6 +484,7 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
             para->read_size.total_bytes += rev_byte;
             pkt->avpkt_newflag = 1;
             pkt->avpkt_isvalid = 1;
+	     pkt->pts_checkin_ok = 0;
 #if DUMP_READ
             if (fdr > 0) {
                 int dsize;
