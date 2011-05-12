@@ -401,6 +401,12 @@ static void fill_buffer(ByteIOContext *s)
         len = s->read_packet(s->opaque, dst, len);
     else
         len = 0;
+	
+	if(url_interrupt_cb()) {
+		av_log(NULL,AV_LOG_ERROR,"[%s]interrupt: %d\n",AVERROR(EINTR));
+		len = AVERROR(EINTR);
+	}
+	
     if (len <= 0) {
         /* do not modify buffer if EOF reached so that a seek back can
            be done without rereading data */
@@ -455,10 +461,10 @@ get_data:
         else
         {
 			// return 0;
-			if (url_interrupt_cb()){     
+			/*f (url_interrupt_cb()){     
 				av_log(NULL, AV_LOG_ERROR,"[%s]interrupt, return\n",__FUNCTION__);
             	return AVERROR(EINTR);
-			}
+			}*/
 			if(s->eof_reached || s->error)
 				av_log(NULL, AV_LOG_ERROR,"[%s]fill buffer: eof=%d error=%d retry_fill_cnt=%d\n",__FUNCTION__,s->eof_reached,s->error,retry_fill_cnt);
 			if(retry_fill_cnt >= 1000)
@@ -524,6 +530,10 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
                 {            
                     len = s->read_packet(s->opaque, buf, size);
                 }
+				if(url_interrupt_cb()) {
+					av_log(NULL,AV_LOG_ERROR,"[%s]interrupt: %d\n",AVERROR(EINTR));
+					len = AVERROR(EINTR);
+				}
                 if (len <= 0) {
                     /* do not modify buffer if errot getso that a seek back can
                     be done without rereading data */

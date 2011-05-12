@@ -201,9 +201,9 @@ int player_stop(int pid)
         return PLAYER_SUCCESS;
     }
 
-    if (player_para->pFormatCtx) {
+    /*if (player_para->pFormatCtx) {
         av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
-    }
+    }*/
 
     cmd = message_alloc();
     if (cmd) {
