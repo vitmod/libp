@@ -526,7 +526,18 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                     if (tag1 == MKTAG('D', 'X', 'S', 'B')) {
                         st->codec->codec_type = CODEC_TYPE_SUBTITLE;
                         st->codec->codec_tag = tag1;
-                        st->codec->codec_id = CODEC_ID_XSUB;
+						if (st->codec->width>640 || st->codec->height>480)
+							st->codec->codec_id = CODEC_ID_XSUB_HD;
+						else
+							st->codec->codec_id = CODEC_ID_XSUB;
+						av_log(s, AV_LOG_WARNING, "******* DXSB ******** \n");
+                        break;
+                    }
+                    if (tag1 == MKTAG('D', 'X', 'S', 'A')) {
+                        st->codec->codec_type = CODEC_TYPE_SUBTITLE;
+                        st->codec->codec_tag = tag1;
+                        st->codec->codec_id = CODEC_ID_XSUA_HD;
+						av_log(s, AV_LOG_WARNING, "******* DXSA ******** \n");
                         break;
                     }
 
