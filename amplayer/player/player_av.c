@@ -1901,10 +1901,15 @@ void player_switch_audio(play_para_t *para)
             pcodec->audio_info.block_align = pCodecCtx->block_align;
             pcodec->audio_info.extradata_size = pCodecCtx->extradata_size;
             if (pcodec->audio_info.extradata_size > 0) {
+		     if(pcodec->audio_info.extradata_size > 	AUDIO_EXTRA_DATA_SIZE)
+		     {
+	      			log_print("[%s:%d],extra data size exceed max  extra data buffer,cut it to max buffer size ", __FUNCTION__, __LINE__);
+				pcodec->audio_info.extradata_size = 	AUDIO_EXTRA_DATA_SIZE;
+	  	     }
                 MEMCPY((char*)pcodec->audio_info.extradata, pCodecCtx->extradata, pcodec->audio_info.extradata_size);
             }
             pcodec->audio_info.valid = 1;
-			log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, pcodec->audio_type,\
+	     log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, pcodec->audio_type,\
 						pcodec->audio_info.sample_rate, pcodec->audio_info.channels,pcodec->audio_info.extradata_size);
         }
 	

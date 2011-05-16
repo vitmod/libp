@@ -85,11 +85,19 @@ static void acodec_info_init(play_para_t *p_para, codec_para_t *a_codec)
         a_codec->audio_info.block_align = pCodecCtx->block_align;
         a_codec->audio_info.extradata_size = pCodecCtx->extradata_size;
         if (a_codec->audio_info.extradata_size > 0) {
+	     if(a_codec->audio_info.extradata_size > 	AUDIO_EXTRA_DATA_SIZE)
+	     {
+      			log_print("[%s:%d],extra data size exceed max  extra data buffer,cut it to max buffer size ", __FUNCTION__, __LINE__);
+			a_codec->audio_info.extradata_size = 	AUDIO_EXTRA_DATA_SIZE;
+  	     }
             memcpy((char*)a_codec->audio_info.extradata, pCodecCtx->extradata, a_codec->audio_info.extradata_size);
         }
         a_codec->audio_info.valid = 1;
+   	log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, a_codec->audio_type,\
+						a_codec->audio_info.sample_rate, a_codec->audio_info.channels,a_codec->audio_info.extradata_size);
+
     }
-}
+ }
 
 static void scodec_info_init(play_para_t *p_para, codec_para_t *s_codec)
 {

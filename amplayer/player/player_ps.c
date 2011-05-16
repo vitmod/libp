@@ -61,13 +61,18 @@ static int stream_ps_init(play_para_t *p_para)
             codec->audio_info.block_align = pCodecCtx->block_align;
             codec->audio_info.extradata_size = pCodecCtx->extradata_size;
             if (codec->audio_info.extradata_size > 0) {
+		     if(codec->audio_info.extradata_size > 	AUDIO_EXTRA_DATA_SIZE)
+		     {
+	      			log_print("[%s:%d],extra data size exceed max  extra data buffer,cut it to max buffer size ", __FUNCTION__, __LINE__);
+				codec->audio_info.extradata_size = 	AUDIO_EXTRA_DATA_SIZE;
+	  	     }
                 memcpy((char*)codec->audio_info.extradata, pCodecCtx->extradata, codec->audio_info.extradata_size);
             }
             codec->audio_info.valid = 1;
         }
-        log_print("[%s:%d]audio bitrate=%d sample_rate=%d channels=%d codec_id=%x block_align=%d\n",
+        log_print("[%s:%d]audio bitrate=%d sample_rate=%d channels=%d codec_id=%x block_align=%d,extra size\n",
                   __FUNCTION__, __LINE__, codec->audio_info.bitrate, codec->audio_info.sample_rate, codec->audio_info.channels,
-                  codec->audio_info.codec_id, codec->audio_info.block_align);
+                  codec->audio_info.codec_id, codec->audio_info.block_align,codec->audio_info.extradata_size);
     }
     if (sinfo->has_sub) {
         codec->has_sub = 1;

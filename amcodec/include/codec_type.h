@@ -47,7 +47,7 @@ typedef struct {
     int codec_id;            ///< codec format id
     int block_align;         ///< audio block align from ffmpeg
     int extradata_size;      ///< extra data size
-    char extradata[2048];;   ///< extra data information for decoder
+    char extradata[AUDIO_EXTRA_DATA_SIZE];;   ///< extra data information for decoder
 } audio_info_t;
 
 typedef struct {

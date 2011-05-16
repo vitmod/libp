@@ -44,5 +44,6 @@ typedef enum {
     AFORMAT_MAX    = 18
 } aformat_t;
 
+#define AUDIO_EXTRA_DATA_SIZE   (2048)
 #endif /* AFORMAT_H */
 

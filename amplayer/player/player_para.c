@@ -392,7 +392,6 @@ static int set_decode_para(play_para_t*am_p)
     AVCodecContext  *pCodecCtx;
     signed short audio_index = am_p->astream_info.audio_index;
     int ret = -1;
-#define REAL_COOKINFO_SIZE (2048)
     int rev_byte = 0;
     int total_rev_bytes = 0;
     unsigned char* buf;
@@ -504,11 +503,11 @@ static int set_decode_para(play_para_t*am_p)
                    am_p->astream_info.audio_format == AFORMAT_RAAC) {
             log_print("[%s:%d]get real auido header info...\n", __FUNCTION__, __LINE__);
             url_fseek(pb, 0, SEEK_SET); // get cook info from the begginning of the file
-            buf = MALLOC(REAL_COOKINFO_SIZE);
+            buf = MALLOC(AUDIO_EXTRA_DATA_SIZE);
             if (buf) {
                 do {
                     buf += total_rev_bytes;
-                    rev_byte = get_buffer(pb, buf, (REAL_COOKINFO_SIZE - total_rev_bytes));
+                    rev_byte = get_buffer(pb, buf, (AUDIO_EXTRA_DATA_SIZE - total_rev_bytes));
                     log_print("[%s:%d]rev_byte=%d total=%d\n", __FUNCTION__, __LINE__, rev_byte, total_rev_bytes);
                     if (rev_byte < 0) {
                         if (rev_byte == AVERROR(EAGAIN)) {
@@ -519,16 +518,16 @@ static int set_decode_para(play_para_t*am_p)
                         }
                     } else {
                         total_rev_bytes += rev_byte;
-                        if (total_rev_bytes == REAL_COOKINFO_SIZE) {
+                        if (total_rev_bytes == AUDIO_EXTRA_DATA_SIZE) {
                             if (am_p->astream_info.extradata) {
                                 FREE(am_p->astream_info.extradata);
                                 am_p->astream_info.extradata = NULL;
                                 am_p->astream_info.extradata_size = 0;
                             }
                             am_p->astream_info.extradata = buf;
-                            am_p->astream_info.extradata_size = REAL_COOKINFO_SIZE;
+                            am_p->astream_info.extradata_size = AUDIO_EXTRA_DATA_SIZE;
                             break;
-                        } else if (total_rev_bytes > REAL_COOKINFO_SIZE) {
+                        } else if (total_rev_bytes > AUDIO_EXTRA_DATA_SIZE) {
                             log_error("[%s:%d]real cook info too much !\n", __FUNCTION__, __LINE__);
                             return PLAYER_FAILED;
                         }
