@@ -598,7 +598,7 @@ static void update_current_time(play_para_t *p_para)
         p_para->state.current_ms = time / PTS_FREQ_MS;
         p_para->state.current_pts = time;
         time /= PTS_FREQ;
-    } else{
+    } else if (!p_para->playctrl_info.reset_flag){
     	time = p_para->state.full_time;
         log_print("[update_current_time:%d]play end, curtime: %d\n", __LINE__, time);
     }
