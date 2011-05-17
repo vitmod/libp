@@ -93,8 +93,8 @@ static void acodec_info_init(play_para_t *p_para, codec_para_t *a_codec)
             memcpy((char*)a_codec->audio_info.extradata, pCodecCtx->extradata, a_codec->audio_info.extradata_size);
         }
         a_codec->audio_info.valid = 1;
-   	log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, a_codec->audio_type,\
-						a_codec->audio_info.sample_rate, a_codec->audio_info.channels,a_codec->audio_info.extradata_size);
+   	log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d,block align %d,codec id 0x%x\n", __FUNCTION__, a_codec->audio_type,\
+			a_codec->audio_info.sample_rate, a_codec->audio_info.channels,a_codec->audio_info.extradata_size,a_codec->audio_info.block_align,a_codec->audio_info.codec_id);
 
     }
  }

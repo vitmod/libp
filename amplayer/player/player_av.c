@@ -1552,8 +1552,13 @@ int set_header_info(play_para_t *para, am_packet_t *pkt)
                 }
                 adts_add_header(para, pkt);
             }
-            if ((!para->playctrl_info.raw_mode) &&
-                (para->astream_info.audio_format == AFORMAT_ALAC)) {
+            if (((!para->playctrl_info.raw_mode) &&
+                (para->astream_info.audio_format == AFORMAT_ALAC))||
+		((!para->playctrl_info.raw_mode) &&
+                (para->astream_info.audio_format == AFORMAT_ADPCM)&&
+                (!para->acodec->audio_info.block_align)&&
+                (para->acodec->audio_info.codec_id == CODEC_ID_ADPCM_IMA_WAV)))
+                {
                 if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
                     FREE(pkt->hdr->data);
                     pkt->hdr->data = NULL;
