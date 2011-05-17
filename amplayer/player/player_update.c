@@ -603,7 +603,7 @@ static void update_current_time(play_para_t *p_para)
         log_print("[update_current_time:%d]play end, curtime: %d\n", __LINE__, time);
     }
 
-    if (p_para->state.current_time > p_para->state.last_time) {
+    if (p_para->state.current_time != p_para->state.last_time) {
         p_para->state.last_time = p_para->state.current_time;
     }
     p_para->state.current_time = (int)time;
