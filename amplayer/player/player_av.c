@@ -381,13 +381,13 @@ int set_file_type(const char *name, pfile_type *ftype, pstream_type *stype)
 static int compare_pkt(AVPacket *src, AVPacket *dst)
 {
     if (dst->pts != (int64_t)AV_NOPTS_VALUE) {
-        if (dst->pts == src->pts) {
+        if (dst->pts <= src->pts) {
             return 1;
         } else {
             return 0;
         }
     } else if (dst->dts != (int64_t)AV_NOPTS_VALUE) {
-        if (dst->dts == src->dts) {
+        if (dst->dts <= src->dts) {
             return 1;
         } else {
             return 0;
