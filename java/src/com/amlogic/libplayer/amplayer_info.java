@@ -37,7 +37,11 @@ public class amplayer_info {
     public static final int PLAYER_STOPED   	= 0x30003; 
 	
 	public static final int PLAYER_EXIT   		= 0x30004; 
-	  
+
+
+    public static final int DIVX_AUTHOR_ERR     = 0x40001;
+    public static final int DIVX_EXPIRED        = 0x40002;
+
 	public static final int PLAYER_EVENTS_PLAYER_INFO=1;			///<ext1=player_info*,ext2=0,same as update_statue_callback 
 	public static final int PLAYER_EVENTS_STATE_CHANGED=2;			///<ext1=new_state,ext2=0,
 	public static final int PLAYER_EVENTS_ERROR=3;					///<ext1=error_code,ext2=message char *

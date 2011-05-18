@@ -99,6 +99,14 @@
 #define MATROSKA_ID_TRACKTIMECODESCALE 0x23314F
 #define MATROSKA_ID_TRACKMAXBLKADDID 0x55EE
 
+//--***************************************
+/*divx 1080p plus drm */
+#define MATROSKA_ID_TRACKSDATA		0xDA
+#define MATROSKA_ID_TRACKSDATAVERSION 	0xDB
+#define MATROSKA_ID_TRACKSDATAPAYLOADSIZE	0xDC
+#define MATROSKA_ID_TRACKSDATAPAYLOAD	0xDE
+//--***************************************
+
 /* IDs in the trackvideo master */
 #define MATROSKA_ID_VIDEOFRAMERATE 0x2383E3
 #define MATROSKA_ID_VIDEODISPLAYWIDTH 0x54B0
@@ -174,7 +182,9 @@
 #define MATROSKA_ID_BLOCK      0xA1
 #define MATROSKA_ID_BLOCKDURATION 0x9B
 #define MATROSKA_ID_BLOCKREFERENCE 0xFB
-
+//--*******************************************
+#define MATROSKA_ID_BLOCKDRMINFO	0xDD
+//--*******************************************
 /* IDs in the attachments master */
 #define MATROSKA_ID_ATTACHEDFILE        0x61A7
 #define MATROSKA_ID_FILEDESC            0x467E

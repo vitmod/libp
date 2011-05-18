@@ -13,7 +13,8 @@ OBJS = allformats.o         \
        sdp.o                \
        seek.o               \
        utils.o              \
-
+	   divxdrm.o
+       
 # muxers/demuxers
 OBJS-$(CONFIG_AAC_DEMUXER)               += raw.o id3v1.o id3v2.o adif.o
 OBJS-$(CONFIG_AC3_DEMUXER)               += raw.o
@@ -272,4 +273,4 @@ TESTPROGS = timefilter
 
 OBJS+=file_list.o m3u.o
 
-$(SUBDIR)output-example$(EXESUF): ELIBS = -lswscale
+$(SUBDIR)output-example$(EXESUF): ELIBS = -lswscale -ldl

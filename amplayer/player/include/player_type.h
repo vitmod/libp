@@ -53,6 +53,17 @@ typedef enum
 	PLAYER_PLAYEND  	= 0x30002,	
 	PLAYER_STOPED   	= 0x30003,  
 	PLAYER_EXIT   		= 0x30004, 
+
+    /******************************
+     * 0x4000x:
+     * divx drm
+     * decoder will exit or give
+     * a message dialog
+     * ****************************/
+    PLAYER_DIVX_AUTHORERR   =   0x40001,
+    PLAYER_DIVX_RENTAL_VIEW =   0x40002,
+    PLAYER_DIVX_RENTAL_EXPIRED  =   0x40003,
+
 	
 }player_status;
 

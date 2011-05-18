@@ -923,6 +923,14 @@ typedef struct AVPanScan{
 #define FF_BUFFER_HINTS_PRESERVE 0x04 // User must not alter buffer content.
 #define FF_BUFFER_HINTS_REUSABLE 0x08 // Codec will reuse the buffer (update).
 
+//--*********************************************
+typedef struct DrmInfo{
+	uint16_t key_index;
+	int offset;
+	int length;
+}DrmInfo;
+//--*********************************************
+
 typedef struct AVPacket {
     /**
      * Presentation timestamp in AVStream->time_base units; the time at which
@@ -969,6 +977,10 @@ typedef struct AVPacket {
      * subtitles are correctly displayed after seeking.
      */
     int64_t convergence_duration;
+//--*********************************************	
+	DrmInfo	drmpack;
+//--*********************************************
+	
 } AVPacket;
 #define AV_PKT_FLAG_KEY   0x0001
 #if LIBAVCODEC_VERSION_MAJOR < 53

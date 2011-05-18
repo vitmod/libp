@@ -629,6 +629,130 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 }
             }
             break;
+//--*********************************************************
+			case MKTAG('s', 't', 'r', 'd'):
+			{
+				
+				av_log(s, AV_LOG_WARNING," find strd len %d\n", size);
+				int result = 0;
+	            unsigned char useLimit, useCount;
+	            unsigned char cgmsaSignal = 0;
+	            unsigned char acptbSignal = 0;
+	            unsigned char digitalProtectionSignal = 0;
+	            unsigned char ict = 0;
+	            unsigned char rentalMsgFlag;
+
+				char reg_code[11];
+				
+				char *drm_buffer = av_malloc(size+1);
+				if(drm_buffer == NULL)
+					url_fskip(pb, size);
+				memset(drm_buffer, 0x0, size+1);
+				s->drm.drm_header = av_malloc(sizeof(DrmHeader));
+				if(s->drm.drm_header == NULL){
+					av_free(drm_buffer);
+					url_fskip(pb, size);
+				}
+				memset(s->drm.drm_header, 0x0, sizeof(DrmHeader));
+				
+				if(drm_init() < 0){
+					av_log(s, AV_LOG_INFO, "drm lib init failed\n");
+					break;
+				}else{
+					av_log(s, AV_LOG_INFO, "drm lib init success\n");
+				}
+				
+				//read drm data
+				get_buffer(s->pb, drm_buffer, size);
+	            memcpy(s->drm.drm_header, drm_buffer+8, sizeof(DrmHeader));
+				av_free(drm_buffer);
+				av_log(s, AV_LOG_INFO, "drmmode is %x\n", s->drm.drm_header->adpTarget.drmMode);
+				
+                do{
+				  result = drmInitSystem();
+	              if (result != 0) {
+					  av_log(s, AV_LOG_WARNING," not unauthorized 1\n");
+	                  s->drm.drm_check_value = 1;// unauthorized
+		              break;
+	              }
+	              av_log(s, AV_LOG_INFO, "drmInitSystem\n");
+	            	            	            
+	              result = drmInitPlayback((unsigned char*)s->drm.drm_header);
+	              if (result != 0) {
+					  av_log(s, AV_LOG_WARNING," not unauthorized 2\n");
+	                  s->drm.drm_check_value = 1; // unauthorized
+		              break;
+	              }
+	              av_log(s, AV_LOG_INFO, "drmInitPlayback\n");
+	              result = drmQueryRentalStatus(&rentalMsgFlag, &useLimit, &useCount);
+	              if (result != 0) {
+	                  if (result == 3) {
+						  av_log(s, AV_LOG_WARNING," expired\n");
+	                      s->drm.drm_check_value = 2; // expired
+	                  }
+	                  else {
+						  av_log(s, AV_LOG_WARNING," not unauthorized 3\n");
+	                      s->drm.drm_check_value = 1; // unauthorized
+	                  }
+	                  break;
+	              }
+	              if (rentalMsgFlag == 1) { 
+	                  s->drm.drm_rental_value = useLimit-useCount ; // conform
+	                  break;
+	              }
+	              av_log(s, AV_LOG_INFO, "drmQueryRentalStatus\n");
+	              drmSetRandomSample();
+	              drmSetRandomSample();
+	              drmSetRandomSample();
+	              drmSetRandomSample();
+	            
+	              drmGetRegistrationCodeString(reg_code);
+	              reg_code[10] = '\0';
+                  memcpy(s->drm.drm_reg_code, reg_code, 11);
+
+	              av_log(s, AV_LOG_INFO, "divx registration code: %s\n", reg_code);
+
+	              result = drmQueryCgmsa(&cgmsaSignal);
+	              if (result != 0) {
+					  av_log(s, AV_LOG_WARNING," not unauthorized 4\n");
+	                  s->drm.drm_check_value = 1; // unauthorized
+		              break;
+	              }
+	              result = drmQueryAcptb(&acptbSignal);
+	              if (result != 0) {
+					  av_log(s, AV_LOG_WARNING," not unauthorized 5\n");
+	                  s->drm.drm_check_value = 1; // unauthorized
+		              break;
+	              }
+	              result = drmQueryDigitalProtection(&digitalProtectionSignal);
+	              if (result != 0) {
+					  av_log(s, AV_LOG_WARNING," not unauthorized 6\n");
+	                  s->drm.drm_check_value = 1; // unauthorized
+		              break;
+	              }
+	              result = drmQueryIct(&ict);
+	              if (result != 0) {
+					  av_log(s, AV_LOG_WARNING," not unauthorized 7\n");
+	                  s->drm.drm_check_value = 1; // unauthorized
+		              break;
+	              }
+	              result = drmCommitPlayback(0);
+	              if (result != 0) {
+					  av_log(s, AV_LOG_WARNING," not unauthorized 8\n");
+	                  s->drm.drm_check_value = 1; // unauthorized
+		              break;
+	              }
+	            // update to nand
+
+	            //memcpy(s->drm.drm_header, p_drm_context, sizeof(DrmHeader)); 
+                }while(0);
+
+                drm_set_info(&s->drm);
+			}
+			break;
+
+
+//--*********************************************************            
         case MKTAG('i', 'n', 'd', 'x'):
             i= url_ftell(pb);
             if(!url_is_streamed(pb) && !(s->flags & AVFMT_FLAG_IGNIDX)){
@@ -929,6 +1053,19 @@ resync:
             goto resync;
         }
 
+//--**************************************************************
+		if(d[2] == 'd' && d[3] == 'd' && s->drm.drm_header){
+			pkt->drmpack.key_index = get_byte(pb) | get_byte(pb)<<8;
+			pkt->drmpack.offset = get_byte(pb) | get_byte(pb)<<8 |
+get_byte(pb)<<16 |
+								get_byte(pb)<<24;
+			pkt->drmpack.length= get_byte(pb) | get_byte(pb)<<8 |
+get_byte(pb)<<16 |
+								get_byte(pb)<<24;
+			goto resync;
+		}
+//--**************************************************************
+		
         //parse ##dc/##wb
         if(n < s->nb_streams){
             AVStream *st;
@@ -1305,6 +1442,11 @@ static int avi_read_close(AVFormatContext *s)
 
     if (avi->dv_demux)
         av_free(avi->dv_demux);
+//--**************************************************************
+	if(s->drm.drm_header)
+		av_free(s->drm.drm_header);
+	s->drm.drm_header = NULL;
+//--**************************************************************
 
     return 0;
 }
