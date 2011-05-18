@@ -538,7 +538,7 @@ static void update_current_time(play_para_t *p_para)
 	#define REFRESH_CURTIME_INTERVAL    (100)
     unsigned int time = p_para->state.current_time;
 	if (check_time_interrupt(&p_para->state.curtime_old_time, REFRESH_CURTIME_INTERVAL) || 
-		!p_para->playctrl_info.pts_valid) {
+		!p_para->playctrl_info.pts_valid || p_para->playctrl_info.end_flag) {
     if (p_para->playctrl_info.f_step > 0) {
         time = (unsigned int)p_para->playctrl_info.time_point;
         p_para->state.current_time = time;
