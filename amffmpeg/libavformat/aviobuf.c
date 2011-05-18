@@ -403,7 +403,7 @@ static void fill_buffer(ByteIOContext *s)
         len = 0;
 	
 	if(url_interrupt_cb()) {
-		av_log(NULL,AV_LOG_ERROR,"[%s]interrupt: %d\n",AVERROR(EINTR));
+		av_log(NULL,AV_LOG_ERROR,"[%s]interrupt: %d\n",__FUNCTION__, AVERROR(EINTR));
 		len = AVERROR(EINTR);
 	}
 	
@@ -531,7 +531,7 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
                     len = s->read_packet(s->opaque, buf, size);
                 }
 				if(url_interrupt_cb()) {
-					av_log(NULL,AV_LOG_ERROR,"[%s]interrupt: %d\n",AVERROR(EINTR));
+					av_log(NULL,AV_LOG_ERROR,"[%s]interrupt: %d\n",__FUNCTION__, AVERROR(EINTR));
 					len = AVERROR(EINTR);
 				}
                 if (len <= 0) {
