@@ -25,6 +25,8 @@
 #include "player_update.h"
 #include "thread_mgt.h"
 #include "player_ffmpeg_ctrl.h"
+#include "player_cache_mgt.h"
+
 
 #ifndef FBIOPUT_OSD_SRCCOLORKEY
 #define  FBIOPUT_OSD_SRCCOLORKEY    0x46fb
@@ -64,7 +66,7 @@ int player_init(void)
     set_black_policy(1);
     set_stb_source_hiu();
     set_stb_demux_source_hiu();
-
+	cache_system_init();
     return PLAYER_SUCCESS;
 }
 

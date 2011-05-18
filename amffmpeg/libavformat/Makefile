@@ -251,7 +251,7 @@ OBJS-$(CONFIG_LIBNUT_DEMUXER)            += libnut.o riff.o
 OBJS-$(CONFIG_LIBNUT_MUXER)              += libnut.o riff.o
 
 # protocols I/O
-OBJS+= avio.o aviobuf.o aviolpbuf.o
+OBJS+= avio.o aviobuf.o aviolpbuf.o aviolpcache.o
 
 OBJS-$(CONFIG_FILE_PROTOCOL)             += file.o
 OBJS-$(CONFIG_GOPHER_PROTOCOL)           += gopher.o

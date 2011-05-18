@@ -427,6 +427,8 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
         off += s->off;
     else if (whence == SEEK_END)
         off += s->filesize;
+	if(off==s->off)
+		return off;
 	s->is_seek=1;
     /* if it fails, continue on old connection */
    ret=http_reopen_cnx(h,off);
