@@ -1412,12 +1412,13 @@ static int avi_read_seek(AVFormatContext *s, int stream_index, int64_t timestamp
         if(index<0)
             index=0;
 
-        if(!avi->non_interleaved){
+		//FFT: remove this condition for ff&fb&resume
+		//if(!avi->non_interleaved){
             while(index>0 && st2->index_entries[index].pos > pos)
                 index--;
             while(index+1 < st2->nb_index_entries && st2->index_entries[index].pos < pos)
                 index++;
-        }
+        //}
 
 //        av_log(s, AV_LOG_DEBUG, "%"PRId64" %d %"PRId64"\n", timestamp, index, st2->index_entries[index].timestamp);
         /* extract the current frame number */
