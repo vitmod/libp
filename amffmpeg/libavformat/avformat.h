@@ -56,6 +56,8 @@ const char * avformat_license(void);
 
 #include "avio.h"
 
+#include "divxdrm.h"
+
 struct AVFormatContext;
 
 
@@ -691,6 +693,12 @@ typedef struct AVFormatContext {
 
     /* added by Z.C for avi or some other files seekable */
     int seekable;
+
+//--***********************************************
+    /* added by C.S for divx drm certification:drm information */
+    drm_t       drm; 
+//--***********************************************    
+
 } AVFormatContext;
 
 typedef struct AVPacketList {

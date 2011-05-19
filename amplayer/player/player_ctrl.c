@@ -25,6 +25,8 @@
 #include "player_update.h"
 #include "thread_mgt.h"
 #include "player_ffmpeg_ctrl.h"
+#include "player_cache_mgt.h"
+
 
 #ifndef FBIOPUT_OSD_SRCCOLORKEY
 #define  FBIOPUT_OSD_SRCCOLORKEY    0x46fb
@@ -64,7 +66,7 @@ int player_init(void)
     set_black_policy(1);
     set_stb_source_hiu();
     set_stb_demux_source_hiu();
-
+	cache_system_init();
     return PLAYER_SUCCESS;
 }
 
@@ -1255,6 +1257,13 @@ char *player_status2str(player_status status)
 
     case PLAYER_PLAY_NEXT:
         return "PLAY_NEXT";
+
+    case PLAYER_DIVX_AUTHORERR:
+        return "DIVX_AUTHORERR";
+    case PLAYER_DIVX_RENTAL_VIEW:
+        return "DIVX_RENTAL";
+    case PLAYER_DIVX_RENTAL_EXPIRED:
+        return "DIVX_EXPIRED";
 
     default:
         return "UNKNOW_STATE";

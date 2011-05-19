@@ -546,6 +546,18 @@ void *player_thread(play_para_t *player)
         goto release0;
     }	
 	
+    switch(player->pFormatCtx->drm.drm_check_value){
+    case 1: // unauthorized
+      set_player_state(player, PLAYER_DIVX_AUTHORERR);
+      send_event(player, PLAYER_EVENTS_ERROR, ret, "Divx Author Failed");
+      goto release0;
+    case 2: // expired
+      send_event(player, PLAYER_EVENTS_ERROR, ret, "Divx Author Expired");
+      set_player_state(player, PLAYER_DIVX_RENTAL_EXPIRED);
+      goto release0;
+    default:
+      break;
+    }
     ffmpeg_parse_file_type(player, &filetype);
     set_player_state(player, PLAYER_TYPE_REDY);
     send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_TYPE_REDY, 0);

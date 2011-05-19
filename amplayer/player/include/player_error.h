@@ -3,6 +3,7 @@
 
 #define P_PRE       (0x02000000)
 #define F_PRE       (0x03000000)
+#define X_PRE       (0x04000000)
 
 #define PLAYER_SUCCESS          (0)
 #define PLAYER_FAILED           (-(P_PRE|0x01))
@@ -47,6 +48,11 @@
 #define FFMPEG_PARSE_FAILED     (-(F_PRE|0x2))
 #define FFMPEG_EMP_POINTER      (-(F_PRE|0x3))
 #define FFMPEG_NO_FILE          (-(F_PRE|0x4))
+
+#define DIVX_SUCCESS            (0)
+#define DIVX_AUTHOR_ERR         (-(X_PRE|0x1))
+#define DIVX_EXPIRED            (-(X_PRE|0x2))
+
 
 char * player_error_msg(int error);
 #endif

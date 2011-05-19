@@ -145,6 +145,15 @@ typedef struct {
     int64_t end_timecode;
 } MatroskaTrack;
 
+//--****************************************************
+
+typedef struct {	
+	uint64_t version;
+	uint64_t size;
+	EbmlBin	 payload;
+}MatroskaTrackData;
+
+//--****************************************************
 typedef struct {
     uint64_t uid;
     char *filename;
@@ -216,6 +225,9 @@ typedef struct {
     double   duration;
     char    *title;
     EbmlList tracks;
+//--****************************************
+	EbmlList tracksdata;
+//--****************************************
     EbmlList attachments;
     EbmlList chapters;
     EbmlList index;
@@ -243,6 +255,9 @@ typedef struct {
     int64_t  reference;
     uint64_t non_simple;
     EbmlBin  bin;
+//--****************************************
+	EbmlBin	 drminfo;
+//--****************************************
 } MatroskaBlock;
 
 typedef struct {
@@ -349,8 +364,19 @@ static EbmlSyntax matroska_track[] = {
     { 0 }
 };
 
+//--************************************************
+static EbmlSyntax mastroska_tarckdata[] = {
+	{ MATROSKA_ID_TRACKSDATAVERSION,          EBML_UINT, 0, offsetof(MatroskaTrackData,version) },
+	{ MATROSKA_ID_TRACKSDATAPAYLOADSIZE,      EBML_UINT, 0, offsetof(MatroskaTrackData,size) },
+	{ MATROSKA_ID_TRACKSDATAPAYLOAD,          EBML_BIN,  0, offsetof(MatroskaTrackData,payload) },
+	{0}
+};
+//--************************************************
 static EbmlSyntax matroska_tracks[] = {
     { MATROSKA_ID_TRACKENTRY,         EBML_NEST, sizeof(MatroskaTrack), offsetof(MatroskaDemuxContext,tracks), {.n=matroska_track} },
+//--************************************************
+	{ MATROSKA_ID_TRACKSDATA,		  EBML_NEST, sizeof(MatroskaTrackData), offsetof(MatroskaDemuxContext,tracksdata),{.n=mastroska_tarckdata}},
+//--************************************************
     { 0 }
 };
 
@@ -478,6 +504,9 @@ static EbmlSyntax matroska_segments[] = {
 static EbmlSyntax matroska_blockgroup[] = {
     { MATROSKA_ID_BLOCK,          EBML_BIN,  0, offsetof(MatroskaBlock,bin) },
     { MATROSKA_ID_SIMPLEBLOCK,    EBML_BIN,  0, offsetof(MatroskaBlock,bin) },
+//--**************************************************
+    { MATROSKA_ID_BLOCKDRMINFO,	  EBML_BIN,  0, offsetof(MatroskaBlock,drminfo) },
+//--**************************************************
     { MATROSKA_ID_BLOCKDURATION,  EBML_UINT, 0, offsetof(MatroskaBlock,duration), {.u=AV_NOPTS_VALUE} },
     { MATROSKA_ID_BLOCKREFERENCE, EBML_UINT, 0, offsetof(MatroskaBlock,reference) },
     { 1,                          EBML_UINT, 0, offsetof(MatroskaBlock,non_simple), {.u=1} },
@@ -1125,6 +1154,9 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
     EbmlList *chapters_list = &matroska->chapters;
     MatroskaChapter *chapters;
     MatroskaTrack *tracks;
+//--**************************************************
+	MatroskaTrackData *tracksdata;
+//--**************************************************
     EbmlList *index_list;
     MatroskaIndex *index;
     int index_scale = 1;
@@ -1151,6 +1183,96 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
     /* The next thing is a segment. */
     if (ebml_parse(matroska, matroska_segments, matroska) < 0)
         return -1;
+//--**************************************************
+	/* check drm */
+	if(matroska->tracksdata.nb_elem > 0){
+		av_log(matroska->ctx, AV_LOG_INFO, "mkv has drm info\n");
+		
+		tracksdata = matroska->tracksdata.elem;
+		int result = 0;
+        unsigned char useLimit, useCount;
+        unsigned char cgmsaSignal = 0;
+        unsigned char acptbSignal = 0;
+        unsigned char digitalProtectionSignal = 0;
+        unsigned char ict = 0;
+        unsigned char rentalMsgFlag;
+		s->drm.drm_header = av_malloc(sizeof(DrmHeader));
+		if(s->drm.drm_header == NULL){
+			av_log(matroska->ctx, AV_LOG_INFO, "malloc drm header fail\n");
+		}
+		memset(s->drm.drm_header, 0x0, sizeof(DrmHeader));
+        memcpy(s->drm.drm_header, tracksdata->payload.data, sizeof(DrmHeader));
+		av_log(matroska->ctx, AV_LOG_INFO, "drmmode is %x\n", s->drm.drm_header->adpTarget.drmMode);
+		#if 1
+        result = drmInitSystem();
+        if (result != 0) {
+			av_log(s, AV_LOG_WARNING," not unauthorized 1\n");
+            s->drm.drm_check_value = 1;// unauthorized
+            return 0;
+        }
+        result = drmInitPlayback((unsigned char*)s->drm.drm_header);
+        if (result != 0) {
+			av_log(s, AV_LOG_WARNING," not unauthorized 2\n");
+            s->drm.drm_check_value = 1; // unauthorized
+            return 0;
+        }
+        result = drmQueryRentalStatus(&rentalMsgFlag, &useLimit, &useCount);
+        if (result != 0) {
+            if (result == 3) {
+				av_log(s, AV_LOG_WARNING," expired\n");
+                s->drm.drm_check_value = 2; // expired
+            }
+            else {
+				av_log(s, AV_LOG_WARNING," not unauthorized 3\n");
+                s->drm.drm_check_value = 1; // unauthorized
+            }
+            return 0;
+        }
+        if (rentalMsgFlag == 1) { 
+            s->drm.drm_rental_value = useLimit-useCount ; // conform
+            return 0;
+        }
+        drmSetRandomSample();
+        drmSetRandomSample();
+        drmSetRandomSample();
+        drmSetRandomSample();
+        result = drmQueryCgmsa(&cgmsaSignal);
+        if (result != 0) {
+			av_log(s, AV_LOG_WARNING," not unauthorized 4\n");
+            s->drm.drm_check_value = 1; // unauthorized
+            return 0;
+        }
+        result = drmQueryAcptb(&acptbSignal);
+        if (result != 0) {
+			av_log(s, AV_LOG_WARNING," not unauthorized 5\n");
+            s->drm.drm_check_value = 1; // unauthorized
+            return 0;
+        }
+        result = drmQueryDigitalProtection(&digitalProtectionSignal);
+        if (result != 0) {
+			av_log(s, AV_LOG_WARNING," not unauthorized 6\n");
+            s->drm.drm_check_value = 1; // unauthorized
+            return 0;
+        }
+        result = drmQueryIct(&ict);
+        if (result != 0) {
+			av_log(s, AV_LOG_WARNING," not unauthorized 7\n");
+            s->drm.drm_check_value = 1; // unauthorized
+            return 0;
+        }
+        result = drmCommitPlayback(0);
+        if (result != 0) {
+			av_log(s, AV_LOG_WARNING," not unauthorized 8\n");
+            s->drm.drm_check_value = 1; // unauthorized
+            return 0;
+        }
+        // update to nand
+
+        //memcpy(s->drm.drm_header, p_drm_context, sizeof(DrmHeader));
+		#endif
+	}
+
+//--**************************************************
     matroska_execute_seekhead(matroska);
 
     if (matroska->duration)
@@ -1499,11 +1621,17 @@ static void matroska_clear_queue(MatroskaDemuxContext *matroska)
         matroska->num_packets = 0;
     }
 }
-
+#if 0
 static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                                 int size, int64_t pos, uint64_t cluster_time,
                                 uint64_t duration, int is_keyframe,
                                 int64_t cluster_pos)
+#else
+static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
+                                int size, int64_t pos, uint64_t cluster_time,
+                                uint64_t duration, int is_keyframe,
+                                int64_t cluster_pos, uint8_t *drminfo_data, int drminfo_size)
+#endif								
 {
     uint64_t timecode = AV_NOPTS_VALUE;
     MatroskaTrack *track;
@@ -1668,6 +1796,18 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                            + a * (h*w / a - track->audio.pkt_cnt--), a);
                     pkt->pos = pos;
                     pkt->stream_index = st->index;
+//--****************************************
+					if(drminfo_size >= 10){
+						pkt->drmpack.key_index = drminfo_data[1]<<8 | drminfo_data[0];
+						pkt->drmpack.offset = drminfo_data[2] | drminfo_data[3]<<8 | drminfo_data[4]<<16 | drminfo_data[5]<<24;
+						pkt->drmpack.length= drminfo_data[6] | drminfo_data[7]<<8 | drminfo_data[8]<<16 | drminfo_data[9]<<24;
+						av_log(matroska->ctx, AV_LOG_INFO,
+                               "drminfo offset lenght is %d:%d\n",pkt->drmpack.offset, pkt->drmpack.length);
+					}
+					else
+						av_log(matroska->ctx, AV_LOG_INFO,
+                                   "drminfo_size is %d\n",drminfo_size);
+//--****************************************
                     dynarray_add(&matroska->packets,&matroska->num_packets,pkt);
                 }
             } else {
@@ -1701,6 +1841,18 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
 
                 pkt->pts = timecode;
                 pkt->pos = pos;
+//--*******************************************
+				if(drminfo_size >= 10){
+					pkt->drmpack.key_index = drminfo_data[1]<<8 | drminfo_data[0];
+					pkt->drmpack.offset = drminfo_data[2] | drminfo_data[3]<<8 | drminfo_data[4]<<16 | drminfo_data[5]<<24;
+					pkt->drmpack.length= drminfo_data[6] | drminfo_data[7]<<8 | drminfo_data[8]<<16 | drminfo_data[9]<<24;
+					av_log(matroska->ctx, AV_LOG_INFO,
+                               "drminfo offset lenght is %d:%d\n",pkt->drmpack.offset, pkt->drmpack.length);
+				}
+				else
+					av_log(matroska->ctx, AV_LOG_INFO,
+                               "drminfo_size is %d\n",drminfo_size);
+//--*******************************************
                 if (st->codec->codec_id == CODEC_ID_TEXT)
                     pkt->convergence_duration = duration;
                 else if (track->type != MATROSKA_TRACK_TYPE_SUBTITLE)
@@ -1755,11 +1907,21 @@ static int matroska_parse_cluster(MatroskaDemuxContext *matroska)
     for (i=0; i<blocks_list->nb_elem; i++)
         if (blocks[i].bin.size > 0) {
             int is_keyframe = blocks[i].non_simple ? !blocks[i].reference : -1;
+#if 0			
             res=matroska_parse_block(matroska,
                                      blocks[i].bin.data, blocks[i].bin.size,
                                      blocks[i].bin.pos,  cluster.timecode,
                                      blocks[i].duration, is_keyframe,
                                      pos);
+#else
+//--*******************************************
+			res=matroska_parse_block(matroska,
+                                     blocks[i].bin.data, blocks[i].bin.size,
+                                     blocks[i].bin.pos,  cluster.timecode,
+                                     blocks[i].duration, is_keyframe,
+                                     pos, blocks[i].drminfo.data, blocks[i].drminfo.size);
+//--*******************************************
+#endif									 
         }
     ebml_free(matroska_cluster, &cluster);
     if (res < 0)  matroska->done = 1;
@@ -1836,6 +1998,11 @@ static int matroska_read_close(AVFormatContext *s)
     for (n=0; n < matroska->tracks.nb_elem; n++)
         if (tracks[n].type == MATROSKA_TRACK_TYPE_AUDIO)
             av_free(tracks[n].audio.buf);
+//--**************************************
+	if(s->drm.drm_header)
+		av_free(s->drm.drm_header);
+	s->drm.drm_header = NULL;
+//--**************************************
     ebml_free(matroska_segment, matroska);
 
     return 0;
