@@ -1200,6 +1200,22 @@ int player_list_allpid(pid_info_t *pid)
 
 /* --------------------------------------------------------------------------*/
 /**
+ * @brief   player_cache_system_init
+ *
+ * @param[in]   enable dir max_size block_size
+ *
+ * @return  0;
+ */
+/* --------------------------------------------------------------------------*/
+
+
+int player_cache_system_init(int enable,const char*dir,int max_size,int block_size)
+{
+	return cache_system_init(enable,dir,max_size,block_size);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
  * @brief   player_status2str
  *
  * @param[in]   status  player status

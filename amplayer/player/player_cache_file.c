@@ -23,7 +23,7 @@
 #define CACHE_PAGE_SIZE			(1<<CACHE_PAGE_SHIFT)
 
 #define CACHE_FILE_IDENT		"AmCa"
-
+#define CACHE_NAME_PREFIX		"amcache_"
 
 #if(__BYTE_ORDER==__LITTLE_ENDIAN)
 #define BYTE__LITTLE_ENDIAN
@@ -124,7 +124,7 @@ out:
 
 static int cachefile_alloc_mgtfile_name(char *name,const char *dir,const char *url,int size)
 {
-	sprintf(name,"%s/m%08x_%08x.cache",dir,do_csum((unsigned char *)url,strlen(url)),size);
+	sprintf(name,"%s/" CACHE_NAME_PREFIX "%08x_%08x.cache",dir,do_csum((unsigned char *)url,strlen(url)),size);
 	return 0;
 }
 
@@ -141,11 +141,14 @@ static int cachefile_alloc_cachefile_name(char *name,const char *dir,const char 
 	}	
 	if(strlen(pfile)>=16)
 		pfile=pfile+(strlen(pfile)-16);/*only save the last 16 bytes name*/
-	sprintf(name,"%s/m%08x_%08x_%s",dir,do_csum((unsigned char *)url,strlen(url)),size,pfile);
+	sprintf(name,"%s/" CACHE_NAME_PREFIX "%08x_%08x_%s",dir,do_csum((unsigned char *)url,strlen(url)),size,pfile);
 	return 0;
 }
 
-
+int cachefile_is_cache_filename(const char *name)
+{
+	return (strncmp(name,CACHE_NAME_PREFIX,strlen(CACHE_NAME_PREFIX))==0);
+}
 
 static int chachefile_has_valid_page(struct cache_file * cache,int page_num){
 	if(cache->cache_map_size< (page_num>>3) || (page_num<<CACHE_PAGE_SHIFT)>=cache->file_size)
@@ -209,7 +212,7 @@ search_end:
 		if(valid_len<0)
 			valid_len=0;
 	}
-	lp_ciprint("max_size=%d,valid_pages=%d,valid_8pages=%d,valid_len=%d\n",max_size,valid_pages,valid_8pages,valid_len);
+	lp_cdprint("max_size=%d,valid_pages=%d,valid_8pages=%d,valid_len=%d\n",max_size,valid_pages,valid_8pages,valid_len);
 	return  valid_len;
 }
 
@@ -229,7 +232,7 @@ int cachefile_read(struct cache_file * cache,int64_t off,char *buf,int size)
 		readed_len=MIN(readed_len,size);
 		lseek(cache->file_fd,off,SEEK_SET);
 		readed_len=read(cache->file_fd,buf,readed_len);
-		lp_ciprint("cachefile_read off=%lld,size=%d,readed=%d\n",off,size,readed_len);
+		lp_cdprint("cachefile_read off=%lld,size=%d,readed=%d\n",off,size,readed_len);
 	}
 
 	return readed_len;
@@ -360,21 +363,22 @@ int cachefile_mgt_file_write(struct cache_file * cache){
 }
 
 
-struct cache_file * cachefile_open(const char *url,int64_t size,int flags)
+struct cache_file * cachefile_open(const char *url,const char *dir,int64_t size,int flags)
 {
 	struct cache_file *cache;
+	struct stat stat;
 	if(size >500*1024*1024 || size <1*1024*1024)/*don't cache too big file and too small size file*/
 		return NULL;
 	cache=malloc(sizeof(struct cache_file));
 	if(cache==NULL)
 		return NULL;
 	memset(cache,0,sizeof(struct cache_file));
-	cache->url=url;
+	cache->url=strdup(url);
 	cache->file_size=size;
 	lp_ciprint("cachefile_open:%s-%lld\n",url,size);
 	cache->url_checksum=do_csum((unsigned char*)cache->url,strlen(cache->url));
-	cachefile_alloc_mgtfile_name(cache->cache_mgtname,"/data/local/tmp/.amplayer",cache->url,cache->file_size);
-	cachefile_alloc_cachefile_name(cache->cache_filename,"/data/local/tmp/.amplayer",cache->url,cache->file_size);
+	cachefile_alloc_mgtfile_name(cache->cache_mgtname,dir,cache->url,cache->file_size);
+	cachefile_alloc_cachefile_name(cache->cache_filename,dir,cache->url,cache->file_size);
 	cache->mgt_fd=open(cache->cache_mgtname,O_CREAT |O_RDWR,0644);
 	if(cache->mgt_fd<0){
 		lp_ceprint("open cache_mgtname:%s failed(%s)\n",cache->cache_mgtname,strerror(cache->mgt_fd));
@@ -391,13 +395,22 @@ struct cache_file * cachefile_open(const char *url,int64_t size,int flags)
 	if(cachefile_mgt_file_read(cache)!=0){
 		cachefile_create_mgt_file_header(cache);
 	}
-	
+	else if(lstat(cache->cache_filename,&stat)){
+		if(stat.st_size<cachefile_searce_valid_bytes(cache,0,INT_MAX))
+			memset(cache->cache_map,0,cache->cache_map_size);
+			/*if valid data size is big ran file size,I think file is changed;
+			can add more check later;
+			*/
+			
+	}
 	return cache;
 error:
 	if(cache && cache->file_fd>0)
 		close(cache->file_fd);
 	if(cache && cache->mgt_fd>0)
 		close(cache->mgt_fd);
+	if(cache && cache->url)
+		free(cache->url);
 	if(cache)
 		free(cache);
 	return NULL;

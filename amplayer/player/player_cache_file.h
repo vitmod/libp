@@ -37,11 +37,16 @@ struct cache_file
 	struct cache_file_header *file;
 	int64_t last_write_off;
 };
-struct cache_file * cachefile_open(const char *url,int64_t size,int flags);
+struct cache_file * cachefile_open(const char *url,const char *dir,int64_t size,int flags);
 int cachefile_close(struct cache_file * cache);
 int cachefile_mgt_file_write(struct cache_file * cache);
 int cachefile_mgt_file_read(struct cache_file * cache);
 int cachefile_searce_valid_bytes(struct cache_file * cache,int64_t off,int max_size);
+int cachefile_is_cache_filename(const char *name);
+int cachefile_read(struct cache_file * cache,int64_t off,char *buf,int size);
+int cachefile_write(struct cache_file * cache,int64_t off,char *buf,int size);
+
+
 
 
 
