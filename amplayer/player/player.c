@@ -549,20 +549,21 @@ void *player_thread(play_para_t *player)
     switch(player->pFormatCtx->drm.drm_check_value){
     case 1: // unauthorized
       set_player_state(player, PLAYER_DIVX_AUTHORERR);
-      send_event(player, PLAYER_EVENTS_STATE_CHANGED,PLAYER_DIVX_AUTHORERR, "Divx Author Failed");
+      //send_event(player, PLAYER_EVENTS_STATE_CHANGED,PLAYER_DIVX_AUTHORERR, "Divx Author Failed");
       update_playing_info(player);
       update_player_states(player, 1);
 //  goto release0;
       break;
     case 2: // expired
-      send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_EXPIRED, "Divx Author Expired");
+      //send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_EXPIRED, "Divx Author Expired");
       set_player_state(player, PLAYER_DIVX_RENTAL_EXPIRED);
       update_playing_info(player);
       update_player_states(player, 1);
 //  goto release0;
       break;
     case 3: // rental
-      send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_VIEW, player->pFormatCtx->drm.drm_rental_value);
+      //send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_VIEW, player->pFormatCtx->drm.drm_rental_value);
+      set_drm_rental(player, player->pFormatCtx->drm.drm_rental_value);
       set_player_state(player, PLAYER_DIVX_RENTAL_VIEW);
       update_playing_info(player);
       update_player_states(player, 1);

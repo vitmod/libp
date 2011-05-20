@@ -960,3 +960,10 @@ int check_time_interrupt(long *old_msecond, int interval_ms)
     return ret;
 }
 
+void set_drm_rental(play_para_t *p_para, unsigned int rental_value)
+{
+    p_para->state.drm_rental = rental_value;
+
+    return;
+}
+

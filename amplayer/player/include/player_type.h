@@ -174,6 +174,7 @@ typedef struct player_info
 	float video_bufferlevel; // relative value
 	int64_t	bufed_pos;
 	int	bufed_time;/* Second*/
+    unsigned int drm_rental;
 }player_info_t;
 
 typedef struct pid_info
