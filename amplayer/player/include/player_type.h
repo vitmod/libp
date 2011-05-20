@@ -61,8 +61,8 @@ typedef enum
      * a message dialog
      * ****************************/
     PLAYER_DIVX_AUTHORERR   =   0x40001,
-    PLAYER_DIVX_RENTAL_VIEW =   0x40002,
-    PLAYER_DIVX_RENTAL_EXPIRED  =   0x40003,
+    PLAYER_DIVX_RENTAL_EXPIRED  =   0x40002,
+    PLAYER_DIVX_RENTAL_VIEW =   0x40003,
 
 	
 }player_status;

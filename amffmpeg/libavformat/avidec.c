@@ -671,7 +671,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 do{
 				  result = drmInitSystem();
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 1\n");
+					  av_log(s, AV_LOG_WARNING," not unauthorized 1: result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1;// unauthorized
 		              break;
 	              }
@@ -679,15 +679,16 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 	            	            	            
 	              result = drmInitPlayback((unsigned char*)s->drm.drm_header);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 2\n");
+					  av_log(s, AV_LOG_WARNING," not unauthorized 2: result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              av_log(s, AV_LOG_INFO, "drmInitPlayback\n");
 	              result = drmQueryRentalStatus(&rentalMsgFlag, &useLimit, &useCount);
 	              if (result != 0) {
+                      av_log(s, AV_LOG_WARNING, " result=%d, err=%d", result, drmGetLastError());
 	                  if (result == 3) {
-						  av_log(s, AV_LOG_WARNING," expired\n");
+						  av_log(s, AV_LOG_WARNING," expired\a");
 	                      s->drm.drm_check_value = 2; // expired
 	                  }
 	                  else {
@@ -697,7 +698,9 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 	                  break;
 	              }
 	              if (rentalMsgFlag == 1) { 
+                      av_log(s, AV_LOG_WARNING, "result=%d, userLimit=%d, useCount=%d, err=%d",result, useLimit, useCount, drmGetLastError());
 	                  s->drm.drm_rental_value = useLimit-useCount ; // conform
+                      s->drm.drm_check_value = 3; // rental view
 	                  break;
 	              }
 	              av_log(s, AV_LOG_INFO, "drmQueryRentalStatus\n");
@@ -714,31 +717,31 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
 	              result = drmQueryCgmsa(&cgmsaSignal);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 4\n");
+					  av_log(s, AV_LOG_WARNING," not unauthorized 4:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              result = drmQueryAcptb(&acptbSignal);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 5\n");
+					  av_log(s, AV_LOG_WARNING," not unauthorized 5:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              result = drmQueryDigitalProtection(&digitalProtectionSignal);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 6\n");
+					  av_log(s, AV_LOG_WARNING," not unauthorized 6:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              result = drmQueryIct(&ict);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 7\n");
+					  av_log(s, AV_LOG_WARNING," not unauthorized 7:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              result = drmCommitPlayback(0);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 8\n");
+					  av_log(s, AV_LOG_WARNING," not unauthorized 8:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }

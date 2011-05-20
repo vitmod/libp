@@ -323,6 +323,10 @@ int drm_init()
 		if(func_drmInitDrmMemory == NULL)
 			break;
 		
+        func_drmGetLastError                =   dlsym(fd, "drmGetLastError");
+        if(func_drmGetLastError == NULL)
+            break;
+
 		LOGI("libdrmdivx.so loaded\n");
 		
 		/* should called once after the device setup */
