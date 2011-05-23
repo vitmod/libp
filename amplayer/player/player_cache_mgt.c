@@ -43,8 +43,8 @@ struct cache_mgt_setting{
 static struct cache_mgt_setting cache_setting={
 	.cache_enable=0,
 	.cache_dir="/data/local/tmp/.amplayer",
-	.file_block_size=10*1024*1024,
-	.max_cache_size=50*1024*1024,
+	.file_block_size=1*1024*1024,
+	.max_cache_size=100*1024*1024,
 };
 
 
@@ -89,8 +89,10 @@ static int cache_client_open(const char *url,int64_t filesize)
 {
 	if(cache_setting.cache_enable){
 		int max_retry=0;
-		if(filesize>cache_setting.max_cache_size || filesize<cache_setting.file_block_size)
+		if(filesize>=cache_setting.max_cache_size || filesize<cache_setting.file_block_size){
+			log_print("filesize is out of support range=%d\n",filesize);
 			return -1;/*don't cache too big and too small file now.*/
+		}	
 		while(cache_file_size_add(0)+filesize>cache_setting.max_cache_size && max_retry++<100){
 			mgt_dir_cache_files(cache_setting.cache_dir,DEL_OLDEST_FLAGS);
 		}
@@ -155,7 +157,7 @@ int cache_system_init(int enable,const char*dir,int max_size,int block_size)
 			cache_setting.max_cache_size=max_size;
 		if(block_size>0)
 			cache_setting.file_block_size=block_size;
-		log_print("setcache dir=%s,cache_size=%d,blocksize=%d\n",cache_setting.cache_dir,max_size,block_size);
+		log_print("setcache dir=%s,cache_size=%d,blocksize=%d\n",cache_setting.cache_dir,cache_setting.max_cache_size,cache_setting.file_block_size);
 
 	}
 	lp_unlock(&cache_setting.mutex);
@@ -164,10 +166,10 @@ int cache_system_init(int enable,const char*dir,int max_size,int block_size)
 				cache_setting.cache_enable=0;
 				log_print("access cache dir failed,disabled the cache now\n");
 		}else{
-				log_print("access cache dir initok,enabled the cache now\n");
+				log_print("access cache dir initok,enabled the cache now,cached data size=%lld\n",cache_file_size_add(0));
 		}
+		
 	}
-	
 	return 0;
 }
 
@@ -202,15 +204,13 @@ int mgt_dir_cache_files(const char * dirpath,int del_flags){
 			strcpy(full_path+strlen(full_path),"/");//add //
 			strcpy(full_path+strlen(full_path),dirent->d_name);
 			
-			if(del_oldest){
-				if(lstat(full_path,&stat)==0){
-					if(stat.st_atime<timepoldest){
-						timepoldest=stat.st_atime;
-						strcpy(oldest_full_path,full_path);
-						oldfile_size=stat.st_size;
-					}
-					total_size+=stat.st_size;
+			if(lstat(full_path,&stat)==0){
+				if(del_oldest && stat.st_atime<timepoldest){
+					timepoldest=stat.st_atime;
+					strcpy(oldest_full_path,full_path);
+					oldfile_size=stat.st_size;
 				}
+				total_size+=stat.st_size;
 			}
 			if(del_all)
 			{
