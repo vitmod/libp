@@ -156,13 +156,18 @@ int cache_system_init(int enable,const char*dir,int max_size,int block_size)
 		if(block_size>0)
 			cache_setting.file_block_size=block_size;
 		log_print("setcache dir=%s,cache_size=%d,blocksize=%d\n",cache_setting.cache_dir,max_size,block_size);
+
+	}
+	lp_unlock(&cache_setting.mutex);
+	if(enable){
 		if((ret=mgt_dir_cache_files(dir,0))!=0){
-			cache_setting.cache_enable=0;
-			log_print("access cache dir failed,disabled the cache now\n");
+				cache_setting.cache_enable=0;
+				log_print("access cache dir failed,disabled the cache now\n");
+		}else{
+				log_print("access cache dir initok,enabled the cache now\n");
 		}
 	}
 	
-	lp_unlock(&cache_setting.mutex);
 	return 0;
 }
 
