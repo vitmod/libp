@@ -155,6 +155,10 @@ int set_subtitle_num(int num)
 
 }
 
+int set_subtitle_curr(int num)
+{
+	return set_sysfs_int("/sys/class/subtitle/curr", num);
+}
 int set_subtitle_enable(int num)
 {
     return set_sysfs_int("/sys/class/subtitle/enable", num);

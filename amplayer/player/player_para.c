@@ -768,6 +768,11 @@ static void subtitle_para_init(play_para_t *player)
         set_subtitle_fps(video_fps * 100);
     }
     set_subtitle_num(player->sstream_num);
+	if (0){	//FFT: set default subtitle index 
+		set_subtitle_enable(0);
+		set_subtitle_curr(0xff);
+		log_print("[%s:%d]set default subtitle index !\n", __FUNCTION__, __LINE__);
+	}
     if (player->sstream_info.has_sub) {
         if (player->sstream_info.sub_type == CODEC_ID_DVD_SUBTITLE) {
             set_subtitle_subtype(0);
