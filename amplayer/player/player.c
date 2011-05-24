@@ -545,32 +545,6 @@ void *player_thread(play_para_t *player)
         log_print("[player_dec_init]ffmpeg_open_file failed(%s)*****ret=%x!\n", player->file_name, ret);
         goto release0;
     }	
-	
-    switch(player->pFormatCtx->drm.drm_check_value){
-    case 1: // unauthorized
-      set_player_state(player, PLAYER_DIVX_AUTHORERR);
-      //send_event(player, PLAYER_EVENTS_STATE_CHANGED,PLAYER_DIVX_AUTHORERR, "Divx Author Failed");
-      update_playing_info(player);
-      update_player_states(player, 1);
-//  goto release0;
-      break;
-    case 2: // expired
-      //send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_EXPIRED, "Divx Author Expired");
-      set_player_state(player, PLAYER_DIVX_RENTAL_EXPIRED);
-      update_playing_info(player);
-      update_player_states(player, 1);
-//  goto release0;
-      break;
-    case 3: // rental
-      //send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_VIEW, player->pFormatCtx->drm.drm_rental_value);
-      set_drm_rental(player, player->pFormatCtx->drm.drm_rental_value);
-      set_player_state(player, PLAYER_DIVX_RENTAL_VIEW);
-      update_playing_info(player);
-      update_player_states(player, 1);
-      break;
-    default:
-      break;
-    }
 
     ffmpeg_parse_file_type(player, &filetype);
     set_player_state(player, PLAYER_TYPE_REDY);
@@ -598,6 +572,33 @@ void *player_thread(play_para_t *player)
     set_player_state(player, PLAYER_INITOK);
     update_playing_info(player);
     update_player_states(player, 1);
+
+    switch(player->pFormatCtx->drm.drm_check_value){
+    case 1: // unauthorized
+      set_player_state(player, PLAYER_DIVX_AUTHORERR);
+      //send_event(player, PLAYER_EVENTS_STATE_CHANGED,PLAYER_DIVX_AUTHORERR, "Divx Author Failed");
+      update_playing_info(player);
+      update_player_states(player, 1);
+//  goto release0;
+      break;
+    case 2: // expired
+      //send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_EXPIRED, "Divx Author Expired");
+      set_player_state(player, PLAYER_DIVX_RENTAL_EXPIRED);
+      update_playing_info(player);
+      update_player_states(player, 1);
+//  goto release0;
+      break;
+    case 3: // rental
+      //send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_DIVX_RENTAL_VIEW, player->pFormatCtx->drm.drm_rental_value);
+      set_drm_rental(player, player->pFormatCtx->drm.drm_rental_value);
+      set_player_state(player, PLAYER_DIVX_RENTAL_VIEW);
+      update_playing_info(player);
+      update_player_states(player, 1);
+      break;
+    default:
+      break;
+    }
+
     if (player->start_param->need_start) {
         int flag = 0;
         do {

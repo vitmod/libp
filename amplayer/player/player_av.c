@@ -1165,7 +1165,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
 		int decrypte_value = 0;
 		//log_print("enter decrypte data\n");		
 		decrypte_value = drmDecryptVideo(buf, pkt->avpkt->drmpack.length, &pkt->avpkt->drmpack);		
-		if(decrypte_value > 0)  
+		if(decrypte_value > 0 && para->media_info.stream_info.drm_check)  
 			log_print("decrypte fail value is %d\n", decrypte_value);
 		memset(&(pkt->avpkt->drmpack), 0x0, sizeof(DrmInfo)); 
 	}

@@ -62,6 +62,7 @@ static int set_stream_info(play_para_t *p_para)
     info->cur_video_index   = p_para->vstream_info.video_index;
     info->cur_audio_index   = p_para->astream_info.audio_index;
     info->cur_sub_index     = p_para->sstream_info.sub_index;
+    info->drm_check         = (p_para->pFormatCtx->drm.drm_check_value > 0) ? 1 : 0;
     return 0;
 }
 

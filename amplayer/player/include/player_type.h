@@ -143,6 +143,7 @@ typedef struct
     int total_sub_num;      
     int cur_sub_index;	
     int seekable;
+    int drm_check;
 }mstream_info_t;
 
 typedef struct
