@@ -767,7 +767,7 @@ static void subtitle_para_init(play_para_t *player)
     int frame_rate_num, frame_rate_den;
     float video_fps;
 	char out;
-	char default_sub = "first index";
+	char default_sub = "firstindex";
 
 	if (player->vstream_info.has_video) {
         video_fps = (UNIT_FREQ) / (float)player->vstream_info.video_rate;
@@ -777,7 +777,7 @@ static void subtitle_para_init(play_para_t *player)
 
 	//FFT: get proerty from build.prop
 	property_get("media.amplayer.divx.certified", &out, &default_sub);
-	log_print("[%s:%d]out = %s !\n", __FUNCTION__, __LINE__, out);
+	log_print("[%s:%d]out = %s !\n", __FUNCTION__, __LINE__, &out);
 	
 	//FFT: set default subtitle index for divx certified
 	if (strcmp(&out, "enable")==0){	
