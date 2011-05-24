@@ -15,6 +15,9 @@
 #include "player_update.h"
 #include "player_ffmpeg_ctrl.h"
 
+#include <cutils/properties.h>
+
+#include <sys/system_properties.h>
 DECLARE_ALIGNED(16, uint8_t, dec_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
 
 static void get_av_codec_type(play_para_t *p_para)
@@ -763,12 +766,21 @@ static void subtitle_para_init(play_para_t *player)
     AVFormatContext *pCtx = player->pFormatCtx;
     int frame_rate_num, frame_rate_den;
     float video_fps;
-    if (player->vstream_info.has_video) {
+	char out;
+	char default_sub = "first index";
+
+	if (player->vstream_info.has_video) {
         video_fps = (UNIT_FREQ) / (float)player->vstream_info.video_rate;
         set_subtitle_fps(video_fps * 100);
     }
     set_subtitle_num(player->sstream_num);
-	if (0){	//FFT: set default subtitle index 
+
+	//FFT: get proerty from build.prop
+	property_get("media.amplayer.divx.certified", &out, &default_sub);
+	log_print("[%s:%d]out = %s !\n", __FUNCTION__, __LINE__, out);
+	
+	//FFT: set default subtitle index for divx certified
+	if (strcmp(&out, "enable")==0){	
 		set_subtitle_enable(0);
 		set_subtitle_curr(0xff);
 		log_print("[%s:%d]set default subtitle index !\n", __FUNCTION__, __LINE__);

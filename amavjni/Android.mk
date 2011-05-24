@@ -15,7 +15,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/include\
 LOCAL_STATIC_LIBRARIES := libamcodec libavformat libavcodec libavutil libamadec 
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder 
 LOCAL_SHARED_LIBRARIES += libandroid_runtime   libnativehelper
-LOCAL_SHARED_LIBRARIES += libamplayer
+LOCAL_SHARED_LIBRARIES += libamplayer libcutils libc
 
 LOCAL_MODULE := libamavjni
 LOCAL_MODULE_TAGS := optional
