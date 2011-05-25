@@ -124,7 +124,6 @@ drmErrorCodes_t drmDecryptAudio( uint8_t *frame,
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmDecryptAudio\n");
 	
 	return func_drmDecryptAudio(drmContext, frame, frameSize);
 }
@@ -134,7 +133,6 @@ drmErrorCodes_t drmQueryCgmsa(uint8_t *cgmsaSignal )
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
 	
-	LOGI("drmQueryCgmsa\n");
 	return func_drmQueryCgmsa(drmContext, cgmsaSignal);
 }
 
@@ -143,7 +141,6 @@ drmErrorCodes_t drmQueryAcptb(uint8_t *acptbSignal )
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
 	
-	LOGI("drmQueryAcptb\n");	
 	return func_drmQueryAcptb(drmContext, acptbSignal);
 }
 
@@ -151,7 +148,6 @@ drmErrorCodes_t drmQueryDigitalProtection(uint8_t *digitalProtectionSignal )
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmQueryDigitalProtection\n");		
 	return func_drmQueryDigitalProtection(drmContext, digitalProtectionSignal);
 }
 
@@ -159,7 +155,6 @@ drmErrorCodes_t drmQueryIct(uint8_t *ict )
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmQueryIct\n");	
 	return func_drmQueryIct(drmContext, ict);
 }
 
@@ -167,14 +162,12 @@ drmErrorCodes_t drmGetLastError()
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmGetLastError\n");
 	
 	return func_drmGetLastError(drmContext);
 }
 
 drmErrorCodes_t drmInitDrmMemory()
 {
-	LOGI("drmInitDrmMemory\n");
 	
 	return func_drmInitDrmMemory();
 }
@@ -184,7 +177,6 @@ int8_t drmIsDeviceActivated( )
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
 		
-	LOGI("drmIsDeviceActivated\n");
 	
 	return func_drmIsDeviceActivated(drmContext);
 }
@@ -194,7 +186,6 @@ drmErrorCodes_t drmGetActivationStatus( uint8_t* userId,
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
 		
-	LOGI("drmGetActivationStatus\n");
 	return func_drmGetActivationStatus(userId, userIdLength);
 }
 drmErrorCodes_t drmGetDeactivationMessage(int8_t* messageString,
@@ -203,7 +194,6 @@ drmErrorCodes_t drmGetDeactivationMessage(int8_t* messageString,
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
 		
-	LOGI("drmGetDeactivationMessage\n");
 	return func_drmGetDeactivationMessage(drmContext, messageString, messageStringLength);
 }
 
@@ -212,7 +202,6 @@ drmErrorCodes_t drmGetActivationMessage(int8_t* activationMessage,
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmGetActivationMessage\n");	
 	return func_drmGetActivationMessage(drmContext, activationMessage, activationMessageLength);
 }
 
@@ -220,7 +209,6 @@ drmErrorCodes_t drmGetDeactivationCodeString(char *deactivationCodeString )
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmGetDeactivationCodeString\n");		
 	return func_drmGetDeactivationCodeString(drmContext, deactivationCodeString);
 }
 
@@ -228,7 +216,6 @@ drmErrorCodes_t drmGetRegistrationCodeString(char *registrationCodeString )
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmGetRegistrationCodeString\n");
 	
 	return func_drmGetRegistrationCodeString(drmContext, registrationCodeString);
 }
@@ -237,7 +224,6 @@ uint32_t drmGetRandomSampleCounter()
 {
 	if(drmContext == NULL)
 		return DRM_GENERAL_ERROR;
-	LOGI("drmGetRandomSampleCounter\n");	
 	return 0;
 }
 
@@ -300,6 +286,10 @@ int drm_init()
 		if(func_drmDecryptVideo == NULL)
 			break;
 		
+        func_drmDecryptAudio                =   dlsym(fd, "drmDecryptAudio");
+        if(func_drmDecryptAudio == NULL)
+            break;
+
 		func_drmGetDeactivationCodeString	=	dlsym(fd, "drmGetDeactivationCodeString");
 		if(func_drmGetDeactivationCodeString == NULL)
 			break;

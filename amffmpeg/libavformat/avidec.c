@@ -648,12 +648,12 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 				if(drm_buffer == NULL)
 					url_fskip(pb, size);
 				memset(drm_buffer, 0x0, size+1);
-				s->drm.drm_header = av_malloc(sizeof(DrmHeader));
+				s->drm.drm_header = av_malloc(size+1);
 				if(s->drm.drm_header == NULL){
 					av_free(drm_buffer);
 					url_fskip(pb, size);
 				}
-				memset(s->drm.drm_header, 0x0, sizeof(DrmHeader));
+				memset(s->drm.drm_header, 0x0, size);
 				
 				if(drm_init() < 0){
 					av_log(s, AV_LOG_INFO, "drm lib init failed\n");
@@ -664,9 +664,9 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 				
 				//read drm data
 				get_buffer(s->pb, drm_buffer, size);
-	            memcpy(s->drm.drm_header, drm_buffer+8, sizeof(DrmHeader));
+	            memcpy(s->drm.drm_header, drm_buffer+8, size);
 				av_free(drm_buffer);
-				av_log(s, AV_LOG_INFO, "drmmode is %x\n", s->drm.drm_header->adpTarget.drmMode);
+				av_log(s, AV_LOG_INFO, "drmmode is %x\n", s->drm.drm_header->targetHeader.drmMode);
 				
                 do{
 				  result = drmInitSystem();
@@ -747,7 +747,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 	              }
 	            // update to nand
 
-	            //memcpy(s->drm.drm_header, p_drm_context, sizeof(DrmHeader)); 
+	            //memcpy(s->drm.drm_header, p_drm_context, sizeof(drmHeader_t)); 
                 }while(0);
 
                 drm_set_info(&s->drm);
@@ -856,7 +856,6 @@ static int get_stream_idx(int *d){
         return 100; //invalid stream ID
     }
 }
-
 static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     AVIContext *avi = s->priv_data;
@@ -868,6 +867,7 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
 
     if (CONFIG_DV_DEMUXER && avi->dv_demux) {
         int size = dv_get_packet(avi->dv_demux, pkt);
+     
         if (size >= 0)
             return size;
     }
@@ -950,7 +950,8 @@ resync:
         if(size > ast->remaining)
             size= ast->remaining;
         avi->last_pkt_pos= url_ftell(pb);
-        err= av_get_packet(pb, pkt, size);
+       err= av_get_packet(pb, pkt, size);
+   
         if(err<0)
         {
             av_log(NULL, AV_LOG_INFO, "[%s:%d] err=%d\n", __FUNCTION__, __LINE__,err);
@@ -974,6 +975,7 @@ resync:
                                     pkt->data, pkt->size);
             pkt->destruct = dstr;
             pkt->flags |= PKT_FLAG_KEY;
+           
         } else {
             /* XXX: How to handle B-frames in AVI? */
             pkt->dts = ast->frame_offset;
@@ -1007,7 +1009,7 @@ resync:
             ast->packet_size= 0;
         }
 
-        return size;
+       return size;
     }
 
     memset(d, -1, sizeof(int)*8);
@@ -1057,14 +1059,10 @@ resync:
         }
 
 //--**************************************************************
-		if(d[2] == 'd' && d[3] == 'd' && s->drm.drm_header){
+		if(d[2] == 'd' && d[3] == 'd' && s->drm.drm_header){          
 			pkt->drmpack.key_index = get_byte(pb) | get_byte(pb)<<8;
-			pkt->drmpack.offset = get_byte(pb) | get_byte(pb)<<8 |
-get_byte(pb)<<16 |
-								get_byte(pb)<<24;
-			pkt->drmpack.length= get_byte(pb) | get_byte(pb)<<8 |
-get_byte(pb)<<16 |
-								get_byte(pb)<<24;
+			pkt->drmpack.offset = get_byte(pb) | get_byte(pb)<<8 |get_byte(pb)<<16 |get_byte(pb)<<24;
+			pkt->drmpack.length= get_byte(pb) | get_byte(pb)<<8 |get_byte(pb)<<16 | get_byte(pb)<<24;
 			goto resync;
 		}
 //--**************************************************************

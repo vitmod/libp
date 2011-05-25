@@ -1159,17 +1159,6 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
         pkt->avpkt_isvalid = 0;
     }
 
-	//add by C.S for decrypte drm data
-	#if 1
-	if(size >0 && pkt->avpkt->drmpack.length){
-		int decrypte_value = 0;
-		//log_print("enter decrypte data\n");		
-		decrypte_value = drmDecryptVideo(buf, pkt->avpkt->drmpack.length, &pkt->avpkt->drmpack);		
-		if(decrypte_value > 0 && para->media_info.stream_info.drm_check)  
-			log_print("decrypte fail value is %d\n", decrypte_value);
-		memset(&(pkt->avpkt->drmpack), 0x0, sizeof(DrmInfo)); 
-	}
-	#endif
 
     while (size > 0 && pkt->avpkt_isvalid) {
         write_bytes = codec_write(pkt->codec, (char *)buf, size);

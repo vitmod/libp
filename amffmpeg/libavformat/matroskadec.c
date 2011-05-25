@@ -1196,13 +1196,13 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         unsigned char digitalProtectionSignal = 0;
         unsigned char ict = 0;
         unsigned char rentalMsgFlag;
-		s->drm.drm_header = av_malloc(sizeof(DrmHeader));
+		s->drm.drm_header = av_malloc(sizeof(drmHeader_t));
 		if(s->drm.drm_header == NULL){
 			av_log(matroska->ctx, AV_LOG_INFO, "malloc drm header fail\n");
 		}
-		memset(s->drm.drm_header, 0x0, sizeof(DrmHeader));
-        memcpy(s->drm.drm_header, tracksdata->payload.data, sizeof(DrmHeader));
-		av_log(matroska->ctx, AV_LOG_INFO, "drmmode is %x\n", s->drm.drm_header->adpTarget.drmMode);
+		memset(s->drm.drm_header, 0x0, sizeof(drmHeader_t));
+        memcpy(s->drm.drm_header, tracksdata->payload.data, sizeof(drmHeader_t));
+		av_log(matroska->ctx, AV_LOG_INFO, "drmmode is %x\n", s->drm.drm_header->targetHeader.drmMode);
 		#if 1
         result = drmInitSystem();
         if (result != 0) {

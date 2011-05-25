@@ -618,7 +618,6 @@ int av_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     int ret, i;
     AVStream *st;
-
     for(;;){
         AVPacketList *pktl = s->raw_packet_buffer;
 
@@ -1000,7 +999,6 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
     int len, ret, i;
 
     av_init_packet(pkt);
-
     for(;;) {
         /* select current input stream component */
         st = s->cur_st;
@@ -1008,7 +1006,8 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
             if (!st->need_parsing || !st->parser) {
                 /* no parsing needed: we just output the packet as is */
                 /* raw data support */
-                *pkt = st->cur_pkt; st->cur_pkt.data= NULL;
+
+              *pkt = st->cur_pkt; st->cur_pkt.data= NULL;
                 compute_pkt_fields(s, st, NULL, pkt);
                 s->cur_st = NULL;
                 if ((s->iformat->flags & AVFMT_GENERIC_INDEX) &&
@@ -1016,9 +1015,10 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
                     ff_reduce_index(s, st->index);
                     av_add_index_entry(st, pkt->pos, pkt->dts, 0, 0, AVINDEX_KEYFRAME);
                 }
+               
                 break;
             } else if (st->cur_len > 0 && st->discard < AVDISCARD_ALL) {
-                len = av_parser_parse2(st->parser, st->codec, &pkt->data, &pkt->size,
+              len = av_parser_parse2(st->parser, st->codec, &pkt->data, &pkt->size,
                                        st->cur_ptr, st->cur_len,
                                        st->cur_pkt.pts, st->cur_pkt.dts,
                                        st->cur_pkt.pos);
@@ -1036,6 +1036,9 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
                     pkt->pts = st->parser->pts;
                     pkt->dts = st->parser->dts;
                     pkt->pos = st->parser->pos;
+					/* keep drmpack */
+                    pkt->drmpack = st->cur_pkt.drmpack;
+
                     pkt->destruct = NULL;
 
                     if (!st->no_extra_offset)
@@ -1046,7 +1049,6 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
                         av_add_index_entry(st, st->parser->frame_offset, pkt->dts,
                                            0, 0, AVINDEX_KEYFRAME);
                     }
-
                     break;
                 }
             } else {
@@ -1058,6 +1060,25 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
             AVPacket cur_pkt;
             /* read next packet */
             ret = av_read_packet(s, &cur_pkt);
+            if(ret > 0){
+              st = s->streams[cur_pkt.stream_index];
+              int drmret = 0;
+              if(cur_pkt.drmpack.length>0 && cur_pkt.size>0 ){
+                if(st->codec->codec_type == CODEC_TYPE_VIDEO){
+                  drmret = drmDecryptVideo(cur_pkt.data, cur_pkt.size, &cur_pkt.drmpack);
+                  if(drmret != 0){
+                    av_log(s, AV_LOG_ERROR, "decrypt video error: data size=%d, drm size=%d", cur_pkt.size, cur_pkt.drmpack.length);
+                  }
+                }
+
+                if(st->codec->codec_type == CODEC_TYPE_AUDIO){
+                  drmret = drmDecryptAudio(cur_pkt.data, cur_pkt.size);
+                  if(drmret != 0){
+                    av_log(s, AV_LOG_ERROR, "decrypt audio error: data size=%d, drm size=%d", cur_pkt.size, cur_pkt.drmpack.length);
+                  }
+                }
+              }
+            }
             if (ret < 0) {
                 if (ret == AVERROR(EAGAIN))
                     return ret;
@@ -1071,13 +1092,15 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
                                         AV_NOPTS_VALUE, AV_NOPTS_VALUE,
                                         AV_NOPTS_VALUE);
                         if (pkt->size)
-                            goto got_packet;
+                        {
+                          goto got_packet;
+                          }
                     }
                 }
                 /* no more packets: really terminate parsing */
                 return ret;
             }
-            st = s->streams[cur_pkt.stream_index];
+           st = s->streams[cur_pkt.stream_index];
             st->cur_pkt= cur_pkt;
 
             if(st->cur_pkt.pts != AV_NOPTS_VALUE &&
