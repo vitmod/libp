@@ -5,6 +5,8 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 												
 
+LOCAL_SRC_FILES +=system/android.c system/systemsetting.c
+
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
 	$(LOCAL_PATH)/../../amcodec/include \
 	$(LOCAL_PATH)/../../amadec/include \
@@ -19,6 +21,8 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 									
+
+LOCAL_SRC_FILES +=system/android.c system/systemsetting.c
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
         $(LOCAL_PATH)/../../amcodec/include \

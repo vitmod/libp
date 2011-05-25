@@ -14,10 +14,8 @@
 #include "player_hwdec.h"
 #include "player_update.h"
 #include "player_ffmpeg_ctrl.h"
+#include "system/systemsetting.h"
 
-#include <cutils/properties.h>
-
-#include <sys/system_properties.h>
 DECLARE_ALIGNED(16, uint8_t, dec_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
 
 static void get_av_codec_type(play_para_t *p_para)
@@ -776,7 +774,7 @@ static void subtitle_para_init(play_para_t *player)
     set_subtitle_num(player->sstream_num);
 
 	//FFT: get proerty from build.prop
-	property_get("media.amplayer.divx.certified", &out, &default_sub);
+	GetSystemSettingString("media.amplayer.divx.certified", &out, &default_sub);
 	log_print("[%s:%d]out = %s !\n", __FUNCTION__, __LINE__, &out);
 	
 	//FFT: set default subtitle index for divx certified
