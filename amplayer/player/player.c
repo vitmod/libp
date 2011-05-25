@@ -666,6 +666,19 @@ void *player_thread(play_para_t *player)
         } while (1);
     }
     
+    /* if drm rental , continue playback here
+     * caution:
+     * 1. resume play, should not call drmCommitPlayback
+     * 2. 
+     * */
+    if(player->pFormatCtx->drm.drm_header){       
+	     ret = drmCommitPlayback(0);
+	     if (ret != 0) {
+		   log_error(" not unauthorized 8:result=%d, err=%d\n", ret, drmGetLastError());
+	       player->pFormatCtx->drm.drm_check_value = 1; // unauthorized, should popup a dialog
+	      }
+    }
+
 	log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {

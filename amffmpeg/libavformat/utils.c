@@ -1067,14 +1067,14 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
                 if(st->codec->codec_type == CODEC_TYPE_VIDEO){
                   drmret = drmDecryptVideo(cur_pkt.data, cur_pkt.size, &cur_pkt.drmpack);
                   if(drmret != 0){
-                    av_log(s, AV_LOG_ERROR, "decrypt video error: data size=%d, drm size=%d", cur_pkt.size, cur_pkt.drmpack.length);
+                    av_log(s, AV_LOG_ERROR, "decrypt video error %d: data size=%d, drm size=%d",drmret, cur_pkt.size, cur_pkt.drmpack.length);
                   }
                 }
 
                 if(st->codec->codec_type == CODEC_TYPE_AUDIO){
                   drmret = drmDecryptAudio(cur_pkt.data, cur_pkt.size);
                   if(drmret != 0){
-                    av_log(s, AV_LOG_ERROR, "decrypt audio error: data size=%d, drm size=%d", cur_pkt.size, cur_pkt.drmpack.length);
+                    av_log(s, AV_LOG_ERROR, "decrypt audio error %d: data size=%d, drm size=%d",drmret, cur_pkt.size, cur_pkt.drmpack.length);
                   }
                 }
               }

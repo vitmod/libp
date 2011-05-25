@@ -676,7 +676,12 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 		              break;
 	              }
 	              av_log(s, AV_LOG_INFO, "drmInitSystem\n");
-	            	            	            
+	              
+                  drmSetRandomSample();
+	              drmSetRandomSample();
+	              drmSetRandomSample();
+	              drmSetRandomSample();
+            	            
 	              result = drmInitPlayback((unsigned char*)s->drm.drm_header);
 	              if (result != 0) {
 					  av_log(s, AV_LOG_WARNING," not unauthorized 2: result=%d, err=%d\n", result, drmGetLastError());
@@ -701,54 +706,46 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                       av_log(s, AV_LOG_WARNING, "result=%d, userLimit=%d, useCount=%d, err=%d",result, useLimit, useCount, drmGetLastError());
 	                  s->drm.drm_rental_value = useLimit-useCount ; // conform
                       s->drm.drm_check_value = 3; // rental view
-	                  break;
+	              //    break; // continue the following checking
 	              }
-	              av_log(s, AV_LOG_INFO, "drmQueryRentalStatus\n");
-	              drmSetRandomSample();
-	              drmSetRandomSample();
-	              drmSetRandomSample();
-	              drmSetRandomSample();
-	            
-	              drmGetRegistrationCodeString(reg_code);
-	              reg_code[10] = '\0';
-                  memcpy(s->drm.drm_reg_code, reg_code, 11);
 
-	              av_log(s, AV_LOG_INFO, "divx registration code: %s\n", reg_code);
-
+                  av_log(s, AV_LOG_INFO, "drmQueryRentalStatus\n");
 	              result = drmQueryCgmsa(&cgmsaSignal);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 4:result=%d, err=%d\n", result, drmGetLastError());
+		              av_log(s, AV_LOG_WARNING," not unauthorized 4:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              result = drmQueryAcptb(&acptbSignal);
-	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 5:result=%d, err=%d\n", result, drmGetLastError());
+            	  if (result != 0) {
+		              av_log(s, AV_LOG_WARNING," not unauthorized 5:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              result = drmQueryDigitalProtection(&digitalProtectionSignal);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 6:result=%d, err=%d\n", result, drmGetLastError());
+		              av_log(s, AV_LOG_WARNING," not unauthorized 6:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
 	              result = drmQueryIct(&ict);
 	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 7:result=%d, err=%d\n", result, drmGetLastError());
+      		          av_log(s, AV_LOG_WARNING," not unauthorized 7:result=%d, err=%d\n", result, drmGetLastError());
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
-	              result = drmCommitPlayback(0);
-	              if (result != 0) {
-					  av_log(s, AV_LOG_WARNING," not unauthorized 8:result=%d, err=%d\n", result, drmGetLastError());
-	                  s->drm.drm_check_value = 1; // unauthorized
-		              break;
-	              }
-	            // update to nand
+
+	             // update to nand
 
 	            //memcpy(s->drm.drm_header, p_drm_context, sizeof(drmHeader_t)); 
                 }while(0);
+
+                if(drmGetRegistrationCodeString(reg_code) != 0){
+	              reg_code[10] = '\0';
+                  memcpy(s->drm.drm_reg_code, reg_code, 11);
+
+	              av_log(s, AV_LOG_INFO, "divx registration code: %s\n", reg_code);
+                }
 
                 drm_set_info(&s->drm);
 			}
