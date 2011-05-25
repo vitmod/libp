@@ -390,12 +390,12 @@ struct cache_file * cachefile_open(const char *url, const char *dir, int64_t siz
     cache->url_checksum = do_csum((unsigned char*)cache->url, strlen(cache->url));
     cachefile_alloc_mgtfile_name(cache->cache_mgtname, dir, cache->url, cache->file_size);
     cachefile_alloc_cachefile_name(cache->cache_filename, dir, cache->url, cache->file_size);
-    cache->mgt_fd = open(cache->cache_mgtname, O_CREAT | O_RDWR, 0644);
+    cache->mgt_fd = open(cache->cache_mgtname, O_CREAT | O_RDWR, 0774);
     if (cache->mgt_fd < 0) {
         lp_ceprint("open cache_mgtname:%s failed(%s)\n", cache->cache_mgtname, strerror(cache->mgt_fd));
         goto error;
     }
-    cache->file_fd = open(cache->cache_filename, O_CREAT | O_RDWR, 0644);
+    cache->file_fd = open(cache->cache_filename, O_CREAT | O_RDWR, 0774);
     if (cache->file_fd < 0) {
         lp_ceprint("open cache_filename:%s failed(%s)\n", cache->cache_mgtname, strerror(cache->mgt_fd));
         goto error;

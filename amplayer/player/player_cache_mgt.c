@@ -193,7 +193,7 @@ int mgt_dir_cache_files(const char * dirpath, int del_flags)
 
     dir = opendir(dirpath);
     if (dir == NULL) { /*dir have not?*/
-        ret = mkdir(dirpath, 0644);
+        ret = mkdir(dirpath, 0774);
         log_print("mkdir %s=%d\n", dirpath, ret);
         return ret;
     }
