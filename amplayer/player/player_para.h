@@ -68,6 +68,7 @@ typedef struct {
     float           sub_pts;
     int             check_first_pts;
     int             cur_subindex; //for change subtitle
+    int             sub_has_found;
 } s_stream_info_t;
 
 typedef  struct {

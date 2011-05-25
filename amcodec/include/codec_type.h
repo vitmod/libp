@@ -79,6 +79,14 @@ unsigned int noblock:
     void * adec_priv;          ///<for adec>
 } codec_para_t;
 
+typedef struct 
+{
+    signed char id;      
+    unsigned char width;
+    unsigned char height;
+	unsigned char type;    
+}subtitle_info_t;
+#define MAX_SUB_NUM			(32)
 
 #define IS_VALID_PID(t)     (t>=0 && t<=0x1fff)
 #define IS_VALID_STREAM(t)  (t>0 && t<=0x1fff)

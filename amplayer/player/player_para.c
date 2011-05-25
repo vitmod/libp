@@ -551,7 +551,10 @@ static int set_decode_para(play_para_t*am_p)
             log_error("[%s:%d]HD mjmpeg, set vrate=%d\n", __FUNCTION__, __LINE__, am_p->vstream_info.video_rate);
 		}
 	}
-	
+
+	if (am_p->sstream_info.has_sub) {
+		am_p->sstream_info.sub_has_found = 1;
+	}
     return PLAYER_SUCCESS;
 }
 

@@ -1403,6 +1403,20 @@ int codec_set_sub_id(codec_para_t *pcodec)
 
 /* --------------------------------------------------------------------------*/
 /**
+* @brief  codec_set_sub_type  Set subtitle type by codec device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_sub_type(codec_para_t *pcodec)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_SUB_TYPE, pcodec->sub_type);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
 * @brief  codec_audio_reinit  Re-initialize audio codec
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
@@ -1617,3 +1631,30 @@ int codec_get_syncdiscont(codec_para_t *pcodec)
     }
 }
 
+int codec_get_sub_num(codec_para_t *pcodec)
+{
+    int sub_num = 0;
+    int ret;
+
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_SUB_NUM, (unsigned long)&sub_num);
+    if (ret < 0) {
+        return ret;
+    }
+    return sub_num;
+}
+
+int codec_get_sub_info(codec_para_t *pcodec, subtitle_info_t *sub_info)
+{    
+    int ret = 0;
+	int i;		
+	if (!sub_info) {
+		CODEC_PRINT("[codec_get_sub_info] error, NULL pointer!\n");
+		ret = CODEC_ERROR_INVAL;
+		return ret;
+	}
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_SUB_INFO, (unsigned long)sub_info);
+	if (ret < 0) {
+		return ret;
+	}	
+    return ret;     
+}

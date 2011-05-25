@@ -164,6 +164,55 @@ static int check_decoder_worksta(play_para_t *para)
     return PLAYER_SUCCESS;
 }
 
+static int check_subtitle_info(play_para_t *player)
+{
+	int sub_stream_num = 0;
+	int cur_sub_id = -1;
+	int i;
+	subtitle_info_t sub_info[MAX_SUB_NUM];		
+
+	if (player->start_param->hassub == 0){
+		return PLAYER_SUCCESS;
+	}
+	if (player->stream_type == STREAM_PS && !player->sstream_info.sub_has_found) {
+		if (!player->codec) {
+			return PLAYER_EMPTY_P;
+		}
+		memset(sub_info, -1, sizeof(subtitle_info_t) * MAX_SUB_NUM);
+		
+		sub_stream_num = codec_get_sub_num(player->codec);
+		if (sub_stream_num > player->media_info.stream_info.total_sub_num) {
+			
+			codec_get_sub_info(player->codec, sub_info);			
+			if (set_ps_subtitle_info(player, sub_info, sub_stream_num) == PLAYER_SUCCESS) {
+				set_subtitle_num(sub_stream_num);			
+				set_subtitle_enable(1);	
+				set_player_state(player, PLAYER_FOUND_SUB);
+                update_playing_info(player);
+                update_player_states(player, 1);
+			}
+			
+			if (sub_info[1].id != -1 && sub_info[1].id != player->codec->sub_pid) {
+				player->codec->sub_pid = sub_info[1].id;
+				player->codec->sub_type = 0x17000;
+				log_print("[%s]defatult:sub_info[1] id=0x%x\n", __FUNCTION__, sub_info[1].id);			
+				
+				if (player->astream_info.start_time > 0) {
+					set_subtitle_startpts(player->astream_info.start_time);
+				} else if (player->vstream_info.start_time > 0) {
+					set_subtitle_startpts(player->vstream_info.start_time);
+				} else {
+					set_subtitle_startpts(0);
+				}
+				codec_set_sub_type(player->codec);
+				codec_set_sub_id(player->codec);
+				codec_reset_subtile(player->codec);						
+			}
+		}
+	}
+	return PLAYER_SUCCESS;
+}
+
 /******************************
  * get audio codec pointer
  ******************************/
@@ -773,6 +822,9 @@ write_packet:
                 set_player_state(player, PLAYER_ERROR);
                 goto release;
             }
+
+			check_subtitle_info(player);
+			
             if ((player->vstream_info.video_format == VFORMAT_SW) && (pkt->type == CODEC_VIDEO)) {
                 player->state.current_time = (int)(pkt->avpkt->dts / 1000);
                 if (player->state.current_time > player->state.full_time) {

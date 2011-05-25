@@ -44,6 +44,7 @@ typedef enum
 
 	PLAYER_PLAY_NEXT	= 0x20009,	
 	PLAYER_BUFFER_OK	= 0x2000a,	
+	PLAYER_FOUND_SUB	= 0x2000b,
 
 	/******************************
 	* 0x3000x: 

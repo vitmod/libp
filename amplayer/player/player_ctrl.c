@@ -1273,7 +1273,10 @@ char *player_status2str(player_status status)
 
     case PLAYER_PLAY_NEXT:
         return "PLAY_NEXT";
-
+		
+	case PLAYER_FOUND_SUB:
+		return "NEW_SUB";
+		
     case PLAYER_DIVX_AUTHORERR:
         return "DIVX_AUTHORERR";
     case PLAYER_DIVX_RENTAL_VIEW:

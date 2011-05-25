@@ -2169,8 +2169,8 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
     int ret = 1;
     float high_limit = (para->buffering_threshhold_max > 0) ? para->buffering_threshhold_max : 0.8; 
 
-    log_print("check_avbuffer_enough audio_bufferlevel %f, buffering_threshhold_max %f\n",
-        para->state.audio_bufferlevel, high_limit);
+    //log_print("check_avbuffer_enough audio_bufferlevel %f, buffering_threshhold_max %f\n",
+    //    para->state.audio_bufferlevel, high_limit);
 	if(pkt->type == CODEC_COMPLEX){
 		if (para->vstream_info.has_video &&
 			(para->state.video_bufferlevel >= high_limit)){			
