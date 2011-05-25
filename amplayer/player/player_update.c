@@ -293,6 +293,38 @@ int set_media_info(play_para_t *p_para)
     return 0;
 }
 
+int set_ps_subtitle_info(play_para_t *p_para, subtitle_info_t *sub_info, int sub_num)
+{
+	mstream_info_t *info = &p_para->media_info.stream_info;
+    msub_info_t *sinfo;
+	int i;	
+
+	if (!info){
+		log_error("[%s]invalid parameters!\n", __FUNCTION__);
+		return PLAYER_EMPTY_P;
+	}
+	
+	log_print("[%s]total_sub_num=%d new_sub_num=%d\n", __FUNCTION__, info->total_sub_num, sub_num);
+
+	for (i = info->total_sub_num; i < sub_num; i ++ ) {
+		sinfo = MALLOC(sizeof(msub_info_t));
+		if (sinfo) {
+	        MEMSET(sinfo, 0, sizeof(msub_info_t));
+	        sinfo->id       = sub_info[i].id;
+			p_para->media_info.sub_info[i] = sinfo;            
+			log_print("[%s]sub[%d].id=0x%x\n", __FUNCTION__,i, sinfo->id);
+		} else {
+			log_error("[%s]malloc [%d] failed!\n", __FUNCTION__, i);
+			return PLAYER_NOMEM;
+		}
+	}
+	if (sub_num > 0) {
+		info->has_sub = 1;
+		info->total_sub_num = sub_num;
+	}
+	return PLAYER_SUCCESS;
+}
+
 
 static int check_vcodec_state(codec_para_t *codec, struct vdec_status *dec, struct buf_status *buf)
 {

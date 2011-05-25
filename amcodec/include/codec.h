@@ -44,6 +44,7 @@ int codec_set_cntl_syncthresh(codec_para_t *pcodec, unsigned int syncthresh);
 int codec_reset_audio(codec_para_t *pcodec);
 int codec_set_audio_pid(codec_para_t *pcodec);
 int codec_set_sub_id(codec_para_t *pcodec);
+int codec_set_sub_type(codec_para_t *pcodec);
 int codec_audio_reinit(codec_para_t *pcodec);
 int codec_set_dec_reset(codec_para_t *pcodec);
 
