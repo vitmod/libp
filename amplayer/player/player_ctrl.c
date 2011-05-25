@@ -66,7 +66,6 @@ int player_init(void)
     set_black_policy(1);
     set_stb_source_hiu();
     set_stb_demux_source_hiu();
-	cache_system_init();
     return PLAYER_SUCCESS;
 }
 
