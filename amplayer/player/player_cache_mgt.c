@@ -42,7 +42,7 @@ struct cache_mgt_setting {
 
 static struct cache_mgt_setting cache_setting = {
     .cache_enable = 0,
-    .cache_dir = "/data/local/tmp/.amplayer",
+    .cache_dir = "/data/amplayer",
     .file_block_size = 1 * 1024 * 1024,
     .max_cache_size = 100 * 1024 * 1024,
 };
