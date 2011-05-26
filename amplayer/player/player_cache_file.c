@@ -147,6 +147,26 @@ static int cachefile_alloc_cachefile_name(char *name, const char *dir, const cha
     sprintf(name, "%s/" CACHE_NAME_PREFIX "%08x_%08x_%s", dir, do_csum((unsigned char *)url, strlen(url)), size, pfile);
     return 0;
 }
+int cachefile_has_cached_currentfile(const char *dir, const char *url, int size)
+{
+	struct stat stat;
+	char filename[256];
+	int ret;
+	
+	cachefile_alloc_mgtfile_name(filename,dir,url,size);
+	ret=lstat(filename, &stat) ;
+	lp_ciprint("has name %s,%d,%d\n",filename,ret,stat.st_size);
+	if(ret == 0 && stat.st_size>=sizeof(struct cache_file_header)){
+		cachefile_alloc_cachefile_name(filename,dir,url,size);
+		ret=lstat(filename, &stat);
+		lp_ciprint("has name %s,%d,%d\n",filename,ret,stat.st_size);
+		if(ret== 0 && stat.st_size>=size-CACHE_PAGE_SIZE*10){
+			lp_ciprint("have valid cache file before");
+			return 1;
+		}
+	}
+	return 0;
+}
 
 int cachefile_is_cache_filename(const char *name)
 {
@@ -390,12 +410,12 @@ struct cache_file * cachefile_open(const char *url, const char *dir, int64_t siz
     cache->url_checksum = do_csum((unsigned char*)cache->url, strlen(cache->url));
     cachefile_alloc_mgtfile_name(cache->cache_mgtname, dir, cache->url, cache->file_size);
     cachefile_alloc_cachefile_name(cache->cache_filename, dir, cache->url, cache->file_size);
-    cache->mgt_fd = open(cache->cache_mgtname, O_CREAT | O_RDWR, 0774);
+    cache->mgt_fd = open(cache->cache_mgtname, O_CREAT | O_RDWR, 0770);
     if (cache->mgt_fd < 0) {
         lp_ceprint("open cache_mgtname:%s failed(%s)\n", cache->cache_mgtname, strerror(cache->mgt_fd));
         goto error;
     }
-    cache->file_fd = open(cache->cache_filename, O_CREAT | O_RDWR, 0774);
+    cache->file_fd = open(cache->cache_filename, O_CREAT | O_RDWR, 0770);
     if (cache->file_fd < 0) {
         lp_ceprint("open cache_filename:%s failed(%s)\n", cache->cache_mgtname, strerror(cache->mgt_fd));
         goto error;
@@ -415,6 +435,8 @@ struct cache_file * cachefile_open(const char *url, const char *dir, int64_t siz
         */
 
     }
+	lseek(cache->file_fd,size,SEEK_SET);/*enlarge the file size*/
+	lseek(cache->file_fd,0,SEEK_SET);
     return cache;
 error:
     if (cache && cache->file_fd > 0) {

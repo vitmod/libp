@@ -104,7 +104,7 @@ int url_lpopen(URLContext *s,int size)
 	lp->file_size=url_lpseek(s,0,AVSEEK_SIZE);
 	lp->cache_enable=0;
 	lp->cache_id=aviolp_cache_open(s->filename,url_filesize(s));
-	if(lp->cache_id>0)
+	if(lp->cache_id!=0)
 		lp->cache_enable=1;
 	return 0;
 }

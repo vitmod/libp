@@ -66,13 +66,13 @@ int aviolp_cache_write(int id, int64_t offset, char *buf, int size)
 
 }
 
-int aviolp_cache_open(const char * url, int64_t file_size)
+unsigned long aviolp_cache_open(const char * url, int64_t file_size)
 {
     struct cache_client *client = get_default_cache_client();
     if (client && client->cache_open) {
         return client->cache_open(url, file_size);
     } else {
-        return -1;
+        return 0;
     }
 }
 int aviolp_cache_next_valid_bytes(int id, int64_t offset, int maxsize)

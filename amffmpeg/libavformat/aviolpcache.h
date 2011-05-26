@@ -14,7 +14,7 @@ int aviolp_register_cache_system(struct cache_client *cache);
 int aviolp_cache_read(int id, int64_t offset, char *buf, int size);
 int aviolp_cache_next_valid_bytes(int id, int64_t offset, int maxsize);
 int aviolp_cache_write(int id, int64_t offset, char *buf, int size);
-int aviolp_cache_open(const char * url, int64_t file_size);
+unsigned long aviolp_cache_open(const char * url, int64_t file_size);
 int aviolp_cache_close(int cache_id);
 
 

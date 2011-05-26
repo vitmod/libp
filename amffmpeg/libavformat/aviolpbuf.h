@@ -20,7 +20,7 @@ typedef struct  url_lpbuf{
 	int64_t file_size;
 	lock_t mutex;
 	int cache_enable;
-	int cache_id;
+	unsigned long cache_id;
 }url_lpbuf_t;
 #define IO_LP_BUFFER_SIZE (1024*1024*6)
 #define IO_LP_BUFFER_MINI_SIZE (1024*64)
