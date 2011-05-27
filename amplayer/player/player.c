@@ -671,10 +671,10 @@ void *player_thread(play_para_t *player)
      * 1. resume play, should not call drmCommitPlayback
      * 2. 
      * */
-    if(player->pFormatCtx->drm.drm_header){       
-	     ret = drmCommitPlayback(0);
+    if(player->pFormatCtx->drm.drm_header && player->pFormatCtx->drm.drm_check_value == 3){       
+	     ret = drmCommitPlayback();
 	     if (ret != 0) {
-		   log_error(" not unauthorized 8:result=%d, err=%d\n", ret, drmGetLastError());
+		   log_error(" not unauthorized 9:result=%d, err=%d\n", ret, drmGetLastError());
 	       player->pFormatCtx->drm.drm_check_value = 1; // unauthorized, should popup a dialog
 	      }
     }

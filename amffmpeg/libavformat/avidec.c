@@ -734,13 +734,21 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 	                  s->drm.drm_check_value = 1; // unauthorized
 		              break;
 	              }
-
+                  
+                  if(s->drm.drm_check_value != 3){
+                    result = drmCommitPlayback();
+                    if(result != 0){
+                      av_log(s, AV_LOG_WARNING, " unauthorized 8: result=%d, err=%d\n", result, drmGetLastError());
+                      break;
+                    }                    
+                  }
+                  
 	             // update to nand
 
 	            //memcpy(s->drm.drm_header, p_drm_context, sizeof(drmHeader_t)); 
                 }while(0);
 
-                if(drmGetRegistrationCodeString(reg_code) != 0){
+                if(drmGetRegistrationCodeString(reg_code) == 0){
 	              reg_code[10] = '\0';
                   memcpy(s->drm.drm_reg_code, reg_code, 11);
 
