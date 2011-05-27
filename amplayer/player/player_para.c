@@ -769,7 +769,7 @@ static void subtitle_para_init(play_para_t *player)
     AVFormatContext *pCtx = player->pFormatCtx;
     int frame_rate_num, frame_rate_den;
     float video_fps;
-	char out;
+	char out[20];
 	char default_sub = "firstindex";
 
 	if (player->vstream_info.has_video) {
@@ -779,11 +779,11 @@ static void subtitle_para_init(play_para_t *player)
     set_subtitle_num(player->sstream_num);
 
 	//FFT: get proerty from build.prop
-	GetSystemSettingString("media.amplayer.divx.certified", &out, &default_sub);
-	log_print("[%s:%d]out = %s !\n", __FUNCTION__, __LINE__, &out);
+	GetSystemSettingString("media.amplayer.divx.certified", out, &default_sub);
+	log_print("[%s:%d]out = %s !\n", __FUNCTION__, __LINE__, out);
 	
 	//FFT: set default subtitle index for divx certified
-	if (strcmp(&out, "enable")==0){	
+	if (strcmp(out, "enable")==0){	
 		set_subtitle_enable(0);
 		set_subtitle_curr(0xff);
 		log_print("[%s:%d]set default subtitle index !\n", __FUNCTION__, __LINE__);
