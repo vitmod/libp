@@ -2277,12 +2277,14 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('i','l','s','t'), mov_read_ilst },
 { MKTAG('j','p','2','h'), mov_read_extradata },
 { MKTAG('m','d','a','t'), mov_read_mdat },
+{ MKTAG('a','v','i','d'), mov_read_mdat },	/*for 3dv*/
 { MKTAG('m','d','h','d'), mov_read_mdhd },
 { MKTAG('m','d','i','a'), mov_read_default },
 { MKTAG('m','e','t','a'), mov_read_meta },
 { MKTAG('m','i','n','f'), mov_read_default },
 { MKTAG('m','o','o','f'), mov_read_moof },
 { MKTAG('m','o','o','v'), mov_read_moov },
+{ MKTAG('3','d','v','f'), mov_read_moov },	/*for 3dv*/
 { MKTAG('m','v','e','x'), mov_read_default },
 { MKTAG('m','v','h','d'), mov_read_mvhd },
 { MKTAG('S','M','I',' '), mov_read_smi }, /* Sorenson extension ??? */
@@ -2337,6 +2339,7 @@ static int mov_probe(AVProbeData *p)
         case MKTAG('p','n','o','t'): /* detect movs with preview pics like ew.mov and april.mov */
         case MKTAG('u','d','t','a'): /* Packet Video PVAuthor adds this and a lot of more junk */
         case MKTAG('f','t','y','p'):
+		case MKTAG('p','i','n','f'): /* for 3dv */
             return AVPROBE_SCORE_MAX;
         /* those are more common words, so rate then a bit less */
         case MKTAG('e','d','i','w'): /* xdcam files have reverted first tags */
