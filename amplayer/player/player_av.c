@@ -1841,10 +1841,16 @@ void player_switch_audio(play_para_t *para)
 
     para->astream_info.audio_format = audio_type_convert(pCodecCtx->codec_id, para->file_type);
     if (para->astream_info.audio_format < 0 || para->astream_info.audio_format >= AFORMAT_MAX) {
-        log_error("[%s:%d]unkown audio format id 0x%x\n", __FUNCTION__, __LINE__, pCodecCtx->codec_id);
-        //para->astream_info.has_audio = 0;
-        set_player_error_no(para, PLAYER_UNSUPPORT_AUDIO);
-        update_player_states(para, 1);
+        log_error("[%s:%d]unkown audio format\n", __FUNCTION__, __LINE__);
+        para->astream_info.has_audio = 0;
+		set_player_error_no(para, PLAYER_NO_AUDIO);
+		update_player_states(para, 1);
+        return;
+    } else if (para->astream_info.audio_format == AFORMAT_UNSUPPORT) {
+        log_error("[%s:%d]unsupport audio format\n", __FUNCTION__, __LINE__);
+        para->astream_info.has_audio = 0;
+		set_player_error_no(para, PLAYER_UNSUPPORT_AUDIO);
+		update_player_states(para, 1);
         return;
     }
 	
