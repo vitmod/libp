@@ -332,7 +332,17 @@ static void get_stream_info(play_para_t *p_para)
      else{
 	 	p_para->data_offset = p_para->pFormatCtx->data_offset;
 		log_print("[%s:%d]data start offset %lld\n", __FUNCTION__, __LINE__, p_para->data_offset);
-     }		
+     }
+
+    if (video_index != -1) {
+        if (p_para->vstream_info.video_width * p_para->vstream_info.video_height > 1920 * 1080) {
+            log_error("[%s]can't support exceeding video \n", __FUNCTION__);
+            set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
+            p_para->vstream_info.has_video = 0;
+            p_para->vstream_info.video_index = -1;
+        }
+    }
+    
     if (p_para->vstream_info.video_format == VFORMAT_VC1 && video_index != -1) {
 
 		if (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WVC1 &&
