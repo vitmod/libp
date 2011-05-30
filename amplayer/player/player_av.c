@@ -2175,7 +2175,7 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 				abuf_enough = 0;				
 		}
 
-        ret = vbuf_enough || abuf_enough;
+        ret = vbuf_enough && abuf_enough;
 	}else if(pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO){	
 		/*if(pkt->type == CODEC_VIDEO)
 			log_print("[%s]type:%d data=%x size=%x total=%x\n", __FUNCTION__, pkt->type, para->vbuffer.data_level,pkt->data_size,para->vbuffer.buffer_size);
@@ -2194,9 +2194,9 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 
         ret = vbuf_enough && abuf_enough;
 	}
-	if(!abuf_enough || !vbuf_enough) {
-		log_print("check_avbuffer_enough abuflevel %f, vbuflevel %f, limit %f\n",
-        para->state.audio_bufferlevel, para->state.video_bufferlevel, high_limit);
+	/*if(!abuf_enough || !vbuf_enough) {
+		log_print("check_avbuffer_enough abuflevel %f, vbuflevel %f, limit %f aenough=%d venought=%d\n",
+        para->state.audio_bufferlevel, para->state.video_bufferlevel, high_limit,abuf_enough,vbuf_enough);*/
 	}
 	
 	return ret;

@@ -335,7 +335,8 @@ static void get_stream_info(play_para_t *p_para)
      }
 
     if (video_index != -1) {
-        if (p_para->vstream_info.video_width * p_para->vstream_info.video_height > 1920 * 1080) {
+        if ((p_para->vstream_info.video_width > 1920) 
+            || (p_para->vstream_info.video_height > 1088)) {
             log_error("[%s]can't support exceeding video \n", __FUNCTION__);
             set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
             p_para->vstream_info.has_video = 0;
