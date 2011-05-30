@@ -1805,11 +1805,6 @@ void player_switch_audio(play_para_t *para)
     AVFormatContext *pFCtx = para->pFormatCtx;
     int ret = -1;
 
-    /* check if it has audio */
-    if (para->astream_info.has_audio == 0) {
-        return;
-    }
-
     /* find stream for new id */
     for (i = 0; i < pFCtx->nb_streams; i++) {
         pstream = pFCtx->streams[i];
@@ -1821,13 +1816,7 @@ void player_switch_audio(play_para_t *para)
     if (i == pFCtx->nb_streams) {
         log_print("[%s:%d]no stream found for new aid\n", __FUNCTION__, __LINE__);
         return;
-    }
-
-    if (para->acodec) {
-        pcodec = para->acodec;
-    } else {
-        pcodec = para->codec;
-    }    
+    }      
 
     /* get new information */
     audio_index = pstream->index;
@@ -1851,6 +1840,11 @@ void player_switch_audio(play_para_t *para)
         para->astream_info.has_audio = 0;
 		set_player_error_no(para, PLAYER_UNSUPPORT_AUDIO);
 		update_player_states(para, 1);
+        return;
+    }
+
+	/* check if it has audio */
+    if (para->astream_info.has_audio == 0) {
         return;
     }
 	
@@ -1880,7 +1874,13 @@ void player_switch_audio(play_para_t *para)
 	    para->playctrl_info.time_point = para->state.current_time;
         return;
     }
-*/
+*/	
+	if (para->acodec) {
+        pcodec = para->acodec;
+    } else {
+        pcodec = para->codec;
+    } 
+	
     /* automute */
     codec_audio_automute(pcodec->adec_priv, 1);
 
@@ -2164,9 +2164,7 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
     int ret = 1;
     float high_limit = (para->buffering_threshhold_max > 0) ? para->buffering_threshhold_max : 0.8; 
 
-    //log_print("check_avbuffer_enough audio_bufferlevel %f, buffering_threshhold_max %f\n",
-    //    para->state.audio_bufferlevel, high_limit);
-	if(pkt->type == CODEC_COMPLEX){
+  	if(pkt->type == CODEC_COMPLEX){
 		if (para->vstream_info.has_video &&
 			(para->state.video_bufferlevel >= high_limit)){			
 				vbuf_enough = 0;					
@@ -2196,9 +2194,10 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 
         ret = vbuf_enough && abuf_enough;
 	}
-	/*if(!abuf_enough)
-		log_print("[%s]abuf not enough!\n", __FUNCTION__);
-	if(!vbuf_enough)
-		log_print("[%s]vbuf not enough!\n", __FUNCTION__);*/
+	if(!abuf_enough || !vbuf_enough) {
+		log_print("check_avbuffer_enough abuflevel %f, vbuflevel %f, limit %f\n",
+        para->state.audio_bufferlevel, para->state.video_bufferlevel, high_limit);
+	}
+	
 	return ret;
 }
