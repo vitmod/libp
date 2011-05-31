@@ -166,6 +166,10 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     int fd;
     char buf[64];
 
+    if (audec->auto_mute == 1) {
+        return 0;
+    }
+
     memset(buf, 0, sizeof(buf));
 
     /* get system time */
@@ -213,6 +217,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
 
         last_pts = pts;
         audec->adsp_ops.last_pts_valid = 1;
+        audec->auto_mute = 1;
 
         return 0;
     }

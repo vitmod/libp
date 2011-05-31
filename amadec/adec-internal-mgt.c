@@ -187,6 +187,20 @@ static void adec_set_volume(aml_audio_dec_t *audec, float vol)
     }
 }
 
+static void adec_flag_check(aml_audio_dec_t *audec)
+{
+    audio_out_operations_t *aout_ops = &audec->aout_ops;
+
+    if (audec->auto_mute && (audec->state > INITTED)) {
+        aout_ops->pause(audec);
+        while ((!audec->need_stop) && track_switch_pts(audec)) {
+            usleep(1000);
+        }
+        aout_ops->resume(audec);
+        audec->auto_mute = 0;
+    }
+}
+
 /**
  * \brief adec main thread
  * \param args pointer to thread private data
@@ -227,6 +241,7 @@ static void *adec_message_loop(void *args)
         //  usleep(100000);
         //  continue;
         //}
+        adec_flag_check(audec);
 
         msg = adec_get_message(audec);
         if (!msg) {
