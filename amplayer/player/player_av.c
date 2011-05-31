@@ -2196,8 +2196,8 @@ int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
 	}
 	/*if(!abuf_enough || !vbuf_enough) {
 		log_print("check_avbuffer_enough abuflevel %f, vbuflevel %f, limit %f aenough=%d venought=%d\n",
-        para->state.audio_bufferlevel, para->state.video_bufferlevel, high_limit,abuf_enough,vbuf_enough);*/
-	}
+        para->state.audio_bufferlevel, para->state.video_bufferlevel, high_limit,abuf_enough,vbuf_enough);
+	}*/
 	
 	return ret;
 }
