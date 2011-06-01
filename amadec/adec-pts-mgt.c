@@ -35,7 +35,7 @@ unsigned long adec_calc_pts(aml_audio_dec_t *audec)
         adec_print("get get_cur_pts failed\n");
         return -1;
     }
-
+    dsp_ops->kernel_audio_pts = pts;
 
     if (out_ops == NULL || out_ops->latency == NULL) {
         adec_print("cur_out is NULL!\n ");
@@ -162,7 +162,8 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
 {
     unsigned long pts;
     unsigned long systime;
-    static unsigned long last_pts = -1;
+    unsigned long last_pts = audec->adsp_ops.last_audio_pts;
+    unsigned long last_kernel_pts = audec->adsp_ops.kernel_audio_pts;
     int fd;
     char buf[64];
 
@@ -192,9 +193,9 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     pts = adec_calc_pts(audec);
     if (pts == -1 || last_pts == pts) {
         close(fd);
-        if (pts == -1) {
-            return -1;
-        }
+        //if (pts == -1) {
+        return -1;
+        //}
     }
 
     //adec_print("adec_get_pts() pts=%x\n",pts);
@@ -215,14 +216,18 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         write(fd, buf, strlen(buf));
         close(fd);
 
-        last_pts = pts;
+        audec->adsp_ops.last_audio_pts = pts;
         audec->adsp_ops.last_pts_valid = 1;
         audec->auto_mute = 1;
 
         return 0;
     }
 
-    last_pts = pts;
+    if (last_kernel_pts == audec->adsp_ops.kernel_audio_pts) {
+        return 0;
+    }
+
+    audec->adsp_ops.last_audio_pts = pts;
     audec->adsp_ops.last_pts_valid = 1;
 
     if (abs(pts - systime) < SYSTIME_CORRECTION_THRESHOLD) {

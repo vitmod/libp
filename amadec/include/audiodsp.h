@@ -75,6 +75,8 @@ typedef struct dsp_operations dsp_operations_t;
 struct dsp_operations {
     int dsp_file_fd;
     int dsp_on;
+    unsigned long kernel_audio_pts;
+    unsigned long last_audio_pts;
     unsigned long last_pts_valid;
     int (*dsp_read)(dsp_operations_t *dsp_ops, char *buffer, int len);                                        /* read pcm stream from dsp */
     unsigned long(*get_cur_pts)(dsp_operations_t *);
