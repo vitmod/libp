@@ -648,6 +648,7 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
                 pkt->type = CODEC_AUDIO;
                 para->read_size.apkt_num ++;
             } else if (has_sub && sub_idx == pkt->avpkt->stream_index) {
+                #if 0
                 /* here we get the subtitle data, something should to be done */
                 if (para->playctrl_info.audio_switch_smatch) {
                     if (compare_pkt(pkt->avpkt, &pkt->bak_spkt) == 0) {
@@ -661,6 +662,7 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
                         para->playctrl_info.audio_switch_smatch = 0;
                     }
                 }
+                #endif
                 para->read_size.spkt_num ++;
                 pkt->type = CODEC_SUBTITLE;
                 pkt->codec = para->scodec;
@@ -1984,17 +1986,20 @@ void player_switch_audio(play_para_t *para)
                     if (backup_packet(para, avPkt, bakpkt) == 0) {
                         av_free_packet(avPkt);
                         para->playctrl_info.audio_switch_vmatch = 1;
+                        #if 0
                         if (para->sstream_info.has_sub && (!para->playctrl_info.audio_switch_smatch)) {
                             log_print("[%s:%d]Backup video, to backup sub\n", __FUNCTION__, __LINE__);
                             continue;
                         } else {
                             break;
                         }
+                        #endif
+                        break;
                     } else {
                         av_free_packet(avPkt);
                         return;
                     }
-                } else if ((para->sstream_info.has_sub) 
+                } /*else if ((para->sstream_info.has_sub) 
                     && (!para->playctrl_info.audio_switch_smatch)
                     && (avPkt->stream_index == para->sstream_info.sub_index)){
                     AVPacket *bakpkt = &para->p_pkt->bak_spkt;
@@ -2012,7 +2017,7 @@ void player_switch_audio(play_para_t *para)
                         av_free_packet(avPkt);
                         return;
                     }
-                } else {
+                }*/ else {
                     av_free_packet(avPkt);
                     continue;
                 }
