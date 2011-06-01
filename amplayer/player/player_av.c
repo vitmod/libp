@@ -1906,25 +1906,27 @@ void player_switch_audio(play_para_t *para)
      || (pcodec->audio_type == AFORMAT_WMAPRO) || (pcodec->audio_type == AFORMAT_PCM_S16BE)
      || (pcodec->audio_type == AFORMAT_PCM_S16LE) || (pcodec->audio_type == AFORMAT_PCM_U8)
      || (pcodec->audio_type == AFORMAT_PCM_BLURAY)||(pcodec->audio_type == AFORMAT_AMR)) {*/
-     if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type)){
-            pcodec->audio_info.bitrate = pCodecCtx->sample_fmt;
-            pcodec->audio_info.sample_rate = pCodecCtx->sample_rate;
-            pcodec->audio_info.channels = pCodecCtx->channels;
-            pcodec->audio_info.codec_id = pCodecCtx->codec_id;
-            pcodec->audio_info.block_align = pCodecCtx->block_align;
-            pcodec->audio_info.extradata_size = pCodecCtx->extradata_size;
-            if (pcodec->audio_info.extradata_size > 0) {
-		     if(pcodec->audio_info.extradata_size > 	AUDIO_EXTRA_DATA_SIZE)
-		     {
-	      			log_print("[%s:%d],extra data size exceed max  extra data buffer,cut it to max buffer size ", __FUNCTION__, __LINE__);
-				pcodec->audio_info.extradata_size = 	AUDIO_EXTRA_DATA_SIZE;
-	  	     }
-                MEMCPY((char*)pcodec->audio_info.extradata, pCodecCtx->extradata, pcodec->audio_info.extradata_size);
+    if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type)){
+        pcodec->audio_info.bitrate = pCodecCtx->sample_fmt;
+        pcodec->audio_info.sample_rate = pCodecCtx->sample_rate;
+        pcodec->audio_info.channels = pCodecCtx->channels;
+        pcodec->audio_info.codec_id = pCodecCtx->codec_id;
+        pcodec->audio_info.block_align = pCodecCtx->block_align;
+        pcodec->audio_info.extradata_size = pCodecCtx->extradata_size;
+        if (pcodec->audio_info.extradata_size > 0) {
+            if(pcodec->audio_info.extradata_size > 	AUDIO_EXTRA_DATA_SIZE)
+            {
+       			log_print("[%s:%d],extra data size exceed max  extra data buffer,cut it to max buffer size ", __FUNCTION__, __LINE__);
+       		pcodec->audio_info.extradata_size = 	AUDIO_EXTRA_DATA_SIZE;
             }
-            pcodec->audio_info.valid = 1;
-	     log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, pcodec->audio_type,\
-						pcodec->audio_info.sample_rate, pcodec->audio_info.channels,pcodec->audio_info.extradata_size);
+            MEMCPY((char*)pcodec->audio_info.extradata, pCodecCtx->extradata, pcodec->audio_info.extradata_size);
         }
+        pcodec->audio_info.valid = 1;
+        log_print("[%s]fmt=%d srate=%d chanels=%d extrasize=%d\n", __FUNCTION__, pcodec->audio_type,\
+       				pcodec->audio_info.sample_rate, pcodec->audio_info.channels,pcodec->audio_info.extradata_size);
+    } else {
+        pcodec->audio_info.valid = 0;
+    }
 	
     if (codec_audio_reinit(pcodec)) {
         log_print("[%s:%d]audio reinit failed\n", __FUNCTION__, __LINE__);
