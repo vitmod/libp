@@ -271,12 +271,14 @@ static void get_stream_info(play_para_t *p_para)
         p_para->vstream_info.has_video = 1;
     } else {
         p_para->vstream_info.has_video = 0;
+        p_para->vstream_info.video_format = -1;
     }
 
     if (p_para->astream_num >= 1) {
         p_para->astream_info.has_audio = 1;
     } else {
         p_para->astream_info.has_audio = 0;
+        p_para->astream_info.audio_format = -1;
     }
 
 
@@ -339,6 +341,7 @@ static void get_stream_info(play_para_t *p_para)
             || (p_para->vstream_info.video_height > 1088)) {
             log_error("[%s]can't support exceeding video \n", __FUNCTION__);
             set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
+            update_player_states(p_para, 1);
             p_para->vstream_info.has_video = 0;
             p_para->vstream_info.video_index = -1;
         }
@@ -432,7 +435,14 @@ static int set_decode_para(play_para_t*am_p)
 	            update_player_states(am_p, 1);
         	}
         } else {
-            log_error("Can't support the file!\n");
+            if(IS_AFMT_VALID(am_p->astream_info.audio_format)){
+				set_player_error_no(am_p, PLAYER_UNSUPPORT_AUDIO);
+	            update_player_states(am_p, 1);
+			}else{
+	            set_player_error_no(am_p, PLAYER_NO_AUDIO);
+	            update_player_states(am_p, 1);
+			}
+            log_error("[%s:%d]Can't support the file!\n", __FUNCTION__, __LINE__);
             return PLAYER_UNSUPPORT;
         }
     }
