@@ -336,7 +336,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 				buffed_time=mgt->current_item->start_time;
 			}
 		}
-		av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
+		//av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
 		return buffed_time;
 	}
 	

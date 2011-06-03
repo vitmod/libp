@@ -450,8 +450,8 @@ int64_t url_lp_get_buffed_pos(URLContext *s)
 			pos+=buffer_in_cache;
 	}
 	lp_unlock(&lp->mutex);
-	lp_sprint(AV_LOG_INFO,"buffered pos=%lld,file_size=%lld,percent=%d.%02d%%,buffer_in_cache=%d\n",
-		pos,lp->file_size,(int)(pos*100/lp->file_size),(int)((pos*10000/lp->file_size)%100),buffer_in_cache);
+	/*lp_sprint(AV_LOG_INFO,"buffered pos=%lld,file_size=%lld,percent=%d.%02d%%,buffer_in_cache=%d\n",
+		pos,lp->file_size,(int)(pos*100/lp->file_size),(int)((pos*10000/lp->file_size)%100),buffer_in_cache);*/
 	return pos;
 }
 
