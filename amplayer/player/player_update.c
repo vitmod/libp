@@ -192,12 +192,30 @@ static int set_astream_info(play_para_t *p_para)
         return -1;
     }
     if (info->has_audio) {
-        unsigned int i;
+        unsigned int i, j;
+		unsigned int new_flag = 1;
         int anum = 0;
         AVStream *pStream;
         for (i = 0; i < pCtx->nb_streams; i ++) {
             pStream = pCtx->streams[i];
             if (pStream->codec->codec_type == CODEC_TYPE_AUDIO) {
+				for (j = 0; j < p_para->media_info.stream_info.total_audio_num; j ++) {						
+					if (p_para->media_info.audio_info[j]) {
+						if (pStream->id == p_para->media_info.audio_info[j]->id) {						
+							new_flag = 0;							
+							break;
+						}
+					} else {
+						break;
+					}
+				}
+				
+				if (!new_flag){	
+					log_print("[%s]i=%d j=%d exist stream_id: 0x%x, anum=%d\n", __FUNCTION__,i,j, pStream->id, p_para->media_info.stream_info.total_audio_num);
+					new_flag = 1;
+					continue;
+            	}
+				
                 ainfo = MALLOC(sizeof(maudio_info_t));
                 MEMSET(ainfo, 0, sizeof(maudio_info_t));
                 ainfo->id           = pStream->id;
@@ -213,14 +231,15 @@ static int set_astream_info(play_para_t *p_para)
                     ainfo->audio_tag = MALLOC(sizeof(audio_tag_info));
                     get_tag_from_metadata(pCtx, ainfo->audio_tag);
                 }
-                p_para->media_info.audio_info[anum] = ainfo;
-                anum ++;
-                if (anum > p_para->media_info.stream_info.total_audio_num) {
-                    log_error("[set_vstream_info]video streams exceed!\n");
+                p_para->media_info.audio_info[anum] = ainfo;                
+				anum ++;
+				if (anum > p_para->media_info.stream_info.total_audio_num) {
+                    log_error("[set_astream_info]audio streams exceed!\n");
                     return -2;
                 }
             }
         }
+		p_para->media_info.stream_info.total_audio_num = anum;
     }
     return 0;
 }
@@ -289,7 +308,7 @@ int set_media_info(play_para_t *p_para)
     if (ret < 0) {
         log_error("[set_media_info]set_sstream_info failed ret=%d!\n", ret);
     }
-
+	
     return 0;
 }
 
