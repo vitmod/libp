@@ -141,7 +141,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	}
 	memset(&tmpitem,0,sizeof(tmpitem));
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
-	while(m3u_format_get_line(s,line,1024)>0)
+	while(m3u_format_get_line(s,line,1024)>=0)
 	{
 		if(m3u_parser_line(mgt,line,&tmpitem))
 		{
