@@ -140,7 +140,7 @@ static void stop_adec(aml_audio_dec_t *audec)
 {
     audio_out_operations_t *aout_ops = &audec->aout_ops;
 
-    if (audec->state > STOPPED) {
+    if (audec->state > INITING) {
         audec->state = STOPPED;
         aout_ops->stop(audec);
         feeder_release(audec);
