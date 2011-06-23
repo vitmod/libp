@@ -788,9 +788,13 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
         }
 
         if (check_flag) {
-            p_para->check_end.end_count --;	
+			int dec_unit=1;
+			float total_level=(p_para->state.video_bufferlevel+p_para->state.audio_bufferlevel)+0.0001;
+			while(total_level*dec_unit<0.02 && dec_unit<8)
+				dec_unit++;
+            p_para->check_end.end_count -=dec_unit;
 			if	(!p_para->playctrl_info.reset_flag){
-				player_thread_wait(p_para, 40 * 1000);	//40ms
+				player_thread_wait(p_para, 100 * 1000);	//40ms
 			}
             if (p_para->check_end.end_count <= 0) {
                 if (!p_para->playctrl_info.video_end_flag) {
@@ -826,8 +830,14 @@ static int  update_buffering_states(play_para_t *p_para,
     float alevel, vlevel;
     float minlevel, maxlevel;
 
-    alevel = (float)abuf->data_len / abuf->size;
-    vlevel = (float)vbuf->data_len / vbuf->size;
+	if(abuf->size>0)
+		alevel = (float)abuf->data_len / abuf->size;
+	else
+		alevel=0;
+	if(vbuf->size>0)
+    	vlevel = (float)vbuf->data_len / vbuf->size;
+	else
+		vlevel=0;
     p_para->state.audio_bufferlevel = alevel;
     p_para->state.video_bufferlevel = vlevel;
 	if (p_para->pFormatCtx && p_para->pFormatCtx->pb) {
