@@ -1486,7 +1486,8 @@ static int mov_read_stsz(MOVContext *c, ByteIOContext *pb, MOVAtom atom)
     if (get_buffer(pb, buf, num_bytes) < num_bytes) {
         av_freep(&sc->sample_sizes);
         av_free(buf);
-        return -1;
+		return 0;//*don't retrun -1,if only read end*/
+       // return -1;
     }
 
     init_get_bits(&gb, buf, 8*num_bytes);
