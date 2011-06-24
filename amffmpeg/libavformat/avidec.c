@@ -303,6 +303,8 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
     int amv_file_format=0;
     uint64_t list_end = 0;
 
+    int ratio_set = 0;
+
     avi->stream_index= -1;
 
     if (get_riff(s, pb) < 0)
@@ -522,6 +524,12 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                     get_le32(pb); /* YPelsPerMeter */
                     get_le32(pb); /* ClrUsed */
                     get_le32(pb); /* ClrImportant */
+
+                    /* set the default ratio */
+                    if(ratio_set == 0){
+                        st->sample_aspect_ratio.num = 1;
+                        st->sample_aspect_ratio.den = 1;
+                    }
 
                     if (tag1 == MKTAG('D', 'X', 'S', 'B')) {
                         st->codec->codec_type = CODEC_TYPE_SUBTITLE;
@@ -792,6 +800,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 size -= 9*4;
             }
             url_fseek(pb, size, SEEK_CUR);
+            ratio_set = 1;
             break;
         case MKTAG('s', 't', 'r', 'n'):
             if(s->nb_streams){

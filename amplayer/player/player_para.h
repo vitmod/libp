@@ -26,7 +26,7 @@ typedef struct {
     unsigned short  video_pid;
     unsigned int    video_width;
     unsigned int    video_height;
-    float		    video_ratio;
+    unsigned int    video_ratio;
     int             check_first_pts;
     int             flv_flag;
     int             h263_decodable;

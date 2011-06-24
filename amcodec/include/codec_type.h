@@ -35,7 +35,7 @@ typedef struct {
     unsigned int    rate;    ///< video source frame duration
     unsigned int    extra;   ///< extra data information of video stream
     unsigned int    status;  ///< status of video stream
-    float		    ratio;   ///< aspect ratio of video source
+    unsigned int    ratio;   ///< aspect ratio of video source
     void *          param;   ///< other parameters for video decoder
 } dec_sysinfo_t;
 

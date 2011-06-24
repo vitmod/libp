@@ -80,11 +80,11 @@ static void get_av_codec_type(play_para_t *p_para)
             }
             p_para->vstream_info.video_width    = pCodecCtx->width;
             p_para->vstream_info.video_height   = pCodecCtx->height;
-            p_para->vstream_info.video_ratio    = (float)pStream->sample_aspect_ratio.num / pStream->sample_aspect_ratio.den;
-            log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d ratio=%.3f video_pts=%.3f\n", __FUNCTION__, __LINE__, \
+            p_para->vstream_info.video_ratio    = (pStream->sample_aspect_ratio.num << 16) | pStream->sample_aspect_ratio.den;
+            log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d ratio=%d/%d video_pts=%.3f\n", __FUNCTION__, __LINE__, \
 						pCodecCtx->time_base.num, pCodecCtx->time_base.den, \
 						pStream->r_frame_rate.den, pStream->r_frame_rate.num, \
-						p_para->vstream_info.video_ratio, p_para->vstream_info.video_pts);
+						pStream->sample_aspect_ratio.num, pStream->sample_aspect_ratio.den, p_para->vstream_info.video_pts);
 			
             if (0 != pCodecCtx->time_base.den) {
                 p_para->vstream_info.video_codec_rate = (int64_t)UNIT_FREQ * pCodecCtx->time_base.num / pCodecCtx->time_base.den;
