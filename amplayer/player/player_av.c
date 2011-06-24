@@ -2035,7 +2035,11 @@ void player_switch_audio(play_para_t *para)
 
         para->playctrl_info.read_end_flag = end_flag;
     }
-
+	
+	if (IS_AUIDO_NEED_PREFEED_HEADER(pcodec->audio_type)) {
+		pre_header_feeding(para, para->p_pkt);
+	}
+	
     /* resume audio */
     codec_resume_audio(pcodec, para->astream_info.resume_audio);
 
