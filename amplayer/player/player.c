@@ -742,7 +742,7 @@ void *player_thread(play_para_t *player)
         if ((!(player->vstream_info.video_format == VFORMAT_SW)
              && !(player->vstream_info.video_format == VFORMAT_VC1 && player->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WMV3)) || \
             (IS_AUIDO_NEED_PREFEED_HEADER(player->astream_info.audio_format) && player->astream_info.has_audio)) {
-            pre_header_feeding(player, pkt);
+            pre_header_feeding(player);
         }
         do {
             ret = check_flag(player);
@@ -768,13 +768,13 @@ void *player_thread(play_para_t *player)
                 }
             }
             if (!pkt->avpkt_isvalid) {
-                ret = read_av_packet(player, pkt);
+                ret = read_av_packet(player);
                 if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
                     log_error("pid[%d]::read_av_packet failed!\n", player->player_id);
                     set_player_state(player, PLAYER_ERROR);
                     goto release;
                 }
-                ret = set_header_info(player, pkt);
+                ret = set_header_info(player);
                 if (ret != PLAYER_SUCCESS) {
                     log_error("pid[%d]::set_header_info failed! ret=%x\n", player->player_id, -ret);
                     set_player_state(player, PLAYER_ERROR);
@@ -816,7 +816,7 @@ write_packet:
 #endif
                 }
             } else {
-                ret = write_av_packet(player, pkt);
+                ret = write_av_packet(player);
                 if (ret == PLAYER_WR_FINISH) {
                     if (player->playctrl_info.f_step == 0) {
 						log_print("[player_thread]write end!\n");						
@@ -913,7 +913,7 @@ write_packet:
                 update_player_states(player, 1);
             }
 			
-            ret = player_reset(player, pkt);
+            ret = player_reset(player);
             if (ret != PLAYER_SUCCESS) {
                 log_error("pid[%d]::player reset failed(-0x%x)!", player->player_id, -ret);
                 set_player_state(player, PLAYER_ERROR);

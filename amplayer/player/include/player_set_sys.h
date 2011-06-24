@@ -60,6 +60,10 @@ extern "C" {
     int set_stb_source_hiu(void);
     int set_stb_demux_source_hiu(void);
 
+	int set_subtitle_enable(int num);
+	int set_subtitle_curr(int num);
+
+
 #ifdef  __cplusplus
 }
 #endif

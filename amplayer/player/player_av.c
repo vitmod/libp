@@ -433,14 +433,15 @@ static int backup_packet(play_para_t *para, AVPacket *src, AVPacket *dst)
     return 0;
 }
 
-static int raw_read(play_para_t *para, am_packet_t *pkt)
+static int raw_read(play_para_t *para)
 {
     int rev_byte = -1;
     ByteIOContext *pb = para->pFormatCtx->pb;
+	am_packet_t *pkt = para->p_pkt;
     unsigned char *pbuf ;
     static int try_count = 0;
     int64_t cur_offset = 0;
-
+	
 #if DUMP_READ
     if (fdr == -1) {
         fdr = open("./dump/dump_read.dat", O_CREAT | O_RDWR);
@@ -540,9 +541,10 @@ static int raw_read(play_para_t *para, am_packet_t *pkt)
     return PLAYER_SUCCESS;
 }
 
-static int non_raw_read(play_para_t *para, am_packet_t *pkt)
+static int non_raw_read(play_para_t *para)
 {
     static int try_count = 0;
+	am_packet_t *pkt = para->p_pkt;
     signed short video_idx = para->vstream_info.video_index;
     signed short audio_idx = para->astream_info.audio_index;
     signed short sub_idx = para->sstream_info.sub_index;
@@ -700,8 +702,9 @@ static int non_raw_read(play_para_t *para, am_packet_t *pkt)
     return PLAYER_SUCCESS;
 }
 
-int read_av_packet(play_para_t *para, am_packet_t *pkt)
+int read_av_packet(play_para_t *para)
 {
+	am_packet_t *pkt = para->p_pkt;
     char raw_mode = para->playctrl_info.raw_mode;
     int ret = PLAYER_SUCCESS;
 
@@ -710,13 +713,13 @@ int read_av_packet(play_para_t *para, am_packet_t *pkt)
     }
 
     if (raw_mode == 1) {
-        ret = raw_read(para, pkt);
+        ret = raw_read(para);
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
             log_print("raw read failed!\n");
             return ret;
         }
     } else if (raw_mode == 0) {
-        ret = non_raw_read(para, pkt);
+        ret = non_raw_read(para);
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
             log_print("non raw read failed!\n");
             return ret;
@@ -725,10 +728,11 @@ int read_av_packet(play_para_t *para, am_packet_t *pkt)
     return ret;
 }
 
-static int write_header(play_para_t *para, am_packet_t *pkt)
+static int write_header(play_para_t *para)
 {
     int write_bytes = 0, len = 0;
-
+	am_packet_t *pkt = para->p_pkt;
+	
     if (pkt->hdr && pkt->hdr->size > 0) {
         if ((NULL == pkt->codec) || (NULL == pkt->hdr->data)) {
             log_error("[write_header]codec null!\n");
@@ -766,8 +770,9 @@ static int write_header(play_para_t *para, am_packet_t *pkt)
     return PLAYER_SUCCESS;
 }
 
-static int check_write_finish(play_para_t *para, am_packet_t *pkt)
+static int check_write_finish(play_para_t *para)
 {
+	am_packet_t *pkt = para->p_pkt;
     if (para->playctrl_info.read_end_flag) {
         if (para->playctrl_info.raw_mode
             && (para->write_size.total_bytes == para->read_size.total_bytes)) {
@@ -1107,8 +1112,9 @@ int time_search(play_para_t *am_p)
     return PLAYER_SUCCESS;
 }
 
-int write_av_packet(play_para_t *para, am_packet_t *pkt)
+int write_av_packet(play_para_t *para)
 {
+	am_packet_t *pkt = para->p_pkt;
     int write_bytes = 0, len = 0, ret;
     unsigned char *buf;
     int size ;
@@ -1125,7 +1131,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
         if (pkt->type != CODEC_SUBTITLE) {
             if (pkt->avpkt_isvalid) {
 				if (!pkt->pts_checkin_ok) {
-	                ret = check_in_pts(para, pkt);
+	                ret = check_in_pts(para);
 	                if (ret != PLAYER_SUCCESS) {
 	                    log_error("check in pts failed\n");
 	                    return PLAYER_WR_FAILED;
@@ -1134,7 +1140,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
 				}
             }
 
-			ret = write_header(para, pkt);
+			ret = write_header(para);
             if (ret == PLAYER_WR_FAILED) {
                 log_error("[%s]write header failed!\n", __FUNCTION__);
                 return PLAYER_WR_FAILED;
@@ -1142,7 +1148,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
             	return PLAYER_SUCCESS;
             }
         } else {
-            process_es_subtitle(para, pkt);
+            process_es_subtitle(para);
         }
         pkt->avpkt_newflag = 0;
     }
@@ -1171,7 +1177,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
                 return PLAYER_WR_FAILED;
             } else {
                 /* EAGAIN to see if buffer full or write time out too much */				
-				if(check_avbuffer_enough(para, pkt)){
+				if(check_avbuffer_enough(para)){
 					++ para->playctrl_info.check_lowlevel_eagain_cnt;
 				}else{
 					para->playctrl_info.check_lowlevel_eagain_cnt = 0;
@@ -1238,7 +1244,7 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
 
         }
     }
-    if (check_write_finish(para, pkt) == PLAYER_WR_FINISH) {
+    if (check_write_finish(para) == PLAYER_WR_FINISH) {
 #if DUMP_WRITE
         if (fdw > 0) {
             close(fdw);
@@ -1249,8 +1255,9 @@ int write_av_packet(play_para_t *para, am_packet_t *pkt)
     return PLAYER_SUCCESS;
 }
 
-int check_in_pts(play_para_t *para, am_packet_t *pkt)
+int check_in_pts(play_para_t *para)
 {
+	am_packet_t *pkt = para->p_pkt;
     int last_duration = 0;
     static int last_v_duration = 0, last_a_duration = 0;
     int64_t pts;
@@ -1331,9 +1338,11 @@ int check_in_pts(play_para_t *para, am_packet_t *pkt)
     return PLAYER_SUCCESS;
 }
 
-int set_header_info(play_para_t *para, am_packet_t *pkt)
+int set_header_info(play_para_t *para)
 {
     int ret;
+	am_packet_t *pkt = para->p_pkt;
+	
     if (pkt->avpkt_newflag) {
         if (pkt->hdr) {
             pkt->hdr->size = 0;
@@ -1554,7 +1563,7 @@ int set_header_info(play_para_t *para, am_packet_t *pkt)
                         return PLAYER_NOMEM;
                     }
                 }
-                adts_add_header(para, pkt);
+                adts_add_header(para);
             }
             if (((!para->playctrl_info.raw_mode) &&
                 (para->astream_info.audio_format == AFORMAT_ALAC))||
@@ -1679,8 +1688,9 @@ int write_sub_data(am_packet_t *pkt, char *buf, unsigned int length)
     return PLAYER_SUCCESS;
 }
 
-int process_es_subtitle(play_para_t *para, am_packet_t *pkt)
+int process_es_subtitle(play_para_t *para)
 {
+	am_packet_t *pkt = para->p_pkt;
     unsigned char sub_header[20] = {0x41, 0x4d, 0x4c, 0x55, 0xaa, 0};
     unsigned int sub_type;
     int64_t sub_pts = 0;
@@ -2037,7 +2047,7 @@ void player_switch_audio(play_para_t *para)
     }
 	
 	if (IS_AUIDO_NEED_PREFEED_HEADER(pcodec->audio_type)) {
-		pre_header_feeding(para, para->p_pkt);
+		pre_header_feeding(para);
 	}
 	
     /* resume audio */
@@ -2146,8 +2156,9 @@ static void av_packet_reset(am_packet_t *pkt)
     pkt->data_size  = 0;
 }
 
-int player_reset(play_para_t *p_para, am_packet_t *pkt)
+int player_reset(play_para_t *p_para)
 {
+	am_packet_t *pkt = p_para->p_pkt;
     int ret = PLAYER_SUCCESS;
     player_para_reset(p_para);
     av_packet_reset(pkt);
@@ -2166,10 +2177,11 @@ void set_tsync_enable_codec(play_para_t *p_para, int enable)
     return;
 }
 
-int check_avbuffer_enough(play_para_t *para, am_packet_t *pkt)
+int check_avbuffer_enough(play_para_t *para)
 {
 #define VIDEO_RESERVED_SPACE	(0x10000)	// 64k
 #define AUDIO_RESERVED_SPACE	(0x2000)	// 8k
+	am_packet_t *pkt = para->p_pkt;
 	int vbuf_enough = 1;
 	int abuf_enough = 1;
     int ret = 1;
