@@ -122,21 +122,33 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	int getnum=0;
 	struct list_item tmpitem;
  	char prefix[1024]="";
-	int prefix_len=0;
+	char prefixex[1024]="";
+	int prefix_len=0,prefixex_len=0;
 	int start_time=mgt->full_time;
 	char *oprefix=mgt->location!=NULL?mgt->location:mgt->filename;
 	
 	
 	if(oprefix){
-		char *tail;
+		char *tail,*tailex;
 		if(is_NET_URL(oprefix))
 			tail=strchr(oprefix+9,'/');/*skip Http:// and shttp:*/
 		else
 			tail=strchr(oprefix,'/');
+		if(is_NET_URL(oprefix))
+			tailex=strrchr(oprefix+9,'/');/*skip Http:// and shttp:*/
+		else
+			tailex=strrchr(oprefix,'/');
+		
 		if(tail!=NULL){
-			prefix_len=tail-oprefix;
+			prefix_len=tail-oprefix+1;/*left '/'..*/
 			memcpy(prefix,oprefix,prefix_len);
 			prefix[prefix_len]='\0';
+		}
+
+		if(tailex!=NULL){
+			prefixex_len=tailex-oprefix+1;/*left '/'..*/
+			memcpy(prefixex,oprefix,prefixex_len);
+			prefixex[prefixex_len]='\0';
 		}
 	}
 	memset(&tmpitem,0,sizeof(tmpitem));
@@ -155,7 +167,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				!(is_NET_URL(tmpitem.file)))/*if item is not net protocal*/
 			{/*if m3u is http,item is not http,add prefix*/
 				need_prefix=1;
-				size_file+=prefix_len;
+				size_file+=prefixex_len;
 			}
 			item=av_malloc(sizeof(struct list_item)+size_file);
 			if(!item)
@@ -166,8 +178,13 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			{
 				item->file=&item[1];
 				if(need_prefix){
-					strcpy(item->file,prefix);
-					strcpy(item->file+prefix_len,tmpitem.file);
+					if(tmpitem.file[0]=='/'){/*has '/',not need the dir */
+						strcpy(item->file,prefix);
+						strcpy(item->file+prefix_len,tmpitem.file);
+					}else{/*no '/', some I save the full path frefix*/
+						strcpy(item->file,prefixex);
+						strcpy(item->file+prefixex_len,tmpitem.file);
+					}
 				}
 				else{
 					strcpy(item->file,tmpitem.file);
