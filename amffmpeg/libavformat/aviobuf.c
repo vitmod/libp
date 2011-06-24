@@ -470,7 +470,7 @@ get_data:
 			if(retry_fill_cnt >= 1000)
 			{
 				av_log(NULL, AV_LOG_ERROR,"[%s]fill buffer retry for a long time,give up!\n",__FUNCTION__);
-				return 0;
+				return URL_EOF;
 			}			 
 			if(s->error == AVERROR(EAGAIN))
 			{
@@ -479,7 +479,7 @@ get_data:
 			} 
         }
     }
-	return 0;
+	return URL_EOF;
 }
 
 int url_fgetc(ByteIOContext *s)
