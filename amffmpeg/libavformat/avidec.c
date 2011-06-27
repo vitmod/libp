@@ -665,7 +665,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 				
 				if(drm_init() < 0){
 					av_log(s, AV_LOG_INFO, "drm lib init failed\n");
-					url_fskip(pb, size - 8);
+					url_fskip(pb, size);
 					break;
 				}else{
 					av_log(s, AV_LOG_INFO, "drm lib init success\n");
