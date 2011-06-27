@@ -1498,8 +1498,8 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             st->codec->height = track->video.pixel_height;
             av_reduce(&st->sample_aspect_ratio.num,
                       &st->sample_aspect_ratio.den,
-                      track->video.display_width,
-                      track->video.display_height,
+                      st->codec->height * track->video.display_width,
+                      st->codec-> width * track->video.display_height,
                       255);
             if (st->codec->codec_id != CODEC_ID_H264)
             st->need_parsing = AVSTREAM_PARSE_HEADERS;
