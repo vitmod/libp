@@ -63,7 +63,7 @@ struct am_packet;
 #define UNIT_FREQ   96000
 #define PTS_FREQ    90000
 #define PTS_FREQ_MS 90
-#define AV_SYNC_THRESH    PTS_FREQ*3
+#define AV_SYNC_THRESH    PTS_FREQ*15
 #define INT64_0     INT64_C(0x8000000000000000)
 
 #define EXTERNAL_PTS        (1)
