@@ -932,7 +932,8 @@ static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abu
 {
     if (p_para->playctrl_info.audio_ready && 
 		p_para->vstream_info.has_video && 
-		p_para->astream_info.has_audio) {
+		p_para->astream_info.has_audio &&
+		get_player_state(p_para) == PLAYER_RUNNING) {
         if (!p_para->abuffer.rp_is_changed) {
             p_para->abuffer.check_rp_change_cnt --;
         } else {
