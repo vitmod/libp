@@ -47,15 +47,15 @@ static int set_stream_info(play_para_t *p_para)
     } else {
         info->seekable = 1;
     }
-    if (info->total_video_num >= MAX_VIDEO_STREAMS) {
+    if (info->total_video_num > MAX_VIDEO_STREAMS) {
         log_error("[set_stream_info]too much video streams(%d)!\n ", info->total_video_num);
         return -2;
     }
-    if (info->total_audio_num >= MAX_AUDIO_STREAMS) {
+    if (info->total_audio_num > MAX_AUDIO_STREAMS) {
         log_error("[set_stream_info]too much audio streams(%d)!\n ", info->total_audio_num);
         return -3;
     }
-    if (info->total_audio_num >= MAX_SUB_STREAMS) {
+    if (info->total_audio_num > MAX_SUB_STREAMS) {
         log_error("[set_stream_info]too much sub streams(%d)!\n ", p_para->astream_num);
         return -4;
     }
