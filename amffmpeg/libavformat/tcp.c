@@ -128,7 +128,7 @@ static int tcp_read(URLContext *h, uint8_t *buf, int size)
     int len, fd_max, ret;
     fd_set rfds;
     struct timeval tv;    
-    int tout_cnt=100; //tout_cnt*time_out=10s        
+    int tout_cnt=10; //tout_cnt*time_out=3s        
     for (;;) {        
         if (url_interrupt_cb())       
             return AVERROR(EINTR);       
