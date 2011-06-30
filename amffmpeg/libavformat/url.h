@@ -48,7 +48,7 @@ typedef struct URLProtocol {
     const char *name;
     int     (*url_open)( URLContext *h, const char *url, int flags);
     int     (*url_read)( URLContext *h, unsigned char *buf, int size);
-    int     (*url_write)(URLContext *h, const unsigned char *buf, int size);
+    int     (*url_write)(URLContext *h, unsigned char *buf, int size);
     int64_t (*url_seek)( URLContext *h, int64_t pos, int whence);
     int     (*url_close)(URLContext *h);
     struct URLProtocol *next;
