@@ -1,7 +1,7 @@
-include $(SUBDIR)../config.mak
+###include $(SUBDIR)../config.mak
 
 NAME = avformat
-FFLIBS = avcodec avutil
+FFLIBS = avcodec-$(FFMPEG_VER) avutil-$(FFMPEG_VER)
 
 HEADERS = avformat.h avio.h version.h
 
@@ -342,4 +342,4 @@ OBJS-$(CONFIG_JACK_INDEV)                += timefilter.o
 
 TESTPROGS = timefilter
 
-include $(SUBDIR)../subdir.mak
+###include $(SUBDIR)../subdir.mak

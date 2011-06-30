@@ -31,8 +31,8 @@
 #include "dsputil.h"
 #include "rangecoder.h"
 #include "golomb.h"
-#include "mathops.h"
 #include "libavutil/avassert.h"
+#define log2(x) (x)
 
 #define MAX_PLANES 4
 #define CONTEXT_SIZE 32

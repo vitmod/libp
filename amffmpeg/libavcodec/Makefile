@@ -1,7 +1,7 @@
-include $(SUBDIR)../config.mak
+####include $(SUBDIR)../config.mak
 
 NAME = avcodec
-FFLIBS = avutil
+FFLIBS = avutil-$(FFMPEG_VER)
 
 HEADERS = avcodec.h avfft.h dxva2.h opt.h vaapi.h vdpau.h version.h xvmc.h
 
@@ -693,7 +693,7 @@ DIRS = alpha arm bfin mlib ppc ps2 sh4 sparc x86
 
 CLEANFILES = *_tables.c *_tables.h *_tablegen$(HOSTEXESUF)
 
-include $(SUBDIR)../subdir.mak
+###include $(SUBDIR)../subdir.mak
 
 $(SUBDIR)dct-test$(EXESUF): $(SUBDIR)dctref.o
 
