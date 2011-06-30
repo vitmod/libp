@@ -1,7 +1,7 @@
 ###include $(SUBDIR)../config.mak
 
 NAME = avformat
-FFLIBS = avcodec-$(FFMPEG_VER) avutil-$(FFMPEG_VER)
+FFLIBS = avcodec avutil
 
 HEADERS = avformat.h avio.h version.h
 
@@ -339,7 +339,6 @@ OBJS-$(CONFIG_UDP_PROTOCOL)              += udp.o
 
 # libavdevice dependencies
 OBJS-$(CONFIG_JACK_INDEV)                += timefilter.o
-
 TESTPROGS = timefilter
 
 ###include $(SUBDIR)../subdir.mak

@@ -250,7 +250,7 @@ int player_stop_async(int pid)
     }
 
     if (player_para->pFormatCtx) {
-        av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
+        ///av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
     }
 
     cmd = message_alloc();

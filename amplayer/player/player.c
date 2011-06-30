@@ -621,7 +621,7 @@ void *player_thread(play_para_t *player)
     set_player_state(player, PLAYER_INITOK);
     update_playing_info(player);
     update_player_states(player, 1);
-
+#if 0
     switch(player->pFormatCtx->drm.drm_check_value){
     case 1: // unauthorized
       set_player_state(player, PLAYER_DIVX_AUTHORERR);
@@ -647,7 +647,7 @@ void *player_thread(play_para_t *player)
     default:
       break;
     }
-
+#endif
     if (player->start_param->need_start) {
         int flag = 0;
         do {
@@ -665,7 +665,7 @@ void *player_thread(play_para_t *player)
             }
         } while (1);
     }
-    
+#if 0    
     /* if drm rental , continue playback here
      * caution:
      * 1. resume play, should not call drmCommitPlayback
@@ -678,7 +678,7 @@ void *player_thread(play_para_t *player)
 	       player->pFormatCtx->drm.drm_check_value = 1; // unauthorized, should popup a dialog
 	      }
     }
-
+#endif
 	log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {

@@ -7,7 +7,7 @@ LOCAL_C_INCLUDES :=		\
 	$(LOCAL_PATH)/..	\
 	external/zlib
 LOCAL_CFLAGS += $(FFCFLAGS)
-LOCAL_MODULE := $(FFNAME)-$(FFMPEG_VER)
+LOCAL_MODULE := $(FFNAME)
 include $(BUILD_STATIC_LIBRARY)
 # Reset CC as it's overwritten by common.mk
 CC := $(HOST_CC)

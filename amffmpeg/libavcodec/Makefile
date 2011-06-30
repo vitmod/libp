@@ -1,7 +1,7 @@
 ####include $(SUBDIR)../config.mak
 
 NAME = avcodec
-FFLIBS = avutil-$(FFMPEG_VER)
+FFLIBS = avutil
 
 HEADERS = avcodec.h avfft.h dxva2.h opt.h vaapi.h vdpau.h version.h xvmc.h
 
@@ -690,6 +690,8 @@ HOSTPROGS = aac_tablegen aacps_tablegen cbrt_tablegen cos_tablegen      \
             pcm_tablegen qdm2_tablegen sinewin_tablegen
 
 DIRS = alpha arm bfin mlib ppc ps2 sh4 sparc x86
+
+include $(LOCAL_PATH)/$(ARCH)/Makefile
 
 CLEANFILES = *_tables.c *_tables.h *_tablegen$(HOSTEXESUF)
 

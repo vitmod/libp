@@ -111,6 +111,7 @@ enum CodecID {
     CODEC_ID_QDRAW,
     CODEC_ID_VIXL,
     CODEC_ID_QPEG,
+    CODEC_ID_XVID,
     CODEC_ID_PNG,
     CODEC_ID_PPM,
     CODEC_ID_PBM,

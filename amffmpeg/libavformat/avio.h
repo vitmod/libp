@@ -87,6 +87,7 @@ typedef struct {
      * A combination of AVIO_SEEKABLE_ flags or 0 when the stream is not seekable.
      */
     int seekable;
+	int enabled_lp_buffer;
 } AVIOContext;
 
 /* unbuffered I/O */
@@ -631,5 +632,39 @@ int     avio_pause(AVIOContext *h, int pause);
  */
 int64_t avio_seek_time(AVIOContext *h, int stream_index,
                        int64_t timestamp, int flags);
+
+static inline int url_support_time_seek(AVIOContext *s)
+{
+    return 0;
+}
+static inline int url_fseektotime(AVIOContext *s,int totime_s,int flags)
+{
+    return 0;
+}
+static inline  int url_buffering_data(AVIOContext *s,int size)
+
+{
+    return 0;
+}
+static int64_t url_ffulltime(ByteIOContext *s)
+{
+return -1;
+}
+
+
+static int64_t url_buffed_pos(ByteIOContext *s)
+{
+	return -1;
+}
+
+static int64_t url_fbuffered_time(ByteIOContext *s)
+{
+	return -1;
+}
+
+
+#include "libavformat/url.h"
+
+
 
 #endif /* AVFORMAT_AVIO_H */

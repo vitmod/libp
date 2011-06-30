@@ -634,6 +634,13 @@ typedef struct AVStream {
      * NOT PART OF PUBLIC API
      */
     int request_probe;
+    /**
+     * added by Chen.Zhang
+     * Add this member to mark the offset of the stream in the file
+     */
+     unsigned int stream_offset;
+     int no_extra_offset;
+     float special_fps;  // for some special stream	
 } AVStream;
 
 #define AV_PROGRAM_RUNNING 1
@@ -695,7 +702,7 @@ typedef struct AVFormatContext {
      * streams.
      */
     struct AVPacketList *packet_buffer;
-
+	
     /**
      * Decoding: position of the first frame of the component, in
      * AV_TIME_BASE fractional seconds. NEVER set this value directly:
@@ -860,6 +867,20 @@ typedef struct AVFormatContext {
      * This will be moved into demuxer private options. Thus no API/ABI compatibility
      */
     int ts_id;
+    /* added by Z.C for m2ts files */
+    int orig_packet_size;
+
+    /* added by Z.C for index building */
+    int index_builded;
+
+    /* added by Z.C for some ps/ts file seeking */
+    int64_t valid_offset;
+    int valid_offset_done;
+
+    /* added by Z.C for avi or some other files seekable */
+    int seekable;	
+
+	uint64_t video_avg_frame_time, audio_avg_frame_time;
 } AVFormatContext;
 
 typedef struct AVPacketList {
