@@ -457,3 +457,23 @@ int audio_get_decoded_nb_frames(void *handle)
     }
 }
 
+/**
+ * \brief set av sync threshold in ms.
+ * \param handle pointer to player private data
+ * \param threshold av sync time threshold in ms
+ */
+void audio_set_av_sync_threshold(void *handle, int threshold)
+{
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
+
+    if (!handle) {
+        adec_print("audio handle is NULL !\n");
+        return -1;
+    }
+
+    if ((threshold > 500) || (threshold < 60)) {
+        adec_print("threshold %d id too small or too large.\n", threshold);
+    }
+
+    audec->avsync_threshold = threshold * 90;
+}

@@ -70,6 +70,12 @@ int adec_pts_start(aml_audio_dec_t *audec)
     dsp_ops = &audec->adsp_ops;
     memset(buf, 0, sizeof(buf));
 
+    if (audec->avsync_threshold <= 0) {
+        audec->avsync_threshold = SYSTIME_CORRECTION_THRESHOLD;
+        adec_print("use default av sync threshold!\n");
+    }
+    adec_print("av sync threshold is %d \n", audec->avsync_threshold);
+
     dsp_ops->last_pts_valid = 0;
 
     pts = adec_calc_pts(audec);
@@ -230,7 +236,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     audec->adsp_ops.last_audio_pts = pts;
     audec->adsp_ops.last_pts_valid = 1;
 
-    if (abs(pts - systime) < SYSTIME_CORRECTION_THRESHOLD) {
+    if (abs(pts - systime) < audec->avsync_threshold) {
         return 0;
     }
 
@@ -312,7 +318,7 @@ int track_switch_pts(aml_audio_dec_t *audec)
         return 1;
     }
 
-    if (abs(apts - pcr) < SYSTIME_CORRECTION_THRESHOLD || (apts <= pcr)) {
+    if (abs(apts - pcr) < audec->avsync_threshold || (apts <= pcr)) {
         return 0;
     } else {
         return 1;
