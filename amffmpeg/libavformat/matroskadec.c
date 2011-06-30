@@ -20,7 +20,7 @@
  */
 
 /**
- * @file libavformat/matroskadec.c
+ * @file
  * Matroska file demuxer
  * by Ronald Bultje <rbultje@ronald.bitfreak.net>
  * with a little help from Moritz Bunkus <moritz@bunkus.org>
@@ -30,15 +30,19 @@
 
 #include <stdio.h>
 #include "avformat.h"
+#include "internal.h"
+#include "avio_internal.h"
 /* For ff_codec_get_id(). */
 #include "riff.h"
 #include "isom.h"
+#include "rm.h"
 #include "matroska.h"
 #include "libavcodec/mpeg4audio.h"
 #include "libavutil/intfloat_readwrite.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/avstring.h"
 #include "libavutil/lzo.h"
+#include "libavutil/dict.h"
 #if CONFIG_ZLIB
 #include <zlib.h>
 #endif
@@ -56,6 +60,7 @@ typedef enum {
     EBML_NEST,
     EBML_PASS,
     EBML_STOP,
+    EBML_TYPE_COUNT
 } EbmlType;
 
 typedef const struct EbmlSyntax {
@@ -107,7 +112,8 @@ typedef struct {
     uint64_t display_height;
     uint64_t pixel_width;
     uint64_t pixel_height;
-    uint64_t fourcc;
+    EbmlBin color_space;
+    uint64_t stereo_mode;
 } MatroskaTrackVideo;
 
 typedef struct {
@@ -123,8 +129,18 @@ typedef struct {
     int      sub_packet_size;
     int      sub_packet_cnt;
     int      pkt_cnt;
+    uint64_t buf_timecode;
     uint8_t *buf;
 } MatroskaTrackAudio;
+
+typedef struct {
+    uint64_t uid;
+    uint64_t type;
+} MatroskaTrackPlane;
+
+typedef struct {
+    EbmlList combine_planes;
+} MatroskaTrackOperation;
 
 typedef struct {
     uint64_t num;
@@ -137,23 +153,17 @@ typedef struct {
     double time_scale;
     uint64_t default_duration;
     uint64_t flag_default;
+    uint64_t flag_forced;
     MatroskaTrackVideo video;
     MatroskaTrackAudio audio;
+    MatroskaTrackOperation operation;
     EbmlList encodings;
 
     AVStream *stream;
     int64_t end_timecode;
+    int ms_compat;
 } MatroskaTrack;
 
-//--****************************************************
-
-typedef struct {	
-	uint64_t version;
-	uint64_t size;
-	EbmlBin	 payload;
-}MatroskaTrackData;
-
-//--****************************************************
 typedef struct {
     uint64_t uid;
     char *filename;
@@ -220,14 +230,12 @@ typedef struct {
     int num_levels;
     MatroskaLevel levels[EBML_MAX_DEPTH];
     int level_up;
+    uint32_t current_id;
 
     uint64_t time_scale;
     double   duration;
     char    *title;
     EbmlList tracks;
-//--****************************************
-	EbmlList tracksdata;
-//--****************************************
     EbmlList attachments;
     EbmlList chapters;
     EbmlList index;
@@ -243,7 +251,6 @@ typedef struct {
     AVPacket *prev_pkt;
 
     int done;
-    int has_cluster_id;
 
     /* What to skip before effectively reading a packet. */
     int skip_to_keyframe;
@@ -255,9 +262,6 @@ typedef struct {
     int64_t  reference;
     uint64_t non_simple;
     EbmlBin  bin;
-//--****************************************
-	EbmlBin	 drminfo;
-//--****************************************
 } MatroskaBlock;
 
 typedef struct {
@@ -298,14 +302,14 @@ static EbmlSyntax matroska_track_video[] = {
     { MATROSKA_ID_VIDEODISPLAYHEIGHT, EBML_UINT, 0, offsetof(MatroskaTrackVideo,display_height) },
     { MATROSKA_ID_VIDEOPIXELWIDTH,    EBML_UINT, 0, offsetof(MatroskaTrackVideo,pixel_width) },
     { MATROSKA_ID_VIDEOPIXELHEIGHT,   EBML_UINT, 0, offsetof(MatroskaTrackVideo,pixel_height) },
-    { MATROSKA_ID_VIDEOCOLORSPACE,    EBML_UINT, 0, offsetof(MatroskaTrackVideo,fourcc) },
+    { MATROSKA_ID_VIDEOCOLORSPACE,    EBML_BIN,  0, offsetof(MatroskaTrackVideo,color_space) },
+    { MATROSKA_ID_VIDEOSTEREOMODE,    EBML_UINT, 0, offsetof(MatroskaTrackVideo,stereo_mode) },
     { MATROSKA_ID_VIDEOPIXELCROPB,    EBML_NONE },
     { MATROSKA_ID_VIDEOPIXELCROPT,    EBML_NONE },
     { MATROSKA_ID_VIDEOPIXELCROPL,    EBML_NONE },
     { MATROSKA_ID_VIDEOPIXELCROPR,    EBML_NONE },
     { MATROSKA_ID_VIDEODISPLAYUNIT,   EBML_NONE },
     { MATROSKA_ID_VIDEOFLAGINTERLACED,EBML_NONE },
-    { MATROSKA_ID_VIDEOSTEREOMODE,    EBML_NONE },
     { MATROSKA_ID_VIDEOASPECTRATIO,   EBML_NONE },
     { 0 }
 };
@@ -337,6 +341,22 @@ static EbmlSyntax matroska_track_encodings[] = {
     { 0 }
 };
 
+static EbmlSyntax matroska_track_plane[] = {
+    { MATROSKA_ID_TRACKPLANEUID,  EBML_UINT, 0, offsetof(MatroskaTrackPlane,uid) },
+    { MATROSKA_ID_TRACKPLANETYPE, EBML_UINT, 0, offsetof(MatroskaTrackPlane,type) },
+    { 0 }
+};
+
+static EbmlSyntax matroska_track_combine_planes[] = {
+    { MATROSKA_ID_TRACKPLANE, EBML_NEST, sizeof(MatroskaTrackPlane), offsetof(MatroskaTrackOperation,combine_planes), {.n=matroska_track_plane} },
+    { 0 }
+};
+
+static EbmlSyntax matroska_track_operation[] = {
+    { MATROSKA_ID_TRACKCOMBINEPLANES, EBML_NEST, 0, 0, {.n=matroska_track_combine_planes} },
+    { 0 }
+};
+
 static EbmlSyntax matroska_track[] = {
     { MATROSKA_ID_TRACKNUMBER,          EBML_UINT, 0, offsetof(MatroskaTrack,num) },
     { MATROSKA_ID_TRACKNAME,            EBML_UTF8, 0, offsetof(MatroskaTrack,name) },
@@ -348,11 +368,12 @@ static EbmlSyntax matroska_track[] = {
     { MATROSKA_ID_TRACKDEFAULTDURATION, EBML_UINT, 0, offsetof(MatroskaTrack,default_duration) },
     { MATROSKA_ID_TRACKTIMECODESCALE,   EBML_FLOAT,0, offsetof(MatroskaTrack,time_scale), {.f=1.0} },
     { MATROSKA_ID_TRACKFLAGDEFAULT,     EBML_UINT, 0, offsetof(MatroskaTrack,flag_default), {.u=1} },
+    { MATROSKA_ID_TRACKFLAGFORCED,      EBML_UINT, 0, offsetof(MatroskaTrack,flag_forced), {.u=0} },
     { MATROSKA_ID_TRACKVIDEO,           EBML_NEST, 0, offsetof(MatroskaTrack,video), {.n=matroska_track_video} },
     { MATROSKA_ID_TRACKAUDIO,           EBML_NEST, 0, offsetof(MatroskaTrack,audio), {.n=matroska_track_audio} },
+    { MATROSKA_ID_TRACKOPERATION,       EBML_NEST, 0, offsetof(MatroskaTrack,operation), {.n=matroska_track_operation} },
     { MATROSKA_ID_TRACKCONTENTENCODINGS,EBML_NEST, 0, 0, {.n=matroska_track_encodings} },
     { MATROSKA_ID_TRACKFLAGENABLED,     EBML_NONE },
-    { MATROSKA_ID_TRACKFLAGFORCED,      EBML_NONE },
     { MATROSKA_ID_TRACKFLAGLACING,      EBML_NONE },
     { MATROSKA_ID_CODECNAME,            EBML_NONE },
     { MATROSKA_ID_CODECDECODEALL,       EBML_NONE },
@@ -364,19 +385,8 @@ static EbmlSyntax matroska_track[] = {
     { 0 }
 };
 
-//--************************************************
-static EbmlSyntax mastroska_tarckdata[] = {
-	{ MATROSKA_ID_TRACKSDATAVERSION,          EBML_UINT, 0, offsetof(MatroskaTrackData,version) },
-	{ MATROSKA_ID_TRACKSDATAPAYLOADSIZE,      EBML_UINT, 0, offsetof(MatroskaTrackData,size) },
-	{ MATROSKA_ID_TRACKSDATAPAYLOAD,          EBML_BIN,  0, offsetof(MatroskaTrackData,payload) },
-	{0}
-};
-//--************************************************
 static EbmlSyntax matroska_tracks[] = {
     { MATROSKA_ID_TRACKENTRY,         EBML_NEST, sizeof(MatroskaTrack), offsetof(MatroskaDemuxContext,tracks), {.n=matroska_track} },
-//--************************************************
-	{ MATROSKA_ID_TRACKSDATA,		  EBML_NEST, sizeof(MatroskaTrackData), offsetof(MatroskaDemuxContext,tracksdata),{.n=mastroska_tarckdata}},
-//--************************************************
     { 0 }
 };
 
@@ -449,6 +459,7 @@ static EbmlSyntax matroska_simpletag[] = {
     { MATROSKA_ID_TAGSTRING,          EBML_UTF8, 0, offsetof(MatroskaTag,string) },
     { MATROSKA_ID_TAGLANG,            EBML_STR,  0, offsetof(MatroskaTag,lang), {.s="und"} },
     { MATROSKA_ID_TAGDEFAULT,         EBML_UINT, 0, offsetof(MatroskaTag,def) },
+    { MATROSKA_ID_TAGDEFAULT_BUG,     EBML_UINT, 0, offsetof(MatroskaTag,def) },
     { MATROSKA_ID_SIMPLETAG,          EBML_NEST, sizeof(MatroskaTag), offsetof(MatroskaTag,sub), {.n=matroska_simpletag} },
     { 0 }
 };
@@ -492,7 +503,7 @@ static EbmlSyntax matroska_segment[] = {
     { MATROSKA_ID_CUES,           EBML_NEST, 0, 0, {.n=matroska_index      } },
     { MATROSKA_ID_TAGS,           EBML_NEST, 0, 0, {.n=matroska_tags       } },
     { MATROSKA_ID_SEEKHEAD,       EBML_NEST, 0, 0, {.n=matroska_seekhead   } },
-    { MATROSKA_ID_CLUSTER,        EBML_STOP, 0, offsetof(MatroskaDemuxContext,has_cluster_id) },
+    { MATROSKA_ID_CLUSTER,        EBML_STOP },
     { 0 }
 };
 
@@ -504,10 +515,7 @@ static EbmlSyntax matroska_segments[] = {
 static EbmlSyntax matroska_blockgroup[] = {
     { MATROSKA_ID_BLOCK,          EBML_BIN,  0, offsetof(MatroskaBlock,bin) },
     { MATROSKA_ID_SIMPLEBLOCK,    EBML_BIN,  0, offsetof(MatroskaBlock,bin) },
-//--**************************************************
-    { MATROSKA_ID_BLOCKDRMINFO,	  EBML_BIN,  0, offsetof(MatroskaBlock,drminfo) },
-//--**************************************************
-    { MATROSKA_ID_BLOCKDURATION,  EBML_UINT, 0, offsetof(MatroskaBlock,duration), {.u=AV_NOPTS_VALUE} },
+    { MATROSKA_ID_BLOCKDURATION,  EBML_UINT, 0, offsetof(MatroskaBlock,duration) },
     { MATROSKA_ID_BLOCKREFERENCE, EBML_UINT, 0, offsetof(MatroskaBlock,reference) },
     { 1,                          EBML_UINT, 0, offsetof(MatroskaBlock,non_simple), {.u=1} },
     { 0 }
@@ -531,17 +539,19 @@ static EbmlSyntax matroska_clusters[] = {
     { 0 }
 };
 
+static const char *matroska_doctypes[] = { "matroska", "webm" };
+
 /*
  * Return: Whether we reached the end of a level in the hierarchy or not.
  */
 static int ebml_level_end(MatroskaDemuxContext *matroska)
 {
-    ByteIOContext *pb = matroska->ctx->pb;
-    int64_t pos = url_ftell(pb);
+    AVIOContext *pb = matroska->ctx->pb;
+    int64_t pos = avio_tell(pb);
 
     if (matroska->num_levels > 0) {
         MatroskaLevel *level = &matroska->levels[matroska->num_levels - 1];
-        if (pos - level->start >= level->length) {
+        if (pos - level->start >= level->length || matroska->current_id) {
             matroska->num_levels--;
             return 1;
         }
@@ -557,19 +567,19 @@ static int ebml_level_end(MatroskaDemuxContext *matroska)
  * number.
  * Returns: number of bytes read, < 0 on error
  */
-static int ebml_read_num(MatroskaDemuxContext *matroska, ByteIOContext *pb,
+static int ebml_read_num(MatroskaDemuxContext *matroska, AVIOContext *pb,
                          int max_size, uint64_t *number)
 {
-    int len_mask = 0x80, read = 1, n = 1;
-    int64_t total = 0;
+    int read = 1, n = 1;
+    uint64_t total = 0;
 
-    /* The first byte tells us the length in bytes - get_byte() can normally
+    /* The first byte tells us the length in bytes - avio_r8() can normally
      * return 0, but since that's not a valid first ebmlID byte, we can
      * use it safely here to catch EOS. */
-    if (!(total = get_byte(pb))) {
+    if (!(total = avio_r8(pb))) {
         /* we might encounter EOS here */
         if (!url_feof(pb)) {
-            int64_t pos = url_ftell(pb);
+            int64_t pos = avio_tell(pb);
             av_log(matroska->ctx, AV_LOG_ERROR,
                    "Read error at pos. %"PRIu64" (0x%"PRIx64")\n",
                    pos, pos);
@@ -578,12 +588,9 @@ static int ebml_read_num(MatroskaDemuxContext *matroska, ByteIOContext *pb,
     }
 
     /* get the length of the EBML number */
-    while (read <= max_size && !(total & len_mask)) {
-        read++;
-        len_mask >>= 1;
-    }
+    read = 8 - ff_log2_tab[total];
     if (read > max_size) {
-        int64_t pos = url_ftell(pb) - 1;
+        int64_t pos = avio_tell(pb) - 1;
         av_log(matroska->ctx, AV_LOG_ERROR,
                "Invalid EBML number size tag 0x%02x at pos %"PRIu64" (0x%"PRIx64")\n",
                (uint8_t) total, pos, pos);
@@ -591,30 +598,44 @@ static int ebml_read_num(MatroskaDemuxContext *matroska, ByteIOContext *pb,
     }
 
     /* read out length */
-    total &= ~len_mask;
+    total ^= 1 << ff_log2_tab[total];
     while (n++ < read)
-        total = (total << 8) | get_byte(pb);
+        total = (total << 8) | avio_r8(pb);
 
     *number = total;
 
     return read;
 }
 
+/**
+ * Read a EBML length value.
+ * This needs special handling for the "unknown length" case which has multiple
+ * encodings.
+ */
+static int ebml_read_length(MatroskaDemuxContext *matroska, AVIOContext *pb,
+                            uint64_t *number)
+{
+    int res = ebml_read_num(matroska, pb, 8, number);
+    if (res > 0 && *number + 1 == 1ULL << (7 * res))
+        *number = 0xffffffffffffffULL;
+    return res;
+}
+
 /*
  * Read the next element as an unsigned int.
  * 0 is success, < 0 is failure.
  */
-static int ebml_read_uint(ByteIOContext *pb, int size, uint64_t *num)
+static int ebml_read_uint(AVIOContext *pb, int size, uint64_t *num)
 {
     int n = 0;
 
-    if (size < 1 || size > 8)
+    if (size > 8)
         return AVERROR_INVALIDDATA;
 
     /* big-endian ordering; build up number */
     *num = 0;
     while (n++ < size)
-        *num = (*num << 8) | get_byte(pb);
+        *num = (*num << 8) | avio_r8(pb);
 
     return 0;
 }
@@ -623,12 +644,14 @@ static int ebml_read_uint(ByteIOContext *pb, int size, uint64_t *num)
  * Read the next element as a float.
  * 0 is success, < 0 is failure.
  */
-static int ebml_read_float(ByteIOContext *pb, int size, double *num)
+static int ebml_read_float(AVIOContext *pb, int size, double *num)
 {
-    if (size == 4) {
-        *num= av_int2flt(get_be32(pb));
+    if (size == 0) {
+        *num = 0;
+    } else if (size == 4) {
+        *num= av_int2flt(avio_rb32(pb));
     } else if(size==8){
-        *num= av_int2dbl(get_be64(pb));
+        *num= av_int2dbl(avio_rb64(pb));
     } else
         return AVERROR_INVALIDDATA;
 
@@ -639,15 +662,15 @@ static int ebml_read_float(ByteIOContext *pb, int size, double *num)
  * Read the next element as an ASCII string.
  * 0 is success, < 0 is failure.
  */
-static int ebml_read_ascii(ByteIOContext *pb, int size, char **str)
+static int ebml_read_ascii(AVIOContext *pb, int size, char **str)
 {
     av_free(*str);
     /* EBML strings are usually not 0-terminated, so we allocate one
      * byte more, read the string and NULL-terminate it ourselves. */
     if (!(*str = av_malloc(size + 1)))
         return AVERROR(ENOMEM);
-    if (get_buffer(pb, (uint8_t *) *str, size) != size) {
-        av_free(*str);
+    if (avio_read(pb, (uint8_t *) *str, size) != size) {
+        av_freep(str);
         return AVERROR(EIO);
     }
     (*str)[size] = '\0';
@@ -659,16 +682,18 @@ static int ebml_read_ascii(ByteIOContext *pb, int size, char **str)
  * Read the next element as binary data.
  * 0 is success, < 0 is failure.
  */
-static int ebml_read_binary(ByteIOContext *pb, int length, EbmlBin *bin)
+static int ebml_read_binary(AVIOContext *pb, int length, EbmlBin *bin)
 {
     av_free(bin->data);
     if (!(bin->data = av_malloc(length)))
         return AVERROR(ENOMEM);
 
     bin->size = length;
-    bin->pos  = url_ftell(pb);
-    if (get_buffer(pb, bin->data, length) != length)
+    bin->pos  = avio_tell(pb);
+    if (avio_read(pb, bin->data, length) != length) {
+        av_freep(&bin->data);
         return AVERROR(EIO);
+    }
 
     return 0;
 }
@@ -678,9 +703,9 @@ static int ebml_read_binary(ByteIOContext *pb, int length, EbmlBin *bin)
  * are supposed to be sub-elements which can be read separately.
  * 0 is success, < 0 is failure.
  */
-static int ebml_read_master(MatroskaDemuxContext *matroska, int length)
+static int ebml_read_master(MatroskaDemuxContext *matroska, uint64_t length)
 {
-    ByteIOContext *pb = matroska->ctx->pb;
+    AVIOContext *pb = matroska->ctx->pb;
     MatroskaLevel *level;
 
     if (matroska->num_levels >= EBML_MAX_DEPTH) {
@@ -690,7 +715,7 @@ static int ebml_read_master(MatroskaDemuxContext *matroska, int length)
     }
 
     level = &matroska->levels[matroska->num_levels++];
-    level->start = url_ftell(pb);
+    level->start = avio_tell(pb);
     level->length = length;
 
     return 0;
@@ -703,9 +728,9 @@ static int ebml_read_master(MatroskaDemuxContext *matroska, int length)
 static int matroska_ebmlnum_uint(MatroskaDemuxContext *matroska,
                                  uint8_t *data, uint32_t size, uint64_t *num)
 {
-    ByteIOContext pb;
-    init_put_byte(&pb, data, size, 0, NULL, NULL, NULL, NULL);
-    return ebml_read_num(matroska, &pb, 8, num);
+    AVIOContext pb;
+    ffio_init_context(&pb, data, size, 0, NULL, NULL, NULL, NULL);
+    return ebml_read_num(matroska, &pb, FFMIN(size, 8), num);
 }
 
 /*
@@ -737,6 +762,10 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
     for (i=0; syntax[i].id; i++)
         if (id == syntax[i].id)
             break;
+    if (!syntax[i].id && id == MATROSKA_ID_CLUSTER &&
+        matroska->num_levels > 0 &&
+        matroska->levels[matroska->num_levels-1].length == 0xffffffffffffff)
+        return 0;  // we reached the end of an unknown size cluster
     if (!syntax[i].id && id != EBML_ID_VOID && id != EBML_ID_CRC32)
         av_log(matroska->ctx, AV_LOG_INFO, "Unknown entry 0x%X\n", id);
     return ebml_parse_elem(matroska, &syntax[i], data);
@@ -745,10 +774,14 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
 static int ebml_parse(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
                       void *data)
 {
-    uint64_t id;
-    int res = ebml_read_num(matroska, matroska->ctx->pb, 4, &id);
-    id |= 1 << 7*res;
-    return res < 0 ? res : ebml_parse_id(matroska, syntax, id, data);
+    if (!matroska->current_id) {
+        uint64_t id;
+        int res = ebml_read_num(matroska, matroska->ctx->pb, 4, &id);
+        if (res < 0)
+            return res;
+        matroska->current_id = id | 1 << 7*res;
+    }
+    return ebml_parse_id(matroska, syntax, matroska->current_id, data);
 }
 
 static int ebml_parse_nest(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
@@ -779,7 +812,17 @@ static int ebml_parse_nest(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
 static int ebml_parse_elem(MatroskaDemuxContext *matroska,
                            EbmlSyntax *syntax, void *data)
 {
-    ByteIOContext *pb = matroska->ctx->pb;
+    static const uint64_t max_lengths[EBML_TYPE_COUNT] = {
+        [EBML_UINT]  = 8,
+        [EBML_FLOAT] = 8,
+        // max. 16 MB for strings
+        [EBML_STR]   = 0x1000000,
+        [EBML_UTF8]  = 0x1000000,
+        // max. 256 MB for binary data
+        [EBML_BIN]   = 0x10000000,
+        // no limits for anything else
+    };
+    AVIOContext *pb = matroska->ctx->pb;
     uint32_t id = syntax->id;
     uint64_t length;
     int res;
@@ -793,10 +836,16 @@ static int ebml_parse_elem(MatroskaDemuxContext *matroska,
         list->nb_elem++;
     }
 
-    if (syntax->type != EBML_PASS && syntax->type != EBML_STOP)
-    {        
-        if ((res = ebml_read_num(matroska, pb, 8, &length)) < 0)
+    if (syntax->type != EBML_PASS && syntax->type != EBML_STOP) {
+        matroska->current_id = 0;
+        if ((res = ebml_read_length(matroska, pb, &length)) < 0)
             return res;
+        if (max_lengths[syntax->type] && length > max_lengths[syntax->type]) {
+            av_log(matroska->ctx, AV_LOG_ERROR,
+                   "Invalid length 0x%"PRIx64" > 0x%"PRIx64" for syntax element %i\n",
+                   length, max_lengths[syntax->type], syntax->type);
+            return AVERROR_INVALIDDATA;
+        }
     }
 
     switch (syntax->type) {
@@ -808,11 +857,11 @@ static int ebml_parse_elem(MatroskaDemuxContext *matroska,
     case EBML_NEST:  if ((res=ebml_read_master(matroska, length)) < 0)
                          return res;
                      if (id == MATROSKA_ID_SEGMENT)
-                         matroska->segment_start = url_ftell(matroska->ctx->pb);
+                         matroska->segment_start = avio_tell(matroska->ctx->pb);
                      return ebml_parse_nest(matroska, syntax->def.n, data);
     case EBML_PASS:  return ebml_parse_id(matroska, syntax->def.n, id, data);
-    case EBML_STOP:  *(int *)data = 1;      return 1;
-    default:         return url_fseek(pb,length,SEEK_CUR)<0 ? AVERROR(EIO) : 0;
+    case EBML_STOP:  return 1;
+    default:         return avio_skip(pb,length)<0 ? AVERROR(EIO) : 0;
     }
     if (res == AVERROR_INVALIDDATA)
         av_log(matroska->ctx, AV_LOG_ERROR, "Invalid element\n");
@@ -851,8 +900,7 @@ static void ebml_free(EbmlSyntax *syntax, void *data)
 static int matroska_probe(AVProbeData *p)
 {
     uint64_t total = 0;
-    int len_mask = 0x80, size = 1, n = 1;
-    static const char probe_data[] = "matroska";
+    int len_mask = 0x80, size = 1, n = 1, i;
 
     /* EBML header? */
     if (AV_RB32(p->buf) != EBML_ID_HEADER)
@@ -874,15 +922,19 @@ static int matroska_probe(AVProbeData *p)
     if (p->buf_size < 4 + size + total)
       return 0;
 
-    /* The header must contain the document type 'matroska'. For now,
+    /* The header should contain a known document type. For now,
      * we don't parse the whole header but simply check for the
      * availability of that array of characters inside the header.
      * Not fully fool-proof, but good enough. */
-    for (n = 4+size; n <= 4+size+total-(sizeof(probe_data)-1); n++)
-        if (!memcmp(p->buf+n, probe_data, sizeof(probe_data)-1))
-            return AVPROBE_SCORE_MAX;
+    for (i = 0; i < FF_ARRAY_ELEMS(matroska_doctypes); i++) {
+        int probelen = strlen(matroska_doctypes[i]);
+        for (n = 4+size; n <= 4+size+total-probelen; n++)
+            if (!memcmp(p->buf+n, matroska_doctypes[i], probelen))
+                return AVPROBE_SCORE_MAX;
+    }
 
-    return 0;
+    // probably valid EBML header but no recognized doctype
+    return AVPROBE_SCORE_MAX/2;
 }
 
 static MatroskaTrack *matroska_find_track_by_num(MatroskaDemuxContext *matroska,
@@ -909,6 +961,9 @@ static int matroska_decode_buffer(uint8_t** buf, int* buf_size,
     int pkt_size = isize;
     int result = 0;
     int olen;
+
+    if (pkt_size >= 10000000)
+        return -1;
 
     switch (encodings[0].compression.algo) {
     case MATROSKA_TRACK_ENCODING_COMP_HEADERSTRIP:
@@ -983,7 +1038,8 @@ static void matroska_fix_ass_packet(MatroskaDemuxContext *matroska,
     char *line, *layer, *ptr = pkt->data, *end = ptr+pkt->size;
     for (; *ptr!=',' && ptr<end-1; ptr++);
     if (*ptr == ',')
-        layer = ++ptr;
+        ptr++;
+    layer = ptr;
     for (; *ptr!=',' && ptr<end-1; ptr++);
     if (*ptr == ',') {
         int64_t end_pts = pkt->pts + display_duration;
@@ -1018,7 +1074,7 @@ static void matroska_merge_packets(AVPacket *out, AVPacket *in)
 }
 
 static void matroska_convert_tag(AVFormatContext *s, EbmlList *list,
-                                 AVMetadata **metadata, char *prefix)
+                                 AVDictionary **metadata, char *prefix)
 {
     MatroskaTag *tags = list->elem;
     char key[1024];
@@ -1026,21 +1082,27 @@ static void matroska_convert_tag(AVFormatContext *s, EbmlList *list,
 
     for (i=0; i < list->nb_elem; i++) {
         const char *lang = strcmp(tags[i].lang, "und") ? tags[i].lang : NULL;
+
+        if (!tags[i].name) {
+            av_log(s, AV_LOG_WARNING, "Skipping invalid tag with no TagName.\n");
+            continue;
+        }
         if (prefix)  snprintf(key, sizeof(key), "%s/%s", prefix, tags[i].name);
         else         av_strlcpy(key, tags[i].name, sizeof(key));
         if (tags[i].def || !lang) {
-        av_metadata_set(metadata, key, tags[i].string);
+        av_dict_set(metadata, key, tags[i].string, 0);
         if (tags[i].sub.nb_elem)
             matroska_convert_tag(s, &tags[i].sub, metadata, key);
         }
         if (lang) {
             av_strlcat(key, "-", sizeof(key));
             av_strlcat(key, lang, sizeof(key));
-            av_metadata_set(metadata, key, tags[i].string);
+            av_dict_set(metadata, key, tags[i].string, 0);
             if (tags[i].sub.nb_elem)
                 matroska_convert_tag(s, &tags[i].sub, metadata, key);
         }
     }
+    ff_metadata_conv(metadata, NULL, ff_mkv_metadata_conv);
 }
 
 static void matroska_convert_tags(AVFormatContext *s)
@@ -1053,19 +1115,21 @@ static void matroska_convert_tags(AVFormatContext *s)
         if (tags[i].target.attachuid) {
             MatroskaAttachement *attachment = matroska->attachments.elem;
             for (j=0; j<matroska->attachments.nb_elem; j++)
-                if (attachment[j].uid == tags[i].target.attachuid)
+                if (attachment[j].uid == tags[i].target.attachuid
+                    && attachment[j].stream)
                     matroska_convert_tag(s, &tags[i].tag,
                                          &attachment[j].stream->metadata, NULL);
         } else if (tags[i].target.chapteruid) {
             MatroskaChapter *chapter = matroska->chapters.elem;
             for (j=0; j<matroska->chapters.nb_elem; j++)
-                if (chapter[j].uid == tags[i].target.chapteruid)
+                if (chapter[j].uid == tags[i].target.chapteruid
+                    && chapter[j].chapter)
                     matroska_convert_tag(s, &tags[i].tag,
                                          &chapter[j].chapter->metadata, NULL);
         } else if (tags[i].target.trackuid) {
             MatroskaTrack *track = matroska->tracks.elem;
             for (j=0; j<matroska->tracks.nb_elem; j++)
-                if (track[j].uid == tags[i].target.trackuid)
+                if (track[j].uid == tags[i].target.trackuid && track[j].stream)
                     matroska_convert_tag(s, &tags[i].tag,
                                          &track[j].stream->metadata, NULL);
         } else {
@@ -1080,9 +1144,15 @@ static void matroska_execute_seekhead(MatroskaDemuxContext *matroska)
     EbmlList *seekhead_list = &matroska->seekhead;
     MatroskaSeekhead *seekhead = seekhead_list->elem;
     uint32_t level_up = matroska->level_up;
-    int64_t before_pos = url_ftell(matroska->ctx->pb);
+    int64_t before_pos = avio_tell(matroska->ctx->pb);
+    uint32_t saved_id = matroska->current_id;
     MatroskaLevel level;
     int i;
+
+    // we should not do any seeking in the streaming case
+    if (!matroska->ctx->pb->seekable ||
+        (matroska->ctx->flags & AVFMT_FLAG_IGNIDX))
+        return;
 
     for (i=0; i<seekhead_list->nb_elem; i++) {
         int64_t offset = seekhead[i].pos + matroska->segment_start;
@@ -1093,7 +1163,7 @@ static void matroska_execute_seekhead(MatroskaDemuxContext *matroska)
             continue;
 
         /* seek */
-        if (url_fseek(matroska->ctx->pb, offset, SEEK_SET) != offset)
+        if (avio_seek(matroska->ctx->pb, offset, SEEK_SET) != offset)
             continue;
 
         /* We don't want to lose our seekhead level, so we add
@@ -1109,6 +1179,7 @@ static void matroska_execute_seekhead(MatroskaDemuxContext *matroska)
         level.length = (uint64_t)-1;
         matroska->levels[matroska->num_levels] = level;
         matroska->num_levels++;
+        matroska->current_id = 0;
 
         ebml_parse(matroska, matroska_segment, matroska);
 
@@ -1121,8 +1192,9 @@ static void matroska_execute_seekhead(MatroskaDemuxContext *matroska)
     }
 
     /* seek back */
-    url_fseek(matroska->ctx->pb, before_pos, SEEK_SET);
+    avio_seek(matroska->ctx->pb, before_pos, SEEK_SET);
     matroska->level_up = level_up;
+    matroska->current_id = saved_id;
 }
 
 static int matroska_aac_profile(char *codec_id)
@@ -1154,131 +1226,51 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
     EbmlList *chapters_list = &matroska->chapters;
     MatroskaChapter *chapters;
     MatroskaTrack *tracks;
-//--**************************************************
-	MatroskaTrackData *tracksdata;
-//--**************************************************
     EbmlList *index_list;
     MatroskaIndex *index;
     int index_scale = 1;
     uint64_t max_start = 0;
     Ebml ebml = { 0 };
     AVStream *st;
-    int i, j;
+    int i, j, k, res;
 
-    matroska->ctx = s;    
-    
+    matroska->ctx = s;
+
     /* First read the EBML header. */
     if (ebml_parse(matroska, ebml_syntax, &ebml)
         || ebml.version > EBML_VERSION       || ebml.max_size > sizeof(uint64_t)
-        || ebml.id_length > sizeof(uint32_t) || strcmp(ebml.doctype, "matroska")
-        || ebml.doctype_version > 2) {
+        || ebml.id_length > sizeof(uint32_t) || ebml.doctype_version > 3) {
         av_log(matroska->ctx, AV_LOG_ERROR,
                "EBML header using unsupported features\n"
                "(EBML version %"PRIu64", doctype %s, doc version %"PRIu64")\n",
                ebml.version, ebml.doctype, ebml.doctype_version);
-        return AVERROR_NOFMT;
+        ebml_free(ebml_syntax, &ebml);
+        return AVERROR_PATCHWELCOME;
+    } else if (ebml.doctype_version == 3) {
+        av_log(matroska->ctx, AV_LOG_WARNING,
+               "EBML header using unsupported features\n"
+               "(EBML version %"PRIu64", doctype %s, doc version %"PRIu64")\n",
+               ebml.version, ebml.doctype, ebml.doctype_version);
+    }
+    for (i = 0; i < FF_ARRAY_ELEMS(matroska_doctypes); i++)
+        if (!strcmp(ebml.doctype, matroska_doctypes[i]))
+            break;
+    if (i >= FF_ARRAY_ELEMS(matroska_doctypes)) {
+        av_log(s, AV_LOG_WARNING, "Unknown EBML doctype '%s'\n", ebml.doctype);
     }
     ebml_free(ebml_syntax, &ebml);
 
     /* The next thing is a segment. */
-    if (ebml_parse(matroska, matroska_segments, matroska) < 0)
-        return -1;
-//--**************************************************
-	/* check drm */
-	if(matroska->tracksdata.nb_elem > 0){
-		av_log(matroska->ctx, AV_LOG_INFO, "mkv has drm info\n");
-		
-		tracksdata = matroska->tracksdata.elem;
-		int result = 0;
-        unsigned char useLimit, useCount;
-        unsigned char cgmsaSignal = 0;
-        unsigned char acptbSignal = 0;
-        unsigned char digitalProtectionSignal = 0;
-        unsigned char ict = 0;
-        unsigned char rentalMsgFlag;
-		s->drm.drm_header = av_malloc(sizeof(drmHeader_t));
-		if(s->drm.drm_header == NULL){
-			av_log(matroska->ctx, AV_LOG_INFO, "malloc drm header fail\n");
-		}
-		memset(s->drm.drm_header, 0x0, sizeof(drmHeader_t));
-        memcpy(s->drm.drm_header, tracksdata->payload.data, sizeof(drmHeader_t));
-		av_log(matroska->ctx, AV_LOG_INFO, "drmmode is %x\n", s->drm.drm_header->targetHeader.drmMode);
-		#if 1
-        result = drmInitSystem();
-        if (result != 0) {
-			av_log(s, AV_LOG_WARNING," not unauthorized 1\n");
-            s->drm.drm_check_value = 1;// unauthorized
-            return 0;
-        }
-        result = drmInitPlayback((unsigned char*)s->drm.drm_header);
-        if (result != 0) {
-			av_log(s, AV_LOG_WARNING," not unauthorized 2\n");
-            s->drm.drm_check_value = 1; // unauthorized
-            return 0;
-        }
-        result = drmQueryRentalStatus(&rentalMsgFlag, &useLimit, &useCount);
-        if (result != 0) {
-            if (result == 3) {
-				av_log(s, AV_LOG_WARNING," expired\n");
-                s->drm.drm_check_value = 2; // expired
-            }
-            else {
-				av_log(s, AV_LOG_WARNING," not unauthorized 3\n");
-                s->drm.drm_check_value = 1; // unauthorized
-            }
-            return 0;
-        }
-        if (rentalMsgFlag == 1) { 
-            s->drm.drm_rental_value = useLimit-useCount ; // conform
-            return 0;
-        }
-        drmSetRandomSample();
-        drmSetRandomSample();
-        drmSetRandomSample();
-        drmSetRandomSample();
-        result = drmQueryCgmsa(&cgmsaSignal);
-        if (result != 0) {
-			av_log(s, AV_LOG_WARNING," not unauthorized 4\n");
-            s->drm.drm_check_value = 1; // unauthorized
-            return 0;
-        }
-        result = drmQueryAcptb(&acptbSignal);
-        if (result != 0) {
-			av_log(s, AV_LOG_WARNING," not unauthorized 5\n");
-            s->drm.drm_check_value = 1; // unauthorized
-            return 0;
-        }
-        result = drmQueryDigitalProtection(&digitalProtectionSignal);
-        if (result != 0) {
-			av_log(s, AV_LOG_WARNING," not unauthorized 6\n");
-            s->drm.drm_check_value = 1; // unauthorized
-            return 0;
-        }
-        result = drmQueryIct(&ict);
-        if (result != 0) {
-			av_log(s, AV_LOG_WARNING," not unauthorized 7\n");
-            s->drm.drm_check_value = 1; // unauthorized
-            return 0;
-        }
-        result = drmCommitPlayback(0);
-        if (result != 0) {
-			av_log(s, AV_LOG_WARNING," not unauthorized 8\n");
-            s->drm.drm_check_value = 1; // unauthorized
-            return 0;
-        }
-        // update to nand
-
-        //memcpy(s->drm.drm_header, p_drm_context, sizeof(DrmHeader));
-		#endif
-	}
-
-//--**************************************************
+    if ((res = ebml_parse(matroska, matroska_segments, matroska)) < 0)
+        return res;
     matroska_execute_seekhead(matroska);
 
+    if (!matroska->time_scale)
+        matroska->time_scale = 1000000;
     if (matroska->duration)
         matroska->ctx->duration = matroska->duration * matroska->time_scale
                                   * 1000 / AV_TIME_BASE;
-    av_metadata_set(&s->metadata, "title", matroska->title);
+    av_dict_set(&s->metadata, "title", matroska->title, 0);
 
     tracks = matroska->tracks.elem;
     for (i=0; i < matroska->tracks.nb_elem; i++) {
@@ -1289,7 +1281,8 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         uint8_t *extradata = NULL;
         int extradata_size = 0;
         int extradata_offset = 0;
-        ByteIOContext b;
+        uint32_t fourcc = 0;
+        AVIOContext b;
 
         /* Apply some sanity checks. */
         if (track->type != MATROSKA_TRACK_TYPE_VIDEO &&
@@ -1310,6 +1303,8 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 track->video.display_width = track->video.pixel_width;
             if (!track->video.display_height)
                 track->video.display_height = track->video.pixel_height;
+            if (track->video.color_space.size == 4)
+                fourcc = AV_RL32(track->video.color_space.data);
         } else if (track->type == MATROSKA_TRACK_TYPE_AUDIO) {
             if (!track->audio.out_samplerate)
                 track->audio.out_samplerate = track->audio.samplerate;
@@ -1361,29 +1356,33 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             }
         }
 
-        st = track->stream = av_new_stream(s, s->nb_streams);
+        st = track->stream = av_new_stream(s, 0);
         if (st == NULL)
             return AVERROR(ENOMEM);
 
         if (!strcmp(track->codec_id, "V_MS/VFW/FOURCC")
             && track->codec_priv.size >= 40
             && track->codec_priv.data != NULL) {
-            track->video.fourcc = AV_RL32(track->codec_priv.data + 16);
-            codec_id = ff_codec_get_id(ff_codec_bmp_tags, track->video.fourcc);
+            track->ms_compat = 1;
+            fourcc = AV_RL32(track->codec_priv.data + 16);
+            codec_id = ff_codec_get_id(ff_codec_bmp_tags, fourcc);
             extradata_offset = 40;
         } else if (!strcmp(track->codec_id, "A_MS/ACM")
                    && track->codec_priv.size >= 14
                    && track->codec_priv.data != NULL) {
-            init_put_byte(&b, track->codec_priv.data, track->codec_priv.size,
-                          URL_RDONLY, NULL, NULL, NULL, NULL);
-            ff_get_wav_header(&b, st->codec, track->codec_priv.size);
+            int ret;
+            ffio_init_context(&b, track->codec_priv.data, track->codec_priv.size,
+                          AVIO_FLAG_READ, NULL, NULL, NULL, NULL);
+            ret = ff_get_wav_header(&b, st->codec, track->codec_priv.size);
+            if (ret < 0)
+                return ret;
             codec_id = st->codec->codec_id;
             extradata_offset = FFMIN(track->codec_priv.size, 18);
         } else if (!strcmp(track->codec_id, "V_QUICKTIME")
                    && (track->codec_priv.size >= 86)
                    && (track->codec_priv.data != NULL)) {
-            track->video.fourcc = AV_RL32(track->codec_priv.data);
-            codec_id=ff_codec_get_id(codec_movvideo_tags, track->video.fourcc);
+            fourcc = AV_RL32(track->codec_priv.data);
+            codec_id = ff_codec_get_id(codec_movvideo_tags, fourcc);
         } else if (codec_id == CODEC_ID_PCM_S16BE) {
             switch (track->audio.bitdepth) {
             case  8:  codec_id = CODEC_ID_PCM_U8;     break;
@@ -1419,14 +1418,14 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             extradata = av_mallocz(extradata_size);
             if (extradata == NULL)
                 return AVERROR(ENOMEM);
-            init_put_byte(&b, extradata, extradata_size, 1,
+            ffio_init_context(&b, extradata, extradata_size, 1,
                           NULL, NULL, NULL, NULL);
-            put_buffer(&b, "TTA1", 4);
-            put_le16(&b, 1);
-            put_le16(&b, track->audio.channels);
-            put_le16(&b, track->audio.bitdepth);
-            put_le32(&b, track->audio.out_samplerate);
-            put_le32(&b, matroska->ctx->duration * track->audio.out_samplerate);
+            avio_write(&b, "TTA1", 4);
+            avio_wl16(&b, 1);
+            avio_wl16(&b, track->audio.channels);
+            avio_wl16(&b, track->audio.bitdepth);
+            avio_wl32(&b, track->audio.out_samplerate);
+            avio_wl32(&b, matroska->ctx->duration * track->audio.out_samplerate);
         } else if (codec_id == CODEC_ID_RV10 || codec_id == CODEC_ID_RV20 ||
                    codec_id == CODEC_ID_RV30 || codec_id == CODEC_ID_RV40) {
             extradata_offset = 26;
@@ -1434,20 +1433,27 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             track->audio.out_samplerate = 8000;
             track->audio.channels = 1;
         } else if (codec_id == CODEC_ID_RA_288 || codec_id == CODEC_ID_COOK ||
-                   codec_id == CODEC_ID_ATRAC3) {
-            init_put_byte(&b, track->codec_priv.data,track->codec_priv.size,
+                   codec_id == CODEC_ID_ATRAC3 || codec_id == CODEC_ID_SIPR) {
+            int flavor;
+            ffio_init_context(&b, track->codec_priv.data,track->codec_priv.size,
                           0, NULL, NULL, NULL, NULL);
-            url_fskip(&b, 24);
-            track->audio.coded_framesize = get_be32(&b);
-            url_fskip(&b, 12);
-            track->audio.sub_packet_h    = get_be16(&b);
-            track->audio.frame_size      = get_be16(&b);
-            track->audio.sub_packet_size = get_be16(&b);
+            avio_skip(&b, 22);
+            flavor                       = avio_rb16(&b);
+            track->audio.coded_framesize = avio_rb32(&b);
+            avio_skip(&b, 12);
+            track->audio.sub_packet_h    = avio_rb16(&b);
+            track->audio.frame_size      = avio_rb16(&b);
+            track->audio.sub_packet_size = avio_rb16(&b);
             track->audio.buf = av_malloc(track->audio.frame_size * track->audio.sub_packet_h);
             if (codec_id == CODEC_ID_RA_288) {
                 st->codec->block_align = track->audio.coded_framesize;
                 track->codec_priv.size = 0;
             } else {
+                if (codec_id == CODEC_ID_SIPR && flavor < 4) {
+                    const int sipr_bit_rate[4] = { 6504, 8496, 5000, 16000 };
+                    track->audio.sub_packet_size = ff_sipr_subpk_size[flavor];
+                    st->codec->bit_rate = sipr_bit_rate[flavor];
+                }
                 st->codec->block_align = track->audio.sub_packet_size;
                 extradata_offset = 78;
             }
@@ -1465,11 +1471,13 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         st->codec->codec_id = codec_id;
         st->start_time = 0;
         if (strcmp(track->language, "und"))
-            av_metadata_set(&st->metadata, "language", track->language);
-        av_metadata_set(&st->metadata, "description", track->name);
+            av_dict_set(&st->metadata, "language", track->language, 0);
+        av_dict_set(&st->metadata, "title", track->name, 0);
 
         if (track->flag_default)
             st->disposition |= AV_DISPOSITION_DEFAULT;
+        if (track->flag_forced)
+            st->disposition |= AV_DISPOSITION_FORCED;
 
         if (track->default_duration)
             av_reduce(&st->codec->time_base.num, &st->codec->time_base.den,
@@ -1492,8 +1500,10 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         }
 
         if (track->type == MATROSKA_TRACK_TYPE_VIDEO) {
-            st->codec->codec_type = CODEC_TYPE_VIDEO;
-            st->codec->codec_tag  = track->video.fourcc;
+            MatroskaTrackPlane *planes = track->operation.combine_planes.elem;
+
+            st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
+            st->codec->codec_tag  = fourcc;
             st->codec->width  = track->video.pixel_width;
             st->codec->height = track->video.pixel_height;
             av_reduce(&st->sample_aspect_ratio.num,
@@ -1503,12 +1513,35 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
                       255);
             if (st->codec->codec_id != CODEC_ID_H264)
             st->need_parsing = AVSTREAM_PARSE_HEADERS;
+            if (track->default_duration)
+                st->avg_frame_rate = av_d2q(1000000000.0/track->default_duration, INT_MAX);
+
+            /* export stereo mode flag as metadata tag */
+            if (track->video.stereo_mode && track->video.stereo_mode < MATROSKA_VIDEO_STEREO_MODE_COUNT)
+                av_dict_set(&st->metadata, "stereo_mode", matroska_video_stereo_mode[track->video.stereo_mode], 0);
+
+            /* if we have virtual track, mark the real tracks */
+            for (j=0; j < track->operation.combine_planes.nb_elem; j++) {
+                char buf[32];
+                if (planes[j].type >= MATROSKA_VIDEO_STEREO_PLANE_COUNT)
+                    continue;
+                snprintf(buf, sizeof(buf), "%s_%d",
+                         matroska_video_stereo_plane[planes[j].type], i);
+                for (k=0; k < matroska->tracks.nb_elem; k++)
+                    if (planes[j].uid == tracks[k].uid) {
+                        av_dict_set(&s->streams[k]->metadata,
+                                    "stereo_mode", buf, 0);
+                        break;
+                    }
+            }
         } else if (track->type == MATROSKA_TRACK_TYPE_AUDIO) {
-            st->codec->codec_type = CODEC_TYPE_AUDIO;
+            st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
             st->codec->sample_rate = track->audio.out_samplerate;
             st->codec->channels = track->audio.channels;
+            if (st->codec->codec_id != CODEC_ID_AAC)
+            st->need_parsing = AVSTREAM_PARSE_HEADERS;
         } else if (track->type == MATROSKA_TRACK_TYPE_SUBTITLE) {
-            st->codec->codec_type = CODEC_TYPE_SUBTITLE;
+            st->codec->codec_type = AVMEDIA_TYPE_SUBTITLE;
         }
     }
 
@@ -1518,12 +1551,12 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
               attachements[j].bin.data && attachements[j].bin.size > 0)) {
             av_log(matroska->ctx, AV_LOG_ERROR, "incomplete attachment\n");
         } else {
-            AVStream *st = av_new_stream(s, s->nb_streams);
+            AVStream *st = av_new_stream(s, 0);
             if (st == NULL)
                 break;
-            av_metadata_set(&st->metadata, "filename",attachements[j].filename);
+            av_dict_set(&st->metadata, "filename",attachements[j].filename, 0);
             st->codec->codec_id = CODEC_ID_NONE;
-            st->codec->codec_type = CODEC_TYPE_ATTACHMENT;
+            st->codec->codec_type = AVMEDIA_TYPE_ATTACHMENT;
             st->codec->extradata  = av_malloc(attachements[j].bin.size);
             if(st->codec->extradata == NULL)
                 break;
@@ -1549,8 +1582,8 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             ff_new_chapter(s, chapters[i].uid, (AVRational){1, 1000000000},
                            chapters[i].start, chapters[i].end,
                            chapters[i].title);
-            av_metadata_set(&chapters[i].chapter->metadata,
-                            "title", chapters[i].title);
+            av_dict_set(&chapters[i].chapter->metadata,
+                             "title", chapters[i].title, 0);
             max_start = chapters[i].start;
         }
 
@@ -1621,17 +1654,11 @@ static void matroska_clear_queue(MatroskaDemuxContext *matroska)
         matroska->num_packets = 0;
     }
 }
-#if 0
+
 static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                                 int size, int64_t pos, uint64_t cluster_time,
                                 uint64_t duration, int is_keyframe,
                                 int64_t cluster_pos)
-#else
-static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
-                                int size, int64_t pos, uint64_t cluster_time,
-                                uint64_t duration, int is_keyframe,
-                                int64_t cluster_pos, uint8_t *drminfo_data, int drminfo_size)
-#endif								
 {
     uint64_t timecode = AV_NOPTS_VALUE;
     MatroskaTrack *track;
@@ -1659,7 +1686,7 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
     st = track->stream;
     if (st->discard >= AVDISCARD_ALL)
         return res;
-    if (duration == AV_NOPTS_VALUE)
+    if (!duration)
         duration = track->default_duration / matroska->time_scale;
 
     block_time = AV_RB16(data);
@@ -1667,7 +1694,7 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
     flags = *data++;
     size -= 3;
     if (is_keyframe == -1)
-        is_keyframe = flags & 0x80 ? PKT_FLAG_KEY : 0;
+        is_keyframe = flags & 0x80 ? AV_PKT_FLAG_KEY : 0;
 
     if (cluster_time != (uint64_t)-1
         && (block_time >= 0 || cluster_time >= -block_time)) {
@@ -1764,9 +1791,11 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
 
     if (res == 0) {
         for (n = 0; n < laces; n++) {
-            if (st->codec->codec_id == CODEC_ID_RA_288 ||
-                st->codec->codec_id == CODEC_ID_COOK ||
-                st->codec->codec_id == CODEC_ID_ATRAC3) {
+            if ((st->codec->codec_id == CODEC_ID_RA_288 ||
+                 st->codec->codec_id == CODEC_ID_COOK ||
+                 st->codec->codec_id == CODEC_ID_SIPR ||
+                 st->codec->codec_id == CODEC_ID_ATRAC3) &&
+                 st->codec->block_align && track->audio.sub_packet_size) {
                 int a = st->codec->block_align;
                 int sps = track->audio.sub_packet_size;
                 int cfs = track->audio.coded_framesize;
@@ -1776,15 +1805,21 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                 int x;
 
                 if (!track->audio.pkt_cnt) {
+                    if (track->audio.sub_packet_cnt == 0)
+                        track->audio.buf_timecode = timecode;
                     if (st->codec->codec_id == CODEC_ID_RA_288)
                         for (x=0; x<h/2; x++)
                             memcpy(track->audio.buf+x*2*w+y*cfs,
                                    data+x*cfs, cfs);
+                    else if (st->codec->codec_id == CODEC_ID_SIPR)
+                        memcpy(track->audio.buf + y*w, data, w);
                     else
                         for (x=0; x<w/sps; x++)
                             memcpy(track->audio.buf+sps*(h*x+((h+1)/2)*(y&1)+(y>>1)), data+x*sps, sps);
 
                     if (++track->audio.sub_packet_cnt >= h) {
+                        if (st->codec->codec_id == CODEC_ID_SIPR)
+                            ff_rm_reorder_sipr_data(track->audio.buf, h, w);
                         track->audio.sub_packet_cnt = 0;
                         track->audio.pkt_cnt = h*w / a;
                     }
@@ -1794,26 +1829,21 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                     av_new_packet(pkt, a);
                     memcpy(pkt->data, track->audio.buf
                            + a * (h*w / a - track->audio.pkt_cnt--), a);
+                    pkt->pts = track->audio.buf_timecode;
+                    track->audio.buf_timecode = AV_NOPTS_VALUE;
                     pkt->pos = pos;
                     pkt->stream_index = st->index;
-//--****************************************
-					if(drminfo_size >= 10){
-						pkt->drmpack.key_index = drminfo_data[1]<<8 | drminfo_data[0];
-						pkt->drmpack.offset = drminfo_data[2] | drminfo_data[3]<<8 | drminfo_data[4]<<16 | drminfo_data[5]<<24;
-						pkt->drmpack.length= drminfo_data[6] | drminfo_data[7]<<8 | drminfo_data[8]<<16 | drminfo_data[9]<<24;
-						av_log(matroska->ctx, AV_LOG_INFO,
-                               "drminfo offset lenght is %d:%d\n",pkt->drmpack.offset, pkt->drmpack.length);
-					}
-					else
-						av_log(matroska->ctx, AV_LOG_INFO,
-                                   "drminfo_size is %d\n",drminfo_size);
-//--****************************************
                     dynarray_add(&matroska->packets,&matroska->num_packets,pkt);
                 }
             } else {
                 MatroskaTrackEncoding *encodings = track->encodings.elem;
                 int offset = 0, pkt_size = lace_size[n];
                 uint8_t *pkt_data = data;
+
+                if (pkt_size > size) {
+                    av_log(matroska->ctx, AV_LOG_ERROR, "Invalid packet size\n");
+                    break;
+                }
 
                 if (encodings && encodings->scope & 1) {
                     offset = matroska_decode_buffer(&pkt_data,&pkt_size, track);
@@ -1839,20 +1869,11 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                     pkt->flags = is_keyframe;
                 pkt->stream_index = st->index;
 
-                pkt->pts = timecode;
+                if (track->ms_compat)
+                    pkt->dts = timecode;
+                else
+                    pkt->pts = timecode;
                 pkt->pos = pos;
-//--*******************************************
-				if(drminfo_size >= 10){
-					pkt->drmpack.key_index = drminfo_data[1]<<8 | drminfo_data[0];
-					pkt->drmpack.offset = drminfo_data[2] | drminfo_data[3]<<8 | drminfo_data[4]<<16 | drminfo_data[5]<<24;
-					pkt->drmpack.length= drminfo_data[6] | drminfo_data[7]<<8 | drminfo_data[8]<<16 | drminfo_data[9]<<24;
-					av_log(matroska->ctx, AV_LOG_INFO,
-                               "drminfo offset lenght is %d:%d\n",pkt->drmpack.offset, pkt->drmpack.length);
-				}
-				else
-					av_log(matroska->ctx, AV_LOG_INFO,
-                               "drminfo_size is %d\n",drminfo_size);
-//--*******************************************
                 if (st->codec->codec_id == CODEC_ID_TEXT)
                     pkt->convergence_duration = duration;
                 else if (track->type != MATROSKA_TRACK_TYPE_SUBTITLE)
@@ -1864,7 +1885,8 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                 if (matroska->prev_pkt &&
                     timecode != AV_NOPTS_VALUE &&
                     matroska->prev_pkt->pts == timecode &&
-                    matroska->prev_pkt->stream_index == st->index)
+                    matroska->prev_pkt->stream_index == st->index &&
+                    st->codec->codec_id == CODEC_ID_SSA)
                     matroska_merge_packets(matroska->prev_pkt, pkt);
                 else {
                     dynarray_add(&matroska->packets,&matroska->num_packets,pkt);
@@ -1875,6 +1897,7 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
             if (timecode != AV_NOPTS_VALUE)
                 timecode = duration ? timecode + duration : AV_NOPTS_VALUE;
             data += lace_size[n];
+            size -= lace_size[n];
         }
     }
 
@@ -1888,40 +1911,21 @@ static int matroska_parse_cluster(MatroskaDemuxContext *matroska)
     EbmlList *blocks_list;
     MatroskaBlock *blocks;
     int i, res;
-    int64_t pos = url_ftell(matroska->ctx->pb);
+    int64_t pos = avio_tell(matroska->ctx->pb);
     matroska->prev_pkt = NULL;
-    if (matroska->has_cluster_id){
-        /* For the first cluster we parse, its ID was already read as
-           part of matroska_read_header(), so don't read it again */
-        res = ebml_parse_id(matroska, matroska_clusters,
-                            MATROSKA_ID_CLUSTER, &cluster);
-       
+    if (matroska->current_id)
         pos -= 4;  /* sizeof the ID which was already read */
-        matroska->has_cluster_id = 0;
-    } else
-    {
-        res = ebml_parse(matroska, matroska_clusters, &cluster);        
-    }
+    res = ebml_parse(matroska, matroska_clusters, &cluster);
     blocks_list = &cluster.blocks;
     blocks = blocks_list->elem;
     for (i=0; i<blocks_list->nb_elem; i++)
-        if (blocks[i].bin.size > 0) {
+        if (blocks[i].bin.size > 0 && blocks[i].bin.data) {
             int is_keyframe = blocks[i].non_simple ? !blocks[i].reference : -1;
-#if 0			
             res=matroska_parse_block(matroska,
                                      blocks[i].bin.data, blocks[i].bin.size,
                                      blocks[i].bin.pos,  cluster.timecode,
                                      blocks[i].duration, is_keyframe,
                                      pos);
-#else
-//--*******************************************
-			res=matroska_parse_block(matroska,
-                                     blocks[i].bin.data, blocks[i].bin.size,
-                                     blocks[i].bin.pos,  cluster.timecode,
-                                     blocks[i].duration, is_keyframe,
-                                     pos, blocks[i].drminfo.data, blocks[i].drminfo.size);
-//--*******************************************
-#endif									 
         }
     ebml_free(matroska_cluster, &cluster);
     if (res < 0)  matroska->done = 1;
@@ -1954,7 +1958,7 @@ static int matroska_read_seek(AVFormatContext *s, int stream_index,
     timestamp = FFMAX(timestamp, st->index_entries[0].timestamp);
 
     if ((index = av_index_search_timestamp(st, timestamp, flags)) < 0) {
-        url_fseek(s->pb, st->index_entries[st->nb_index_entries-1].pos, SEEK_SET);
+        avio_seek(s->pb, st->index_entries[st->nb_index_entries-1].pos, SEEK_SET);
         while ((index = av_index_search_timestamp(st, timestamp, flags)) < 0) {
             matroska_clear_queue(matroska);
             if (matroska_parse_cluster(matroska) < 0)
@@ -1968,6 +1972,9 @@ static int matroska_read_seek(AVFormatContext *s, int stream_index,
 
     index_min = index;
     for (i=0; i < matroska->tracks.nb_elem; i++) {
+        tracks[i].audio.pkt_cnt = 0;
+        tracks[i].audio.sub_packet_cnt = 0;
+        tracks[i].audio.buf_timecode = AV_NOPTS_VALUE;
         tracks[i].end_timecode = 0;
         if (tracks[i].type == MATROSKA_TRACK_TYPE_SUBTITLE
             && !tracks[i].stream->discard != AVDISCARD_ALL) {
@@ -1979,7 +1986,7 @@ static int matroska_read_seek(AVFormatContext *s, int stream_index,
         }
     }
 
-    url_fseek(s->pb, st->index_entries[index_min].pos, SEEK_SET);
+    avio_seek(s->pb, st->index_entries[index_min].pos, SEEK_SET);
     matroska->skip_to_keyframe = !(flags & AVSEEK_FLAG_ANY);
     matroska->skip_to_timecode = st->index_entries[index].timestamp;
     matroska->done = 0;
@@ -1998,24 +2005,18 @@ static int matroska_read_close(AVFormatContext *s)
     for (n=0; n < matroska->tracks.nb_elem; n++)
         if (tracks[n].type == MATROSKA_TRACK_TYPE_AUDIO)
             av_free(tracks[n].audio.buf);
-//--**************************************
-	if(s->drm.drm_header)
-		av_free(s->drm.drm_header);
-	s->drm.drm_header = NULL;
-//--**************************************
     ebml_free(matroska_segment, matroska);
 
     return 0;
 }
 
-AVInputFormat matroska_demuxer = {
-    "matroska",
-    NULL_IF_CONFIG_SMALL("Matroska file format"),
+AVInputFormat ff_matroska_demuxer = {
+    "matroska,webm",
+    NULL_IF_CONFIG_SMALL("Matroska/WebM file format"),
     sizeof(MatroskaDemuxContext),
     matroska_probe,
     matroska_read_header,
     matroska_read_packet,
     matroska_read_close,
     matroska_read_seek,
-    .metadata_conv = ff_mkv_metadata_conv,
 };
