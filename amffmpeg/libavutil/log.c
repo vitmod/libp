@@ -39,6 +39,16 @@ static int16_t background, attr_orig;
 static HANDLE con;
 #define set_color(x)  SetConsoleTextAttribute(con, background | color[x])
 #define reset_color() SetConsoleTextAttribute(con, attr_orig)
+#elif defined(ANDROID)
+#include <android/log.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+#define  LOG_TAG    "amffmpeg"
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define set_color(x) 
+#define reset_color()
 #else
 static const uint8_t color[]={0x41,0x41,0x11,0x03,9,9,9};
 #define set_color(x)  fprintf(stderr, "\033[%d;3%dm", color[x]>>4, color[x]&15)
@@ -69,7 +79,11 @@ static void colored_fputs(int level, const char *str){
     if(use_color){
         set_color(level);
     }
+#ifdef ANDROID
+	LOGI("%s", str);
+#else	
     fputs(str, stderr);
+#endif
     if(use_color){
         reset_color();
     }

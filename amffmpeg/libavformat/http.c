@@ -170,6 +170,19 @@ static int http_open(URLContext *h, const char *uri, int flags)
 
     return http_open_cnx(h);
 }
+static int shttp_open(URLContext *h, const char *uri, int flags)
+{
+    HTTPContext *s = h->priv_data;
+
+    h->is_streamed = 1;
+
+    s->filesize = -1;
+    av_strlcpy(s->location, uri+1, sizeof(s->location));
+
+    return http_open_cnx(h);
+}
+
+
 static int http_getc(HTTPContext *s)
 {
     int len;
@@ -518,3 +531,15 @@ URLProtocol ff_http_protocol = {
     .priv_data_size      = sizeof(HTTPContext),
     .priv_data_class     = &httpcontext_class,
 };
+URLProtocol ff_shttp_protocol = {
+    .name                = "shttp",
+    .url_open            = shttp_open,
+    .url_read            = http_read,
+    .url_write           = http_write,
+    .url_seek            = http_seek,
+    .url_close           = http_close,
+    .url_get_file_handle = http_get_file_handle,
+    .priv_data_size      = sizeof(HTTPContext),
+    .priv_data_class     = &httpcontext_class,
+};
+
