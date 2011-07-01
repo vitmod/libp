@@ -660,7 +660,7 @@ void *player_thread(play_para_t *player)
                 update_player_states(player, 1);
                 goto release0;
             }
-            ffmpeg_buffering_data(player)
+            ffmpeg_buffering_data(player);
             player_thread_wait(player, 100 * 1000);            
         } while (1);
     }
