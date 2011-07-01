@@ -1105,6 +1105,12 @@ attribute_deprecated int av_open_input_file(AVFormatContext **ic_ptr, const char
                        AVInputFormat *fmt,
                        int buf_size,
                        AVFormatParameters *ap);
+attribute_deprecated int av_open_input_file_header(AVFormatContext **ic_ptr, const char *filename,
+                       AVInputFormat *fmt,
+                       int buf_size,
+                       AVFormatParameters *ap,
+                       const char *headers);
+
 #endif
 
 /**
@@ -1127,6 +1133,7 @@ attribute_deprecated int av_open_input_file(AVFormatContext **ic_ptr, const char
  * @note If you want to use custom IO, preallocate the format context and set its pb field.
  */
 int avformat_open_input(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options);
+int avformat_open_input_header(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options,const char * headers);
 
 int av_demuxer_open(AVFormatContext *ic, AVFormatParameters *ap);
 

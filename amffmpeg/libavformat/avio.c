@@ -257,6 +257,23 @@ int ffurl_open(URLContext **puc, const char *filename, int flags)
     *puc = NULL;
     return ret;
 }
+int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *headers)
+{
+    int ret = ffurl_alloc(puc, filename, flags);
+    if (ret)
+        return ret;
+	if(headers){
+		(*puc)->headers=av_strdup(headers);
+	}
+    ret = ffurl_connect(*puc);
+    if (!ret)
+        return 0;
+    ffurl_close(*puc);
+    *puc = NULL;
+    return ret;
+}
+
+
 
 static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int size, int size_min,
                                          int (*transfer_func)(URLContext *h, unsigned char *buf, int size))
@@ -335,6 +352,7 @@ int ffurl_close(URLContext *h)
 #endif
     if (h->prot->priv_data_size)
         av_free(h->priv_data);
+	if(h->headers) av_free(h->headers);
     av_free(h);
     return ret;
 }

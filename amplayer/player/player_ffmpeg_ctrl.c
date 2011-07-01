@@ -101,6 +101,7 @@ int ffmpeg_open_file(play_para_t *am_p)
     AVFormatContext *pFCtx ;
     int ret = -1;
     int byteiosize = FILE_BUFFER_SIZE;
+	const char * header=am_p->start_param ? am_p->start_param->headers : NULL;
     // Open video file
     if (am_p == NULL) {
         log_print("[ffmpeg_open_file] Empty pointer!\n");
@@ -112,7 +113,7 @@ int ffmpeg_open_file(play_para_t *am_p)
     if (am_p->file_name != NULL) {
 Retry_open:
         //ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, am_p->start_param ? am_p->start_param->headers : NULL);
-		ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL);
+		ret = av_open_input_file_header(&pFCtx, am_p->file_name, NULL, byteiosize, NULL,header);
         if (ret != 0) {
             if (ret == AVERROR(EAGAIN)) {
                 goto  Retry_open;

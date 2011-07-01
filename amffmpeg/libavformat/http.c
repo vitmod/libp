@@ -149,6 +149,9 @@ static int http_open_cnx(URLContext *h)
         if (redirects++ >= MAX_REDIRECTS)
             return AVERROR(EIO);
         location_changed = 0;
+		s->filesize = -1;/*file changed*/
+		s->chunksize = -1;/*chunk may changed also*/
+		h->location=s->location;
         goto redo;
     }
     return 0;
@@ -173,13 +176,15 @@ static int http_open(URLContext *h, const char *uri, int flags)
 static int shttp_open(URLContext *h, const char *uri, int flags)
 {
     HTTPContext *s = h->priv_data;
-
+	int ret;
     h->is_streamed = 1;
 
     s->filesize = -1;
     av_strlcpy(s->location, uri+1, sizeof(s->location));
 
-    return http_open_cnx(h);
+    ret= http_open_cnx(h);
+	h->is_slowmedia=1;
+	return ret;
 }
 
 

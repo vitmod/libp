@@ -83,11 +83,14 @@ typedef struct {
      */
     int64_t (*read_seek)(void *opaque, int stream_index,
                          int64_t timestamp, int flags);
+	char * reallocation;
     /**
      * A combination of AVIO_SEEKABLE_ flags or 0 when the stream is not seekable.
      */
+    unsigned char *filename;  /**< Start of the buffer. */
     int seekable;
 	int enabled_lp_buffer;
+	int support_time_seek;
 } AVIOContext;
 
 /* unbuffered I/O */
@@ -109,7 +112,11 @@ typedef struct URLContext {
     int max_packet_size;  /**< if non zero, the stream is packetized with this max packet size */
     void *priv_data;
     char *filename; /**< specified URL */
+	char *headers; /**< specified URL */
     int is_connected;
+	int is_slowmedia;
+	int support_time_seek;
+	char *location;
 } URLContext;
 
 #define URL_PROTOCOL_FLAG_NESTED_SCHEME 1 /*< The protocol name can be the first part of a nested protocol scheme */
@@ -124,6 +131,7 @@ typedef struct URLProtocol {
     int (*url_read)(URLContext *h, unsigned char *buf, int size);
     int (*url_write)(URLContext *h,  unsigned char *buf, int size);
     int64_t (*url_seek)(URLContext *h, int64_t pos, int whence);
+	int64_t (*url_exseek)(URLContext *h, int64_t pos, int whence);
     int (*url_close)(URLContext *h);
     struct URLProtocol *next;
     int (*url_read_pause)(URLContext *h, int pause);
@@ -154,6 +162,11 @@ attribute_deprecated int url_poll(URLPollEntry *poll_table, int n, int timeout);
 #define URL_RDONLY 1  /**< read-only */
 #define URL_WRONLY 2  /**< write-only */
 #define URL_RDWR   (URL_RDONLY|URL_WRONLY)  /**< read-write */
+
+
+#define URL_MINI_BUFFER	0x20000000
+#define URL_NO_LP_BUFFER	0x40000000
+
 /**
  * @}
  */
@@ -434,6 +447,13 @@ int avio_put_str16le(AVIOContext *s, const char *str);
  * fseek() equivalent for AVIOContext.
  * @return new position or AVERROR.
  */
+
+
+#define AVSEEK_TO_TIME 			0x30000
+#define AVSEEK_BUFFERED_TIME 	0x40000
+#define AVSEEK_FULLTIME 		0x50000
+
+
 int64_t avio_seek(AVIOContext *s, int64_t offset, int whence);
 
 /**
@@ -571,6 +591,15 @@ int avio_open(AVIOContext **s, const char *url, int flags);
  *
  * @return 0 on success, an AVERROR < 0 on error.
  */
+int avio_open_h(AVIOContext **s, const char *filename, int flags,const char * headers);
+
+/**
+ * Close the resource accessed by the AVIOContext s and free it.
+ * This function can only be used if s was opened by avio_open().
+ *
+ * @return 0 on success, an AVERROR < 0 on error.
+ */
+ 
 int avio_close(AVIOContext *s);
 
 /**

@@ -39,6 +39,8 @@
 #include <time.h>
 #include <strings.h>
 #include <stdarg.h>
+#include "file_list.h"
+
 #if CONFIG_NETWORK
 #include "network.h"
 #endif
@@ -578,10 +580,31 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
     av_dict_free(&opts);
     return err;
 }
+
+int av_open_input_file_header(AVFormatContext **ic_ptr, const char *filename,
+                       AVInputFormat *fmt,
+                       int buf_size,
+                       AVFormatParameters *ap,
+                       const char *headers
+                       )
+{
+    int err;
+    AVDictionary *opts = convert_format_parameters(ap);
+
+    if (!ap || !ap->prealloced_context)
+        *ic_ptr = NULL;
+
+    err = avformat_open_input_header(ic_ptr, filename, fmt, &opts,headers);
+
+    av_dict_free(&opts);
+    return err;
+}
+
+
 #endif
 
 /* open input file and probe the format if necessary */
-static int init_input(AVFormatContext *s, const char *filename)
+static int init_input(AVFormatContext *s, const char *filename,const char * headers)
 {
     int ret;
     AVProbeData pd = {filename, NULL, 0};
@@ -601,12 +624,31 @@ static int init_input(AVFormatContext *s, const char *filename)
 
     if ((ret = avio_open(&s->pb, filename, AVIO_FLAG_READ)) < 0)
        return ret;
+	if(url_is_file_list(s->pb,filename)){
+			char *listfile;
+			int err;
+			listfile=av_malloc(strlen(filename)+10);
+			if(!listfile)
+				return AVERROR(ENOMEM);
+			strcpy(listfile,"list:");
+			strcpy(listfile+5,filename);
+			url_fclose(&s->pb);
+			s->pb=NULL;
+			if ((err=avio_open_h(&s->pb,listfile, AVIO_FLAG_READ, headers)) < 0) {
+				av_log(NULL, AV_LOG_ERROR, "init_input:%s failed,line=%d err=0x%x\n",listfile,__LINE__,err);
+				av_free(listfile);
+	            return AVERROR(EIOL);;
+        	}
+			s->pb->filename=listfile;
+			av_log(NULL, AV_LOG_INFO, "init_input,line=%d\n",__LINE__);
+	}
     if (s->iformat)
         return 0;
     return av_probe_input_buffer(s->pb, &s->iformat, filename, s, 0, 0);
 }
 
-int avformat_open_input(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options)
+
+int avformat_open_input_header(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options,const char *headers)
 {
     AVFormatContext *s = *ps;
     int ret = 0;
@@ -624,7 +666,7 @@ int avformat_open_input(AVFormatContext **ps, const char *filename, AVInputForma
     if ((ret = av_opt_set_dict(s, &tmp)) < 0)
         goto fail;
 
-    if ((ret = init_input(s, filename)) < 0)
+    if ((ret = init_input(s, filename,headers)) < 0)
         goto fail;
 
     /* check filename in case an image number is expected */
@@ -679,6 +721,11 @@ fail:
     avformat_free_context(s);
     *ps = NULL;
     return ret;
+}
+
+int avformat_open_input(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options)
+{
+    return avformat_open_input_header(ps,filename,fmt,options,NULL);
 }
 
 /*******************************************************/
@@ -2675,6 +2722,7 @@ void av_close_input_file(AVFormatContext *s)
     av_close_input_stream(s);
     if (pb)
         avio_close(pb);
+	
 }
 
 AVStream *av_new_stream(AVFormatContext *s, int id)

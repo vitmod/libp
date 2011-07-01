@@ -867,6 +867,8 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 #if FF_API_OLD_AVIO
     (*s)->is_streamed = h->is_streamed;
 #endif
+	(*s)->support_time_seek = h->support_time_seek;
+	(*s)->reallocation=h->location;
     (*s)->seekable = h->is_streamed ? 0 : AVIO_SEEKABLE_NORMAL;
     (*s)->max_packet_size = max_packet_size;
     if(h->prot) {
@@ -959,11 +961,27 @@ int avio_open(AVIOContext **s, const char *filename, int flags)
     }
     return 0;
 }
+int avio_open_h(AVIOContext **s, const char *filename, int flags,const char * headers)
+{
+    URLContext *h;
+    int err;
+
+    err = ffurl_open_h(&h, filename, flags,headers);
+    if (err < 0)
+        return err;
+    err = ffio_fdopen(s, h);
+    if (err < 0) {
+        ffurl_close(h);
+        return err;
+    }
+    return 0;
+}
+
 
 int avio_close(AVIOContext *s)
 {
     URLContext *h = s->opaque;
-
+	if(s->filename) av_free(s->filename);
     av_free(s->buffer);
     av_free(s);
     return ffurl_close(h);
