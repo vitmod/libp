@@ -1351,7 +1351,7 @@ int set_header_info(play_para_t *para)
 
         if (pkt->type == CODEC_VIDEO) {
             if ((para->vstream_info.video_format == VFORMAT_H264) &&
-                (para->file_type != AVI_FILE)) {
+                (para->file_type != AVI_FILE && para->file_type != STREAM_FILE)) {
                 ret = h264_update_frame_header(pkt);
                 if (ret != PLAYER_SUCCESS) {
                     return ret;
