@@ -343,4 +343,6 @@ TESTPROGS = timefilter
 
 OBJS                += file_list.o m3u.o
 
+OBJS                += aviolpbuf.o aviolpcache.o
+
 ###include $(SUBDIR)../subdir.mak

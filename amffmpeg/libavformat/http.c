@@ -34,6 +34,9 @@
 /* XXX: POST protocol is not completely implemented because ffmpeg uses
    only a subset of it. */
 
+
+#define IPAD_IDENT	"AppleCoreMedia/1.0.0.8C148 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh_cn)"
+
 /* used for protocol handling */
 #define BUFFER_SIZE 1024
 #define MAX_REDIRECTS 8
@@ -50,6 +53,7 @@ typedef struct {
     HTTPAuthState auth_state;
     unsigned char headers[BUFFER_SIZE];
     int willclose;          /**< Set if the server correctly handles Connection: close and will close the connection after feeding us the content. */
+	int is_seek;
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
@@ -63,6 +67,13 @@ static const AVClass httpcontext_class = {
     .option         = options,
     .version        = LIBAVUTIL_VERSION_INT,
 };
+static const AVClass shttpcontext_class = {
+    .class_name     = "SHTTP",
+    .item_name      = av_default_item_name,
+    .option         = options,
+    .version        = LIBAVUTIL_VERSION_INT,
+};
+
 
 static int http_connect(URLContext *h, const char *path, const char *hoststr,
                         const char *auth, int *new_location);
@@ -146,11 +157,11 @@ static int http_open_cnx(URLContext *h)
         && location_changed == 1) {
         /* url moved, get next */
         ffurl_close(hd);
-        if (redirects++ >= MAX_REDIRECTS)
+        if (redirects++ >= MAX_REDIRECTS){
+			av_log(h, AV_LOG_ERROR, "HTTP open reach MAX_REDIRECTS\n");
             return AVERROR(EIO);
+        }
         location_changed = 0;
-		s->filesize = -1;/*file changed*/
-		s->chunksize = -1;/*chunk may changed also*/
 		h->location=s->location;
         goto redo;
     }
@@ -159,6 +170,7 @@ static int http_open_cnx(URLContext *h)
     if (hd)
         ffurl_close(hd);
     s->hd = NULL;
+	av_log(h, AV_LOG_ERROR, "HTTP open Failed\n");
     return AVERROR(EIO);
 }
 
@@ -167,8 +179,9 @@ static int http_open(URLContext *h, const char *uri, int flags)
     HTTPContext *s = h->priv_data;
 
     h->is_streamed = 1;
-
+	
     s->filesize = -1;
+	s->is_seek=0;
     av_strlcpy(s->location, uri, sizeof(s->location));
 
     return http_open_cnx(h);
@@ -180,6 +193,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     h->is_streamed = 1;
 
     s->filesize = -1;
+	s->is_seek=0;
     av_strlcpy(s->location, uri+1, sizeof(s->location));
 
     ret= http_open_cnx(h);
@@ -194,6 +208,7 @@ static int http_getc(HTTPContext *s)
     if (s->buf_ptr >= s->buf_end) {
         len = ffurl_read(s->hd, s->buffer, BUFFER_SIZE);
         if (len < 0) {
+			av_log(NULL, AV_LOG_ERROR, "http_getc failed\n");
             return AVERROR(EIO);
         } else if (len == 0) {
             return -1;
@@ -324,11 +339,19 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     /* set default headers if needed */
     if (!has_header(s->headers, "\r\nUser-Agent: "))
        len += av_strlcatf(headers + len, sizeof(headers) - len,
-                          "User-Agent: %s\r\n", LIBAVFORMAT_IDENT);
+                          "User-Agent: %s\r\n", IPAD_IDENT);
+
+	if (h->headers) {
+		len += av_strlcatf(headers + len, sizeof(headers) - len,
+                           "%s\r\n", h->headers);
+
+    }
+
+	
     if (!has_header(s->headers, "\r\nAccept: "))
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);
-    if (!has_header(s->headers, "\r\nRange: "))
+    if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek))
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: "))
@@ -379,7 +402,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
             return AVERROR(EIO);
 
         av_dlog(NULL, "header='%s'\n", line);
-
+		av_log(h, AV_LOG_INFO, "process_line:%s\n",line);
         err = process_line(h, line, s->line_count, new_location);
         if (err < 0)
             return err;
@@ -396,23 +419,26 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
 {
     HTTPContext *s = h->priv_data;
     int len;
-
     if (s->chunksize >= 0) {
         if (!s->chunksize) {
             char line[32];
 
             for(;;) {
                 do {
-                    if (http_get_line(s, line, sizeof(line)) < 0)
+                    if (http_get_line(s, line, sizeof(line)) < 0){
+						av_log(h, AV_LOG_ERROR, "http_read failed\n");
                         return AVERROR(EIO);
+                    }	
                 } while (!*line);    /* skip CR LF from last chunk */
 
                 s->chunksize = strtoll(line, NULL, 16);
 
                 av_dlog(NULL, "Chunked encoding data size: %"PRId64"'\n", s->chunksize);
 
-                if (!s->chunksize)
+                if (!s->chunksize){
+					av_log(h, AV_LOG_ERROR, "http_read s->chunksize failed\n");
                     return 0;
+                }	
                 break;
             }
         }
@@ -426,15 +452,19 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
         memcpy(buf, s->buf_ptr, len);
         s->buf_ptr += len;
     } else {
-        if (!s->willclose && s->filesize >= 0 && s->off >= s->filesize)
+        if (!s->willclose && s->filesize >= 0 && s->off >= s->filesize){
+			av_log(h, AV_LOG_ERROR, "http_read error %d\n",AVERROR_EOF);
             return AVERROR_EOF;
+        }
         len = ffurl_read(s->hd, buf, size);
+		//av_log(h, AV_LOG_ERROR, "ffurl_read %d\n",len);
     }
     if (len > 0) {
         s->off += len;
         if (s->chunksize > 0)
             s->chunksize -= len;
     }
+	//av_log(h, AV_LOG_ERROR, "http_read %d\n",len);
     return len;
 }
 
@@ -504,7 +534,7 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
     else if (whence == SEEK_END)
         off += s->filesize;
     s->off = off;
-
+	s->is_seek=1;
     /* if it fails, continue on old connection */
     if (http_open_cnx(h) < 0) {
         memcpy(s->buffer, old_buf, old_buf_size);
@@ -514,6 +544,7 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
         s->off = old_off;
         return -1;
     }
+	s->is_seek=0;
     ffurl_close(old_hd);
     return off;
 }
@@ -545,6 +576,6 @@ URLProtocol ff_shttp_protocol = {
     .url_close           = http_close,
     .url_get_file_handle = http_get_file_handle,
     .priv_data_size      = sizeof(HTTPContext),
-    .priv_data_class     = &httpcontext_class,
+    .priv_data_class     = &shttpcontext_class,
 };
 

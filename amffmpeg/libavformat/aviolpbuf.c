@@ -30,6 +30,7 @@
 #include "avio.h"
 #include <stdarg.h>
 #include "aviolpcache.h"
+#include "aviolpbuf.h"
 
 /*
 										Pos		
@@ -54,9 +55,9 @@ Can seek back size:
 	min(valid_data_size-valid_data_too_read,data between buffe,rp)
 
 */
-//#define LP_BUFFER_DEBUG
+#define LP_BUFFER_DEBUG
 #define LP_SK_DEBUG
-//#define LP_RD_DEBUG
+#define LP_RD_DEBUG
 #ifdef LP_SK_DEBUG
 #define lp_sprint(level,fmt...) av_log(NULL,level,##fmt)
 #else
@@ -81,8 +82,10 @@ Can seek back size:
 int url_lpopen(URLContext *s,int size)
 {
 	url_lpbuf_t *lp;
+	lp_bprint( AV_LOG_INFO,"url_lpopen=%d\n",size);
 	if(!s)
 		return -1;
+		lp_bprint( AV_LOG_INFO,"url_lpopen2=%d\n",size);
 	lp=av_mallocz(sizeof(url_lpbuf_t));
 	if(!lp)
 		return AVERROR(ENOMEM);
@@ -92,6 +95,7 @@ int url_lpopen(URLContext *s,int size)
 		av_free(lp->buffer);
 		return AVERROR(ENOMEM);
 	}
+		lp_bprint( AV_LOG_INFO,"url_lpopen3=%d\n",size);
 	s->lpbuf=lp;
 	lp->buffer_size=size;
 	lp->rp=lp->buffer;
@@ -106,6 +110,7 @@ int url_lpopen(URLContext *s,int size)
 	lp->cache_id=aviolp_cache_open(s->filename,url_filesize(s));
 	if(lp->cache_id!=0)
 		lp->cache_enable=1;
+		lp_bprint( AV_LOG_INFO,"url_lpopen4%d\n",size);
 	return 0;
 }
 

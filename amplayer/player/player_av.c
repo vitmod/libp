@@ -480,7 +480,7 @@ static int raw_read(play_para_t *para)
 
     if (!para->playctrl_info.read_end_flag && (0 == pkt->data_size)) {
         rev_byte = get_buffer(pb, pbuf, para->max_raw_size);
-        if ((rev_byte > 0) && (cur_offset <= para->pFormatCtx->valid_offset)) {
+        if ((rev_byte > 0) &&(cur_offset <= para->pFormatCtx->valid_offset)) {
             try_count = 0;
             pkt->data_size = rev_byte;
             para->read_size.total_bytes += rev_byte;
@@ -498,10 +498,10 @@ static int raw_read(play_para_t *para)
             }
 #endif
 
-        } else if ((rev_byte == AVERROR_EOF) || (cur_offset > para->pFormatCtx->valid_offset)) { //if(rev_byte != AVERROR(EAGAIN))
+        } else if ((rev_byte == AVERROR_EOF) || (cur_offset > para->pFormatCtx->valid_offset) ){ //if(rev_byte != AVERROR(EAGAIN))
             /*if the return is EAGAIN,we need to try more times*/
             para->playctrl_info.read_end_flag = 1;
-            log_print("raw read: read end!\n");
+            log_print("raw read: read end!,%d,%lld,%lld\n",rev_byte ,cur_offset,para->pFormatCtx->valid_offset);
 #if DUMP_READ
             if (fdr > 0) {
                 close(fdr);
@@ -509,7 +509,7 @@ static int raw_read(play_para_t *para)
 #endif
         } else {
             if (rev_byte != AVERROR(EAGAIN)) {
-                log_print("raw_read buffer error!\n");
+                log_print("raw_read buffer error!,%d\n",rev_byte);
                 return PLAYER_RD_FAILED;
             } else {
                 try_count ++;
@@ -974,7 +974,7 @@ int update_variable_info(play_para_t *para)
         t_fsize = url_fsize2(para->pFormatCtx->pb);
         log_print("[%s:%dtfsize=%lld fsize=%lld\n", __FUNCTION__, __LINE__, t_fsize, file_size);
 
-        if (t_fsize > file_size) {
+        if (t_fsize > file_size && t_fsize>0) {
             para->pFormatCtx->file_size = t_fsize;
             para->pFormatCtx->valid_offset = t_fsize;
             para->file_size = t_fsize;
@@ -991,6 +991,8 @@ int update_variable_info(play_para_t *para)
                 para->state.full_time = t_fulltime;
                 para->pFormatCtx->duration = t_fulltime * AV_TIME_BASE;
             }
+        }else{
+        	para->pFormatCtx->valid_offset=INT64_MAX;/*Is a no ended streaming*/
         }
     }
 

@@ -33,6 +33,7 @@
 #include "libavformat/version.h"
 
 
+
 #define AVIO_SEEKABLE_NORMAL 0x0001 /**< Seeking works like for a local file */
 
 /**
@@ -66,6 +67,7 @@ typedef struct {
     int write_flag;         /**< true if open for writing */
 #if FF_API_OLD_AVIO
     attribute_deprecated int is_streamed;
+	int is_slowmedia;
 #endif
     int max_packet_size;
     unsigned long checksum;
@@ -104,9 +106,11 @@ typedef struct {
  * sizeof(URLContext) must not be used outside libav*.
  * @deprecated This struct will be made private
  */
+ struct  url_lpbuf;
 typedef struct URLContext {
     const AVClass *av_class; ///< information for av_log(). Set by url_open().
     struct URLProtocol *prot;
+	struct  url_lpbuf  *lpbuf;
     int flags;
     int is_streamed;  /**< true if streamed (no seek possible), default = false */
     int max_packet_size;  /**< if non zero, the stream is packetized with this max packet size */
@@ -693,6 +697,7 @@ static int64_t url_fbuffered_time(ByteIOContext *s)
 
 
 #include "libavformat/url.h"
+#include "libavformat/aviolpbuf.h"
 
 
 

@@ -866,6 +866,10 @@ int player_dec_init(play_para_t *p_para)
     }
 
     p_para->file_size = p_para->pFormatCtx->file_size;
+	if(p_para->file_size>0)
+		p_para->pFormatCtx->valid_offset=p_para->file_size;
+	else
+		p_para->pFormatCtx->valid_offset=INT64_MAX;
     p_para->state.full_time = p_para->pFormatCtx->duration / AV_TIME_BASE;
     p_para->state.name = p_para->file_name;
     p_para->file_type = file_type;

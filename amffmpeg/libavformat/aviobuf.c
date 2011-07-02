@@ -840,7 +840,7 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 {
     uint8_t *buffer;
     int buffer_size, max_packet_size;
-
+	int lpbuffer_size=(h->flags & URL_MINI_BUFFER)?IO_LP_BUFFER_MINI_SIZE:IO_LP_BUFFER_SIZE;
     max_packet_size = h->max_packet_size;
     if (max_packet_size) {
         buffer_size = max_packet_size; /* no need to bufferize more than one packet */
@@ -856,16 +856,34 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
         av_free(buffer);
         return AVERROR(ENOMEM);
     }
+	av_log(NULL, AV_LOG_INFO, "ffio_fdopen (h->is_slowmedia=%d,flags=%x\n",h->is_slowmedia,h->flags);
+	 if((h->is_slowmedia) && 
+		!(h->flags & URL_NO_LP_BUFFER)	&&		/*no lp buffer*/	
+		!(h->flags & URL_WRONLY)  && /*no write support*/
+		!url_lpopen(h,lpbuffer_size)){
+		av_log(NULL, AV_LOG_INFO, "ffio_fdopen Register lpbuf");
+		 if (ffio_init_context(*s, buffer, buffer_size,
+	                      h->flags & AVIO_FLAG_WRITE, h,
+	                      (void*)url_lpread, (void*)NULL, (void*)url_lpseek) < 0) {
+	        av_free(buffer);
+	        av_freep(s);
+	        return AVERROR(EIO);
+	    }
 
-    if (ffio_init_context(*s, buffer, buffer_size,
-                      h->flags & AVIO_FLAG_WRITE, h,
-                      (void*)ffurl_read, (void*)ffurl_write, (void*)ffurl_seek) < 0) {
-        av_free(buffer);
-        av_freep(s);
-        return AVERROR(EIO);
-    }
+	
+	}else{
+	    if (ffio_init_context(*s, buffer, buffer_size,
+	                      h->flags & AVIO_FLAG_WRITE, h,
+	                      (void*)ffurl_read, (void*)ffurl_write, (void*)ffurl_seek) < 0) {
+	        av_free(buffer);
+	        av_freep(s);
+	        return AVERROR(EIO);
+	    }
+	}
 #if FF_API_OLD_AVIO
     (*s)->is_streamed = h->is_streamed;
+	(*s)->is_slowmedia = h->is_slowmedia;
+
 #endif
 	(*s)->support_time_seek = h->support_time_seek;
 	(*s)->reallocation=h->location;
@@ -984,6 +1002,10 @@ int avio_close(AVIOContext *s)
 	if(s->filename) av_free(s->filename);
     av_free(s->buffer);
     av_free(s);
+	if(h && h->lpbuf)	
+	{
+		url_lpfree(h);
+	}
     return ffurl_close(h);
 }
 

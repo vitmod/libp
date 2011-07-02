@@ -617,11 +617,9 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
             return AVERROR(EINVAL);
         return 0;
     }
-
     if ( (s->iformat && s->iformat->flags & AVFMT_NOFILE) ||
         (!s->iformat && (s->iformat = av_probe_input_format(&pd, 0))))
         return 0;
-
     if ((ret = avio_open(&s->pb, filename, AVIO_FLAG_READ)) < 0)
        return ret;
 	if(url_is_file_list(s->pb,filename)){
@@ -632,15 +630,14 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
 				return AVERROR(ENOMEM);
 			strcpy(listfile,"list:");
 			strcpy(listfile+5,filename);
-			url_fclose(&s->pb);
+			url_fclose(s->pb);
 			s->pb=NULL;
 			if ((err=avio_open_h(&s->pb,listfile, AVIO_FLAG_READ, headers)) < 0) {
 				av_log(NULL, AV_LOG_ERROR, "init_input:%s failed,line=%d err=0x%x\n",listfile,__LINE__,err);
 				av_free(listfile);
-	            return AVERROR(EIOL);;
+	            return AVERROR(EIO);;
         	}
 			s->pb->filename=listfile;
-			av_log(NULL, AV_LOG_INFO, "init_input,line=%d\n",__LINE__);
 	}
     if (s->iformat)
         return 0;
