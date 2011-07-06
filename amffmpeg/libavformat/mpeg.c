@@ -252,7 +252,7 @@ static int mpegps_read_pes_header(AVFormatContext *s,
         last_sync = avio_tell(s->pb);
     //printf("startcode=%x pos=0x%"PRIx64"\n", startcode, avio_tell(s->pb));
     if (startcode < 0){
-        if(url_feof(s->pb))
+        if(url_feof(s->pb) || (s->valid_offset > 0 && last_sync > s->valid_offset))
             return AVERROR_EOF;
         //FIXME we should remember header_state
         return AVERROR(EAGAIN);
@@ -484,6 +484,31 @@ static int mpegps_read_packet(AVFormatContext *s,
     } else if (startcode >= 0x1c0 && startcode <= 0x1df) {
         type = AVMEDIA_TYPE_AUDIO;
         codec_id = m->sofdec > 0 ? CODEC_ID_ADPCM_ADX : CODEC_ID_MP2;
+		if(codec_id == CODEC_ID_MP2)
+		{	
+			unsigned char buf[32];
+			int i;
+			unsigned long newhead;	
+			
+			avio_read(s->pb, buf, 32);
+        	avio_seek(s->pb, -32, SEEK_CUR);
+			
+			for(i = 0; i < 32; i ++)
+			{
+				newhead = buf[0]<<24|buf[1]<<16|buf[2]<<8|buf[3];
+				// head_check:
+			    if((newhead & 0xffe00000) == 0xffe00000)
+		    	{
+		    		int layer;
+		    		layer = 4-((newhead>>17)&3);
+    				if(layer==4)
+					{
+						codec_id = CODEC_ID_AAC;
+						break;
+					}
+			    }
+			}			
+		}        
     } else if (startcode >= 0x80 && startcode <= 0x87) {
         type = AVMEDIA_TYPE_AUDIO;
         codec_id = CODEC_ID_AC3;
@@ -529,6 +554,26 @@ static int mpegps_read_packet(AVFormatContext *s,
         goto redo;
     }
     /* no stream found: add a new stream */
+	if(startcode >= 0x20 && startcode <= 0x3f){
+		//add all subtitle streams which less then current subtitle stream
+		int i = 0, j = 0;
+		for(i=0; i<(startcode-0x20+1); i++){
+			for(j=0; j<s->nb_streams; j++){
+				if((i+0x20) == s->streams[j]->id)
+					break;
+			}
+			if(j == s->nb_streams){
+				st = av_new_stream(s, (i+0x20));
+			    if (!st)
+			        goto skip;
+			    st->codec->codec_type = type;
+			    st->codec->codec_id = codec_id;
+			    if (codec_id != CODEC_ID_PCM_S16BE)
+			        st->need_parsing = AVSTREAM_PARSE_FULL;
+			}
+		}
+	}
+	else{
     st = av_new_stream(s, startcode);
     if (!st)
         goto skip;
@@ -537,6 +582,7 @@ static int mpegps_read_packet(AVFormatContext *s,
     st->request_probe     = request_probe;
     if (codec_id != CODEC_ID_PCM_S16BE)
         st->need_parsing = AVSTREAM_PARSE_FULL;
+	}
  found:
     if(st->discard >= AVDISCARD_ALL)
         goto skip;
