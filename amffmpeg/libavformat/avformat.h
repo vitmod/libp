@@ -674,6 +674,8 @@ typedef struct AVChapter {
     AVDictionary *metadata;
 } AVChapter;
 
+#define MAX_STREAMS 30
+
 /**
  * Format I/O context.
  * New fields can be added to the end with minor version bumps.
