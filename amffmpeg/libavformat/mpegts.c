@@ -1353,7 +1353,12 @@ static int mpegts_resync(AVFormatContext *s)
 
     for(i = 0;i < MAX_RESYNC_SIZE; i++) {
         c = avio_r8(pb);
-        if (url_feof(pb))
+        c = url_fgetc(pb);
+		if(pb->pos > s->valid_offset && s->valid_offset > 0){
+			av_log(s, AV_LOG_ERROR, "exceed valid offset\n");
+			return AVERROR_EOF;
+		}
+        if (c < 0)
             return -1;
         if (c == 0x47) {
             avio_seek(pb, -1, SEEK_CUR);
@@ -1370,6 +1375,7 @@ static int read_packet(AVFormatContext *s, uint8_t *buf, int raw_packet_size)
 {
     AVIOContext *pb = s->pb;
     int skip, len;
+	int ret;
 
     for(;;) {
         len = avio_read(pb, buf, TS_PACKET_SIZE);
@@ -1379,8 +1385,13 @@ static int read_packet(AVFormatContext *s, uint8_t *buf, int raw_packet_size)
         if (buf[0] != 0x47) {
             /* find a new packet start */
             avio_seek(pb, -TS_PACKET_SIZE, SEEK_CUR);
-            if (mpegts_resync(s) < 0)
-                return AVERROR(EAGAIN);
+			ret = mpegts_resync(s) ;
+            if (ret < 0){
+				if(ret == AVERROR_EOF)
+					return ret;
+				else
+					return AVERROR(EAGAIN);
+            }
             else
                 continue;
         } else {
