@@ -1425,7 +1425,8 @@ static int mov_read_stsz(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     if (avio_read(pb, buf, num_bytes) < num_bytes) {
         av_freep(&sc->sample_sizes);
         av_free(buf);
-        return -1;
+        //return -1;
+        return 0;//*don't retrun -1,if only read end*/
     }
 
     init_get_bits(&gb, buf, 8*num_bytes);
@@ -1705,8 +1706,15 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
 
 static int mov_open_dref(AVIOContext **pb, const char *src, MOVDref *ref)
 {
-    /* try relative path, we do not try the absolute because it can leak information about our
-       system to an attacker */
+	/* try relative path, we do not try the absolute because it can leak information about our
+		system to an attacker */
+	#if 0
+    /* try absolute path */
+    if (!url_fopen(pb, ref->path, URL_RDONLY))
+        return 0;
+
+    /* try relative path */
+	#endif
     if (ref->nlvl_to > 0 && ref->nlvl_from > 0) {
         char filename[1024];
         const char *src_path;
@@ -2244,12 +2252,14 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('i','l','s','t'), mov_read_ilst },
 { MKTAG('j','p','2','h'), mov_read_extradata },
 { MKTAG('m','d','a','t'), mov_read_mdat },
+{ MKTAG('a','v','i','d'), mov_read_mdat },	/*for 3dv*/
 { MKTAG('m','d','h','d'), mov_read_mdhd },
 { MKTAG('m','d','i','a'), mov_read_default },
 { MKTAG('m','e','t','a'), mov_read_meta },
 { MKTAG('m','i','n','f'), mov_read_default },
 { MKTAG('m','o','o','f'), mov_read_moof },
 { MKTAG('m','o','o','v'), mov_read_moov },
+{ MKTAG('3','d','v','f'), mov_read_moov },	/*for 3dv*/
 { MKTAG('m','v','e','x'), mov_read_default },
 { MKTAG('m','v','h','d'), mov_read_mvhd },
 { MKTAG('S','M','I',' '), mov_read_smi }, /* Sorenson extension ??? */
@@ -2306,6 +2316,7 @@ static int mov_probe(AVProbeData *p)
         case MKTAG('p','n','o','t'): /* detect movs with preview pics like ew.mov and april.mov */
         case MKTAG('u','d','t','a'): /* Packet Video PVAuthor adds this and a lot of more junk */
         case MKTAG('f','t','y','p'):
+		case MKTAG('p','i','n','f'): /* for 3dv */
             return AVPROBE_SCORE_MAX;
         /* those are more common words, so rate then a bit less */
         case MKTAG('e','d','i','w'): /* xdcam files have reverted first tags */
