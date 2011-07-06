@@ -46,6 +46,12 @@ typedef struct AVIStream {
     uint32_t pal[256];
     int has_pal;
     int dshow_block_align;            ///< block align variable used to emulate bugs in the MS dshow demuxer
+
+    AVFormatContext *sub_ctx;
+    AVPacket sub_pkt;
+    uint8_t *sub_buffer;
+
+    int64_t seek_pos;
     int sequence_head_size;
     unsigned int sequence_head_offset;
     char *sequence_head;

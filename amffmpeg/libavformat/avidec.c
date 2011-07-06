@@ -55,6 +55,9 @@ typedef struct AVIStream {
     uint8_t *sub_buffer;
 
     int64_t seek_pos;
+    int sequence_head_size;
+    unsigned int sequence_head_offset;
+    char *sequence_head;
 } AVIStream;
 
 typedef struct {
@@ -97,6 +100,8 @@ static const char avi_headers[][8] = {
     { 0 }
 };
 
+#define VALID_VIDEO_4CC(a) (((a)==0x6264)||((a)==0x6364)||((a)==0x6464))
+      
 static int avi_load_index(AVFormatContext *s);
 static int guess_ni_flag(AVFormatContext *s);
 
@@ -230,6 +235,12 @@ static int read_braindead_odml_indx(AVFormatContext *s, int frame_num){
         }
     }
     avi->index_loaded=1;
+	
+	//add by X.H.
+	//av_log(NULL, AV_LOG_INFO, "[%s:%d]nb_frames=%x nb_index_entries=%d\n",__FUNCTION__, __LINE__, st->nb_frames, st->nb_index_entries);
+	if((st->nb_frames>>3) < st->nb_index_entries){
+		s->seekable = 1;
+	}
     return 0;
 }
 
@@ -906,7 +917,10 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
             }
         }
         if(!best_st)
-            return -1;
+        {                      
+            //return -1;
+            return AVERROR_EOF; 
+        }
 
         best_ast = best_st->priv_data;
         best_ts = av_rescale_q(best_ts, (AVRational){FFMAX(1, best_ast->sample_size), AV_TIME_BASE}, best_st->time_base);
@@ -1045,6 +1059,10 @@ resync:
     for(i=sync=avio_tell(pb); !url_feof(pb); i++) {
         int j;
 
+        // if exceed valid data, return EOF
+        if (s->valid_offset_done && (i >= s->valid_offset))
+            return AVERROR_EOF;
+        
         for(j=0; j<7; j++)
             d[j]= d[j+1];
         d[7]= avio_r8(pb);
@@ -1169,6 +1187,7 @@ static int avi_read_idx1(AVFormatContext *s, int size)
     AVIStream *ast;
     unsigned int index, tag, flags, pos, len;
     unsigned last_pos= -1;
+    int first_key_frame = 1;
 
     nb_index_entries = size / 16;
     if (nb_index_entries <= 0)
@@ -1204,6 +1223,12 @@ static int avi_read_idx1(AVFormatContext *s, int size)
         else if(len || !ast->sample_size)
             av_add_index_entry(st, pos, ast->cum_len, len, 0, (flags&AVIIF_INDEX) ? AVINDEX_KEYFRAME : 0);
         ast->cum_len += get_duration(ast, len);
+        if ((VALID_VIDEO_4CC(tag>>16)) && (flags&AVIIF_INDEX) && first_key_frame)
+        {
+            first_key_frame = 0;
+            ast->sequence_head_offset = pos;
+        }
+        
         last_pos= pos;
     }
     return 0;
@@ -1240,6 +1265,56 @@ static int guess_ni_flag(AVFormatContext *s){
     return last_start > first_end;
 }
 
+static int avi_save_sequence_head(AVFormatContext *s, AVIStream *avi_stream)
+{
+    unsigned int pos = avi_stream->sequence_head_offset;
+    unsigned char *first_key_chunk = NULL;
+    int i, sequence_head_pos = -1;
+    
+    first_key_chunk = av_malloc(2048);
+    if (first_key_chunk == NULL)
+        return -1;
+    
+    avio_seek(s->pb, pos, SEEK_SET);
+    avio_read(s->pb, first_key_chunk, 2048);
+
+    for (i=8;i<2045;i++)
+    {
+        if (sequence_head_pos < 0)
+        {
+            if ((first_key_chunk[i]==0x00)
+                && (first_key_chunk[i+1]==0x00)
+                && (first_key_chunk[i+2]==0x01)
+                && ((first_key_chunk[i+3]&0xe0)==0x20))
+            {
+                sequence_head_pos = i;
+            }
+        }
+        else 
+        {
+            if ((first_key_chunk[i]==0x00)
+                && (first_key_chunk[i+1]==0x00)
+                && (first_key_chunk[i+2]==0x01))
+            {
+                avi_stream->sequence_head = av_malloc(i - sequence_head_pos);
+                if (avi_stream->sequence_head)
+                {
+                    avi_stream->sequence_head_size = i - sequence_head_pos;
+                    memcpy(avi_stream->sequence_head, first_key_chunk + sequence_head_pos, i - sequence_head_pos);
+                    break;
+                }
+            }
+        }
+    }
+
+    av_free(first_key_chunk);
+
+    if (avi_stream->sequence_head)
+        return 0;
+    else
+        return -1;
+}
+
 static int avi_load_index(AVFormatContext *s)
 {
     AVIContext *avi = s->priv_data;
@@ -1247,7 +1322,10 @@ static int avi_load_index(AVFormatContext *s)
     uint32_t tag, size;
     int64_t pos= avio_tell(pb);
     int ret = -1;
+    unsigned int i;
+    AVIStream *avi_stream = NULL;
 
+    s->seekable = 0;
     if (avio_seek(pb, avi->movi_end, SEEK_SET) < 0)
         goto the_end; // maybe truncated file
     av_dlog(s, "movi_end=0x%"PRIx64"\n", avi->movi_end);
@@ -1267,6 +1345,7 @@ static int avi_load_index(AVFormatContext *s)
             if (avi_read_idx1(s, size) < 0)
                 goto skip;
             ret = 0;
+            s->seekable = 1;
                 goto the_end;
             break;
         default:
@@ -1278,6 +1357,13 @@ static int avi_load_index(AVFormatContext *s)
         }
     }
  the_end:
+    for (i=0; i<s->nb_streams; i++) {        
+        avi_stream = (AVIStream *)s->streams[i]->priv_data;        
+        if (avi_stream->sequence_head_offset) {
+            av_log(NULL, AV_LOG_INFO, "[%s]stream %d sequence head 0x%x\n", __FUNCTION__, i, avi_stream->sequence_head_offset);
+            avi_save_sequence_head(s, avi_stream);
+        }    
+    }
     avio_seek(pb, pos, SEEK_SET);
     return ret;
 }
