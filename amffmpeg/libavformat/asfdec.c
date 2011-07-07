@@ -87,6 +87,10 @@ static const ff_asf_guid index_guid = {
 static const ff_asf_guid stream_bitrate_guid = { /* (http://get.to/sdp) */
     0xce, 0x75, 0xf8, 0x7b, 0x8d, 0x46, 0xd1, 0x11, 0x8d, 0x82, 0x00, 0x60, 0x97, 0xc9, 0xa2, 0xb2
 };
+
+static int video_stream_num = 0, audio_stream_num = 0;
+static uint64_t avg_frame_time[128];
+
 /**********************************/
 /* decoding */
 
@@ -296,6 +300,7 @@ static int asf_read_stream_properties(AVFormatContext *s, int64_t size)
         } else {
             st->need_parsing = AVSTREAM_PARSE_FULL;
         }
+        audio_stream_num = st->id;
         /* We have to init the frame size at some point .... */
         pos2 = avio_tell(pb);
         if (size >= (pos2 + 8 - pos1 + 24)) {
@@ -335,6 +340,7 @@ static int asf_read_stream_properties(AVFormatContext *s, int64_t size)
         }
     } else if (type == AVMEDIA_TYPE_VIDEO &&
             size - (avio_tell(pb) - pos1 + 24) >= 51) {
+        video_stream_num = st->id;
         avio_rl32(pb);
         avio_rl32(pb);
         avio_r8(pb);
@@ -413,7 +419,7 @@ static int asf_read_ext_stream_properties(AVFormatContext *s, int64_t size)
     if (stream_num < 128)
         asf->streams[stream_num].stream_language_index = stream_languageid_index;
 
-    avio_rl64(pb); // avg frametime in 100ns units
+    avg_frame_time[stream_num] = avio_rl64(pb); // avg frametime in 100ns units
     stream_ct = avio_rl16(pb); //stream-name-count
     payload_ext_ct = avio_rl16(pb); //payload-extension-system-count
 
@@ -658,6 +664,8 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
     asf->data_offset = avio_tell(pb);
     asf->packet_size_left = 0;
 
+	s->video_avg_frame_time = avg_frame_time[video_stream_num];
+	s->audio_avg_frame_time = avg_frame_time[audio_stream_num];
 
     for(i=0; i<128; i++){
         int stream_num= asf->asfid2avid[i];
