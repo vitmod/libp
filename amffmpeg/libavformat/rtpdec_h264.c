@@ -159,6 +159,8 @@ static int sdp_parse_fmtp_config_h264(AVStream * stream,
                 }
             }
         }
+		memcpy(codec->extradata+codec->extradata_size, start_sequence, sizeof(start_sequence));
+		codec->extradata_size+=sizeof(start_sequence);
         av_log(codec, AV_LOG_DEBUG, "Extradata set to %p (size: %d)!", codec->extradata, codec->extradata_size);
     }
     return 0;
