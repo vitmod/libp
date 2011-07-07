@@ -363,6 +363,42 @@ static int h264_write_header(play_para_t *para)
     }
     return ret;
 }
+static int write_stream_header(play_para_t *para)
+{
+    AVStream *pStream = NULL;
+    AVCodecContext *avcodec;
+	am_packet_t *pkt = para->p_pkt;
+    int ret = -1;
+    int index = para->vstream_info.video_index;
+	
+    if (-1 == index) {
+        return PLAYER_ERROR_PARAM;
+    }
+	
+    pStream = para->pFormatCtx->streams[index];
+    avcodec = pStream->codec;
+    ret = PLAYER_FAILED;
+	 if(avcodec->extradata_size<HDR_BUF_SIZE){
+    	MEMCPY(pkt->hdr->data,avcodec->extradata,avcodec->extradata_size);
+		pkt->hdr->size = avcodec->extradata_size;
+   	 	pkt->type = CODEC_VIDEO;
+		ret=PLAYER_SUCCESS;
+	}
+    if (ret == PLAYER_SUCCESS) {
+        if (para->vcodec) {
+            pkt->codec = para->vcodec;
+        } else {
+            log_print("[h264_add_header]invalid video codec!\n");
+            return PLAYER_EMPTY_P;
+        }
+
+        pkt->avpkt_newflag = 1;
+        ret = write_av_packet(para);
+    }
+    return ret;
+}
+
+
 /*************************************************************************/
 static int m4s2_dx50_mp4v_add_header(unsigned char *buf, int size,  am_packet_t *pkt)
 {
@@ -816,6 +852,7 @@ int pre_header_feeding(play_para_t *para)
 	  if(	ret != PLAYER_SUCCESS)
 	  	return ret;
     }
+	
     if (para->stream_type == STREAM_ES && para->vstream_info.has_video) {
         if (pkt->hdr == NULL) {
             pkt->hdr = MALLOC(sizeof(hdr_buf_t));
@@ -831,7 +868,12 @@ int pre_header_feeding(play_para_t *para)
             if (ret != PLAYER_SUCCESS) {
                 return ret;
             }
-        } else if ((VFORMAT_MPEG4 == para->vstream_info.video_format) &&
+        } if ((STREAM_FILE == para->file_type) ) {
+            ret = write_stream_header(para);
+            if (ret != PLAYER_SUCCESS) {
+                return ret;
+            }
+   		}else if ((VFORMAT_MPEG4 == para->vstream_info.video_format) &&
                    (VIDEO_DEC_FORMAT_MPEG4_3 == para->vstream_info.video_codec_type)) {
             ret = divx3_write_header(para);
             if (ret != PLAYER_SUCCESS) {
