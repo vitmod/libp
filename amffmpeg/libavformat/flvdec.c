@@ -269,6 +269,8 @@ static int amf_parse_object(AVFormatContext *s, AVStream *astream, AVStream *vst
                 vcodec->bit_rate = num_val * 1024.0;
             else if(!strcmp(key, "audiodatarate") && acodec && 0 <= (int)(num_val * 1024.0))
                 acodec->bit_rate = num_val * 1024.0;
+            else if(!strcmp(key, "framerate")) 
+                vstream->special_fps = (float)num_val;
         } else if (amf_type == AMF_DATA_TYPE_STRING)
             av_dict_set(&s->metadata, key, str_val, 0);
     }
