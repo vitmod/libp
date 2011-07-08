@@ -166,6 +166,7 @@ typedef struct player_info
 	int last_time;		
 	int error_no;  
 	int start_time;
+	int first_time;
 	int pts_video;
 	//int pts_pcrscr;
 	int current_pts;
