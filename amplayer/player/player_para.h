@@ -6,7 +6,7 @@
 
 struct play_para;
 
-//#define DEBUG_VARIABLE_DUR
+#define DEBUG_VARIABLE_DUR
 
 typedef enum {
     STREAM_UNKNOWN = 0,

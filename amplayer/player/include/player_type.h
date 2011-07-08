@@ -14,7 +14,7 @@
 
 #define CALLBACK_INTERVAL			(300)
 
-//#define DEBUG_VARIABLE_DUR
+#define DEBUG_VARIABLE_DUR
 
 typedef enum
 {      
