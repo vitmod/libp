@@ -255,7 +255,12 @@ typedef struct {
     /* What to skip before effectively reading a packet. */
     int skip_to_keyframe;
     uint64_t skip_to_timecode;
+
+    /* Record the position of media */
+    uint64_t media_offset;
 } MatroskaDemuxContext;
+
+#define MAX_OFFSET 0xffffffffffffffff
 
 typedef struct {
     uint64_t duration;
@@ -768,6 +773,18 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
         return 0;  // we reached the end of an unknown size cluster
     if (!syntax[i].id && id != EBML_ID_VOID && id != EBML_ID_CRC32)
         av_log(matroska->ctx, AV_LOG_INFO, "Unknown entry 0x%X\n", id);
+
+    if ((matroska->media_offset == MAX_OFFSET)
+        && ((MATROSKA_ID_CLUSTER == id) 
+        || (MATROSKA_ID_ATTACHMENTS == id) 
+        || (MATROSKA_ID_CHAPTERS == id))) {
+        matroska->media_offset = url_ftell(matroska->ctx->pb) - 4;
+    }
+
+    if ((MATROSKA_ID_TRACKS == id) && (url_ftell(matroska->ctx->pb) > matroska->media_offset)) {
+        return 0;
+    }
+    
     return ebml_parse_elem(matroska, &syntax[i], data);
 }
 
@@ -1235,7 +1252,8 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
     int i, j, k, res;
 
     matroska->ctx = s;
-
+    matroska->media_offset = MAX_OFFSET;
+    
     /* First read the EBML header. */
     if (ebml_parse(matroska, ebml_syntax, &ebml)
         || ebml.version > EBML_VERSION       || ebml.max_size > sizeof(uint64_t)
