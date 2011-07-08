@@ -104,6 +104,7 @@ typedef struct{
 	int 	check_rp_change_cnt;
 	unsigned int	buffer_rp;
 	unsigned int	rp_is_changed;
+	unsigned int	buf_empty;
 } decbuf_status_t;
 
 typedef struct {
