@@ -16,6 +16,8 @@
 
 #include <adec-pts-mgt.h>
 
+#define SET_PTS_DIFFERENCE
+
 /**
  * \brief calc current pts
  * \param audec pointer to audec
@@ -236,6 +238,18 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     audec->adsp_ops.last_audio_pts = pts;
     audec->adsp_ops.last_pts_valid = 1;
 
+#ifdef SET_PTS_DIFFERENCE
+    fd = open("/sys/class/tsync/pts_difference", O_RDWR);
+    if (fd < 0) {
+    	//adec_print("unable to open file %s,err: %s", "/sys/class/tsync/pts_difference", strerror(errno));
+    } else {
+	sprintf(buf, "%ld", abs(pts - systime)/90);
+	//adec_print("pts difference %s\n", buf);
+	write(fd, buf, strlen(buf));
+	close(fd);
+    }
+#endif
+    
     if (abs(pts - systime) < audec->avsync_threshold) {
         return 0;
     }
