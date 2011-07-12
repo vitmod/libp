@@ -705,19 +705,22 @@ int codec_read(codec_para_t *pcodec, void *buffer, int len)
 /* --------------------------------------------------------------------------*/
 int codec_close(codec_para_t *pcodec)
 {	
+    int res = 0;
+
     if (pcodec->has_audio) {
         audio_stop(&pcodec->adec_priv);
 		CODEC_PRINT("[%s]audio stop OK!\n", __FUNCTION__);
     }
 #ifdef SUBTITLE_EVENT
     if (pcodec->has_sub && pcodec->sub_handle >= 0) {
-        codec_close_sub_fd(pcodec->sub_handle);
+        res |= codec_close_sub_fd(pcodec->sub_handle);
     }
 #endif
 
-    codec_close_cntl(pcodec);
+    res |= codec_close_cntl(pcodec);
+    res |= codec_h_close(pcodec->handle);
 
-    return codec_h_close(pcodec->handle);
+    return res;
 }
 
 /* --------------------------------------------------------------------------*/
@@ -1004,10 +1007,14 @@ int codec_open_sub_read(void)
 /* --------------------------------------------------------------------------*/
 int codec_close_sub(codec_para_t *pcodec)
 {
+    int res = CODEC_ERROR_NONE;
+
     if (pcodec) {
-        return codec_h_close(pcodec->sub_handle);
+        if (pcodec->sub_handle) {
+            res = codec_h_close(pcodec->sub_handle);
+        }
     }
-    return CODEC_ERROR_NONE;
+    return res;
 }
 
 /* --------------------------------------------------------------------------*/
@@ -1021,7 +1028,12 @@ int codec_close_sub(codec_para_t *pcodec)
 /* --------------------------------------------------------------------------*/
 int codec_close_sub_fd(CODEC_HANDLE sub_fd)
 {
-    return codec_h_close(sub_fd);
+    int res = CODEC_ERROR_NONE;
+
+    if (sub_fd) {
+        res = codec_h_close(sub_fd);
+    }
+    return res;
 }
 
 /* --------------------------------------------------------------------------*/
@@ -1244,10 +1256,14 @@ int codec_init_cntl(codec_para_t *pcodec)
 /* --------------------------------------------------------------------------*/
 int codec_close_cntl(codec_para_t *pcodec)
 {
+    int res = CODEC_ERROR_NONE;
+
     if (pcodec) {
-        return codec_h_close(pcodec->cntl_handle);
+        if (pcodec->cntl_handle) {
+            res = codec_h_close(pcodec->cntl_handle);
+        }
     }
-    return CODEC_ERROR_NONE;
+    return res;
 }
 
 /* --------------------------------------------------------------------------*/
