@@ -22,6 +22,7 @@
 #define AVFORMAT_NETWORK_H
 
 #include "config.h"
+#include "os_support.h"
 
 #if HAVE_WINSOCK2_H
 #include <winsock2.h>
@@ -67,5 +68,31 @@ static inline void ff_network_close(void)
 /* in os_support.c */
 int inet_aton (const char * str, struct in_addr * add);
 #endif
+
+
+static inline int ff_network_wait_fd(int fd, int write)
+{
+    int ev = write ? POLLOUT : POLLIN;
+    struct pollfd p = { .fd = fd, .events = ev, .revents = 0 };
+    int ret;
+    ret = poll(&p, 1, 100);
+    return ret < 0 ? ff_neterrno() : p.revents & (ev | POLLERR | POLLHUP) ? 0 : AVERROR(EAGAIN);
+}
+
+
+static inline int ff_is_multicast_address(struct sockaddr *addr)
+{
+    if (addr->sa_family == AF_INET) {
+        return IN_MULTICAST(ntohl(((struct sockaddr_in *)addr)->sin_addr.s_addr));
+    }
+#if HAVE_STRUCT_SOCKADDR_IN6
+    if (addr->sa_family == AF_INET6) {
+        return IN6_IS_ADDR_MULTICAST(&((struct sockaddr_in6 *)addr)->sin6_addr);
+    }
+#endif
+
+    return 0;
+}
+
 
 #endif /* AVFORMAT_NETWORK_H */

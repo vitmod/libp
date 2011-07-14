@@ -46,6 +46,7 @@ static const media_type media_array[] = {
     {"p2p", P2P_FILE, STREAM_ES},
     {"asf", ASF_FILE, STREAM_ES},
     {"m4a", MP4_FILE, STREAM_ES},
+    {"rtsp", STREAM_FILE, STREAM_ES},
 };
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
@@ -1350,7 +1351,7 @@ int set_header_info(play_para_t *para)
 
         if (pkt->type == CODEC_VIDEO) {
             if ((para->vstream_info.video_format == VFORMAT_H264) &&
-                (para->file_type != AVI_FILE)) {
+                (para->file_type != AVI_FILE && para->file_type != STREAM_FILE)) {
                 ret = h264_update_frame_header(pkt);
                 if (ret != PLAYER_SUCCESS) {
                     return ret;

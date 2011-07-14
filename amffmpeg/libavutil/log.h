@@ -112,4 +112,7 @@ void av_log_set_level(int);
 void av_log_set_callback(void (*)(void*, int, const char*, va_list));
 void av_log_default_callback(void* ptr, int level, const char* fmt, va_list vl);
 
+const char* av_default_item_name(void* ptr);
+
+
 #endif /* AVUTIL_LOG_H */

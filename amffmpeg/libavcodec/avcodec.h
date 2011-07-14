@@ -257,7 +257,7 @@ enum CodecID {
     CODEC_ID_ADPCM_EA_XAS,
     CODEC_ID_ADPCM_EA_MAXIS_XA,
     CODEC_ID_ADPCM_IMA_ISS,
-
+	CODEC_ID_ADPCM_G722,
     /* AMR */
     CODEC_ID_AMR_NB= 0x12000,
     CODEC_ID_AMR_WB,
@@ -354,6 +354,14 @@ enum CodecType {
     CODEC_TYPE_ATTACHMENT,
     CODEC_TYPE_NB
 };
+#define AVMediaType CodecType 
+
+#define AVMEDIA_TYPE_UNKNOWN CODEC_TYPE_UNKNOWN  
+#define AVMEDIA_TYPE_VIDEO CODEC_TYPE_VIDEO  
+#define AVMEDIA_TYPE_AUDIO CODEC_TYPE_AUDIO  
+#define AVMEDIA_TYPE_SUBTITLE CODEC_TYPE_SUBTITLE  
+#define AVMEDIA_TYPE_DATA CODEC_TYPE_DATA  
+
 
 /**
  * all in native-endian format
@@ -3788,6 +3796,22 @@ int av_parse_video_frame_rate(AVRational *frame_rate, const char *str);
 #define AVERROR_NOENT       AVERROR(ENOENT)  /**< No such file or directory. */
 #define AVERROR_EOF         AVERROR(EPIPE)   /**< End of file. */
 #define AVERROR_PATCHWELCOME    -MKTAG('P','A','W','E') /**< Not yet implemented in FFmpeg. Patches welcome. */
+
+
+#define AVERROR_BSF_NOT_FOUND      (-MKTAG(0xF8,'B','S','F')) ///< Bitstream filter not found
+#define AVERROR_DECODER_NOT_FOUND  (-MKTAG(0xF8,'D','E','C')) ///< Decoder not found
+#define AVERROR_DEMUXER_NOT_FOUND  (-MKTAG(0xF8,'D','E','M')) ///< Demuxer not found
+#define AVERROR_ENCODER_NOT_FOUND  (-MKTAG(0xF8,'E','N','C')) ///< Encoder not found
+#define AVERROR_EXIT               (-MKTAG( 'E','X','I','T')) ///< Immediate exit was requested; the called function should not be restarted
+#define AVERROR_FILTER_NOT_FOUND   (-MKTAG(0xF8,'F','I','L')) ///< Filter not found
+#define AVERROR_INVALIDDATA        (-MKTAG( 'I','N','D','A')) ///< Invalid data found when processing input
+#define AVERROR_MUXER_NOT_FOUND    (-MKTAG(0xF8,'M','U','X')) ///< Muxer not found
+#define AVERROR_OPTION_NOT_FOUND   (-MKTAG(0xF8,'O','P','T')) ///< Option not found
+#define AVERROR_PATCHWELCOME       (-MKTAG( 'P','A','W','E')) ///< Not yet implemented in FFmpeg, patches welcome
+#define AVERROR_PROTOCOL_NOT_FOUND (-MKTAG(0xF8,'P','R','O')) ///< Protocol not found
+#define AVERROR_STREAM_NOT_FOUND   (-MKTAG(0xF8,'S','T','R')) ///< Stream not found
+
+
 
 /**
  * Logs a generic warning message about a missing feature. This function is
