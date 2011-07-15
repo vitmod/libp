@@ -41,6 +41,8 @@ OBJS = adler32.o                                                        \
        sha.o                                                            \
        tree.o                                                           \
        utils.o                                                          \
+       parseutils.o								\
+       eval.o
 
 TESTPROGS = adler32 aes base64 crc des lls md5 pca sha softfloat tree
 TESTPROGS-$(HAVE_LZO1X_999_COMPRESS) += lzo

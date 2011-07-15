@@ -82,7 +82,7 @@ ByteIOContext *av_alloc_put_byte(
     return s;
 }
 
-static void flush_buffer(ByteIOContext *s)
+void flush_buffer(ByteIOContext *s)
 {
     if (s->buf_ptr > s->buffer) {
         if (s->write_packet && !s->error){

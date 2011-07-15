@@ -203,14 +203,25 @@ OBJS-$(CONFIG_RTP_MUXER)                 += rtp.o         \
                                             rtpenc.o      \
                                             rtpenc_h264.o \
                                             avc.o
-OBJS-$(CONFIG_RTSP_DEMUXER)              += rtsp.o
+OBJS-$(CONFIG_RTSP_DEMUXER)              += rtsp.o rtspdec.o
 OBJS-$(CONFIG_SDP_DEMUXER)               += rtsp.o        \
-                                            rdt.o         \
                                             rtp.o         \
+                                            rdt.o		\
                                             rtpdec.o      \
-                                            rtp_asf.o     \
-                                            rtp_h264.o    \
-                                            rtp_vorbis.o
+                                            rtpdec_h264.o    \
+                                            rtpdec_mpeg4.o \
+                                            rtpdec_h263.o \
+						  rtpdec_vp8.o \
+						  rtpdec_qcelp.o \
+						  rtpdec_qdm2.o \
+						  rtpdec_qt.o \
+						  rtpdec_svq3.o \
+						  rtpdec_xiph.o \
+                                            rtpdec_amr.o \
+                                            rtpdec_asf.o \
+                                            rtpdec_latm.o \
+                                           
+
 OBJS-$(CONFIG_SEGAFILM_DEMUXER)          += segafilm.o
 OBJS-$(CONFIG_SHORTEN_DEMUXER)           += raw.o id3v2.o
 OBJS-$(CONFIG_SIFF_DEMUXER)              += siff.o
@@ -263,7 +274,7 @@ OBJS-$(CONFIG_RTP_PROTOCOL)              += rtpproto.o
 OBJS-$(CONFIG_TCP_PROTOCOL)              += tcp.o
 OBJS-$(CONFIG_UDP_PROTOCOL)              += udp.o
 ##/*stream http protocal*/
-OBJS-$(CONFIG_SHTTP_PROTOCOL)            += shttp.o 
+OBJS-$(CONFIG_SHTTP_PROTOCOL)            += shttp.o
 
 # libavdevice dependencies
 OBJS-$(CONFIG_JACK_INDEV)                += timefilter.o
