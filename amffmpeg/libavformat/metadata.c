@@ -129,6 +129,15 @@ void av_metadata_free(AVMetadata **pm)
     }
     av_freep(pm);
 }
+void av_metadata_copy(AVMetadata **dm,AVMetadata *sm,int flags)
+{
+	AVMetadataTag *t = NULL;
+
+    while ((t = av_metadata_get(sm, "", t, AV_METADATA_IGNORE_SUFFIX)))
+        av_metadata_set(dm, t->key, t->value);
+}
+
+
 
 static void metadata_conv(AVMetadata **pm, const AVMetadataConv *d_conv,
                                            const AVMetadataConv *s_conv)

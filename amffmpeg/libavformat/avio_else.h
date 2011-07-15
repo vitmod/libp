@@ -11,9 +11,18 @@
 #define avio_wb16 	put_be16
 #define avio_wb32 	put_be32
 #define avio_read   get_buffer
-#define avio_rl32   get_le32
+
+#define avio_r8		get_byte
+
+#define avio_rl6	get_le16
 #define avio_rb16	get_be16
+
+#define avio_rl24	get_le24
+#define avio_rb24	get_be24
+
+#define avio_rl32   get_le32
 #define avio_rb32	get_be32
+
 
 
 
@@ -51,6 +60,7 @@
 #define ffurl_read_complete url_read_complete
 
 #define av_dict_set(pm,key,value,flags) av_metadata_set(pm,key,value) 
+#define av_dict_copy(m1,m2,flags) 					av_metadata_copy(m1,m2,flags) 
 
 
 
@@ -70,6 +80,7 @@
 #define  ff_udp_set_remote_url(h,url)       udp_set_remote_url(h,url)
 
 int ff_hex_to_data(uint8_t *data, const char *p);
+
 
 
 

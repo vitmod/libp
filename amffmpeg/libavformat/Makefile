@@ -206,11 +206,21 @@ OBJS-$(CONFIG_RTP_MUXER)                 += rtp.o         \
 OBJS-$(CONFIG_RTSP_DEMUXER)              += rtsp.o rtspdec.o
 OBJS-$(CONFIG_SDP_DEMUXER)               += rtsp.o        \
                                             rtp.o         \
+                                            rdt.o		\
                                             rtpdec.o      \
                                             rtpdec_h264.o    \
+                                            rtpdec_mpeg4.o \
+                                            rtpdec_h263.o \
+						  rtpdec_vp8.o \
+						  rtpdec_qcelp.o \
+						  rtpdec_qdm2.o \
+						  rtpdec_qt.o \
+						  rtpdec_svq3.o \
+						  rtpdec_xiph.o \
+                                            rtpdec_amr.o \
+                                            rtpdec_asf.o \
                                             rtpdec_latm.o \
-                                            rdt.o		\
-                                            
+                                           
 
 OBJS-$(CONFIG_SEGAFILM_DEMUXER)          += segafilm.o
 OBJS-$(CONFIG_SHORTEN_DEMUXER)           += raw.o id3v2.o
