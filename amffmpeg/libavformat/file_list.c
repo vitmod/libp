@@ -334,6 +334,8 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 			}
 			else{
 				buffed_time=mgt->current_item->start_time;
+				if(mgt->current_item && (mgt->current_item->flags & ENDLIST_FLAG)&& mgt->current_item->prev!=NULL)
+					buffed_time=mgt->current_item->prev->start_time+mgt->current_item->prev->duration;/*read to end list*/
 			}
 		}
 		//av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
