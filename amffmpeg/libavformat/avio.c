@@ -83,6 +83,10 @@ int ffurl_register_protocol(URLProtocol *protocol, int size)
     return 0;
 }
 
+int av_register_protocol(URLProtocol *protocol){
+	return ffurl_register_protocol(protocol,sizeof(*protocol));
+}
+
 static int url_alloc_for_protocol (URLContext **puc, struct URLProtocol *up,
                                    const char *filename, int flags)
 {

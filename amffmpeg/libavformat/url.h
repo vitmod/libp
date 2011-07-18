@@ -180,9 +180,12 @@ int ffurl_get_file_handle(URLContext *h);
  * @param size the size of the URLProtocol struct referenced
  */
 int ffurl_register_protocol(URLProtocol *protocol, int size);
-#define av_register_protocol(p)	ffurl_register_protocol(p,sizeof(*p));
+int av_register_protocol(URLProtocol *protocol);
+
+
 /* udp.c */
 int ff_udp_set_remote_url(URLContext *h, const char *uri);
 int ff_udp_get_local_port(URLContext *h);
+
 
 #endif /* AVFORMAT_URL_H */

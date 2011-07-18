@@ -294,6 +294,59 @@ int url_ferror(AVIOContext *s)
     return s->error;
 }
 #endif
+int64_t url_ffulltime(AVIOContext *s)
+{
+	int64_t size;
+	if (!s->exseek)
+        return AVERROR(EPIPE);
+	size = s->exseek(s->opaque, 0, AVSEEK_FULLTIME);
+	return size;
+}
+
+int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags)
+{
+	int64_t offset1;
+	if(s->exseek){
+		if((offset1=s->exseek(s->opaque, totime_s, AVSEEK_TO_TIME))>=0)
+		{
+			if (!s->write_flag)
+				s->buf_end = s->buffer;
+			s->buf_ptr = s->buffer;
+			s->pos = 0;/*I think it is the first,pos now*/
+			s->eof_reached=0;/*clear eof error*/
+			return offset1;
+		}
+	}
+	return AVERROR(EPIPE);
+}
+
+int64_t url_fbuffered_time(AVIOContext *s)
+{
+	int64_t bufferedtime;
+	if (!s->exseek)
+        return AVERROR(EPIPE);
+	bufferedtime = s->exseek(s->opaque,0,AVSEEK_BUFFERED_TIME);
+	return bufferedtime;
+}
+int64_t url_buffed_pos(AVIOContext *s)
+{
+	if(!s)
+		return 0;
+	if(s->enabled_lp_buffer)
+		return url_lp_get_buffed_pos(s->opaque);
+	else
+		return s->pos;
+}
+int url_buffering_data(AVIOContext *s,int size)
+{
+	if(s->enabled_lp_buffer)
+		return url_lp_intelligent_buffering(s->opaque,size);
+	else
+		return -1;
+}
+
+
+
 
 void avio_wl32(AVIOContext *s, unsigned int val)
 {
@@ -869,7 +922,7 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 	        av_freep(s);
 	        return AVERROR(EIO);
 	    }
-
+		(*s)->exseek=url_lpexseek;
 	
 	}else{
 	    if (ffio_init_context(*s, buffer, buffer_size,
