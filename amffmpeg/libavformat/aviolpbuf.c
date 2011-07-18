@@ -55,9 +55,9 @@ Can seek back size:
 	min(valid_data_size-valid_data_too_read,data between buffe,rp)
 
 */
-#define LP_BUFFER_DEBUG
+//#define LP_BUFFER_DEBUG
 #define LP_SK_DEBUG
-#define LP_RD_DEBUG
+//#define LP_RD_DEBUG
 #ifdef LP_SK_DEBUG
 #define lp_sprint(level,fmt...) av_log(NULL,level,##fmt)
 #else

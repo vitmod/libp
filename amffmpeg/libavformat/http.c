@@ -139,8 +139,10 @@ static int http_open_cnx(URLContext *h)
 
     ff_url_join(buf, sizeof(buf), "tcp", NULL, hostname, port, NULL);
     err = ffurl_open(&hd, buf, AVIO_FLAG_READ_WRITE);
-    if (err < 0)
+    if (err < 0){
+		av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
         goto fail;
+    }	
 
     s->hd = hd;
     cur_auth_type = s->auth_state.auth_type;
@@ -377,8 +379,10 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
              authstr ? authstr : "");
 
     av_freep(&authstr);
-    if (ffurl_write(s->hd, s->buffer, strlen(s->buffer)) < 0)
+    if ((err=ffurl_write(s->hd, s->buffer, strlen(s->buffer)) )< 0){
+		av_log(h, AV_LOG_INFO, "process_line:ffurl_write failed,%d\n",err);
         return AVERROR(EIO);
+    }	
 
     /* init input buffer */
     s->buf_ptr = s->buffer;
@@ -402,8 +406,8 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
             return AVERROR(EIO);
 
         av_dlog(NULL, "header='%s'\n", line);
-		av_log(h, AV_LOG_INFO, "process_line:%s\n",line);
         err = process_line(h, line, s->line_count, new_location);
+		av_log(h, AV_LOG_INFO, "process_line:%s(ret=%d)\n",line,err );
         if (err < 0)
             return err;
         if (err == 0)

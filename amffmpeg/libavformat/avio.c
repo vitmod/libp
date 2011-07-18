@@ -298,6 +298,7 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
                 fast_retries--;
             else
                 usleep(1000);
+			av_log(NULL,AV_LOG_INFO,"read/write time out,retry=%d\n",fast_retries);
         } else if (ret < 1)
             return ret < 0 ? ret : len;
         if (ret)

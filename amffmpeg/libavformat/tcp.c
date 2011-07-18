@@ -45,7 +45,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     char buf[256];
     int ret;
     socklen_t optlen;
-    int timeout = 50;
+    int timeout = 500;
     char hostname[1024],proto[1024],path[1024];
     char portstr[10];
 
@@ -121,6 +121,9 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
                 break;
         }
         if (ret <= 0) {
+			 av_log(h, AV_LOG_ERROR,
+                   "TCP connection to %s:%d timeout failed!\n",
+                   hostname, port);
             ret = AVERROR(ETIMEDOUT);
             goto fail;
         }
