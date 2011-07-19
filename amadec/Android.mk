@@ -31,3 +31,26 @@ PRODUCT_COPY_FILES += $(install_pairs)
 
 include $(BUILD_STATIC_LIBRARY)
 
+
+include $(CLEAR_VARS)
+
+LOCAL_CFLAGS := \
+        -fPIC -D_POSIX_SOURCE
+
+LOCAL_C_INCLUDES:= \
+    $(LOCAL_PATH)/include \
+
+LOCAL_SRC_FILES := \
+           adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
+           dsp/audiodsp-ctl.c audio_out/android-out.cpp
+
+LOCAL_MODULE := libamadec
+
+LOCAL_ARM_MODE := arm
+
+LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc
+
+LOCAL_PRELINK_MODULE := false
+
+include $(BUILD_SHARED_LIBRARY)
+

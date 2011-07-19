@@ -8,5 +8,21 @@ LOCAL_C_INCLUDES :=		\
 LOCAL_CFLAGS += $(FFCFLAGS)
 LOCAL_MODULE := $(FFNAME)
 # Reset CC as it's overwritten by common.mk
-CC := $(HOST_CC)
 include $(BUILD_STATIC_LIBRARY)
+
+
+include $(CLEAR_VARS)
+include $(LOCAL_PATH)/../common.mk
+LOCAL_SRC_FILES := $(FFFILES)
+LOCAL_C_INCLUDES :=		\
+	$(LOCAL_PATH)		\
+	$(LOCAL_PATH)/..	\
+	external/zlib
+LOCAL_CFLAGS += $(FFCFLAGS)
+LOCAL_MODULE := $(FFNAME)
+LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc 
+LOCAL_PRELINK_MODULE := false
+include $(BUILD_SHARED_LIBRARY)
+
+CC := $(HOST_CC)
+
