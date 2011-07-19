@@ -1887,10 +1887,12 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
                     pkt->flags = is_keyframe;
                 pkt->stream_index = st->index;
 
+                #if 0
                 if (track->ms_compat)
                     pkt->dts = timecode;
                 else
-                    pkt->pts = timecode;
+                #endif
+                pkt->pts = timecode;
                 pkt->pos = pos;
                 if (st->codec->codec_id == CODEC_ID_TEXT)
                     pkt->convergence_duration = duration;
