@@ -1519,6 +1519,7 @@ static int mpegts_read_header(AVFormatContext *s,
     }
     ts->stream = s;
     ts->auto_guess = 0;
+    s->orig_packet_size = ts->raw_packet_size;
 
     if (s->iformat == &ff_mpegts_demuxer) {
         /* normal demux */
