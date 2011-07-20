@@ -526,14 +526,17 @@ static int check_stop_cmd(play_para_t *player)
 {
     player_cmd_t *msg = NULL;
     int ret = -1;
+
     msg = get_message(player);
-    if (msg) {
+    while (msg && ret!=1) {
         log_print("pid[%d]::[player_thread:%d]cmd=%x set_mode=%x info=%x param=%d\n", player->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param);
         if (msg->ctrl_cmd & CMD_STOP) {
             ret = 1;
         }
         message_free(msg);
-        msg = NULL;
+		msg=NULL;
+		if(ret!=1)/*maybe we have more than one msg,and the last is STOP cmd*/
+       		msg = get_message(player);
     }
     return ret;
 }
@@ -969,7 +972,13 @@ release0:
 	set_black_policy(player->playctrl_info.black_out);
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
     if (get_player_state(player) == PLAYER_ERROR) {
-        set_player_error_no(player, ret);
+		if(check_stop_cmd(player)==1){
+			/*we have a player end msg,ignore the error*/
+			set_player_state(player,PLAYER_STOPED);
+			set_player_error_no(player, 0);
+		}else{
+        	set_player_error_no(player, ret);
+		}
     }
     update_playing_info(player);
     update_player_states(player, 1);
