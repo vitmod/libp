@@ -956,6 +956,11 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
                 stream_type == STREAM_TYPE_PRIVATE_DATA)
                 mpegts_find_stream_type(st, desc_tag, DESC_types);
 
+            if ((st->codec->codec_id == CODEC_ID_H264) && (match_ext(ts->stream->filename, "mvc"))) {
+                av_log(NULL, AV_LOG_ERROR, "override codec_id to MVC\n");
+                st->codec->codec_id = CODEC_ID_H264MVC;
+            }
+
             switch(desc_tag) {
             case 0x56: /* DVB teletext descriptor */
                 language[0] = get8(&p, desc_end);
@@ -1001,6 +1006,7 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
         }
         p = desc_list_end;
     }
+
     /* all parameters are there */
     mpegts_close_filter(ts, filter);
 }

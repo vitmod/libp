@@ -392,10 +392,10 @@ static void get_stream_info(play_para_t *p_para)
 		}
     }
 
-	if (p_para->vstream_info.video_format == VFORMAT_H264 && video_index != -1){
+	if (((p_para->vstream_info.video_format == VFORMAT_H264) || (p_para->vstream_info.video_format == VFORMAT_H264MVC)) && video_index != -1){
 		if (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_H264 &&
-			p_para->vstream_info.video_height > 1088){
-			log_error("[%s]can't support h264 height exceed 1088(%d)\n", __FUNCTION__,p_para->vstream_info.video_height);
+			p_para->vstream_info.video_height > 1080){
+			log_error("[%s]can't support h264 height exceed 1080(%d)\n", __FUNCTION__,p_para->vstream_info.video_height);
 			p_para->vstream_info.has_video = 0; 
 		}
 	}

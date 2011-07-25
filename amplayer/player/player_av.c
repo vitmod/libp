@@ -172,6 +172,9 @@ vformat_t video_type_convert(enum CodecID id)
     case CODEC_ID_H264:
         format = VFORMAT_H264;
         break;
+    case CODEC_ID_H264MVC:
+        format = VFORMAT_H264MVC;
+        break;
 
     case CODEC_ID_MJPEG:
         format = VFORMAT_MJPEG;
@@ -288,6 +291,11 @@ vdec_type_t video_codec_type_convert(unsigned int id)
 
     case CODEC_ID_H264:
         log_print("[video_codec_type_convert]VIDEO_DEC_FORMAT_H264(0x%x)\n", id);
+        dec_type = VIDEO_DEC_FORMAT_H264;
+        break;
+
+    case CODEC_ID_H264MVC:
+        log_print("[video_codec_type_convert]VIDEO_DEC_FORMAT_H264MVC(0x%x)\n", id);
         dec_type = VIDEO_DEC_FORMAT_H264;
         break;
 
@@ -1350,7 +1358,7 @@ int set_header_info(play_para_t *para)
         }
 
         if (pkt->type == CODEC_VIDEO) {
-            if ((para->vstream_info.video_format == VFORMAT_H264) &&
+            if (((para->vstream_info.video_format == VFORMAT_H264) || (para->vstream_info.video_format == VFORMAT_H264MVC)) &&
                 (para->file_type != AVI_FILE && para->file_type != STREAM_FILE)) {
                 ret = h264_update_frame_header(pkt);
                 if (ret != PLAYER_SUCCESS) {
