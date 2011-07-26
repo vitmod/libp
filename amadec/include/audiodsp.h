@@ -27,6 +27,9 @@ ADEC_BEGIN_DECLS
 #define AUDIODSP_REGISTER_FIRMWARE          _IOW('a',6,long)
 #define AUDIODSP_UNREGISTER_ALLFIRMWARE     _IOW('a',7,long)
 
+#ifdef ENABLE_WAIT_FORMAT
+#define AUDIODSP_WAIT_FORMAT                 _IOW('a',11,long)
+#endif
 
 #define AUDIODSP_GET_CHANNELS_NUM           _IOR('r',1,long)
 #define AUDIODSP_GET_SAMPLERATE             _IOR('r',2,long)
