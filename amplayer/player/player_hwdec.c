@@ -878,7 +878,7 @@ int pre_header_feeding(play_para_t *para)
             if (ret != PLAYER_SUCCESS) {
                 return ret;
             }
-        } else if (VFORMAT_H264 == para->vstream_info.video_format) {
+        } else if ((VFORMAT_H264 == para->vstream_info.video_format) || (VFORMAT_H264MVC == para->vstream_info.video_format)) {
             ret = h264_write_header(para);
             if (ret != PLAYER_SUCCESS) {
                 return ret;

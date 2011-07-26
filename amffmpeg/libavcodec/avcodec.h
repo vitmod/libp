@@ -222,6 +222,9 @@ enum CodecID {
     CODEC_ID_DFA,
     CODEC_ID_8SVX_RAW,
 
+    /* H264 MVC type */
+    CODEC_ID_H264MVC,
+
     /* various PCM "codecs" */
     CODEC_ID_PCM_S16LE= 0x10000,
     CODEC_ID_PCM_S16BE,
