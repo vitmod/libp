@@ -231,7 +231,9 @@ static void *adec_message_loop(void *args)
             break;
         }
 
-        usleep(100000);
+	if(!audec->need_stop){
+            usleep(100000);
+	}
     }
 
     do {
