@@ -50,9 +50,6 @@ int main(int argc,char **argv)
 	VideoPara.pid=2064;
 	AudioPara.aFmt=AFORMAT_MPEG;
 	AudioPara.pid=2068;
-	VideoPara.nFrameRate=24;
-	VideoPara.nVideoHeight=480;
-	VideoPara.nVideoWidth=640;
 	player->InitVideo(&VideoPara);
 	player->InitAudio(&AudioPara);
 	if(!player->StartPlay()){
@@ -64,11 +61,11 @@ int main(int argc,char **argv)
 		printf("open file %s failed\n",filename);
 		return 0;
 	}
-	//player->SetVideoWindow(0,0,640,480);//
+	player->SetVideoWindow(0,0,-1,-1);//
 	player->SetColorKey(1,0);
 	player->VideoShow();
-	 osd_blank("/sys/class/graphics/fb0/blank",1);
-    osd_blank("/sys/class/graphics/fb1/blank",1);
+	osd_blank("/sys/class/graphics/fb0/blank",1);//clear all osd0 ,don't need it on APK
+    osd_blank("/sys/class/graphics/fb1/blank",1);//clear all osd1 ,don't need it on APK
 	while(!feof(file)){
 		
 		if(bufdatalen<=0){
@@ -83,11 +80,12 @@ int main(int argc,char **argv)
 		}
 		writelen=player->WriteData(buffer,bufdatalen);
 		printf("WriteData bufdatalen=%d,writelen=%d\n",bufdatalen,writelen);
-		if(writelen!=bufdatalen ){
+		if(writelen>0 && writelen!=bufdatalen ){
 			memcpy(buffer,buffer+writelen,bufdatalen-writelen);
 			usleep(10000);
 		}
-		bufdatalen-=writelen;
+		if(writelen>0)
+			bufdatalen-=writelen;
 	}
 	player->VideoHide();
 	printf("playfile %s end\n",filename);
