@@ -17,4 +17,3 @@ LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils
 
 include $(BUILD_EXECUTABLE)
 
-
