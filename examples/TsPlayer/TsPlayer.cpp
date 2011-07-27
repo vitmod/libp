@@ -108,7 +108,7 @@ bool CTsPlayer::StartPlay()
 	int ret;
 	memset(pcodec,0,sizeof(*pcodec));
 	pcodec->stream_type=STREAM_TYPE_TS;
-	pcodec->video_type == vPara.vFmt;
+	pcodec->video_type = vPara.vFmt;
 	pcodec->has_video=1;
 	pcodec->audio_type= aPara.aFmt;
 	pcodec->has_audio=1;
@@ -119,10 +119,6 @@ bool CTsPlayer::StartPlay()
         pcodec->am_sysinfo.param = (void *)(0);
     }
 	printf("set %d,%d,%d,%d\n",vPara.vFmt,aPara.aFmt,vPara.pid,aPara.pid);
-	//pcodec->am_sysinfo.rate = 96000 / vPara.nFrameRate;
-    //pcodec->am_sysinfo.height = vPara.nVideoHeight;
-   // pcodec->am_sysinfo.width = vPara.nVideoWidth;;
-	//pcodec->am_sysinfo.ratio=1;
 	pcodec->noblock = 0;
 	/*other setting*/
 	ret=codec_init(pcodec);
