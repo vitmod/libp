@@ -65,7 +65,7 @@ int main(int argc,char **argv)
 	player->SetColorKey(1,0);
 	player->VideoShow();
 	osd_blank("/sys/class/graphics/fb0/blank",1);//clear all osd0 ,don't need it on APK
-    osd_blank("/sys/class/graphics/fb1/blank",1);//clear all osd1 ,don't need it on APK
+    osd_blank("/sys/class/graphics/fb1/blank",0);//clear all osd1 ,don't need it on APK
 	while(!feof(file)){
 		
 		if(bufdatalen<=0){
@@ -89,6 +89,8 @@ int main(int argc,char **argv)
 	}
 	player->VideoHide();
 	printf("playfile %s end\n",filename);
+	osd_blank("/sys/class/graphics/fb0/blank",0);//clear all osd0 ,don't need it on APK
+    osd_blank("/sys/class/graphics/fb1/blank",0);//clear all osd1 ,don't need it on APK
 }
 
 

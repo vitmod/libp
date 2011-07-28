@@ -594,7 +594,13 @@ static int non_raw_read(play_para_t *para)
                 if (AVERROR_EOF != ret) {
                     return PLAYER_RD_FAILED;
                 } else {
-                    para->playctrl_info.read_end_flag = 1;
+                  
+					if(para->playctrl_info.read_end_flag==0 && av_new_packet(pkt->avpkt,64*1024)==0){
+						memset(pkt->avpkt->data,0,64*1024);/*rubish data to audio buffer to let else data out*/
+						pkt->avpkt->stream_index=audio_idx;
+						ret=0;//
+					}
+					 para->playctrl_info.read_end_flag = 1;
                     log_print("non_raw_read: read end!\n");
 #if DUMP_READ
                     if (fdr > 0) {
