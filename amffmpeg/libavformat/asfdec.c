@@ -193,7 +193,7 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
     get_byte(pb);
     get_byte(pb);
     memset(&asf->asfid2avid, -1, sizeof(asf->asfid2avid));
-    for(;;) {
+    for(;!url_feof(pb) && !url_ferror(pb);) {
         get_guid(pb, &g);
         gsize = get_le64(pb);
         dprintf(s, "%08"PRIx64": ", url_ftell(pb) - 24);
@@ -625,6 +625,9 @@ static int ff_asf_get_packet(AVFormatContext *s, ByteIOContext *pb)
         e= get_byte(pb);
         if(c == 0x82 && !d && !e)
             break;
+		if(url_feof(pb) || url_ferror(pb)){
+			break;
+		}
     }
 
     if (c != 0x82) {
@@ -776,7 +779,7 @@ static int ff_asf_parse_packet(AVFormatContext *s, ByteIOContext *pb, AVPacket *
     ASFContext *asf = s->priv_data;
     ASFStream *asf_st = 0;
     for (;;) {
-        if(url_feof(pb) || (url_ftell(pb) > s->valid_offset))
+        if(url_ferror(pb) || url_feof(pb) || (url_ftell(pb) > s->valid_offset))
         {
             av_log(NULL, AV_LOG_INFO, "[ff_asf_parse_packet] feof\n");
             return AVERROR_EOF;
