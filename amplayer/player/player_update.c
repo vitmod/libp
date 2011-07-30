@@ -618,11 +618,11 @@ static void update_current_time(play_para_t *p_para)
 			p_para->state.first_time = time;
 		}
 
-		if (p_para->state.first_time > 0) {
-			if (p_para->state.first_time < (unsigned int)p_para->state.start_time) {
+		if ((unsigned int)p_para->state.first_time > 0) {
+			if ((unsigned int)p_para->state.first_time < (unsigned int)p_para->state.start_time) {
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                 p_para->state.start_time = p_para->state.first_time;
-            } else if ((p_para->state.first_time - (unsigned int)p_para->state.start_time) >  0 &&
+            } else if (((unsigned int)p_para->state.first_time - (unsigned int)p_para->state.start_time) >  0 &&
                        (p_para->state.start_time == 0) &&
                        p_para->playctrl_info.time_point == 0) {
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
