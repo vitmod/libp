@@ -42,6 +42,8 @@ const char *avformat_license(void);
 #include "libavcodec/avcodec.h"
 #include "libavutil/dict.h"
 
+#include "divxdrm.h"
+
 #include "avio.h"
 #include "libavformat/version.h"
 
@@ -883,6 +885,11 @@ typedef struct AVFormatContext {
     int seekable;	
 
 	uint64_t video_avg_frame_time, audio_avg_frame_time;
+
+	//--***********************************************
+    /* added by C.S for divx drm certification:drm information */
+    drm_t       drm;
+//--***********************************************  
 } AVFormatContext;
 
 typedef struct AVPacketList {
