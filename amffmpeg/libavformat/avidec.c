@@ -1028,7 +1028,7 @@ resync:
     }
 
     memset(d, -1, sizeof(int)*8);
-    for(i=sync=url_ftell(pb); !url_feof(pb) && !url_ferror(pb); i++) {
+    for(i=sync=url_ftell(pb); !url_feof(pb); i++) {
         int j;
 
         // if exceed valid data, return EOF

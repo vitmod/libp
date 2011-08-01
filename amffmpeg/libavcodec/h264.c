@@ -2429,7 +2429,7 @@ static av_always_inline void hl_decode_mb_internal(H264Context *h, int simple){
     int *block_offset = &h->block_offset[0];
     const int transform_bypass = !simple && (s->qscale == 0 && h->sps.transform_bypass);
     /* is_h264 should always be true if SVQ3 is disabled. */
-    const int is_h264 = !CONFIG_SVQ3_DECODER || simple || s->codec_id == CODEC_ID_H264 || s->codec_id == CODEC_ID_H264MVC;
+    const int is_h264 = !CONFIG_SVQ3_DECODER || simple || s->codec_id == CODEC_ID_H264;
     void (*idct_add)(uint8_t *dst, DCTELEM *block, int stride);
     void (*idct_dc_add)(uint8_t *dst, DCTELEM *block, int stride);
 
@@ -6679,7 +6679,8 @@ static int decode_slice(struct AVCodecContext *avctx, void *arg){
 
     s->mb_skip_run= -1;
 
-    h->is_complex = FRAME_MBAFF || s->picture_structure != PICT_FRAME || s->codec_id != CODEC_ID_H264 || s->codec_id != CODEC_ID_H264MVC || (CONFIG_GRAY && (s->flags&CODEC_FLAG_GRAY));
+    h->is_complex = FRAME_MBAFF || s->picture_structure != PICT_FRAME || s->codec_id != CODEC_ID_H264 ||
+                    (CONFIG_GRAY && (s->flags&CODEC_FLAG_GRAY));
 
     if( h->pps.cabac ) {
         int i;
@@ -7656,12 +7657,6 @@ static int decode_nal_units(H264Context *h, const uint8_t *buf, int buf_size){
         case NAL_FILLER_DATA:
         case NAL_SPS_EXT:
         case NAL_AUXILIARY_SLICE:
-            break;
-        case NAL_14:
-        case NAL_15:
-        case NAL_20:
-            av_log(avctx, AV_LOG_ERROR, "NAL type: %d for MVC\n", h->nal_unit_type);
-            avctx->codec_id == CODEC_ID_H264MVC;
             break;
         default:
             av_log(avctx, AV_LOG_DEBUG, "Unknown NAL code: %d (%d bits)\n", h->nal_unit_type, bit_length);

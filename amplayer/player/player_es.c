@@ -39,10 +39,9 @@ static void vcodec_info_init(play_para_t *p_para, codec_para_t *v_codec)
     v_codec->am_sysinfo.ratio   = vinfo->video_ratio;
     v_codec->noblock = !!p_para->buffering_enable;
     if ((vinfo->video_format == VFORMAT_MPEG4)
-        || (vinfo->video_format == VFORMAT_H264)
-        || (vinfo->video_format == VFORMAT_H264MVC)) {
+        || (vinfo->video_format == VFORMAT_H264)) {
         v_codec->am_sysinfo.param = (void *)EXTERNAL_PTS;
-        if (((vinfo->video_format == VFORMAT_H264) || (vinfo->video_format == VFORMAT_H264MVC)) && (p_para->file_type == AVI_FILE)) {
+        if ((vinfo->video_format == VFORMAT_H264) && (p_para->file_type == AVI_FILE)) {
             v_codec->am_sysinfo.param     = (void *)(EXTERNAL_PTS | SYNC_OUTSIDE);
         }
     } else if ((vinfo->video_format == VFORMAT_VC1) && (p_para->file_type == AVI_FILE)) {

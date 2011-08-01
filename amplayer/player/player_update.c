@@ -614,25 +614,8 @@ static void update_current_time(play_para_t *p_para)
         }
 
         log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d\n", time / PTS_FREQ, ((unsigned int)p_para->astream_info.start_time / PTS_FREQ), ((unsigned int)p_para->vstream_info.start_time / PTS_FREQ), p_para->state.last_time);
-		if (p_para->state.first_time == 0) {
-			p_para->state.first_time = time;
-		}
 
-		if ((unsigned int)p_para->state.first_time > 0) {
-			if ((unsigned int)p_para->state.first_time < (unsigned int)p_para->state.start_time) {
-                log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
-                p_para->state.start_time = p_para->state.first_time;
-            } else if (((unsigned int)p_para->state.first_time - (unsigned int)p_para->state.start_time) >  0 &&
-                       (p_para->state.start_time == 0) &&
-                       p_para->playctrl_info.time_point == 0) {
-                log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
-                p_para->state.start_time = p_para->state.first_time;
-            }            
-		
-		}
-		
         if (time > 0) {
-			#if 0
             if (time < (unsigned int)p_para->state.start_time) {
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                 p_para->state.start_time = time;
@@ -642,7 +625,7 @@ static void update_current_time(play_para_t *p_para)
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                 p_para->state.start_time = time;
             }
-			#endif
+
             if ((unsigned int)p_para->state.start_time > 0) {
                 log_debug("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, p_para->state.start_time);
                 time -= p_para->state.start_time;
@@ -953,10 +936,6 @@ static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abu
 		get_player_state(p_para) == PLAYER_RUNNING) {
         if (!p_para->abuffer.rp_is_changed) {
             p_para->abuffer.check_rp_change_cnt --;
-			if (!p_para->playctrl_info.pts_valid && p_para->abuffer.data_level == 0) {
-				p_para->abuffer.buf_empty ++;
-			}
-			//log_print("[%s:%d]arp not change, cnt=%d! empty=%d\n", __FUNCTION__, __LINE__, p_para->abuffer.check_rp_change_cnt, p_para->abuffer.buf_empty);
         } else {
             p_para->abuffer.check_rp_change_cnt = CHECK_AUDIO_HALT_CNT;
             if (!p_para->playctrl_info.avsync_enable) {
@@ -969,10 +948,6 @@ static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abu
             p_para->abuffer.check_rp_change_cnt <= 0) {
             set_tsync_enable(0);
             p_para->playctrl_info.avsync_enable = 0;
-			if (p_para->abuffer.buf_empty == CHECK_AUDIO_HALT_CNT && p_para->playctrl_info.pts_valid == 0) {
-				p_para->playctrl_info.pts_valid = 1;
-				p_para->abuffer.buf_empty = 0;
-			}
             log_print("[%s:%d]arp not alived, disable sync\n", __FUNCTION__, __LINE__);
             p_para->abuffer.check_rp_change_cnt = CHECK_AUDIO_HALT_CNT;
         }

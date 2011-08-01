@@ -16,6 +16,7 @@ PLATFORM=$NDK_ROOT/build/platforms/android-8/arch-arm
 	--disable-doc \
 	--disable-mpegaudio-hp \
 	--disable-encoders \
+	--disable-decoder=h264 \
 	--disable-muxers \
 	--disable-filters \
 	--disable-altivec \

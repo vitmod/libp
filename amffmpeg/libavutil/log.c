@@ -40,10 +40,6 @@
 
 int av_log_level = AV_LOG_INFO;
 
-const char* av_default_item_name(void* ptr){
-    return (*(AVClass**)ptr)->class_name;
-}
-
 void av_log_default_callback(void* ptr, int level, const char* fmt, va_list vl)
 {
     static int print_prefix=1;

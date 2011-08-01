@@ -108,10 +108,7 @@ enum {
     NAL_END_STREAM,
     NAL_FILLER_DATA,
     NAL_SPS_EXT,
-    NAL_14,
-    NAL_15,
-    NAL_AUXILIARY_SLICE=19,
-    NAL_20=20
+    NAL_AUXILIARY_SLICE=19
 };
 
 /**

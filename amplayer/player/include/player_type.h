@@ -14,7 +14,7 @@
 
 #define CALLBACK_INTERVAL			(300)
 
-#define DEBUG_VARIABLE_DUR
+//#define DEBUG_VARIABLE_DUR
 
 typedef enum
 {      
@@ -166,7 +166,6 @@ typedef struct player_info
 	int last_time;		
 	int error_no;  
 	int start_time;
-	int first_time;
 	int pts_video;
 	//int pts_pcrscr;
 	int current_pts;

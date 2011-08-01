@@ -526,17 +526,14 @@ static int check_stop_cmd(play_para_t *player)
 {
     player_cmd_t *msg = NULL;
     int ret = -1;
-
     msg = get_message(player);
-    while (msg && ret!=1) {
+    if (msg) {
         log_print("pid[%d]::[player_thread:%d]cmd=%x set_mode=%x info=%x param=%d\n", player->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param);
         if (msg->ctrl_cmd & CMD_STOP) {
             ret = 1;
         }
         message_free(msg);
-		msg=NULL;
-		if(ret!=1)/*maybe we have more than one msg,and the last is STOP cmd*/
-       		msg = get_message(player);
+        msg = NULL;
     }
     return ret;
 }
@@ -663,8 +660,9 @@ void *player_thread(play_para_t *player)
                 update_player_states(player, 1);
                 goto release0;
             }
-            ffmpeg_buffering_data(player);
-            player_thread_wait(player, 100 * 1000);            
+            if (ffmpeg_buffering_data(player) < 0) {
+                player_thread_wait(player, 100 * 1000);
+            }
         } while (1);
     }
     
@@ -971,13 +969,7 @@ release0:
 	set_black_policy(player->playctrl_info.black_out);
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
     if (get_player_state(player) == PLAYER_ERROR) {
-		if(check_stop_cmd(player)==1){
-			/*we have a player end msg,ignore the error*/
-			set_player_state(player,PLAYER_STOPED);
-			set_player_error_no(player, 0);
-		}else{
-        	set_player_error_no(player, ret);
-		}
+        set_player_error_no(player, ret);
     }
     update_playing_info(player);
     update_player_states(player, 1);

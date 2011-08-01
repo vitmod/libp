@@ -206,7 +206,6 @@ int url_lpread(URLContext *s,unsigned char * buf,int size)
 			if(rlen<=0)
 				{
 				lp_unlock(&lp->mutex);
-				lp_rprint( AV_LOG_INFO,"url_lpread=%d£¬(size-len)=%d\n",rlen,(size-len));
 				return ((size-len)>0)?(size-len):rlen;
 				}
 			lp_lock(&lp->mutex);
@@ -229,7 +228,6 @@ int url_lpread(URLContext *s,unsigned char * buf,int size)
 		LP_ASSERT(lp->rp<lp->buffer_end);
 	}
 	lp_unlock(&lp->mutex);
-	lp_rprint(AV_LOG_INFO,"url_lpread (tbuf-buf)=%d\n",(tbuf-buf));
 	return (tbuf-buf);
 }
 
@@ -327,34 +325,21 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 			(lp->file_size<=0 || (lp->file_size>0 && offset1<lp->file_size/2)))/*if offset1>filesize/2,thendo first seek end,don't buffer*/
 	{/*seek to buffer end,but buffer is not full,do read seek*/
 		int read_offset,ret;
-		int seek_retry=3;
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer read seek forward offset=%lld offset1=%lld  whence=%d\n",offset,offset1,whence);
 		lp->rp+=valid_data_can_seek_forward;
 		if(lp->rp>=lp->buffer_end)
 			lp->rp-=lp->buffer_size;
 		lp_unlock(&lp->mutex);
 		read_offset=offset1-valid_data_can_seek_forward;
-		while(read_offset>0&&seek_retry>0){
+		while(read_offset>0){
 			ret=url_lpread(s,NULL,read_offset);/*do read seek*/
 			if(ret>0)
 				read_offset-=ret;
-			else if(ret==AVERROR(EAGAIN)){
-				lp_sprint( AV_LOG_INFO, "do read seek retrurn ,seek_retry=%d\n",seek_retry);
-				seek_retry--;
-			}else{				
-				/*get error,exit now*/
+			else if(ret!=AVERROR(EAGAIN)){
+				offset=ret;/*get error,exit now*/
 				break;
 			}
 		}
-		if(read_offset!=0){
-			lp_sprint( AV_LOG_INFO, "do read seek error,ret=%d\n",ret);
-			offset1=s->prot->url_seek(s, offset, SEEK_SET);/*seek error*/
-			lp->rp=lp->buffer;
-			lp->wp=lp->buffer;
-			lp->valid_data_size=0;
-			lp->pos=offset;
-			offset=offset1;/*for return*/
-		} 
 		lp_lock(&lp->mutex);
 	}else
 	{/*not support in buffer seek,do low level seek now*/

@@ -12,8 +12,6 @@ LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
            dsp/audiodsp-ctl.c audio_out/android-out.cpp
 
-LOCAL_CFLAGS += -DENABLE_WAIT_FORMAT
-
 LOCAL_MODULE := libamadec
 
 LOCAL_ARM_MODE := arm

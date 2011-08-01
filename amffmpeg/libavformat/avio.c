@@ -148,7 +148,6 @@ int url_open_h(URLContext **puc, const char *filename, int flags, const char *he
     return AVERROR(ENOENT);
 }
 
-
 int url_read(URLContext *h, unsigned char *buf, int size)
 {
     int ret;

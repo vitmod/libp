@@ -73,7 +73,7 @@ struct am_packet;
 #define SUBTITLE_SYNC_HIGH  0x414d4c55
 #define SUBTITLE_SYNC_LOW   0xaa000000
 
-#define DEBUG_VARIABLE_DUR
+//#define DEBUG_VARIABLE_DUR
 
 typedef struct message_pool {
     player_cmd_t *message_list[MESSAGE_MAX];
@@ -104,7 +104,6 @@ typedef struct{
 	int 	check_rp_change_cnt;
 	unsigned int	buffer_rp;
 	unsigned int	rp_is_changed;
-	unsigned int	buf_empty;
 } decbuf_status_t;
 
 typedef struct {

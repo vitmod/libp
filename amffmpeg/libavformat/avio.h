@@ -70,16 +70,10 @@ typedef struct URLPollEntry {
 #define URL_WRONLY 1
 #define URL_RDWR   2
 
-#define AVIO_FLAG_READ  URL_RDONLY                                     /**< read-only */
-#define AVIO_FLAG_WRITE URL_WRONLY                                    /**< write-only */
-#define AVIO_FLAG_READ_WRITE (URL_RDWR)  /**< read-write pseudo flag */
-
 
 #define URL_MINI_BUFFER	0x20000000
 #define URL_NO_LP_BUFFER	0x40000000
 
-
-#define AVIO_FLAG_NONBLOCK 8
 
 typedef int URLInterruptCB(void);
 
@@ -476,9 +470,6 @@ int udp_set_remote_url(URLContext *h, const char *uri);
 int udp_get_local_port(URLContext *h);
 #if (LIBAVFORMAT_VERSION_MAJOR <= 52)
 int udp_get_file_handle(URLContext *h);
-#endif
-#ifndef SPACE_CHARS
-#define SPACE_CHARS " \t\r\n"
 #endif
 
 #endif /* AVFORMAT_AVIO_H */
