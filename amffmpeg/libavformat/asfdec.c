@@ -735,6 +735,8 @@ static int ff_asf_get_packet(AVFormatContext *s, AVIOContext *pb)
         e= avio_r8(pb);
         if(c == 0x82 && !d && !e)
             break;
+		if(url_interrupt_cb())
+			break;
     }
 
     if (c != 0x82) {
@@ -746,6 +748,8 @@ static int ff_asf_get_packet(AVFormatContext *s, AVIOContext *pb)
          */
         if (pb->error == AVERROR(EAGAIN))
             return AVERROR(EAGAIN);
+		if(url_interrupt_cb())
+			return AVERROR_EXIT;
         if (!url_feof(pb))
             av_log(s, AV_LOG_ERROR, "ff asf bad header %x  at:%"PRId64"\n", c, avio_tell(pb));
     }
@@ -902,6 +906,8 @@ static int ff_asf_parse_packet(AVFormatContext *s, AVIOContext *pb, AVPacket *pk
         int ret;
         if(url_feof(pb))
             return AVERROR_EOF;
+		if(url_interrupt_cb())
+            return AVERROR_EXIT;
         if (asf->packet_size_left < FRAME_HEADER_SIZE
             || asf->packet_segments < 1) {
             //asf->packet_size_left <= asf->packet_padsize) {
