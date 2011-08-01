@@ -930,6 +930,11 @@ int ff_parse_mpeg2_descriptor(AVFormatContext *fc, AVStream *st, int stream_type
         stream_type == STREAM_TYPE_PRIVATE_DATA)
         mpegts_find_stream_type(st, desc_tag, DESC_types);
 
+	if ((st->codec->codec_id == CODEC_ID_H264) && (av_match_ext(fc->filename, "mvc"))) {
+		av_log(NULL, AV_LOG_ERROR, "override codec_id to MVC\n");
+		st->codec->codec_id = CODEC_ID_H264MVC;
+	}
+
     switch(desc_tag) {
     case 0x1F: /* FMC descriptor */
         get16(pp, desc_end);
