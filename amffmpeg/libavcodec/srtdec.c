@@ -109,7 +109,7 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
                                 if (stack[sptr-1].param[i][0])
                                     for (j=sptr-2; j>=0; j--)
                                         if (stack[j].param[i][0]) {
-                                            out += snprintf(out, out_end-out,
+                                            out += snprintf(out, out_end-out,"%s",
                                                             stack[j].param[i]);
                                             break;
                                         }
@@ -145,7 +145,7 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
                             }
                             for (i=0; i<PARAM_NUMBER; i++)
                                 if (stack[sptr].param[i][0])
-                                    out += snprintf(out, out_end-out,
+                                    out += snprintf(out, out_end-out,"%s",
                                                     stack[sptr].param[i]);
                         }
                     } else if (!buffer[1] && strspn(buffer, "bisu") == 1) {

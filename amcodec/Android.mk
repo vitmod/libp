@@ -33,7 +33,7 @@ LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc
 LOCAL_ARM_MODE := arm
 LOCAL_STATIC_LIBRARIES := libamadec
 LOCAL_MODULE:= libamcodec
-
+LOCAL_MODULE_TAGS := optional
 LOCAL_PRELINK_MODULE := false
 include $(BUILD_SHARED_LIBRARY)
 

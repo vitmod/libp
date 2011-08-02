@@ -22,6 +22,7 @@ LOCAL_CFLAGS += $(FFCFLAGS)
 LOCAL_MODULE := $(FFNAME)
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc 
 LOCAL_PRELINK_MODULE := false
+LOCAL_MODULE_TAGS := optional
 include $(BUILD_SHARED_LIBRARY)
 
 CC := $(HOST_CC)

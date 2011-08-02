@@ -53,6 +53,6 @@ LOCAL_ARM_MODE := arm
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc
 
 LOCAL_PRELINK_MODULE := false
-
+LOCAL_MODULE_TAGS := optional
 include $(BUILD_SHARED_LIBRARY)
 
