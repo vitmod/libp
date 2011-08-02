@@ -411,6 +411,8 @@ static int set_decode_para(play_para_t*am_p)
     int ret = -1;
     int rev_byte = 0;
     int total_rev_bytes = 0;
+	vformat_t vfmt;
+	int filter_vfmt = 0;
     unsigned char* buf;
     ByteIOContext *pb = am_p->pFormatCtx->pb;
 
@@ -419,6 +421,13 @@ static int set_decode_para(play_para_t*am_p)
               am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
               am_p->astream_info.has_audio, am_p->astream_info.audio_format);
 
+	filter_vfmt = PlayerGetVFilterFormat("media.amplayer.disable-vcodecs");		
+	if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
+		log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
+			filter_vfmt, am_p->vstream_info.video_format, (1 << am_p->vstream_info.video_format));
+		return PLAYER_UNSUPPORT_VCODEC;
+	}
+	
 	if (am_p->playctrl_info.no_video_flag) {
         set_player_error_no(am_p, PLAYER_SET_NOVIDEO);
         update_player_states(am_p, 1);
@@ -694,7 +703,8 @@ int player_dec_reset(play_para_t *p_para)
     }
 
     if (p_para->playctrl_info.fast_forward) {
-        if (p_para->playctrl_info.time_point >= p_para->state.full_time) {			
+        if (p_para->playctrl_info.time_point >= p_para->state.full_time && 
+			p_para->state.full_time > 0) {			
             p_para->playctrl_info.end_flag = 1;
 			set_black_policy(p_para->playctrl_info.black_out);
 			log_print("[%s]ff end: tpos=%d black=%d\n", __FUNCTION__, p_para->playctrl_info.time_point, p_para->playctrl_info.black_out);
@@ -703,7 +713,8 @@ int player_dec_reset(play_para_t *p_para)
 
         log_print("[player_dec_reset]time_point=%d step=%d\n", p_para->playctrl_info.time_point, p_para->playctrl_info.f_step);
         p_para->playctrl_info.time_point += p_para->playctrl_info.f_step;
-        if (p_para->playctrl_info.time_point >= p_para->state.full_time) {
+        if (p_para->playctrl_info.time_point >= p_para->state.full_time &&
+			p_para->state.full_time > 0) {
             ff_reach_end(p_para);
             log_print("reach stream end,play end!\n");
         }
@@ -866,11 +877,16 @@ int player_dec_init(play_para_t *p_para)
     }
 
     p_para->file_size = p_para->pFormatCtx->file_size;
-	if(p_para->file_size>0)
-		p_para->pFormatCtx->valid_offset=p_para->file_size;
+	if(p_para->file_size > 0)
+		p_para->pFormatCtx->valid_offset = p_para->file_size;
 	else
-		p_para->pFormatCtx->valid_offset=INT64_MAX;
-    p_para->state.full_time = p_para->pFormatCtx->duration / AV_TIME_BASE;
+		p_para->pFormatCtx->valid_offset = INT64_MAX;
+	if (p_para->pFormatCtx->duration != -1) {
+    	p_para->state.full_time = p_para->pFormatCtx->duration / AV_TIME_BASE;
+	} else {
+		p_para->state.full_time = -1;
+	}
+		
     p_para->state.name = p_para->file_name;
     p_para->file_type = file_type;
     p_para->stream_type = stream_type;
@@ -907,12 +923,12 @@ int player_dec_init(play_para_t *p_para)
             if ((0 != p_para->pFormatCtx->bit_rate) && (0 != p_para->file_size)) {
                 p_para->state.full_time = (int)((p_para->file_size << 3) / p_para->pFormatCtx->bit_rate);
             } else {
-                p_para->state.full_time = INT32_MAX;
+                p_para->state.full_time = -1;
             }
         } else {
-            p_para->state.full_time = INT32_MAX;
+            p_para->state.full_time = -1;
         }
-        if (p_para->state.full_time == INT32_MAX) {
+        if (p_para->state.full_time == -1) {
             if (p_para->pFormatCtx->pb) {
                 int duration = url_ffulltime(p_para->pFormatCtx->pb);
                 if (duration > 0) {
