@@ -46,9 +46,13 @@
  *               setup amlogic player every time
  */
 /* --------------------------------------------------------------------------*/
+extern void print_version_info();
+
 int player_init(void)
 {
     /*register all formats and codecs*/
+	print_version_info();
+	
     ffmpeg_init();
 
     player_id_pool_init();
