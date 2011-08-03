@@ -1618,11 +1618,14 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         for (j=0; j<pos_list->nb_elem; j++) {
             MatroskaTrack *track = matroska_find_track_by_num(matroska,
                                                               pos[j].track);
-            if (track && track->stream)
+            if (track && track->stream){
                 av_add_index_entry(track->stream,
                                    pos[j].pos + matroska->segment_start,
                                    index[i].time/index_scale, 0, 0,
                                    AVINDEX_KEYFRAME);
+            	} else {
+            		s->pb->seekable = 0;
+            	}
         }
     }
 

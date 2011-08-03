@@ -42,7 +42,7 @@ static int set_stream_info(play_para_t *p_para)
     info->total_video_num   = p_para->vstream_num;
     info->total_audio_num   = p_para->astream_num;
     info->total_sub_num     = p_para->sstream_num;
-    if (p_para->file_type == AVI_FILE && !ctx->seekable) {
+    if ((p_para->file_type == AVI_FILE || p_para->file_type == MKV_FILE) && !ctx->seekable) {
         info->seekable = 0;
     } else {
         info->seekable = 1;
