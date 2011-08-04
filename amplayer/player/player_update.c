@@ -623,15 +623,13 @@ static void update_current_time(play_para_t *p_para)
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
                 p_para->state.start_time = p_para->state.first_time;
             } else if (((unsigned int)p_para->state.first_time - (unsigned int)p_para->state.start_time) >  0 &&
-                       (p_para->state.start_time == 0) &&
-                       p_para->playctrl_info.time_point == 0) {
-                log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
+                       (p_para->state.start_time == 0) && p_para->playctrl_info.time_point == 0) {
                 p_para->state.start_time = p_para->state.first_time;
-            }            
-		
+                log_print("[update_current_time:%d]reset start_time=0x%x time=0x%x\n", __LINE__, p_para->state.start_time, time);
+            } 		
 		}
 		
-        if (time > 0) {
+        if ((unsigned int)time > 0) {
 			#if 0
             if (time < (unsigned int)p_para->state.start_time) {
                 log_print("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, ((unsigned int)p_para->astream_info.start_time));
@@ -643,7 +641,7 @@ static void update_current_time(play_para_t *p_para)
                 p_para->state.start_time = time;
             }
 			#endif
-            if ((unsigned int)p_para->state.start_time > 0) {
+            if ((unsigned int)p_para->state.start_time < (unsigned int)time) {
                 log_debug("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, p_para->state.start_time);
                 time -= p_para->state.start_time;
                 log_debug("[update_current_time:%d]time=0x%x (%d)\n", __LINE__, time, time / PTS_FREQ);

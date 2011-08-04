@@ -155,7 +155,7 @@ static int check_decoder_worksta(play_para_t *para)
     }
     if (para->astream_info.has_audio) {
         if (check_audiodsp_fatal_err() == AUDIO_DSP_FATAL_ERROR) {
-            para->playctrl_info.time_point = para->state.current_time + 1;
+            para->playctrl_info.time_point = para->state.current_time ;
             para->playctrl_info.reset_flag = 1;
             para->playctrl_info.end_flag = 1;
             log_print("adec err::[%s:%d]time=%d ret=%d, need reset\n", __FUNCTION__, __LINE__, para->playctrl_info.time_point, ret);
