@@ -973,8 +973,8 @@ int player_dec_init(play_para_t *p_para)
         url_fseek(p_para->pFormatCtx->pb, p_para->data_offset, SEEK_SET);
     }
     subtitle_para_init(p_para);
-    set_tsync_enable(1);        //open av sync
-    p_para->playctrl_info.avsync_enable = 1;
+    //set_tsync_enable(1);        //open av sync
+    //p_para->playctrl_info.avsync_enable = 1;
     return PLAYER_SUCCESS;
 
 init_fail:
@@ -992,6 +992,23 @@ int player_decoder_init(play_para_t *p_para)
         ret = PLAYER_NO_DECODER;
         goto failed;
     }
+	
+	if(p_para->astream_info.has_audio && p_para->vstream_info.has_video) {
+		set_tsync_enable(1);
+		
+        p_para->playctrl_info.avsync_enable = 1;
+	}else{
+		set_tsync_enable(0);
+        p_para->playctrl_info.avsync_enable = 0;
+	}
+	if(p_para->vstream_info.has_video){
+		/*
+		if we have video,we need to clear the pcrsrc to 0.
+		if not the pcrscr maybe a big number..
+		*/
+		set_sysfs_str("/sys/class/tsync/pts_pcrscr","0x0");
+	}
+	
     if (decoder->init(p_para) != PLAYER_SUCCESS) {
         log_print("[player_dec_init] codec init failed!\n");
         ret = DECODER_INIT_FAILED;
@@ -1013,11 +1030,8 @@ int player_decoder_init(play_para_t *p_para)
         p_para->codec = p_para->vcodec;
         log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
-
-    if (p_para->astream_info.has_audio == 0) {
-        set_tsync_enable(0);
-        p_para->playctrl_info.avsync_enable = 0;
-    }
+	
+	
     return PLAYER_SUCCESS;
 failed:
     ffmpeg_close_file(p_para);
