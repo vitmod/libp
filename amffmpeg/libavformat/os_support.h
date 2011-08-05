@@ -36,6 +36,11 @@
 #  define fstat(f,s) _fstati64((f), (s))
 #endif /* defined(__MINGW32__) && !defined(__MINGW32CE__) */
 
+#if defined (ANDROID)
+#include <fcntl.h>
+#define lseek(f,p,w) lseek64((f), (p), (w))
+#endif /* defined (ANDROID) */
+
 static inline int is_dos_path(const char *path)
 {
 #if HAVE_DOS_PATHS
