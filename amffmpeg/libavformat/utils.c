@@ -2316,7 +2316,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     AVStream *st;
     int read_size, i, ret;
     int64_t end_time;
-    int64_t filesize, offset, duration;
+    int64_t valid_offset, offset, duration;
     int retry=0;
 
     ic->cur_st = NULL;
@@ -2338,10 +2338,11 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 
     /* estimate the end time (duration) */
     /* XXX: may need to support wrapping */
-    filesize = ic->file_size;
+    valid_offset = ic->valid_offset;
+
     end_time = AV_NOPTS_VALUE;
     do{
-    offset = filesize - (DURATION_MAX_READ_SIZE<<retry);
+	    offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
     if (offset < 0)
         offset = 0;
 
@@ -2375,7 +2376,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
         av_free_packet(pkt);
     }
     }while(   end_time==AV_NOPTS_VALUE
-           && filesize > (DURATION_MAX_READ_SIZE<<retry)
+           && valid_offset > (DURATION_MAX_READ_SIZE<<retry)
            && ++retry <= DURATION_MAX_RETRY);
 
     fill_all_stream_timings(ic);
@@ -2392,6 +2393,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
+	int64_t cur_offset, valid_offset;
 
     /* get the file size, if possible */
     if (ic->iformat->flags & AVFMT_NOFILE) {
@@ -2402,6 +2404,27 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
             file_size = 0;
     }
     ic->file_size = file_size;
+    ic->valid_offset = file_size ? file_size : 0x7fffffffffffffff;
+	/* find valid_offset*/
+		cur_offset = url_ftell(ic->pb);
+		if(check_last_blk_valid(ic))
+			valid_offset = ic->file_size;
+		else
+			valid_offset = seek_last_valid_pkt(ic);
+	    if ((valid_offset > 2) && (ic->valid_offset != 0x7fffffffffffffff)) 
+	    {
+	        ic->valid_offset = valid_offset;
+	        ic->valid_offset_done = 1;
+	        if (ic->valid_offset + CHECK_FULL_ZERO_SIZE <= ic->file_size)
+	        {
+	            ic->valid_offset += CHECK_FULL_ZERO_SIZE;
+	        }
+	        av_log(NULL, AV_LOG_INFO, "[av_estimate_timings]valid_offset 0x%llx\n", ic->valid_offset);
+	    }
+		avio_seek(ic->pb,cur_offset,SEEK_SET);
+		
+		av_log(NULL, AV_LOG_INFO, "[%s:%d]file_size=%lld valid_offset=%d\n", __FUNCTION__, __LINE__,ic->file_size, ic->valid_offset);
+
 
     if ((!strcmp(ic->iformat->name, "mpeg") ||
          !strcmp(ic->iformat->name, "mpegts")) &&
