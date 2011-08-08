@@ -122,6 +122,23 @@ static inline int get_duration(AVIStream *ast, int len){
         return 1;
 }
 
+static inline int get_duration_audio(AVIStream *ast, int len){
+
+ av_log(NULL, AV_LOG_ERROR, "len=%d, blockalign=%d, size=%d", len, ast->dshow_block_align, ast->sample_size);
+    if (ast->dshow_block_align){
+        if(ast->dshow_block_align == ast->sample_size)
+          return ((len + ast->dshow_block_align - 1)/ast->dshow_block_align)*ast->dshow_block_align;
+        else
+          return ((len + ast->dshow_block_align - 1)/ast->dshow_block_align);//*ast->dshow_block_align;
+    }else if(ast->sample_size){
+        if (len > ast->sample_size)
+            return len;
+        else
+            return ast->sample_size;
+    }else
+        return 1;
+}
+
 static int get_riff(AVFormatContext *s, AVIOContext *pb)
 {
     AVIContext *avi = s->priv_data;
@@ -204,9 +221,15 @@ static int read_braindead_odml_indx(AVFormatContext *s, int frame_num){
             if(last_pos == pos || pos == base - 8)
                 avi->non_interleaved= 1;
             if(last_pos != pos && (len || !ast->sample_size))
+            {            
                 av_add_index_entry(st, pos, ast->cum_len, len, 0, key ? AVINDEX_KEYFRAME : 0);
+            }
 
-            ast->cum_len += get_duration(ast, len);
+			if (st->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+				ast->cum_len += get_duration_audio(ast, len);
+			else
+				ast->cum_len += get_duration(ast, len);
+
             last_pos= pos;
         }else{
             int64_t offset, pos;
@@ -405,10 +428,22 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             print_tag("list", tag1, 0);
 
             if (tag1 == MKTAG('m', 'o', 'v', 'i')) {
-                avi->movi_list = avio_tell(pb) - 4;
+                int data[4];
+                int64_t curoff = avio_tell(pb);;
+                avi->movi_list = curoff - 4;
                 if(size) avi->movi_end = avi->movi_list + size + (size & 1);
                 else     avi->movi_end = avio_size(pb);
                 av_dlog(NULL, "movi end=%"PRIx64"\n", avi->movi_end);
+                data[0] = avio_r8(pb);
+                data[1] = avio_r8(pb);
+                data[2] = avio_r8(pb);
+                data[3] = avio_r8(pb);
+                if ((data[2] == 'w' && data[3] == 'b') || (data[2] == 'd' && data[3] == 'c'))
+                    s->first_index = data[1] - '0';
+                else
+                    s->first_index = -1;
+                av_log(NULL, AV_LOG_INFO, "movi_list 0x%llx, first_index %d\n", avi->movi_list, s->first_index);
+                avio_seek(pb, curoff, SEEK_SET);
                 goto end_of_header;
             }
             else if (tag1 == MKTAG('I', 'N', 'F', 'O'))
@@ -1424,6 +1459,7 @@ static int avi_read_seek(AVFormatContext *s, int stream_index, int64_t timestamp
     for(i = 0; i < s->nb_streams; i++) {
         AVStream *st2 = s->streams[i];
         AVIStream *ast2 = st2->priv_data;
+        int64_t wanted_ts = av_rescale_q(timestamp, st->time_base, st2->time_base) * FFMAX(ast2->sample_size, 1);
 
         ast2->packet_size=
         ast2->remaining= 0;
@@ -1440,10 +1476,18 @@ static int avi_read_seek(AVFormatContext *s, int stream_index, int64_t timestamp
         assert((int64_t)st2->time_base.num*ast2->rate == (int64_t)st2->time_base.den*ast2->scale);
         index = av_index_search_timestamp(
                 st2,
-                av_rescale_q(timestamp, st->time_base, st2->time_base) * FFMAX(ast2->sample_size, 1),
+                wanted_ts,
                 flags | AVSEEK_FLAG_BACKWARD | (st2->codec->codec_type != AVMEDIA_TYPE_VIDEO ? AVSEEK_FLAG_ANY : 0));
         if(index<0)
             index=0;
+        if(index+1 == st2->nb_index_entries) { // last entry
+            if (st2->time_base.den) {
+                int64_t diff;
+                diff = (wanted_ts - st2->index_entries[index].timestamp) * st2->time_base.num / st2->time_base.den / FFMAX(ast2->sample_size, 1);
+                if (diff >= 5) // exceed 5s
+                    continue;
+            }
+        }
         ast2->seek_pos= st2->index_entries[index].pos;
         pos_min= FFMIN(pos_min,ast2->seek_pos);
     }
