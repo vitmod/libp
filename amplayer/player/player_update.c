@@ -550,6 +550,33 @@ static unsigned int get_pts_audio(play_para_t *p_para)
     return value;
 }
 
+static int match_ext(const char *filename, const char *extensions)//get file type, .vob,.mp4,.ts...
+{
+    const char *ext, *p;
+    char ext1[32], *q;
+
+    if(!filename)
+        return 0;
+
+    ext = strrchr(filename, '.');
+    if (ext) {
+        ext++;
+        p = extensions;
+        for(;;) {
+            q = ext1;
+            while (*p != '\0' && *p != ',' && q-ext1<sizeof(ext1)-1)
+                *q++ = *p++;
+            *q = '\0';
+            if (!strcasecmp(ext1, ext))
+                return 1;
+            if (*p == '\0')
+                break;
+            p++;
+        }
+    }
+    return 0;
+}
+
 static unsigned int is_chapter_discontinue(play_para_t *p_para)
 {
 	char *extensions[4] = {"vob", "VOB", "iso", "ISO"};
