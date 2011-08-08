@@ -620,7 +620,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
     if ( (s->iformat && s->iformat->flags & AVFMT_NOFILE) ||
         (!s->iformat && (s->iformat = av_probe_input_format(&pd, 0))))
         return 0;
-    if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
+    if ((ret = avio_open(&s->pb, filename, AVIO_FLAG_READ)) < 0)
        return ret;
 	if(url_is_file_list(s->pb,filename)){
 			char *listfile;
