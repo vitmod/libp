@@ -550,15 +550,33 @@ static unsigned int get_pts_audio(play_para_t *p_para)
     return value;
 }
 
+static unsigned int is_chapter_discontinue(play_para_t *p_para)
+{
+	char *extensions[4] = {"vob", "VOB", "iso", "ISO"};
+	int i = 0;
+	
+	if (p_para->pFormatCtx && p_para->pFormatCtx->pb && 
+          url_support_time_seek(p_para->pFormatCtx->pb)) {
+		  return 1;
+	}
+	for (i = 0; i < 4; i ++) {
+		//log_print("[%s]file_name=%s ext=%s\n", __FUNCTION__, p_para->file_name, extensions[i]);
+
+		if (match_ext(p_para->file_name, extensions[i])) {
+			log_print("[%s]return true\n", __FUNCTION__);
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static unsigned int get_current_time(play_para_t *p_para)
 {
     unsigned int pcr_scr = 0, vpts = 0, apts = 0;
     unsigned int ctime = 0;
 
     if (p_para->codec && codec_get_syncdiscont(p_para->codec) &&
-        ((p_para->stream_type == STREAM_PS) || 
-         (p_para->pFormatCtx && p_para->pFormatCtx->pb && 
-          url_support_time_seek(p_para->pFormatCtx->pb)))) {
+		is_chapter_discontinue(p_para)) {
         p_para->discontinue_point = p_para->state.last_time;
         set_tsync_discontinue(0);
         log_info("[%s:%d]pts discontinue, point=%d\n", __FUNCTION__, __LINE__, p_para->discontinue_point);
