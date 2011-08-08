@@ -551,6 +551,7 @@ static void player_para_init(play_para_t *para)
     para->sstream_info.sub_index = -1;
     para->discontinue_point = 0;
     para->discontinue_flag = 0;
+    para->first_index = -1;
 }
 
 ///////////////////*main function *//////////////////////////////////////

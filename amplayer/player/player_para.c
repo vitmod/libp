@@ -222,6 +222,8 @@ static void get_stream_info(play_para_t *p_para)
     int temp_vidx = -1, temp_aidx = -1, temp_sidx = -1;
     int bitrate = 0;
 
+    p_para->first_index = pFormat->first_index;
+    
     /* caculate the stream numbers */
     p_para->vstream_num = 0;
     p_para->astream_num = 0;

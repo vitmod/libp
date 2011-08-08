@@ -1057,7 +1057,12 @@ int update_playing_info(play_para_t *p_para)
 			if (check_audiodsp_fatal_err() == AUDIO_DSP_INIT_ERROR){
 				p_para->playctrl_info.audio_ready = 1;
 	            log_print("[%s]dsp init failed, set audio_ready for time update\n", __FUNCTION__);
-			} 
+			} else if (0 == p_para->abuffer.data_level) {
+			    if (check_audio_ready_time(&p_para->playctrl_info.check_audio_ready_ms)) {
+                    p_para->playctrl_info.audio_ready = 1;
+	                log_print("[%s]no audio data, set audio_ready for time update\n", __FUNCTION__);
+		        }
+		    }
         }
 		
         if (p_para->playctrl_info.audio_ready == 1){
@@ -1098,3 +1103,20 @@ void set_drm_rental(play_para_t *p_para, unsigned int rental_value)
     return;
 }
 
+int check_audio_ready_time(int *first_time)
+{
+    struct timeval  new_time;
+    long new_time_mseconds;
+    gettimeofday(&new_time, NULL);
+    new_time_mseconds = (new_time.tv_usec / 1000 + new_time.tv_sec * 1000);
+
+    if (*first_time == 0) {
+        *first_time = new_time_mseconds;
+    }
+
+    if (new_time_mseconds - *first_time > 3000) {// 3s watchdog
+        return 1;
+    }
+
+    return 0;
+}
