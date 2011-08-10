@@ -180,7 +180,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
 {
     HTTPContext *s = h->priv_data;
 
-    h->is_streamed = 1;
+   // h->is_streamed = 1;
 	
     s->filesize = -1;
 	s->is_seek=0;
@@ -192,7 +192,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 {
     HTTPContext *s = h->priv_data;
 	int ret;
-    h->is_streamed = 1;
+   // h->is_streamed = 1;
 
     s->filesize = -1;
 	s->is_seek=0;
@@ -251,7 +251,7 @@ static int process_line(URLContext *h, char *line, int line_count,
 {
     HTTPContext *s = h->priv_data;
     char *tag, *p, *end;
-
+	av_log(h, AV_LOG_INFO, "process_line:%s \n",line);
     /* end of header */
     if (line[0] == '\0')
         return 0;
@@ -345,7 +345,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 
 	if (h->headers) {
 		len += av_strlcatf(headers + len, sizeof(headers) - len,
-                           "%s\r\n", h->headers);
+                           "%s", h->headers); /*the headers have \r\n*/
 
     }
 
@@ -377,7 +377,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
              post && s->chunksize >= 0 ? "Transfer-Encoding: chunked\r\n" : "",
              headers,
              authstr ? authstr : "");
-
+	av_log(NULL,AV_LOG_INFO,"HTTP[%s]\n",s->buffer);
     av_freep(&authstr);
     if ((err=ffurl_write(s->hd, s->buffer, strlen(s->buffer)) )< 0){
 		av_log(h, AV_LOG_INFO, "process_line:ffurl_write failed,%d\n",err);
@@ -406,8 +406,9 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
             return AVERROR(EIO);
 
         av_dlog(NULL, "header='%s'\n", line);
+		
         err = process_line(h, line, s->line_count, new_location);
-		av_log(h, AV_LOG_INFO, "process_line:%s(ret=%d)\n",line,err );
+		
         if (err < 0)
             return err;
         if (err == 0)
