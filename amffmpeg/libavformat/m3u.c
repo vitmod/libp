@@ -181,7 +181,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				if(need_prefix){
 					if(tmpitem.file[0]=='/'){/*has '/',not need the dir */
 						strcpy(item->file,prefix);
-						strcpy(item->file+prefix_len,tmpitem.file);
+						strcpy(item->file+prefix_len,tmpitem.file+1);/*don't copy two '/',we have left before*/
 					}else{/*no '/', some I save the full path frefix*/
 						strcpy(item->file,prefixex);
 						strcpy(item->file+prefixex_len,tmpitem.file);
