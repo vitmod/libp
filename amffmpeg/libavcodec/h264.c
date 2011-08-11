@@ -3820,12 +3820,12 @@ static int decode_nal_units(H264Context *h, const uint8_t *buf, int buf_size){
         case NAL_SPS_EXT:
         case NAL_AUXILIARY_SLICE:
             break;
-		case NAL_14:
-		case NAL_15:
-		case NAL_20:
-			av_log(avctx, AV_LOG_ERROR, "NAL type: %d for MVC\n", h->nal_unit_type);
-			avctx->codec_id == CODEC_ID_H264MVC;
-			break;			
+        case NAL_14:
+        case NAL_15:
+        case NAL_20:
+            av_log(avctx, AV_LOG_ERROR, "NAL type: %d for MVC\n", h->nal_unit_type);
+            avctx->codec_id = CODEC_ID_H264MVC;
+            break;			
         default:
             av_log(avctx, AV_LOG_DEBUG, "Unknown NAL code: %d (%d bits)\n", hx->nal_unit_type, bit_length);
         }
