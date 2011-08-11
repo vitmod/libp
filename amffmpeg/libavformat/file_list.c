@@ -330,19 +330,19 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	if (whence == AVSEEK_BUFFERED_TIME)
 	{
 		int64_t buffed_time=0;
-		if(mgt->current_item && mgt->current_item->duration>0){
+		if(mgt->current_item ){
 			//av_log(NULL, AV_LOG_INFO, "list_seek uui=%ld,size=%lld\n",mgt->cur_uio,url_fsize(mgt->cur_uio));
-			if(mgt->cur_uio && url_fsize(mgt->cur_uio)>0){
+			if(mgt->cur_uio && url_fsize(mgt->cur_uio)>0 && mgt->current_item->duration>=0){
 				//av_log(NULL, AV_LOG_INFO, "list_seek start_time=%ld,pos=%lld\n",mgt->current_item->start_time,url_buffed_pos(mgt->cur_uio));
 				buffed_time=mgt->current_item->start_time+url_buffed_pos(mgt->cur_uio)*mgt->current_item->duration/url_fsize(mgt->cur_uio);
 			}
 			else{
 				buffed_time=mgt->current_item->start_time;
-				if(mgt->current_item && (mgt->current_item->flags & ENDLIST_FLAG) && mgt->current_item->prev!=NULL)
-					buffed_time=mgt->current_item->prev->start_time+mgt->current_item->prev->duration;/*read to end list*/
-				}
+				if(mgt->current_item && (mgt->current_item->flags & ENDLIST_FLAG))
+					buffed_time=mgt->full_time;/*read to end list, show full bufferd*/
+			}
 		}
-		//av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
+		av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
 		return buffed_time;
 	}
 	
