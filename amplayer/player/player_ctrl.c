@@ -704,7 +704,8 @@ int player_send_message(int pid, player_cmd_t *cmd)
         return PLAYER_NOT_VALID_PID;
     }
 
-    if (player_get_state(pid) == PLAYER_STOPED) {
+    if (player_get_state(pid) == PLAYER_EXIT) {
+		player_close_pid_data(pid);
         return PLAYER_SUCCESS;
     }
 
@@ -718,7 +719,7 @@ int player_send_message(int pid, player_cmd_t *cmd)
     } else {
         r = PLAYER_NOMEM;
     }
-
+	player_close_pid_data(pid);
     return r;
 }
 
