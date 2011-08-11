@@ -1942,6 +1942,8 @@ static void fill_all_stream_timings(AVFormatContext *ic)
     AVStream *st;
 
     av_update_stream_timings(ic);
+	av_log(NULL, AV_LOG_INFO, "[%s:%d] ic->start_time=0x%llx ic->duration=%llx\n",__FUNCTION__, __LINE__,ic->start_time,ic->duration);
+
     for(i = 0;i < ic->nb_streams; i++) {
         st = ic->streams[i];
         if (st->start_time == AV_NOPTS_VALUE) {
@@ -2327,7 +2329,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     for (i=0; i<ic->nb_streams; i++) {
         st = ic->streams[i];
         if (st->start_time == AV_NOPTS_VALUE && st->first_dts == AV_NOPTS_VALUE)
-            av_log(st->codec, AV_LOG_WARNING, "start time is not set in av_estimate_timings_from_pts\n");
+            av_log(st->codec, AV_LOG_WARNING, "stream[%d] start time is not set in av_estimate_timings_from_pts\n", i);
 
         if (st->parser) {
             av_parser_close(st->parser);
@@ -2345,18 +2347,20 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 	    offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
     if (offset < 0)
         offset = 0;
+	av_log(NULL,AV_LOG_INFO, "[%s:%d]offset=%llx valid_offset=%llx \n", __FUNCTION__, __LINE__, offset, valid_offset);
 
     avio_seek(ic->pb, offset, SEEK_SET);
     read_size = 0;
     for(;;) {
         if (read_size >= DURATION_MAX_READ_SIZE<<(FFMAX(retry-1,0)))
             break;
-
         do{
             ret = av_read_packet(ic, pkt);
         }while(ret == AVERROR(EAGAIN));
         if (ret != 0)
             break;
+		av_log(NULL, AV_LOG_INFO, "[%s:%d] read a [%d]packet, pkt->pts=0x%llx\n",__FUNCTION__, __LINE__,pkt->stream_index,pkt->pts);
+
         read_size += pkt->size;
         st = ic->streams[pkt->stream_index];
         if (pkt->pts != AV_NOPTS_VALUE &&
@@ -2365,6 +2369,8 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
             duration = end_time = pkt->pts;
             if (st->start_time != AV_NOPTS_VALUE)  duration -= st->start_time;
             else                                   duration -= st->first_dts;
+			av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx\n",__FUNCTION__, __LINE__,duration);
+
             if (duration < 0)
                 duration += 1LL<<st->pts_wrap_bits;
             if (duration > 0) {
@@ -2390,10 +2396,11 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     }
 }
 
-static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
+static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
 	int64_t cur_offset, valid_offset;
+	int ret;
 
     /* get the file size, if possible */
     if (ic->iformat->flags & AVFMT_NOFILE) {
@@ -2406,27 +2413,33 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     ic->file_size = file_size;
     ic->valid_offset = file_size ? file_size : 0x7fffffffffffffff;
 	/* find valid_offset*/
-	if(ic->pb->seekable && !ic->pb->is_streamed && !ic->pb->is_slowmedia){
-	/*only data is seekable and not stream,is not slowmedia do end check*/
-		cur_offset = url_ftell(ic->pb);
-		if(check_last_blk_valid(ic))
-			valid_offset = ic->file_size;
-		else
-			valid_offset = seek_last_valid_pkt(ic);
-	    if ((valid_offset > 2) && (ic->valid_offset != 0x7fffffffffffffff)) 
-	    {
-	        ic->valid_offset = valid_offset;
-	        ic->valid_offset_done = 1;
-	        if (ic->valid_offset + CHECK_FULL_ZERO_SIZE <= ic->file_size)
-	        {
-	            ic->valid_offset += CHECK_FULL_ZERO_SIZE;
-	        }
-	        av_log(NULL, AV_LOG_INFO, "[av_estimate_timings]valid_offset 0x%llx\n", ic->valid_offset);
-	    }
-		avio_seek(ic->pb,cur_offset,SEEK_SET);
-		
-		av_log(NULL, AV_LOG_INFO, "[%s:%d]file_size=%lld valid_offset=%d\n", __FUNCTION__, __LINE__,ic->file_size, ic->valid_offset);
+	cur_offset = url_ftell(ic->pb);
+
+	ret = check_last_blk_valid(ic);
+	if(ret > 0)
+		valid_offset = ic->file_size;
+	else if (ret == 0)
+		valid_offset = seek_last_valid_pkt(ic);
+	else {
+		av_log(NULL, AV_LOG_ERROR, "[%s]error, return\n", __FUNCTION__);
+		return ret;
 	}
+	
+    if ((valid_offset > 2) && (ic->valid_offset != 0x7fffffffffffffff)) 
+    {
+        ic->valid_offset = valid_offset;
+        ic->valid_offset_done = 1;
+        if (ic->valid_offset + CHECK_FULL_ZERO_SIZE <= ic->file_size)
+        {
+            ic->valid_offset += CHECK_FULL_ZERO_SIZE;
+        }
+        av_log(NULL, AV_LOG_INFO, "[av_estimate_timings]valid_offset 0x%llx\n", ic->valid_offset);
+    }
+	avio_seek(ic->pb,cur_offset,SEEK_SET);
+	
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]file_size=%lld valid_offset=%d\n", __FUNCTION__, __LINE__,ic->file_size, ic->valid_offset);
+
+
     if ((!strcmp(ic->iformat->name, "mpeg") ||
          !strcmp(ic->iformat->name, "mpegts")) &&
         file_size && ic->pb->seekable) {
@@ -2459,6 +2472,7 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
                ic->bit_rate / 1000);
     }
 #endif
+	return 0;
 }
 
 static int has_codec_parameters(AVCodecContext *enc)
@@ -2629,7 +2643,7 @@ int av_find_stream_info(AVFormatContext *ic)
     AVStream *st;
     AVPacket pkt1, *pkt;
     int64_t old_offset = avio_tell(ic->pb);
-
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
     for(i=0;i<ic->nb_streams;i++) {
         AVCodec *codec;
         st = ic->streams[i];
@@ -2653,6 +2667,7 @@ int av_find_stream_info(AVFormatContext *ic)
             }
         }
         assert(!st->codec->codec);
+		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
         codec = avcodec_find_decoder(st->codec->codec_id);
 
         /* Force decoding of at least one frame of codec data
@@ -2661,11 +2676,13 @@ int av_find_stream_info(AVFormatContext *ic)
          */
         if (codec && codec->capabilities & CODEC_CAP_CHANNEL_CONF)
             st->codec->channels = 0;
-
+		av_log(NULL, AV_LOG_INFO, "[%s:%d]st->codec->codec_type=%d\n", __FUNCTION__, __LINE__,st->codec->codec_type);
         /* Ensure that subtitle_header is properly set. */
         if (st->codec->codec_type == AVMEDIA_TYPE_SUBTITLE
             && codec && !st->codec->codec)
             avcodec_open(st->codec, codec);
+
+		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
 
         //try to just open decoders, in case this is enough to get parameters
         if(!has_codec_parameters(st->codec)){
@@ -2728,6 +2745,7 @@ int av_find_stream_info(AVFormatContext *ic)
             av_log(ic, AV_LOG_DEBUG, "Probe buffer size limit %d reached\n", ic->probesize);
             break;
         }
+		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
 
         /* NOTE: a new stream can be added there if no header in file
            (AVFMTCTX_NOHEADER) */
@@ -2750,6 +2768,8 @@ int av_find_stream_info(AVFormatContext *ic)
 
         if (ret == AVERROR(EAGAIN))
             continue;
+
+		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
 
         pkt= add_to_pktbuf(&ic->packet_buffer, &pkt1, &ic->packet_buffer_end);
         if ((ret = av_dup_packet(pkt)) < 0)
@@ -2807,6 +2827,7 @@ int av_find_stream_info(AVFormatContext *ic)
            decompress for QuickTime. */
         if (!has_codec_parameters(st->codec) || !has_decode_delay_been_guessed(st))
             try_decode_frame(st, pkt);
+		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
 
         st->codec_info_nb_frames++;
         count++;
@@ -2885,9 +2906,10 @@ int av_find_stream_info(AVFormatContext *ic)
                 st->disposition = AV_DISPOSITION_KARAOKE;          break;
             }
         }
-    }
-
-    av_estimate_timings(ic, old_offset);
+    }	
+    ret = av_estimate_timings(ic, old_offset);
+	if (ret < 0) 
+		goto find_stream_info_err;
 
     compute_chapters_end(ic);
 
