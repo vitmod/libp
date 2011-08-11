@@ -858,7 +858,7 @@ write_packet:
                 && (player->playctrl_info.fast_forward
                     || player->playctrl_info.fast_backward)) {
                 if (player->vstream_info.video_format != VFORMAT_SW) {
-                    ret = get_cntl_state(pkt);
+                    ret = get_cntl_state(pkt) | player->playctrl_info.seek_offset_same;
                     if (ret == 0) {
                         //log_print("more data needed, data size %d\n", pkt->data_size);
                         continue;

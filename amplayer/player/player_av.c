@@ -1080,6 +1080,15 @@ int time_search(play_para_t *am_p)
                     log_info("[%s] could not seek to position %0.3f s ret=%lld\n", __FUNCTION__, (double)timestamp / AV_TIME_BASE, ret);
                     return PLAYER_SEEK_FAILED;
                 }
+                offset = url_ftell(s->pb);
+                if ((am_p->playctrl_info.last_seek_time_point != time_point)
+                    && (am_p->playctrl_info.last_seek_offset == offset)) {
+                    am_p->playctrl_info.seek_offset_same = 1;
+                } else {
+                    am_p->playctrl_info.seek_offset_same = 0;
+                    am_p->playctrl_info.last_seek_offset = offset;
+                }
+                am_p->playctrl_info.last_seek_time_point = time_point;
             }
         } else {
             offset = ((int64_t)time_point * (s->bit_rate >> 3));
@@ -1138,6 +1147,13 @@ int write_av_packet(play_para_t *para)
     }
 #endif
 
+    if ((para->playctrl_info.fast_forward || para->playctrl_info.fast_backward)
+        && para->playctrl_info.seek_offset_same) {
+        av_free_packet(pkt->avpkt);
+        pkt->avpkt_isvalid = 0;
+        return PLAYER_SUCCESS;
+    }
+    
     if (pkt->avpkt_newflag) {
         if (pkt->type != CODEC_SUBTITLE) {
             if (pkt->avpkt_isvalid) {
