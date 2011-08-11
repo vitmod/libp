@@ -880,7 +880,9 @@ write_packet:
         while (!player->playctrl_info.end_flag) {
             //player_thread_wait(player, 50 * 1000);
 
-			check_decoder_worksta(player);
+			if (!(player->vstream_info.has_video && player->playctrl_info.video_low_buffer)) {
+				check_decoder_worksta(player);
+			}
 				
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
