@@ -2406,6 +2406,8 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     ic->file_size = file_size;
     ic->valid_offset = file_size ? file_size : 0x7fffffffffffffff;
 	/* find valid_offset*/
+	if(ic->pb->seekable && !ic->pb->is_streamed && !ic->pb->is_slowmedia){
+	/*only data is seekable and not stream,is not slowmedia do end check*/
 		cur_offset = url_ftell(ic->pb);
 		if(check_last_blk_valid(ic))
 			valid_offset = ic->file_size;
@@ -2424,8 +2426,7 @@ static void av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 		avio_seek(ic->pb,cur_offset,SEEK_SET);
 		
 		av_log(NULL, AV_LOG_INFO, "[%s:%d]file_size=%lld valid_offset=%d\n", __FUNCTION__, __LINE__,ic->file_size, ic->valid_offset);
-
-
+	}
     if ((!strcmp(ic->iformat->name, "mpeg") ||
          !strcmp(ic->iformat->name, "mpegts")) &&
         file_size && ic->pb->seekable) {
