@@ -11,6 +11,10 @@ extern "C" {
 }
 using namespace android;
 
+#define TRICKMODE_NONE       0x00
+#define TRICKMODE_I          0x01
+#define TRICKMODE_FFFB       0x02
+
 typedef struct{
 	unsigned short	pid;//pid
 	int				nVideoWidth;//视频宽度
@@ -58,6 +62,12 @@ public:
 	bool StopFast();
 	//停止
 	bool Stop();
+    //定位
+    bool Seek();
+    //设定音量
+    bool SetVolume(float volume);
+    //获取音量
+    float GetVolume();
 private:
 	AUDIO_PARA_T aPara;
 	VIDEO_PARA_T vPara;	

@@ -143,16 +143,50 @@ bool CTsPlayer::Resume()
 
 bool CTsPlayer::Fast()
 {
-	//
-	return true;
+	int ret;
+	
+	Stop();
+	ret = StartPlay();
+	if (!ret)
+		return false;
+
+	ret = codec_set_cntl_mode(pcodec, TRICKMODE_I);
+	return !ret;
 }
 bool CTsPlayer::StopFast()
 {
-	//
-	return true;
+	int ret;
+	
+	Stop();
+	ret = StartPlay();
+	if (!ret)
+		return false;
+
+	ret = codec_set_cntl_mode(pcodec, TRICKMODE_NONE);
+	return !ret;
 }
 bool CTsPlayer::Stop()
 {
 	codec_close(pcodec);
 	return true;
+}
+bool CTsPlayer::Seek()
+{	
+	Stop();
+	return StartPlay();
+}
+float CTsPlayer::GetVolume()
+{
+	float volume;
+	int ret;
+
+	ret = codec_get_volume(pcodec, &volume);
+	if (ret < 0)
+		return ret;
+	return volume;
+}
+bool CTsPlayer::SetVolume(float volume)
+{
+	int ret = codec_set_volume(pcodec, volume);
+	return !ret;
 }
