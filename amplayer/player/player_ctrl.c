@@ -988,11 +988,11 @@ int audio_set_volume(int pid, float val)
  * @details get volume
  */
 /* --------------------------------------------------------------------------*/
-int audio_get_volume(int pid)
+int audio_get_volume(int pid, float *vol)
 {
     int r;
 
-    r = codec_get_volume(NULL);
+    r = codec_get_volume(NULL, vol);
     log_print("[audio_get_volume:%d]r=%d\n", __LINE__, r);
 
     return r;//codec_get_volume(NULL);

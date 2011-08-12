@@ -285,6 +285,28 @@ int audio_decode_set_volume(void *handle, float vol)
 }
 
 /**
+ * \brief set audio volume
+ * \param handle pointer to player private data
+ * \param vol volume value
+ * \return 0 on success otherwise -1 if an error occurred
+ */
+int audio_decode_get_volume(void *handle, float *vol)
+{
+    int ret;
+    adec_cmd_t *cmd;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
+
+    if (!handle) {
+        adec_print("audio handle is NULL !\n");
+        return -1;
+    }
+
+    
+
+    return ret;
+}
+
+/**
  * \brief swap audio left and right channels
  * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred

@@ -61,7 +61,7 @@ int codec_audio_search(codec_para_t *p);
 int codec_set_mute(codec_para_t *p, int mute);
 int codec_get_volume_range(codec_para_t *, int *min, int *max);
 int codec_set_volume(codec_para_t *, float val);
-int codec_get_volume(codec_para_t *);
+int codec_get_volume(codec_para_t *, float *val);
 int codec_get_mutesta(codec_para_t *);
 int codec_set_volume_balance(codec_para_t *, int); /*left£¨0-100)right*/
 int codec_swap_left_right(codec_para_t *);
