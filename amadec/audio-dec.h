@@ -45,6 +45,7 @@ struct aml_audio_dec {
     int muted;
     int decoded_nb_frames;
     int avsync_threshold;
+    float volume;
     audio_out_operations_t aout_ops;
     dsp_operations_t adsp_ops;
     message_pool_t message_pool;

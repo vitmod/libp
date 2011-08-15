@@ -274,6 +274,7 @@ int audio_decode_set_volume(void *handle, float vol)
     if (cmd) {
         cmd->ctrl_cmd = CMD_SET_VOL;
         cmd->value.volume = vol;
+	 audec->volume = vol;
         cmd->has_arg = 1;
         ret = adec_send_message(audec, cmd);
     } else {
@@ -301,7 +302,7 @@ int audio_decode_get_volume(void *handle, float *vol)
         return -1;
     }
 
-    
+    *vol = audec->volume;
 
     return ret;
 }
