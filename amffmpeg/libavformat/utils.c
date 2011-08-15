@@ -2400,7 +2400,7 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
 	int64_t cur_offset, valid_offset;
-	int ret;
+	int64_t ret;
 
     /* get the file size, if possible */
     if (ic->iformat->flags & AVFMT_NOFILE) {
@@ -2416,7 +2416,7 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 	cur_offset = url_ftell(ic->pb);
 
 	ret = check_last_blk_valid(ic);
-	if(ret > 0)
+	if(ret ==  ic->file_size)
 		valid_offset = ic->file_size;
 	else if (ret == 0)
 		valid_offset = seek_last_valid_pkt(ic);
@@ -2744,8 +2744,7 @@ int av_find_stream_info(AVFormatContext *ic)
             ret = count;
             av_log(ic, AV_LOG_DEBUG, "Probe buffer size limit %d reached\n", ic->probesize);
             break;
-        }
-		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
+        }	
 
         /* NOTE: a new stream can be added there if no header in file
            (AVFMTCTX_NOHEADER) */
@@ -2769,8 +2768,7 @@ int av_find_stream_info(AVFormatContext *ic)
         if (ret == AVERROR(EAGAIN))
             continue;
 
-		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
-
+		
         pkt= add_to_pktbuf(&ic->packet_buffer, &pkt1, &ic->packet_buffer_end);
         if ((ret = av_dup_packet(pkt)) < 0)
             goto find_stream_info_err;
@@ -2827,8 +2825,7 @@ int av_find_stream_info(AVFormatContext *ic)
            decompress for QuickTime. */
         if (!has_codec_parameters(st->codec) || !has_decode_delay_been_guessed(st))
             try_decode_frame(st, pkt);
-		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
-
+		
         st->codec_info_nb_frames++;
         count++;
     }
