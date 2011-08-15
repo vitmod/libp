@@ -124,7 +124,7 @@ static inline int get_duration(AVIStream *ast, int len){
 
 static inline int get_duration_audio(AVIStream *ast, int len){
 
- av_log(NULL, AV_LOG_ERROR, "len=%d, blockalign=%d, size=%d", len, ast->dshow_block_align, ast->sample_size);
+ //av_log(NULL, AV_LOG_ERROR, "len=%d, blockalign=%d, size=%d", len, ast->dshow_block_align, ast->sample_size);
     if (ast->dshow_block_align){
         if(ast->dshow_block_align == ast->sample_size)
           return ((len + ast->dshow_block_align - 1)/ast->dshow_block_align)*ast->dshow_block_align;
