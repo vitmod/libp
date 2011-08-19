@@ -1528,6 +1528,7 @@ int ff_index_search_timestamp(const AVIndexEntry *entries, int nb_entries,
         if(timestamp <= wanted_timestamp)
             a = m;
     }
+	a = (a == -1) ? 0 : a;
     m= (flags & AVSEEK_FLAG_BACKWARD) ? a : b;
 
     if(!(flags & AVSEEK_FLAG_ANY)){
