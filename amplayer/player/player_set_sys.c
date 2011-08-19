@@ -471,6 +471,10 @@ void update_freescale_setting(void)
 
 int disable_freescale(int cfg)
 {
+#ifndef ENABLE_FREE_SCALE
+	log_print("ENABLE_FREE_SCALE not define!\n");
+	return 0;
+#endif	
     char mode[16];
     freescale_setting_t *setting;
     display_mode disp_mode;
@@ -517,6 +521,10 @@ int disable_freescale(int cfg)
 
 int enable_freescale(int cfg)
 {
+#ifndef ENABLE_FREE_SCALE
+	log_print("ENABLE_FREE_SCALE not define!\n");
+	return 0;
+#endif
     char mode[16];
     freescale_setting_t *setting;
     display_mode disp_mode;
