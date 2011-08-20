@@ -1623,9 +1623,7 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
                                    pos[j].pos + matroska->segment_start,
                                    index[i].time/index_scale, 0, 0,
                                    AVINDEX_KEYFRAME);
-            	} else {
-            		s->pb->seekable = 0;
-            	}
+            	} 
         }
     }
 
