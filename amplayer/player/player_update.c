@@ -602,7 +602,7 @@ static unsigned int get_current_time(play_para_t *p_para)
     unsigned int pcr_scr = 0, vpts = 0, apts = 0;
     unsigned int ctime = 0;
 
-    if (p_para->codec && codec_get_syncdiscont(p_para->codec) &&
+    if (p_para->codec && (codec_get_syncdiscont(p_para->codec)>0) &&
 		is_chapter_discontinue(p_para)) {
         p_para->discontinue_point = p_para->state.last_time;
         set_tsync_discontinue(0);
