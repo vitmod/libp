@@ -782,7 +782,8 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
     }
 
     if ((MATROSKA_ID_TRACKS == id) && (url_ftell(matroska->ctx->pb) > matroska->media_offset)) {
-        return 0;
+		av_log(matroska->ctx, AV_LOG_ERROR, "Track exceed media offset %llx > %llx\n", url_ftell(matroska->ctx->pb), matroska->media_offset);
+		return -1;
     }
     
     return ebml_parse_elem(matroska, &syntax[i], data);
