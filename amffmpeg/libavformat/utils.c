@@ -2348,7 +2348,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 	    offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
     if (offset < 0)
         offset = 0;
-	av_log(NULL,AV_LOG_INFO, "[%s:%d]offset=%llx valid_offset=%llx \n", __FUNCTION__, __LINE__, offset, valid_offset);
+	//av_log(NULL,AV_LOG_INFO, "[%s:%d]offset=%llx valid_offset=%llx \n", __FUNCTION__, __LINE__, offset, valid_offset);
 
     avio_seek(ic->pb, offset, SEEK_SET);
     read_size = 0;
@@ -2360,7 +2360,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
         }while(ret == AVERROR(EAGAIN));
         if (ret != 0)
             break;
-		av_log(NULL, AV_LOG_INFO, "[%s:%d] read a [%d]packet, pkt->pts=0x%llx\n",__FUNCTION__, __LINE__,pkt->stream_index,pkt->pts);
+		//av_log(NULL, AV_LOG_INFO, "[%s:%d] read a [%d]packet, pkt->pts=0x%llx\n",__FUNCTION__, __LINE__,pkt->stream_index,pkt->pts);
 
         read_size += pkt->size;
         st = ic->streams[pkt->stream_index];
@@ -2370,7 +2370,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
             duration = end_time = pkt->pts;
             if (st->start_time != AV_NOPTS_VALUE)  duration -= st->start_time;
             else                                   duration -= st->first_dts;
-			av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx\n",__FUNCTION__, __LINE__,duration);
+			//av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx\n",__FUNCTION__, __LINE__,duration);
 
             if (duration < 0)
                 duration += 1LL<<st->pts_wrap_bits;
@@ -2434,7 +2434,6 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
         {
             ic->valid_offset += CHECK_FULL_ZERO_SIZE;
         }
-        av_log(NULL, AV_LOG_INFO, "[av_estimate_timings]valid_offset 0x%llx\n", ic->valid_offset);
     }
 	avio_seek(ic->pb,cur_offset,SEEK_SET);
 	
@@ -2644,7 +2643,7 @@ int av_find_stream_info(AVFormatContext *ic)
     AVStream *st;
     AVPacket pkt1, *pkt;
     int64_t old_offset = avio_tell(ic->pb);
-	av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
+	
     for(i=0;i<ic->nb_streams;i++) {
         AVCodec *codec;
         st = ic->streams[i];
@@ -2668,7 +2667,7 @@ int av_find_stream_info(AVFormatContext *ic)
             }
         }
         assert(!st->codec->codec);
-		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
+		
         codec = avcodec_find_decoder(st->codec->codec_id);
 
         /* Force decoding of at least one frame of codec data
@@ -2677,13 +2676,10 @@ int av_find_stream_info(AVFormatContext *ic)
          */
         if (codec && codec->capabilities & CODEC_CAP_CHANNEL_CONF)
             st->codec->channels = 0;
-		av_log(NULL, AV_LOG_INFO, "[%s:%d]st->codec->codec_type=%d\n", __FUNCTION__, __LINE__,st->codec->codec_type);
         /* Ensure that subtitle_header is properly set. */
         if (st->codec->codec_type == AVMEDIA_TYPE_SUBTITLE
             && codec && !st->codec->codec)
-            avcodec_open(st->codec, codec);
-
-		av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__);
+            avcodec_open(st->codec, codec);		
 
         //try to just open decoders, in case this is enough to get parameters
         if(!has_codec_parameters(st->codec)){
