@@ -1063,7 +1063,12 @@ int time_search(play_para_t *am_p)
                     seek_flags |= AVSEEK_FLAG_ANY;
                 }
             }
-            log_info("[time_search:%d] stream_index %d, time_point=%d timestamp=%lld start_time=%lld\n",
+
+			if (am_p->vstream_info.video_format == VFORMAT_MJPEG) {
+				seek_flags |= AVSEEK_FLAG_ANY;
+			}
+
+			log_info("[time_search:%d] stream_index %d, time_point=%d timestamp=%lld start_time=%lld\n",
                      __LINE__, stream_index, time_point, timestamp, s->start_time);
 
             if ((am_p->vstream_info.video_index == -1 || !am_p->vstream_info.has_video)
