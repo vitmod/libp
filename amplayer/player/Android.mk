@@ -38,6 +38,10 @@ include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 
+ifneq ($(BOARD_VOUT_USES_FREESCALE),false)
+LOCAL_CFLAGS += -DENABLE_FREE_SCALE
+endif
+
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 									
 
 LOCAL_SRC_FILES +=system/android.c system/systemsetting.c
