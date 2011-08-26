@@ -885,6 +885,8 @@ typedef struct AVFormatContext {
     /* added by Z.C for avi or some other files seekable */
     int seekable;	
 
+	int support_seek;
+
 	uint64_t video_avg_frame_time, audio_avg_frame_time;
 
 	//--***********************************************

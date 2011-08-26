@@ -743,7 +743,7 @@ int player_dec_reset(play_para_t *p_para)
 
     ret = time_search(p_para);
     if (ret != PLAYER_SUCCESS) {
-        log_error("[player_dec_reset]time search failed !ret = %x\n", ret);
+        log_error("[player_dec_reset]time search failed !ret = -%x\n", -ret);
     } else {
         /*clear the maybe end flags*/
         p_para->playctrl_info.audio_end_flag = 0;

@@ -1627,7 +1627,12 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             	} 
         }
     }
-
+	
+	if (index_list->nb_elem < 2)		
+		s->support_seek = 0;	
+	else		
+		s->support_seek = 1;
+	
     matroska_convert_tags(s);
 
     return 0;
