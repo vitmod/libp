@@ -954,6 +954,7 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
         if(!best_st)
         {                      
             //return -1;
+            av_log(s, AV_LOG_ERROR, "[%s:%d]can't find stream\n", __FUNCTION__, __LINE__);
             return AVERROR_EOF; 
         }
 
@@ -1504,7 +1505,7 @@ static int avi_read_seek(AVFormatContext *s, int stream_index, int64_t timestamp
                 flags | AVSEEK_FLAG_BACKWARD | (st2->codec->codec_type != AVMEDIA_TYPE_VIDEO ? AVSEEK_FLAG_ANY : 0));
         if(index<0)
             index=0;
-        while(index>0 && st2->index_entries[index-1].pos >= pos_min)
+        while(index>0 && st2->index_entries[index-1].pos >= pos_min && pos_min >= st2->index_entries[0].pos)
             index--;
         ast2->frame_offset = st2->index_entries[index].timestamp;
     }
