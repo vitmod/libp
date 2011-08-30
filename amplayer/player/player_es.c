@@ -37,6 +37,7 @@ static void vcodec_info_init(play_para_t *p_para, codec_para_t *v_codec)
     v_codec->am_sysinfo.width   = vinfo->video_width;
     v_codec->am_sysinfo.rate    = vinfo->video_rate;
     v_codec->am_sysinfo.ratio   = vinfo->video_ratio;
+	v_codec->am_sysinfo.ratio64 = vinfo->video_ratio64;
     v_codec->noblock = !!p_para->buffering_enable;
     if ((vinfo->video_format == VFORMAT_MPEG4)
         || (vinfo->video_format == VFORMAT_H264)

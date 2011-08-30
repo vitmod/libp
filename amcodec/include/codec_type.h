@@ -37,6 +37,7 @@ typedef struct {
     unsigned int    status;  ///< status of video stream
     unsigned int    ratio;   ///< aspect ratio of video source
     void *          param;   ///< other parameters for video decoder
+    unsigned long long    ratio64;   ///< aspect ratio of video source
 } dec_sysinfo_t;
 
 typedef struct {
