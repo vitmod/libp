@@ -71,6 +71,7 @@ typedef enum
 
 typedef struct
 {   
+	int index;
     int id;    
     int width;
     int height;

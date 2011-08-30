@@ -84,6 +84,7 @@ static int set_vstream_info(play_para_t *p_para)
             if (pStream->codec->codec_type == CODEC_TYPE_VIDEO) {
                 vinfo = MALLOC(sizeof(mvideo_info_t));
                 MEMSET(vinfo, 0, sizeof(mvideo_info_t));
+				vinfo->index 	   = i;
                 vinfo->id          = pStream->id;
                 vinfo->width       = pStream->codec->width;
                 vinfo->height      = pStream->codec->height;
