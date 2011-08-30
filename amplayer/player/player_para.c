@@ -305,7 +305,7 @@ static void get_stream_info(play_para_t *p_para)
             sub_index = temp_sidx;
         }
     }
-    if (p_para->astream_info.has_audio) {
+    if (p_para->astream_info.has_audio && audio_index!= -1) {		
         p_para->astream_info.audio_channel = pFormat->streams[audio_index]->codec->channels;
         p_para->astream_info.audio_samplerate = pFormat->streams[audio_index]->codec->sample_rate;
     }
