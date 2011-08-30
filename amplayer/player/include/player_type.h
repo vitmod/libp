@@ -242,6 +242,7 @@ typedef struct
 			#ifdef DEBUG_VARIABLE_DUR
 			unsigned int is_variable:1;
 			#endif
+			unsigned int displast_frame : 1;
 		};
 		int mode;
 	};  

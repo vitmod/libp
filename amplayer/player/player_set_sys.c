@@ -196,6 +196,42 @@ int set_fb1_blank(int blank)
     return  set_sysfs_int("/sys/class/graphics/fb1/blank", blank);
 }
 
+static int get_last_file(char *filename, int nsize)
+{
+	return get_sysfs_str("/sys/class/video/file_name", filename, nsize);
+}
+
+static int set_last_file(char *filename)
+{
+    return set_sysfs_str("/sys/class/video/file_name", filename);
+}
+
+int check_file_same(char *filename2) 
+{
+   char filename1[512];
+   int len1 = 0, len2 = 0;
+   get_last_file(filename1, 512);
+   
+   len1 = strlen(filename1);
+   len2 = strlen(filename2);
+   
+   log_print("[%s]file1=%d:%s\n", __FUNCTION__, len1 ,filename1);
+   log_print("[%s]file2=%d:%s\n", __FUNCTION__, len2 ,filename2);
+
+   set_last_file(filename2);
+   
+   if (((len1 -1)!= len2) && (len1 < 512)) {
+       log_print("[%s]not match,1:%d 2:%d\n", __FUNCTION__, len1, len2);
+       return 0;
+   } else if (!strncmp(filename1, filename2, len2)) {
+       log_print("[%s]match,return 1\n", __FUNCTION__);
+       return 1;
+   }       
+       return 0;
+}
+
+
+
 void get_display_mode(char *mode)
 {
     int fd;
