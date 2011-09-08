@@ -1064,7 +1064,8 @@ int time_search(play_para_t *am_p)
                 }
             }
 
-			if (am_p->vstream_info.video_format == VFORMAT_MJPEG) {
+			if (am_p->vstream_info.video_format == VFORMAT_MJPEG ||
+				am_p->file_type == MKV_FILE) {
 				seek_flags |= AVSEEK_FLAG_ANY;
 			}
 
