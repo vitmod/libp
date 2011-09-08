@@ -259,7 +259,9 @@ static int mov_read_default(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     int64_t total_size = 0;
     MOVAtom a;
     int i;
-
+	int searchtag = 0;/*found a error tag,changed to search mod*/
+	int serachenable = (atom.type==MKTAG('r','o','o','t'));
+	
     if (atom.size < 0)
         atom.size = INT64_MAX;
     while (total_size + 8 < atom.size && !url_feof(pb)) {
@@ -272,40 +274,61 @@ static int mov_read_default(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         }
         av_dlog(c->fc, "type: %08x '%.4s' parent:'%.4s' sz: %"PRId64" %"PRId64" %"PRId64"\n",
                 a.type, (char*)&a.type, (char*)&atom.type, a.size, total_size, atom.size);
+		//av_log(c->fc, AV_LOG_INFO, "type: %08x '%.4s' offset=%llx aize=%llx atome.size=%llx total_size=%llx\n", a.type, (char*)&a.type,avio_tell(pb), a.size, atom.size, total_size);
         total_size += 8;
         if (a.size == 1) { /* 64 bit extended size */
             a.size = avio_rb64(pb) - 8;
             total_size += 8;
         }
-        if (a.size == 0) {
-            a.size = atom.size - total_size;
-            if (a.size <= 8)
+        if (a.size == 0) {			
+			a.size = atom.size - total_size;
+            if (a.size <= 8){
+				av_log(c->fc, AV_LOG_INFO, "L%d: a.size (%x)<8, break!\n", __LINE__, a.size);
                 break;
+            }
         }
         a.size -= 8;
-        if(a.size < 0)
+		if (!c->found_moov && (a.size > atom.size - total_size)) {
+			if (!searchtag) {
+				searchtag = serachenable;
+				//av_log(c->fc, AV_LOG_INFO, "******set search mode************\n");
+			}
+            continue;
+		}
+		
+        if(a.size < 0){
+			av_log(c->fc, AV_LOG_INFO, "L%d: a.size (%x)<8, break!\n", __LINE__, a.size);
             break;
-        a.size = FFMIN(a.size, atom.size - total_size);
+        }
+		
+        a.size = FFMIN(a.size, atom.size - total_size);        	
 
         for (i = 0; mov_default_parse_table[i].type; i++)
             if (mov_default_parse_table[i].type == a.type) {
                 parse = mov_default_parse_table[i].parse;
+				if (searchtag) {
+					searchtag = 0;/*exit serach mode*/
+					//av_log(c->fc, AV_LOG_INFO, "******exit search mode************\n");
+				}
                 break;
             }
-
+	
         // container is user data
         if (!parse && (atom.type == MKTAG('u','d','t','a') ||
                        atom.type == MKTAG('i','l','s','t')))
             parse = mov_read_udta_string;
 
-        if (!parse) { /* skip leaf atoms data */
-            avio_skip(pb, a.size);
+        if (!parse) { /* skip leaf atoms data */	
+			if(!searchtag)
+            	avio_skip(pb, a.size);
+			else
+				continue;
         } else {
             int64_t start_pos = avio_tell(pb);
             int64_t left;
             int err = parse(c, pb, a);
             if (err < 0)
-                return err;
+                return err;			
             if (c->found_moov && c->found_mdat &&
                 (!pb->seekable || start_pos + a.size == avio_size(pb)))
                 return 0;
@@ -2432,7 +2455,7 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
     if (pb->seekable && mov->chapter_track > 0)
         mov_read_chapters(s);
-
+	
     return 0;
 }
 
