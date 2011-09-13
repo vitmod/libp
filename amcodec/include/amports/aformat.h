@@ -60,7 +60,7 @@ typedef enum {
 
 } aformat_t;
 
-#define AUDIO_EXTRA_DATA_SIZE   (2048)
+#define AUDIO_EXTRA_DATA_SIZE   (4096)
 #define IS_AFMT_VALID(afmt)	((afmt > AFORMAT_UNKNOWN) && (afmt < AFORMAT_MAX))
     
 #define IS_AUIDO_NEED_EXT_INFO(afmt) ((afmt == AFORMAT_ADPCM) \
