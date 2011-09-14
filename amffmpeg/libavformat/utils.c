@@ -503,6 +503,9 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
     AVProbeData pd = { filename ? filename : "", NULL, -offset };
     unsigned char *buf = NULL;
     int ret = 0, probe_size;
+	int data_offset = 0;
+	int pre_data= 0;
+	AVFormatContext *s = logctx;
 
     if (!max_probe_size) {
         max_probe_size = PROBE_BUF_MAX;
@@ -516,6 +519,20 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
         return AVERROR(EINVAL);
     }
 
+	if (av_match_ext(filename, "ts") || av_match_ext(filename, "m2ts")) {
+		do{
+			pre_data = avio_r8(pb);
+			data_offset ++;	
+			if (pre_data == 0x47) {
+				avio_seek(pb, -1, SEEK_CUR);
+				data_offset --;
+				av_log(NULL,AV_LOG_INFO, "*****[%s] [%llx] data_offset=%d\n", __FUNCTION__, avio_tell(pb), data_offset);
+				s->data_offset = data_offset;
+				break;	
+			}
+		}while(1);
+	}
+	
     for(probe_size= PROBE_BUF_MIN; probe_size<=max_probe_size && !*fmt && ret >= 0;
         probe_size = FFMIN(probe_size<<1, FFMAX(max_probe_size, probe_size+1))) {
         int ret, score = probe_size < max_probe_size ? AVPROBE_SCORE_MAX/4 : 0;
