@@ -283,7 +283,7 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
                                          int (*transfer_func)(URLContext *h, unsigned char *buf, int size))
 {
     int ret, len;
-    int fast_retries = 5;
+    int fast_retries = 50;
 
     len = 0;
     while (len < size_min) {
@@ -292,12 +292,14 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
             continue;
         if (h->flags & AVIO_FLAG_NONBLOCK)
             return ret;
-        if (ret == AVERROR(EAGAIN)) {
-            ret = 0;
-            if (fast_retries)
+        if (ret == AVERROR(EAGAIN)) {            
+            if (fast_retries){
+				ret = 0;
                 fast_retries--;
-            else
-                usleep(1000);
+				usleep(1000);  
+			} else {                          	
+				return ret;
+            }
 			av_log(NULL,AV_LOG_INFO,"read/write time out,retry=%d\n",fast_retries);
         } else if (ret < 1)
             return ret < 0 ? ret : len;
