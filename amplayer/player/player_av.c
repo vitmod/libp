@@ -1582,6 +1582,43 @@ int set_header_info(play_para_t *para)
                     pkt->hdr->size = 4;
                     pkt->avpkt_newflag = 1;
                 }
+            } else if (para->vstream_info.video_format == VFORMAT_MJPEG) {
+                if ((para->file_type != MP4_FILE) && (para->file_type != MOV_FILE)) {
+                    return PLAYER_SUCCESS;
+                }
+
+                /* MJPEG video in MP4 container, assume each sample is
+                 * a frame start, use dual SOI image header to get better
+                 * error correction.
+                 * MJPEG decoder driver inside kernel must have corresponding
+                 * process to dual head.
+                 */
+                if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
+                    FREE(pkt->hdr->data);
+                    pkt->hdr->data = NULL;
+                }
+
+                if (pkt->hdr == NULL) {
+                    pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+                    if (!pkt->hdr) {
+                        log_print("[mjpeg_prefix] NOMEM!");
+                        return PLAYER_FAILED;
+                    }
+
+                    pkt->hdr->data = NULL;
+                    pkt->hdr->size = 0;
+                }
+
+                pkt->hdr->data = MALLOC(2);
+                if (pkt->hdr->data == NULL) {
+                    log_print("[mjpeg_prefix] NOMEM!");
+                    return PLAYER_FAILED;
+                }
+
+                pkt->hdr->data[0] = 0xff;
+                pkt->hdr->data[1] = 0xd8;
+                pkt->hdr->size = 2;
+                pkt->avpkt_newflag = 1;
             }
         } else if (pkt->type == CODEC_AUDIO) {
             if ((!para->playctrl_info.raw_mode) &&
