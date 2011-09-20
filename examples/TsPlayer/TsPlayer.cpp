@@ -149,6 +149,9 @@ bool CTsPlayer::Fast()
 	ret = StartPlay();
 	if (!ret)
 		return false;
+	ret = set_sys_int("/sys/class/video/blackout_policy",0);
+	if (!ret)
+		return false;
 
 	ret = codec_set_cntl_mode(pcodec, TRICKMODE_I);
 	return !ret;
@@ -159,6 +162,9 @@ bool CTsPlayer::StopFast()
 	
 	Stop();
 	ret = StartPlay();
+	if (!ret)
+		return false;
+	ret = set_sys_int("/sys/class/video/blackout_policy",1);
 	if (!ret)
 		return false;
 
