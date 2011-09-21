@@ -27,7 +27,6 @@
 #include "id3v2.h"
 #include "adif.h"
 
-
 static int adts_aac_probe(AVProbeData *p)
 {
     int max_frames = 0, first_frames = 0;
@@ -39,7 +38,10 @@ static int adts_aac_probe(AVProbeData *p)
 
 
     buf = buf0;
-
+	if (buf[0]=='A' && buf[1]=='D' && buf[2]=='I' && buf[3]=='F')
+    {
+      return AVPROBE_SCORE_MAX/2;
+    }
     for(; buf < end; buf= buf2+1) {
         buf2 = buf;
 
