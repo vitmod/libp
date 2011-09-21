@@ -1662,7 +1662,10 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
             ac->m4ac.sbr = 1;
             ac->m4ac.ps = 1;
             output_configure(ac, ac->che_pos, ac->che_pos, ac->m4ac.chan_config, ac->output_configured);
-        } else {
+			/*	CHANGED by xh ,ignore changed channels for ps;	
+			*/
+			ac->avctx->channels = 1;
+		} else {
             ac->m4ac.sbr = 1;
         }
         res = ff_decode_sbr_extension(ac, &che->sbr, gb, crc_flag, cnt, elem_type);
