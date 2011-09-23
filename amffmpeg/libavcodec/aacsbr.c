@@ -1067,6 +1067,10 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
     if (!ac->m4ac.ext_sample_rate)
         ac->m4ac.ext_sample_rate =ac->m4ac.sample_rate;// 2 * ac->m4ac.sample_rate;
 
+/*	CHANGED by gp, if sample_rate is not eq to ext_sample_rate, we use sample_rate*/
+    if(sbr->sample_rate != ac->m4ac.ext_sample_rate)
+        ac->m4ac.ext_sample_rate = sbr->sample_rate;
+
     if (crc) {
         skip_bits(gb, 10); // bs_sbr_crc_bits; TODO - implement CRC check
         num_sbr_bits += 10;
