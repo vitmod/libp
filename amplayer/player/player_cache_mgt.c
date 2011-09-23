@@ -153,7 +153,7 @@ static struct cache_client client = {
 int cache_system_init(int enable, const char*dir, int max_size, int block_size)
 {
     int ret;
-   // aviolp_register_cache_system(&client);
+       aviolp_register_cache_system(&client);
     lp_lock_init(&cache_setting.mutex, NULL);
     lp_lock(&cache_setting.mutex);
     cache_setting.cur_total_cache_size = 0;

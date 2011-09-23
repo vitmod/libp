@@ -529,6 +529,10 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
         return s->filesize;
     else if ((s->filesize == -1 && whence == SEEK_END) || h->is_streamed)
         return -1;
+               
+       if (whence == SEEK_CUR && off==0){/*get cur pos only*/
+               return s->off;
+       }
 
     /* we save the old context in case the seek fails */
     old_buf_size = s->buf_end - s->buf_ptr;
