@@ -1040,7 +1040,7 @@ int time_search(play_para_t *am_p)
         }
         /*failed*/
         return PLAYER_SEEK_FAILED;
-    } else if (time_point < temp) {
+    } else if (time_point <= temp) {
         if (am_p->file_type == AVI_FILE ||
             am_p->file_type == MP4_FILE ||
             am_p->file_type == MKV_FILE ||
