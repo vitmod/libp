@@ -616,6 +616,7 @@ static void fill_buffer(AVIOContext *s)
     /* make buffer smaller in case it ended up large after probing */
     if (s->read_packet && s->buffer_size > max_buffer_size) {
         ffio_set_buf_size(s, max_buffer_size);
+		av_log(NULL, AV_LOG_INFO, "[%s]*************ffio_set_buf_size****************\n", __FUNCTION__);
 
         s->checksum_ptr = dst = s->buffer;
         len = s->buffer_size;
@@ -952,15 +953,18 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 int ffio_set_buf_size(AVIOContext *s, int buf_size)
 {
     uint8_t *buffer;
+	int64_t old_pos=0;
     buffer = av_malloc(buf_size);
     if (!buffer)
         return AVERROR(ENOMEM);
-
+	old_pos = url_ftell(s);
     av_free(s->buffer);
     s->buffer = buffer;
     s->buffer_size = buf_size;
     s->buf_ptr = buffer;
     url_resetbuf(s, s->write_flag ? AVIO_FLAG_WRITE : AVIO_FLAG_READ);
+	if(old_pos != s->pos)
+		url_fseek(s, old_pos, SEEK_SET);
     return 0;
 }
 
