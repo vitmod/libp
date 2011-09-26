@@ -589,12 +589,12 @@ int DisableFreeScale(display_mode mode) {
 			if (fd_video >= 0) 	write(fd_video, "1", strlen("1"));	
 			ioctl(fd0,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
-			sprintf(daxis_str, "%d %d %d %d %d %d 18 18", (1280 - vinfo.xres)/2, 
-				(720-vinfo.yres)/2,
+			sprintf(daxis_str, "%d %d %d %d %d %d 18 18", 1280>vinfo.xres ? (1280-vinfo.xres)/2 : 0, 
+				720>vinfo.yres ? (720-vinfo.yres)/2 : 0,
 				vinfo.xres, 
 				vinfo.yres,
-				(1280 - vinfo.xres)/2,
-				(720-vinfo.yres)/2);
+				1280>vinfo.xres ? (1280-vinfo.xres)/2 : 0,
+				720>vinfo.yres ? (720-vinfo.yres)/2 : 0);
 			write(fd_daxis, daxis_str, strlen(daxis_str));
 			if(fd_ppmgr_rect >= 0)
 				write(fd_ppmgr_rect, "0 0 0 0 1", strlen("0 0 0 0 1"));
@@ -607,12 +607,12 @@ int DisableFreeScale(display_mode mode) {
 			if (fd_video >= 0) 	write(fd_video, "1", strlen("1"));
 			ioctl(fd0,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
-			sprintf(daxis_str, "%d %d %d %d %d %d 18 18", (1920 - vinfo.xres)/2, 
-				(1080-vinfo.yres)/2,
+			sprintf(daxis_str, "%d %d %d %d %d %d 18 18", 1920>vinfo.xres ? (1920-vinfo.xres)/2 : 0, 
+				1080>vinfo.yres ? (1080-vinfo.yres)/2 : 0,
 				vinfo.xres, 
 				vinfo.yres,
-				(1920 - vinfo.xres)/2,
-				(1080-vinfo.yres)/2);
+				1920>vinfo.xres ? (1920-vinfo.xres)/2 : 0,
+				1080>vinfo.yres ? (1080-vinfo.yres)/2 : 0);
 			write(fd_daxis, daxis_str, strlen(daxis_str));	
 			if(fd_ppmgr_rect >= 0)
 				write(fd_ppmgr_rect, "0 0 0 0 1", strlen("0 0 0 0 1"));
