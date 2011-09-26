@@ -357,6 +357,8 @@ static int rm_read_index(AVFormatContext *s)
             avio_skip(pb, 2);
             pts = avio_rb32(pb);
             pos = avio_rb32(pb);
+            if (n == 0)
+                st->stream_offset = pos;
             avio_skip(pb, 4); /* packet no. */
 
             av_add_index_entry(st, pos, pts, 0, 0, AVINDEX_KEYFRAME);
@@ -484,7 +486,10 @@ static int rm_read_header(AVFormatContext *s, AVFormatParameters *ap)
         data_off = avio_tell(pb) - 18;
     if (indx_off && pb->seekable && !(s->flags & AVFMT_FLAG_IGNIDX) &&
         avio_seek(pb, indx_off, SEEK_SET) >= 0) {
-        rm_read_index(s);
+        if (rm_read_index(s) < 0)
+            s->index_builded = 0;
+        else
+            s->index_builded = 1;
         avio_seek(pb, data_off + 18, SEEK_SET);
     }
 
