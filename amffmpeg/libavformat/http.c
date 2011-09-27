@@ -353,7 +353,12 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     if (!has_header(s->headers, "\r\nAccept: "))
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);
-    if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek))
+
+	/*
+		modify s->off>0 to s->off>=0 for sina html5 playing by X.H.
+		Hisense local http server need s->off>0
+	*/
+    if (!has_header(s->headers, "\r\nRange: ") && (s->off>=0 || s->is_seek))
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: "))
