@@ -18,6 +18,81 @@
 
 DECLARE_ALIGNED(16, uint8_t, dec_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
 
+static int try_decode_picture(play_para_t *p_para, int video_index)
+{
+    AVCodecContext *ic = NULL;
+    AVCodec *codec = NULL;
+    AVFrame *picture = NULL;
+    int got_picture = 0;
+    int ret = 0;
+    int read_packets = 0;
+    int64_t cur_pos;
+    AVPacket avpkt;
+
+    ic = p_para->pFormatCtx->streams[video_index]->codec;
+
+    codec = avcodec_find_decoder(ic->codec_id);
+    if (!codec) {
+        log_print("[%s:%d]Codec not found\n", __FUNCTION__, __LINE__);
+        goto exitf;
+    }
+
+    if (avcodec_open(ic, codec) < 0) {
+        log_print("[%s:%d]Could not open codec\n", __FUNCTION__, __LINE__);
+        goto exitf;
+    }
+
+    picture = avcodec_alloc_frame();
+    if (!picture) {
+        log_print("[%s:%d]Could not allocate picture\n", __FUNCTION__, __LINE__);
+        goto exitf;
+    }
+
+    cur_pos = url_ftell(p_para->pFormatCtx->pb);
+    log_print("[%s:%d]codec id 0x%x, cur_pos 0x%llx, video index %d\n", 
+        __FUNCTION__, __LINE__, ic->codec_id, cur_pos, video_index);
+    av_init_packet(&avpkt);
+
+    /* get the first video frame and decode it */
+    while (!got_picture) {
+        do {
+            ret = av_read_frame(p_para->pFormatCtx, &avpkt);
+            if (ret < 0) {
+                if (AVERROR(EAGAIN) != ret) {
+                    /*if the return is EAGAIN,we need to try more times*/
+                    log_error("[%s:%d]av_read_frame return (%d)\n", __FUNCTION__, __LINE__, ret);
+                    url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+                    av_free_packet(&avpkt);
+                    goto exitf;
+                } else {
+                    av_free_packet(&avpkt);
+                    continue;
+                }
+            }
+        } while (avpkt.stream_index != video_index);
+
+        avcodec_decode_video2(ic, picture, &got_picture, &avpkt);
+        av_free_packet(&avpkt);
+        read_packets++;
+    }
+
+    log_print("[%s:%d]got one picture\n", __FUNCTION__, __LINE__);
+
+    url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+    return 0;
+    
+exitf:
+    if (picture) {
+        av_free(picture);
+    }
+
+    if (read_packets) {
+        return read_packets;
+    } else {
+        return ret;
+    }
+}
+
 static void get_av_codec_type(play_para_t *p_para)
 {
     AVFormatContext *pFormatCtx = p_para->pFormatCtx;
@@ -223,6 +298,8 @@ static void get_stream_info(play_para_t *p_para)
     int sub_index = p_para->sstream_info.sub_index;
     int temp_vidx = -1, temp_aidx = -1, temp_sidx = -1;
     int bitrate = 0;
+    int read_packets = 0;
+    int ret = 0;
 
     p_para->first_index = pFormat->first_index;
     
@@ -242,8 +319,14 @@ static void get_stream_info(play_para_t *p_para)
                     /* only support RV30 and RV40 */
                     if ((pCodec->codec_id == CODEC_ID_RV30)
                         || (pCodec->codec_id == CODEC_ID_RV40)) {
-                        bitrate = pCodec->bit_rate;
-                        temp_vidx = i;
+                        ret = try_decode_picture(p_para, i);
+                        if (ret == 0) {
+                            bitrate = pCodec->bit_rate;
+                            temp_vidx = i;
+                        } else if (ret > read_packets) {
+                            read_packets = ret;
+                            temp_vidx = i;
+                        }
                     }
                 }
             } else {
