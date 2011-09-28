@@ -2511,7 +2511,10 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         if (avio_seek(sc->pb, sample->pos, SEEK_SET) != sample->pos) {
             av_log(mov->fc, AV_LOG_ERROR, "stream %d, offset 0x%"PRIx64": partial file\n",
                    sc->ffindex, sample->pos);
-            return -1;
+            if (sample->pos > s->file_size)
+                return AVERROR_EOF;
+            else
+                return -1;
         }
         ret = av_get_packet(sc->pb, pkt, sample->size);
         if (ret < 0)
