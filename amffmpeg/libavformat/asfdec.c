@@ -904,8 +904,10 @@ static int ff_asf_parse_packet(AVFormatContext *s, AVIOContext *pb, AVPacket *pk
     ASFStream *asf_st = 0;
     for (;;) {
         int ret;
-        if(url_feof(pb))
+        if(url_feof(pb) || (url_ftell(pb) > s->valid_offset)) {
+            av_log(NULL, AV_LOG_INFO, "[ff_asf_parse_packet] feof\n");
             return AVERROR_EOF;
+        }
 		if(url_interrupt_cb())
             return AVERROR_EXIT;
         if (asf->packet_size_left < FRAME_HEADER_SIZE
@@ -1165,6 +1167,9 @@ static int64_t asf_read_pts(AVFormatContext *s, int stream_index, int64_t *ppos,
     int i;
     int64_t start_pos[ASF_MAX_STREAMS];
 
+    if (pos > s->valid_offset)
+        pos = s->valid_offset - 1024;
+    
     for(i=0; i<s->nb_streams; i++){
         start_pos[i]= pos;
     }
