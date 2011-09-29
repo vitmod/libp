@@ -965,10 +965,9 @@ int player_dec_init(play_para_t *p_para)
     }
 
     p_para->file_size = p_para->pFormatCtx->file_size;
-	if(p_para->file_size > 0)
-		p_para->pFormatCtx->valid_offset = p_para->file_size;
-	else
+	if(p_para->file_size < 0)
 		p_para->pFormatCtx->valid_offset = INT64_MAX;
+
 	if (p_para->pFormatCtx->duration != -1) {
     	p_para->state.full_time = p_para->pFormatCtx->duration / AV_TIME_BASE;
 	} else {
