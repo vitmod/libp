@@ -77,6 +77,9 @@ static int try_decode_picture(play_para_t *p_para, int video_index)
     }
 
     log_print("[%s:%d]got one picture\n", __FUNCTION__, __LINE__);
+    if (picture) {
+        av_free(picture);
+    }
 
     url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
     return 0;
