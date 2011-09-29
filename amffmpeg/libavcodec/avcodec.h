@@ -2907,6 +2907,9 @@ typedef struct AVCodecContext {
     int64_t pts_correction_last_dts;       /// DTS of the last frame
 
 
+    /* added by Z.C
+     * to record interlace or progressive */
+     int frame_interlace;
 } AVCodecContext;
 
 /**

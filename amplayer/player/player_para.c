@@ -443,12 +443,13 @@ static void get_stream_info(play_para_t *p_para)
 			p_para->vstream_info.video_width > 1920){
 			log_error("[%s]can't support wvc1 exceed 1920\n", __FUNCTION__);
 			p_para->vstream_info.has_video = 0; 
-		}else{		
+		}else{
+		#if 0
 			/* process vc1 packet to detect interlace or progressive */
 	        int64_t cur_pos;
 	        AVPacket avpkt;
 	        int ret;
-			
+
 	        cur_pos = url_ftell(p_para->pFormatCtx->pb);
 	        av_init_packet(&avpkt);
 
@@ -479,6 +480,14 @@ static void get_stream_info(play_para_t *p_para)
 	        av_free_packet(&avpkt);
 
 	        url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+        #else
+            if (p_para->pFormatCtx->streams[video_index]->codec->frame_interlace) {
+                log_print("[%s:%d]vc1 interlace video, not support!\n", __FUNCTION__, __LINE__);
+	            set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
+	            p_para->vstream_info.has_video = 0;
+	            p_para->vstream_info.video_index = -1;
+            }
+        #endif
 		}
     }
 

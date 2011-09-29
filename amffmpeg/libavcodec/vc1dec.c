@@ -3562,6 +3562,7 @@ static av_cold int vc1_decode_init(AVCodecContext *avctx)
 //            return -1;
     }
 
+    avctx->frame_interlace = v->interlace;
     ff_intrax8_common_init(&v->x8,s);
     return 0;
 }
