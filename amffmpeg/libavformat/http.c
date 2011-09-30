@@ -179,14 +179,22 @@ static int http_open_cnx(URLContext *h)
 static int http_open(URLContext *h, const char *uri, int flags)
 {
     HTTPContext *s = h->priv_data;
+	int ret;
 
    // h->is_streamed = 1;
 	
     s->filesize = -1;
-	s->is_seek=0;
+	s->is_seek=1;
     av_strlcpy(s->location, uri, sizeof(s->location));
-
-    return http_open_cnx(h);
+open_retry:
+	ret = http_open_cnx(h);
+	if(ret < 0 && s->is_seek){
+		s->is_seek = 0;
+		av_log(h, AV_LOG_ERROR, "seek, HTTP open Failed, retry\n");
+		goto open_retry;
+	}
+	s->is_seek = 0;
+    return ret;
 }
 static int shttp_open(URLContext *h, const char *uri, int flags)
 {
@@ -195,11 +203,17 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
    // h->is_streamed = 1;
 
     s->filesize = -1;
-	s->is_seek=0;
+	s->is_seek=1;
     av_strlcpy(s->location, uri+1, sizeof(s->location));
-
+open_retry:	
     ret= http_open_cnx(h);
-	h->is_slowmedia=1;
+	if(ret < 0 && s->is_seek){
+		s->is_seek = 0;
+		av_log(h, AV_LOG_ERROR, "seek, HTTP open Failed, retry\n");
+		goto open_retry;
+	}
+	s->is_seek = 0;
+	h->is_slowmedia=1;	
 	return ret;
 }
 
@@ -352,13 +366,8 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 	
     if (!has_header(s->headers, "\r\nAccept: "))
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
-                          sizeof(headers) - len);
-
-	/*
-		modify s->off>0 to s->off>=0 for sina html5 playing by X.H.
-		Hisense local http server need s->off>0
-	*/
-    if (!has_header(s->headers, "\r\nRange: ") && (s->off>=0 || s->is_seek))
+                          sizeof(headers) - len);	
+    if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek))
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: "))
