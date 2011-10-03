@@ -22,7 +22,7 @@
 
 #include <limits.h>
 
-//#define DEBUG
+#define DEBUG
 //#define MOV_EXPORT_ALL_METADATA
 
 #include "libavutil/intreadwrite.h"
@@ -854,6 +854,22 @@ static int mov_read_glbl(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 }
 
 /**
+ * An mvcC atom contains the necessary information about the multiview data for
+ * 3D content. This function reads atom content and puts data in extradata.
+ */
+static int mov_read_mvcC(MOVContext *c, AVIOContext *pb, MOVAtom atom)
+{
+    AVStream *st;
+
+    if (c->fc->nb_streams < 1)
+        return 0;
+    st = c->fc->streams[c->fc->nb_streams-1];
+    st->codec->codec_id = CODEC_ID_H264MVC;
+
+    return mov_read_glbl(c, pb, atom);
+}
+
+/**
  * An strf atom is a BITMAPINFOHEADER struct. This struct is 40 bytes itself,
  * but can have extradata appended at the end after the 40 bytes belonging
  * to the struct.
@@ -1026,7 +1042,12 @@ int ff_mov_read_stsd_entries(MOVContext *c, AVIOContext *pb, int entries)
             unsigned int color_depth, len;
             int color_greyscale;
 
-            st->codec->codec_id = id;
+            if ((id != CODEC_ID_H264) || (st->codec->codec_id != CODEC_ID_H264MVC)) {
+                st->codec->codec_id = id;
+            } else {
+                st->codec->codec_tag = CODEC_ID_H264MVC;
+                av_dlog(c->fc, "code_tag set to MVC with mvcC tag\n");
+            }
             avio_rb16(pb); /* version */
             avio_rb16(pb); /* revision level */
             avio_rb32(pb); /* vendor */
@@ -2286,6 +2307,7 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('3','d','v','f'), mov_read_moov },	/*for 3dv*/
 { MKTAG('m','v','e','x'), mov_read_default },
 { MKTAG('m','v','h','d'), mov_read_mvhd },
+{ MKTAG('m','v','c','C'), mov_read_mvcC },
 { MKTAG('S','M','I',' '), mov_read_smi }, /* Sorenson extension ??? */
 { MKTAG('a','l','a','c'), mov_read_extradata }, /* alac specific atom */
 { MKTAG('a','v','c','C'), mov_read_glbl },
