@@ -2109,7 +2109,10 @@ static int64_t check_last_blk_valid(AVFormatContext *ic)
 	int64_t filesize,offset;	
 	int64_t start_offset,end_offset;	
 	int64_t ret = -1;
-	
+
+	if(ic->file_size<=0 || !ic->pb || ic->pb->is_streamed || ic->pb->is_slowmedia)
+        	return ic->file_size;
+
 	buf1 = av_mallocz(CHECK_FULL_ZERO_SIZE);	
 	if(!buf1)
 		return AVERROR(ENOMEM);
