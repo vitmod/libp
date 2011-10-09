@@ -57,6 +57,8 @@ struct m3u_info{
 	char *file;
 };
 
+static int reserved_seq = -1;  //just leave a bug,,maybe 64bit....
+
 static int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
 {
     int ch;
@@ -73,7 +75,7 @@ static int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
             if (q > line && q[-1] == '\r')
                 q--;
             *q = '\0';
-			av_log(NULL, AV_LOG_INFO, "m3u_format_get_line line %d=%s\n",sizeof(line),line);
+	     av_log(NULL, AV_LOG_INFO, "m3u_format_get_line line %d=%s\n",sizeof(line),line);
             return q-line;
         } else {
             if ((q - line) < line_size - 1)
@@ -108,7 +110,20 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		}
 	}else if(is_TAG(p,EXT_X_ALLOW_CACHE)){
 		item->flags|=ALLOW_CACHE_FLAG;
-	}else{
+	}else if(is_TAG(p,EXT_X_MEDIA_SEQUENCE)){
+		int seq = -1;
+		int slen = strlen("#EXT-X-MEDIA-SEQUENCE:");
+		sscanf(p+slen,"%d",&seq); //skip strlen("#EXT-X-MEDIA-SEQUENCE:");	
+		if(seq>reserved_seq){
+			reserved_seq = seq;
+			mgt->flags |=REAL_STREAMING_FLAG;
+			av_log(NULL, AV_LOG_INFO, "get new sequence number:%ld\n",seq);
+		}else{
+			//av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
+			return -1;
+		}
+	}
+	else{
 		return 0;
 	}
 	return enditem;
@@ -127,7 +142,6 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	int prefix_len=0,prefixex_len=0;
 	int start_time=mgt->full_time;
 	char *oprefix=mgt->location!=NULL?mgt->location:mgt->filename;
-	
 	
 	if(oprefix){
 		char *tail,*tailex;
@@ -156,7 +170,8 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
 	while(m3u_format_get_line(s,line,1024)>=0)
 	{
-		if(m3u_parser_line(mgt,line,&tmpitem))
+		ret = m3u_parser_line(mgt,line,&tmpitem);
+		if(ret>0)
 		{
 			struct list_item*item;
 			int need_prefix=0;
@@ -202,7 +217,11 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				memset(&tmpitem,0,sizeof(tmpitem));
 				getnum++;
 			}
-		}else{
+		}
+		else if(ret <0){
+			break;
+		}
+		else{
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
 		}
@@ -250,7 +269,7 @@ static int m3u_probe(ByteIOContext *s,const char *file)
 		{
 
 			if(memcmp(line,EXTM3U,strlen(EXTM3U))==0)
-			{
+			{				
 				av_log(NULL, AV_LOG_INFO, "get m3u flags!!\n");
 				return 100;
 			}

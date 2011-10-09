@@ -101,6 +101,7 @@ static int list_del_item(struct list_mgt *mgt,struct list_item*item)
 	}
 	mgt->item_num--;
 	av_free(item);
+	item = NULL;
 	return 0;		
 }
 
@@ -194,10 +195,30 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	return 0;
 }
 
+static void fresh_item_list(struct list_mgt *mgt){
+	ByteIOContext *bio;
+	int ret = -1;
+	int retries = 3;
+	do{	
+		if((ret=list_open_internet(&bio,mgt,mgt->filename,mgt->flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
+		{
+			av_log(NULL, AV_LOG_INFO, "refresh the Playlist,item num:%d,filename:%s\n",mgt->item_num,mgt->filename);		
+			break;
+		}	
+		else{
+			url_fclose(bio);
+			usleep(50000); //50ms
+			av_log(NULL, AV_LOG_INFO, "no new item,wait next refresh,current item num:%d\n",mgt->item_num);	
+		}
+
+	}while(retries-->0);//50ms*3
+	
+
+}
 static struct list_item * switchto_next_item(struct list_mgt *mgt)
 {
 	struct list_item *next=NULL;
-	struct list_item *current;
+	struct list_item *current = NULL;
 	if(!mgt)
 		return NULL;
 	if(mgt->current_item==NULL || mgt->current_item->next==NULL){
@@ -292,7 +313,11 @@ retry:
 			return 0;
 		item=switchto_next_item(mgt);
 		if(!item){
-			 return AVERROR(EAGAIN);/*not end,but need to refresh the list later*/
+			if(mgt->flags&REAL_STREAMING_FLAG){
+				fresh_item_list(mgt);	
+			}
+			av_log(NULL, AV_LOG_INFO, "Need more retry by player logic\n");
+			return AVERROR(EAGAIN);/*not end,but need to refresh the list later*/
 		}
 		if(mgt->cur_uio)
 			url_fclose(mgt->cur_uio);
@@ -311,6 +336,10 @@ retry:
 			goto retry;
 		}
 	}
+	if(mgt->flags&REAL_STREAMING_FLAG&&mgt->item_num<4){ //force refresh items
+		fresh_item_list(mgt);	
+	}
+
 	av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d\n",buf,size);
     return len;
 }

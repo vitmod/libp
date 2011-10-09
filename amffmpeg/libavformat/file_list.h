@@ -41,6 +41,7 @@
 #define EXT_INFO					(1<<5)
 #define READ_END_FLAG				(1<<6)
 #define ALLOW_CACHE_FLAG			(1<<7)
+#define REAL_STREAMING_FLAG		(1<<8)
 
 
 struct list_mgt;
