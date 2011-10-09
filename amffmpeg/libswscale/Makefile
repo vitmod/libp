@@ -1,4 +1,4 @@
-include $(SUBDIR)../config.mak
+##include $(SUBDIR)../config.mak
 
 NAME = swscale
 FFLIBS = avutil
@@ -24,4 +24,4 @@ TESTPROGS = colorspace swscale
 
 DIRS = bfin mlib ppc sparc x86
 
-include $(SUBDIR)../subdir.mak
+##include $(SUBDIR)../subdir.mak
