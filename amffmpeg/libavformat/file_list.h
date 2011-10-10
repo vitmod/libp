@@ -69,6 +69,7 @@ typedef struct list_mgt
 	int64_t file_size;
 	int 	full_time;
 	int 	have_list_end;
+	int  seq;  
 	ByteIOContext	*cur_uio;
 	struct list_demux *demux;
 }list_mgt_t;

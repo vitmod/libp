@@ -175,6 +175,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	if(!mgt)
 		return AVERROR(ENOMEM);
 	memset(mgt,0,sizeof(*mgt));
+	mgt->seq = -1;
 	mgt->filename=filename+5;
 	mgt->flags=flags;
 	if((ret=list_open_internet(&bio,mgt,mgt->filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)

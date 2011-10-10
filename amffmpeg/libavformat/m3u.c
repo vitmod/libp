@@ -57,7 +57,7 @@ struct m3u_info{
 	char *file;
 };
 
-static int reserved_seq = -1;  //just leave a bug,,maybe 64bit....
+
 
 static int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
 {
@@ -114,14 +114,17 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		int seq = -1;
 		int slen = strlen("#EXT-X-MEDIA-SEQUENCE:");
 		sscanf(p+slen,"%d",&seq); //skip strlen("#EXT-X-MEDIA-SEQUENCE:");	
-		if(seq>reserved_seq){
-			reserved_seq = seq;
+		if(seq>0){
+			if(seq>mgt->seq){
+				mgt->seq = seq;
 			mgt->flags |=REAL_STREAMING_FLAG;
 			av_log(NULL, AV_LOG_INFO, "get new sequence number:%ld\n",seq);
 		}else{
 			//av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
 			return -1;
+			}			
 		}
+		av_log(NULL, AV_LOG_INFO, "get a invalid sequence number:%ld\n",seq);
 	}
 	else{
 		return 0;
