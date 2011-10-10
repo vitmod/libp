@@ -220,10 +220,10 @@ open_retry:
 
 static int http_getc(HTTPContext *s)
 {
-    int len = 0, read_len = 0;
+    int len = 0;
     if (s->buf_ptr >= s->buf_end) {
 		do {
-	        len = ffurl_read(s->hd, s->buffer+read_len, BUFFER_SIZE-read_len);
+	        len = ffurl_read(s->hd, s->buffer, BUFFER_SIZE);
 	        if (len < 0 && len != AVERROR(EAGAIN)) {
 				av_log(NULL, AV_LOG_ERROR, "http_getc failed\n");
 	            return AVERROR(EIO);
@@ -231,14 +231,10 @@ static int http_getc(HTTPContext *s)
 	        	av_log(NULL, AV_LOG_ERROR, "http_getc failed, return -1\n");
 	            return -1;
 	        } else if (len > 0) {
-	        	read_len += len;
+	        	s->buf_ptr = s->buffer;
+				s->buf_end = s->buffer + len;
 	        }		
-		}while (len == AVERROR(EAGAIN));
-		
-		if (read_len > 0) {
-			s->buf_ptr = s->buffer;
-			s->buf_end = s->buffer + read_len;
-		}
+		}while (len == AVERROR(EAGAIN));		
     }
     return *s->buf_ptr++;
 }

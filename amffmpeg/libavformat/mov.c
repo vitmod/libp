@@ -22,7 +22,7 @@
 
 #include <limits.h>
 
-#define DEBUG
+//#define DEBUG
 //#define MOV_EXPORT_ALL_METADATA
 
 #include "libavutil/intreadwrite.h"
