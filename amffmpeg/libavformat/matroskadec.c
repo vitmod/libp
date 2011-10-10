@@ -1628,8 +1628,10 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         }
     }
 	
-	if (index_list->nb_elem < 2)		
+	if (index_list->nb_elem < 2){		
 		s->support_seek = 0;	
+		av_log(matroska->ctx, AV_LOG_INFO, "index nb_elem less than 2, set unsupport seek!\n");
+	}
 	else		
 		s->support_seek = 1;
 	
