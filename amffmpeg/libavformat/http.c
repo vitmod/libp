@@ -228,11 +228,12 @@ static int http_getc(HTTPContext *s)
 				av_log(NULL, AV_LOG_ERROR, "http_getc failed\n");
 	            return AVERROR(EIO);
 	        } else if (len == 0) {
+	        	av_log(NULL, AV_LOG_ERROR, "http_getc failed, return -1\n");
 	            return -1;
 	        } else if (len > 0) {
 	        	read_len += len;
-	        }
-		}while (read_len < BUFFER_SIZE);
+	        }		
+		}while (len == AVERROR(EAGAIN));
 		
 		if (read_len > 0) {
 			s->buf_ptr = s->buffer;
