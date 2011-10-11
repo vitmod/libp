@@ -86,6 +86,7 @@ int register_list_demux_all(void);
 int register_list_demux(struct list_demux *demux);
 struct list_demux * probe_demux(ByteIOContext  *s,const char *filename);
 int list_add_item(struct list_mgt *mgt,struct list_item*item);
+int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item);
 int url_is_file_list(ByteIOContext *s,const char *filename);
 
 
