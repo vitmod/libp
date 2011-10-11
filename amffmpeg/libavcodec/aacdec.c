@@ -479,7 +479,7 @@ static int decode_audio_specific_config(AACContext *ac,
         return -1;
     }
     if (m4ac->sbr == 1 && m4ac->ps == -1)
-        m4ac->ps = 1;
+        m4ac->ps = 1;       
 
     skip_bits_long(&gb, i);
 
@@ -1665,10 +1665,18 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
 			/*	CHANGED by xh ,ignore changed channels for ps;	
 			*/
 			ac->avctx->channels = 1;
+            av_log(ac->avctx, AV_LOG_INFO, "[%d]SBR and PS, set channel to 1\n", __LINE__);
 		} else {
             ac->m4ac.sbr = 1;
         }
         res = ff_decode_sbr_extension(ac, &che->sbr, gb, crc_flag, cnt, elem_type);
+        av_log(ac->avctx, AV_LOG_INFO, "[%s]ac->m4ac.sbr=%d ac->m4ac.ps=%d\n", __FUNCTION__, ac->m4ac.sbr,ac->m4ac.ps);
+		/* ADD by xh, for dsp unsupport 2ch sbr & ps audio
+		*/
+		if (ac->m4ac.sbr == 1 && ac->m4ac.ps == 1) {
+			ac->avctx->channels = 1;
+            av_log(ac->avctx, AV_LOG_INFO, "[%d]SBR and PS, set channel to 1\n", __LINE__);
+		}
         break;
     case EXT_DYNAMIC_RANGE:
         res = decode_dynamic_range(&ac->che_drc, gb, cnt);
