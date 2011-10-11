@@ -1891,8 +1891,9 @@ void player_switch_audio(play_para_t *para)
     /* find stream for new id */
     for (i = 0; i < pFCtx->nb_streams; i++) {
         pstream = pFCtx->streams[i];
-        if ((unsigned int)pstream->id == para->playctrl_info.switch_audio_id) {
-            break;
+        if (pstream->codec->codec_type == CODEC_TYPE_AUDIO &&
+			(unsigned int)pstream->id == para->playctrl_info.switch_audio_id) {
+			break;
         }
     }
 
