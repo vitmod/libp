@@ -22,6 +22,7 @@ typedef struct video_frame {
     struct stream stream;
     int width;
     int height;
+    int64_t duration;
     int DataSize;
     char *data;
 }video_frame_t;

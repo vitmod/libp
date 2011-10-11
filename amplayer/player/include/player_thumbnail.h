@@ -5,13 +5,13 @@
 extern "C" {
 #endif
 
-void * register_decoder(void);
-int decoder_init(void *handle, const char* filename);
-int decoder_start(void *handle);
-int decoder_read(void *handle, char* buffer);
-void get_video_size(void *handle, int* width, int* height);
-int decoder_release(void *handle);
-void unregister_decoder(void* handle);
+void * thumbnail_res_alloc(void);
+int thumbnail_decoder_open(void *handle, const char* filename);
+int thumbnail_extract_video_frame(void * handle, int64_t time, int flag);
+int thumbnail_read_frame(void *handle, char* buffer);
+void thumbnail_get_video_size(void *handle, int* width, int* height);
+int thumbnail_decoder_close(void *handle);
+void thumbnail_res_free(void* handle);
 
 #ifdef  __cplusplus
 }

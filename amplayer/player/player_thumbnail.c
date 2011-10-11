@@ -3,7 +3,7 @@
 #include <log_print.h>
 #include "thumbnail_type.h"
 
-void * register_decoder(void)
+void * thumbnail_res_alloc(void)
 {
     struct video_frame * frame;
 
@@ -16,7 +16,7 @@ void * register_decoder(void)
     return (void *)frame;
 }
 
-int decoder_init(void *handle, const char* filename)
+int thumbnail_decoder_open(void *handle, const char* filename)
 {
     int i;
     int video_index = -1;
@@ -64,6 +64,7 @@ int decoder_init(void *handle, const char* filename)
 	
     frame->width = stream->pCodecCtx->width;
     frame->height = stream->pCodecCtx->height;
+    frame->duration = stream->pFormatCtx->duration;
 
     stream->pFrameYUV = avcodec_alloc_frame();
     if(stream->pFrameYUV == NULL) {
@@ -102,7 +103,7 @@ err:
     return -1;
 }
 
-int decoder_start(void *handle)
+int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 {
     int frameFinished;
     int count;
@@ -153,7 +154,7 @@ ret:
     return 0;
 }
 
-int decoder_read(void *handle, char* buffer)
+int thumbnail_read_frame(void *handle, char* buffer)
 {
     int i;
     int index = 0;
@@ -168,7 +169,7 @@ int decoder_read(void *handle, char* buffer)
     return 0;
 }
 
-void get_video_size(void *handle, int* width, int* height)
+void thumbnail_get_video_size(void *handle, int* width, int* height)
 {
     struct video_frame *frame = (struct video_frame *)handle;
 
@@ -176,7 +177,7 @@ void get_video_size(void *handle, int* width, int* height)
     *height = frame->height;
 }
 
-int decoder_release(void *handle)
+int thumbnail_decoder_close(void *handle)
 {
     struct video_frame *frame = (struct video_frame *)handle;
     struct stream *stream = &frame->stream;
@@ -194,7 +195,7 @@ int decoder_release(void *handle)
     return 0;
 }
 
-void unregister_decoder(void* handle)
+void thumbnail_res_free(void* handle)
 {
     struct video_frame *frame = (struct video_frame *)handle;
 
