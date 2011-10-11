@@ -207,7 +207,12 @@ static void get_av_codec_type(play_para_t *p_para)
         pCodecCtx = pStream->codec;
         p_para->astream_info.audio_pid      = (unsigned short)pStream->id;
         p_para->astream_info.audio_format   = audio_type_convert(pCodecCtx->codec_id, p_para->file_type);
-
+		p_para->astream_info.audio_channel  = pCodecCtx->channels;
+		p_para->astream_info.audio_samplerate = pCodecCtx->sample_rate;
+		log_print("[%s:%d]afmt=%d apid=%d asr=%d ach=%d aidx=%d\n",
+              __FUNCTION__, __LINE__, p_para->astream_info.audio_format, 
+              p_para->astream_info.audio_pid, p_para->astream_info.audio_samplerate,
+              p_para->astream_info.audio_channel, p_para->astream_info.audio_index);
         /* only support 2ch flac,cook,raac */
         if ((p_para->astream_info.audio_channel > 2) && 
 			(IS_AUDIO_NOT_SUPPORT_EXCEED_2CH(p_para->astream_info.audio_format))) {
@@ -504,8 +509,6 @@ static void get_stream_info(play_para_t *p_para)
 
 static int set_decode_para(play_para_t*am_p)
 {
-    AVFormatContext *pFCtx = am_p->pFormatCtx;
-    AVCodecContext  *pCodecCtx;
     signed short audio_index = am_p->astream_info.audio_index;
     int ret = -1;
     int rev_byte = 0;
@@ -519,7 +522,7 @@ static int set_decode_para(play_para_t*am_p)
     log_print("[%s:%d]has_video=%d vformat=%d has_audio=%d aformat=%d", __FUNCTION__, __LINE__, \
               am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
               am_p->astream_info.has_audio, am_p->astream_info.audio_format);
-
+	
 	filter_vfmt = PlayerGetVFilterFormat("media.amplayer.disable-vcodecs");		
 	if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
 		log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
@@ -611,13 +614,6 @@ static int set_decode_para(play_para_t*am_p)
 
     if (am_p->astream_info.has_audio) {
 
-        if (audio_index == -1) {
-            pCodecCtx = pFCtx->streams[0]->codec;
-        } else {
-            pCodecCtx = pFCtx->streams[audio_index]->codec;
-        }
-        am_p->astream_info.audio_channel = pCodecCtx->channels;
-        am_p->astream_info.audio_samplerate = pCodecCtx->sample_rate;
         if (!am_p->playctrl_info.raw_mode &&
             am_p->astream_info.audio_format == AFORMAT_AAC) {
             adts_header_t *adts_hdr;
