@@ -77,6 +77,7 @@ static void vc1_extract_headers(AVCodecParserContext *s, AVCodecContext *avctx,
         }
     }
 
+    avctx->frame_interlace = vpc->v.interlace && vpc->v.fcm;
     av_free(buf2);
 }
 
