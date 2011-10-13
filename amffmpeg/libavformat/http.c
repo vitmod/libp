@@ -38,7 +38,7 @@
 #define IPAD_IDENT	"AppleCoreMedia/1.0.0.8C148 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh_cn)"
 
 /* used for protocol handling */
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE (1024*4)
 #define MAX_REDIRECTS 8
 
 typedef struct {
@@ -344,7 +344,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     HTTPContext *s = h->priv_data;
     int post, err;
     char line[1024];
-    char headers[1024] = "";
+    char headers[1024*4] = "";
     char *authstr = NULL;
     int64_t off = s->off;
     int len = 0;
