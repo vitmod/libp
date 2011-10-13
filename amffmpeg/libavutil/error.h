@@ -50,7 +50,7 @@
 #define AVERROR_PATCHWELCOME       (-MKTAG( 'P','A','W','E')) ///< Not yet implemented in FFmpeg, patches welcome
 #define AVERROR_PROTOCOL_NOT_FOUND (-MKTAG(0xF8,'P','R','O')) ///< Protocol not found
 #define AVERROR_STREAM_NOT_FOUND   (-MKTAG(0xF8,'S','T','R')) ///< Stream not found
-
+#define AVERROR_STREAM_SIZE_NOTVALID   (-MKTAG(0xF8,'E','S','Z')) ///< Stream not found
 /**
  * Put a description of the AVERROR code errnum in errbuf.
  * In case of failure the global variable errno is set to indicate the

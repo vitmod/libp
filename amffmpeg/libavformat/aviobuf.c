@@ -266,7 +266,7 @@ int64_t avio_size(AVIOContext *s)
     if (!s->seek)
         return AVERROR(ENOSYS);
     size = s->seek(s->opaque, 0, AVSEEK_SIZE);
-    if(size<0){
+    if(size<0 && size!=AVERROR_STREAM_SIZE_NOTVALID){
         if ((size = s->seek(s->opaque, -1, SEEK_END)) < 0)
             return size;
         size++;

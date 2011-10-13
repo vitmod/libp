@@ -121,7 +121,7 @@ int url_lpfillbuffer(URLContext *s,int size)
 	int rlen=0;
 	int ssread;
 	int cache_read_len=0;
-	
+	int64_t tmprp;
 	
 	if(!s || !s->lpbuf)
 		return AVERROR(EINVAL);
@@ -160,8 +160,13 @@ int url_lpfillbuffer(URLContext *s,int size)
 				rlen=-1;/*error*/
 				goto release;
 			}	
-		}	
+		}
+		tmprp=lp->pos;
+		lp_unlock(&lp->mutex);/*release lock for long time read*/
 		rlen=s->prot->url_read(s,lp->wp,ssread);
+		lp_lock(&lp->mutex);
+		if(tmprp!=lp->pos)
+			rlen=AVERROR(EAGAIN);;/*pos have changed,so I think we have a seek on read*/
 		lp_bprint(AV_LOG_INFO,"filled buffer from remote=%d\n",rlen);
 		
 	}	
@@ -447,14 +452,15 @@ int64_t url_lp_get_buffed_pos(URLContext *s)
 	if(!s || !s->lpbuf)
 			return AVERROR(EINVAL);
 	lp=s->lpbuf;
-	lp_lock(&lp->mutex);
 	pos=lp->pos;
-	if(lp->cache_enable){
-		buffer_in_cache=aviolp_cache_next_valid_bytes(lp->cache_id,pos,INT_MAX);
-		if(buffer_in_cache>0)
-			pos+=buffer_in_cache;
+	if(lp->cache_enable && !lp_trylock(&lp->mutex)){
+		if(lp->cache_enable){
+			buffer_in_cache=aviolp_cache_next_valid_bytes(lp->cache_id,pos,INT_MAX);
+			if(buffer_in_cache>0)
+				pos+=buffer_in_cache;
+		}
+		lp_unlock(&lp->mutex);
 	}
-	lp_unlock(&lp->mutex);
 	/*lp_sprint(AV_LOG_INFO,"buffered pos=%lld,file_size=%lld,percent=%d.%02d%%,buffer_in_cache=%d\n",
 		pos,lp->file_size,(int)(pos*100/lp->file_size),(int)((pos*10000/lp->file_size)%100),buffer_in_cache);*/
 	return pos;

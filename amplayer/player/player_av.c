@@ -722,13 +722,17 @@ int read_av_packet(play_para_t *para)
     }
 
     if (raw_mode == 1) {
+		player_mate_wake(para,100*1000);
         ret = raw_read(para);
+		player_mate_sleep(para);
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
             log_print("raw read failed!\n");
             return ret;
         }
     } else if (raw_mode == 0) {
+    	player_mate_wake(para,100*1000);
         ret = non_raw_read(para);
+		player_mate_sleep(para);
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
             log_print("non raw read failed!\n");
             return ret;

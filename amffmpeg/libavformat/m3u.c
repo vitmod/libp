@@ -119,16 +119,12 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 				mgt->seq = seq;
 			mgt->flags |=REAL_STREAMING_FLAG;
 			av_log(NULL, AV_LOG_INFO, "get new sequence number:%ld\n",seq);
-			}else{
-				//av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
-				return -1;
-
-			}
-			
 		}else{
-			av_log(NULL, AV_LOG_INFO, "get a invalid sequence number\n");
-
+			//av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
+			return -1;
+			}			
 		}
+		av_log(NULL, AV_LOG_INFO, "get a invalid sequence number:%ld\n",seq);
 	}
 	else{
 		return 0;
@@ -213,12 +209,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 					strcpy(item->file,tmpitem.file);
 				}
 			}
-			if(mgt->flags&REAL_STREAMING_FLAG){
-				ret =list_test_and_add_item(mgt,item);
-			}else{
-				ret = list_add_item(mgt,item);
-
-			}
+			list_add_item(mgt,item);
 			if(item->flags &ENDLIST_FLAG)
 			{
 				mgt->have_list_end=1;
@@ -227,10 +218,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			else
 			{
 				memset(&tmpitem,0,sizeof(tmpitem));
-				if(ret == 0){
-					getnum++;
-
-				}
+				getnum++;
 			}
 		}
 		else if(ret <0){
@@ -242,7 +230,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		}
 		
 	}
-	mgt->file_size=-1;
+	mgt->file_size=AVERROR_STREAM_SIZE_NOTVALID;
 	mgt->full_time=start_time;
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%d\n",getnum,start_time);
 	return getnum;
