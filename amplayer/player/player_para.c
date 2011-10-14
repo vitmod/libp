@@ -1055,6 +1055,8 @@ int player_dec_init(play_para_t *p_para)
     if (p_para->playctrl_info.time_point >= 0) {
         ret = time_search(p_para);
         if (ret != PLAYER_SUCCESS) {
+			set_player_state(p_para, PLAYER_ERROR);
+		    ret = PLAYER_SEEK_FAILED;
             log_error("[%s:%d]time_search to pos:%ds failed!", __FUNCTION__, __LINE__, p_para->playctrl_info.time_point);
             goto init_fail;
         }
