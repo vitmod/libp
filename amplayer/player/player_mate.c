@@ -81,7 +81,7 @@ int player_mate_sleep(play_para_t *player)
 		mate->mate_should_sleep=1;
 		ret = pthread_cond_signal(&mate->pthread_cond);
 		pthread_mutex_unlock(&mate->pthread_mutex);
-		player_thread_wait(player,1000*10);
+		player_thread_wait(player,1000);
 	}
 	return ret;
 }
@@ -227,6 +227,7 @@ static int player_mate_thread_run(play_para_t *player)
 		if(!mate->mate_should_sleep)	
 			player_mate_thread_run_l(player,mate);
 		mate->mate_isrunng=0;
+		wakeup_player_thread(player);
 	}
 	return 0;
 }
