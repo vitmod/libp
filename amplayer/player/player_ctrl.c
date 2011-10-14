@@ -1245,6 +1245,9 @@ char *player_status2str(player_status status)
     case PLAYER_INITING:
         return "BEGIN_INIT";
 
+	case PLAYER_TYPE_REDY:
+		return "TYPE_READY";
+		
     case PLAYER_INITOK:
         return "INIT_OK";
 
