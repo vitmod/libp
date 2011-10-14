@@ -144,6 +144,8 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
         av_free_packet(&packet);
     }
 
+    if(frame->data)
+        free(frame->data);
     av_free(stream->pFrameRGB);
     av_free(stream->pFrameYUV);
     avcodec_close(stream->pCodecCtx);
