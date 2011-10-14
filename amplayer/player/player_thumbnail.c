@@ -10,6 +10,7 @@ void * thumbnail_res_alloc(void)
     frame = (struct video_frame *)malloc(sizeof(struct video_frame));
     if(frame == NULL)
         return NULL;
+    memset(frame, 0, sizeof(struct video_frame));
 
     av_register_all();
 
@@ -182,11 +183,11 @@ int thumbnail_decoder_close(void *handle)
     struct video_frame *frame = (struct video_frame *)handle;
     struct stream *stream = &frame->stream;
 
-    if(!frame->data)
+    if(frame->data)
         free(frame->data);
-    if(!stream->pFrameRGB)
+    if(stream->pFrameRGB)
         av_free(stream->pFrameRGB);
-    if(!stream->pFrameYUV)
+    if(stream->pFrameYUV)
 	 av_free(stream->pFrameYUV);
 
     avcodec_close(stream->pCodecCtx);
