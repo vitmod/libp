@@ -52,6 +52,7 @@ void *player_mate_init(play_para_t *player,int intervals){
 	mate->mate_should_sleep=0;
 	mate->mate_should_exit=0;
 	mate->work_intervals=intervals;
+	log_print("player mate init ok mate=%x(%d)\n",mate,sizeof(struct player_mate));
 	player->player_mate=mate;
   	ret = pthread_create(&tid, &pthread_attr, (void*)&player_mate_thread_run, (void*)player);
 	mate->pthread_id=tid;
@@ -103,6 +104,7 @@ int player_mate_release(play_para_t *player)
 	mate_print("wait mate thread exit\n");
 	ret = pthread_join(mate->pthread_id, NULL);
 	mate_print("mate thread exited\n");
+	FREE(player->player_mate);
 	player->player_mate=NULL;
 	return ret;
 }
