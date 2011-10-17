@@ -34,12 +34,12 @@ static int try_decode_picture(play_para_t *p_para, int video_index)
     codec = avcodec_find_decoder(ic->codec_id);
     if (!codec) {
         log_print("[%s:%d]Codec not found\n", __FUNCTION__, __LINE__);
-        goto exitf;
+        goto exitf1;
     }
 
     if (avcodec_open(ic, codec) < 0) {
         log_print("[%s:%d]Could not open codec\n", __FUNCTION__, __LINE__);
-        goto exitf;
+        goto exitf1;
     }
 
     picture = avcodec_alloc_frame();
@@ -82,13 +82,16 @@ static int try_decode_picture(play_para_t *p_para, int video_index)
     }
 
     url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+	avcodec_close(ic);
     return 0;
     
 exitf:
     if (picture) {
         av_free(picture);
     }
-
+	avcodec_close(ic);
+exitf1:
+	
     if (read_packets) {
         return read_packets;
     } else {
