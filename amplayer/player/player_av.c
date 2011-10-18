@@ -46,6 +46,7 @@ static const media_type media_array[] = {
     {"p2p", P2P_FILE, STREAM_ES},
     {"asf", ASF_FILE, STREAM_ES},
     {"m4a", MP4_FILE, STREAM_ES},
+    {"m4v", MP4_FILE, STREAM_ES},
     {"rtsp", STREAM_FILE, STREAM_ES},
 };
 
