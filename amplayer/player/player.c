@@ -112,9 +112,9 @@ static int check_decoder_worksta(play_para_t *para)
     struct vdec_status vdec;
     int ret;
 
-    if (para->vstream_info.video_format != VFORMAT_REAL) {
+    /*if (para->vstream_info.video_format != VFORMAT_REAL) {
         return PLAYER_SUCCESS;
-    }
+    }*/
 
     if (para->vstream_info.has_video) {
         if (para->vcodec) {
