@@ -136,6 +136,7 @@ player_cmd_t * peek_message_locked(play_para_t *para)
     return cmd;
 }
 
+
 int lock_message_pool(play_para_t *para)
 {
 	message_pool_t *pool = &para->message_pool;
@@ -147,6 +148,19 @@ int unlock_message_pool(play_para_t *para)
 	message_pool_t *pool = &para->message_pool;
 	pthread_mutex_unlock(&pool->msg_mutex);
 	return 0;
+}
+player_cmd_t * peek_message(play_para_t *para)
+{
+	player_cmd_t *cmd;
+	message_pool_t *pool = &para->message_pool;
+	if (pool == NULL) {
+        log_error("[peek_message]pool is null!\n");
+        return NULL;
+    }
+	pthread_mutex_lock(&pool->msg_mutex);
+	cmd=peek_message_locked(para);
+	pthread_mutex_unlock(&pool->msg_mutex);
+	return cmd;
 }
 
 void clear_all_message(play_para_t *para)

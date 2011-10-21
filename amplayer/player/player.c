@@ -603,7 +603,13 @@ void *player_thread(play_para_t *player)
     set_player_state(player, PLAYER_TYPE_REDY);
     send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_TYPE_REDY, 0);
     send_event(player, PLAYER_EVENTS_FILE_TYPE, &filetype, 0);
-
+	if(player->start_param->is_type_parser){
+		player_cmd_t *msg;
+		player_thread_wait(player,1000);
+		msg=peek_message(player);
+		if(msg && (msg->ctrl_cmd & (CMD_EXIT | CMD_STOP)))
+			goto release0;
+	}
 	log_print("pid[%d]::parse ok , prepare parameters\n", player->player_id);
     ret = player_dec_init(player);
     if (ret != PLAYER_SUCCESS) {

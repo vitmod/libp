@@ -259,6 +259,7 @@ typedef struct
 	float buffing_middle;
 	float buffing_max;
 	int is_playlist;
+	int is_type_parser;/*is try to get file type */
  }play_control_t; 
 
 #endif
