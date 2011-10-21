@@ -143,9 +143,11 @@ static void get_av_codec_type(play_para_t *p_para)
         	if(p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WMV3) {
                 if (pFormatCtx->video_avg_frame_time != 0) {
                     p_para->vstream_info.video_rate = pFormatCtx->video_avg_frame_time * 96 / 10000;
-                }
-
+                }	
+				// WMV3 the last byte of the extradata is a version number, 
+				// 1 for the samples we can decode
                 if (pCodecCtx->extradata && !(pCodecCtx->extradata[3] & 1)) { // this format is not supported
+                	log_error("[%s]can only support wmv3 version number 1\n", __FUNCTION__);
                     p_para->vstream_info.has_video = 0;                    
                 }
         	}				
