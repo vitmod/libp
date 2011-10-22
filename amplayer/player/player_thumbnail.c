@@ -17,6 +17,31 @@ void * thumbnail_res_alloc(void)
     return (void *)frame;
 }
 
+int thumbnail_find_stream_info(void *handle, const char* filename)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+
+    if(av_open_input_file(&stream->pFormatCtx, filename, NULL, 0, NULL) != 0) {
+        log_print("Coundn't open file %s !\n", filename);
+        goto err;
+    }
+
+    if(av_find_stream_info(stream->pFormatCtx) < 0) {
+        log_print("Coundn't find stream information !\n");
+        goto err1;
+    }
+
+    return 0;
+
+err1:
+    av_close_input_file(stream->pFormatCtx);
+err:
+    memset(&frame->stream, 0, sizeof(struct stream));
+
+    return -1;   
+}
+
 int thumbnail_decoder_open(void *handle, const char* filename)
 {
     int i;
@@ -178,6 +203,27 @@ void thumbnail_get_video_size(void *handle, int* width, int* height)
 
     *width = frame->width;
     *height = frame->height;
+}
+
+int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+    AVDictionaryEntry *tag=NULL;
+
+    if( !stream->pFormatCtx->metadata)
+        return 0;
+
+    tag = av_dict_get(stream->pFormatCtx->metadata, key, tag, AV_METADATA_IGNORE_SUFFIX);
+    if(tag) {
+        *value = tag->value;
+        //log_print("99999: %s\n", key);
+        //strcpy(value, tag->value);
+        //log_print("88888888: %s\n",  tag->value);
+        return 1;
+    }
+
+    return 0;
 }
 
 int thumbnail_decoder_close(void *handle)
