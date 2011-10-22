@@ -1112,7 +1112,10 @@ int time_search(play_para_t *am_p)
                     offset = am_p->data_offset;
                 }
             }
-            if (am_p->file_type == WAV_FILE&&am_p->astream_info.audio_format == AFORMAT_ADPCM) {
+            /**
+             * all of PCM format need align to sample size
+             * **/            
+            if (am_p->file_type == WAV_FILE){//&&am_p->astream_info.audio_format == AFORMAT_ADPCM) {
 			AVCodecContext *codec = 	s->streams[am_p->astream_info.audio_index]->codec;
 			if(codec->sample_fmt == 0)//AV_SAMPLE_FMT_U8
 				sample_size = 1;
