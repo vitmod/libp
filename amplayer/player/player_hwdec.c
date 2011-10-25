@@ -157,6 +157,12 @@ void adts_add_header(play_para_t *para)
     int size = ADTS_HEADER_SIZE + pkt->data_size;   // 13bit valid
     size &= 0x1fff;
     buf = para->astream_info.extradata;
+
+	if(pkt->avpkt && (pkt->avpkt->flags & AV_PKT_FLAG_AAC_WITH_ADTS_HEADER)){
+		log_error("have add adts header in low level,don't add again\n");
+		pkt->hdr->size = 0;
+		return ; /*have added before */
+	}	
     if (para->astream_info.extradata) {
         buf[3] = (buf[3] & 0xfc) | (size >> 11);
         buf[4] = (size >> 3) & 0xff;

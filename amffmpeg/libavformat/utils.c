@@ -3069,6 +3069,7 @@ void avformat_free_context(AVFormatContext *s)
         av_dict_free(&st->metadata);
         av_free(st->index_entries);
         av_free(st->codec->extradata);
+		av_free(st->codec->extradata1);
         av_free(st->codec->subtitle_header);
         av_free(st->codec);
         av_free(st->priv_data);

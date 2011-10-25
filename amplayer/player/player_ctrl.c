@@ -92,7 +92,7 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     int ret;
     int pid = -1;
     play_para_t *p_para;
-
+	print_version_info();
     log_print("[player_start:enter]p= %p \n", ctrl_p);
 
     if (ctrl_p == NULL) {
