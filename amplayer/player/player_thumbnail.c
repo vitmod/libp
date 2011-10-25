@@ -3,6 +3,14 @@
 #include <log_print.h>
 #include "thumbnail_type.h"
 
+static inline void calc_aspect_ratio(rational ratio, struct stream *stream)
+{
+    av_reduce(&ratio.num, &ratio.den, 
+			stream->pCodecCtx->width * stream->pCodecCtx->sample_aspect_ratio.num, 
+			stream->pCodecCtx->height * stream->pCodecCtx->sample_aspect_ratio.den,
+			1024*1024);
+}
+
 void * thumbnail_res_alloc(void)
 {
     struct video_frame * frame;
@@ -92,6 +100,8 @@ int thumbnail_decoder_open(void *handle, const char* filename)
     frame->height = stream->pCodecCtx->height;
     frame->duration = stream->pFormatCtx->duration;
 
+    calc_aspect_ratio(frame->displayAspectRatio, stream);
+	
     stream->pFrameYUV = avcodec_alloc_frame();
     if(stream->pFrameYUV == NULL) {
         log_print("alloc YUV frame failed!\n");
@@ -205,6 +215,19 @@ void thumbnail_get_video_size(void *handle, int* width, int* height)
     *height = frame->height;
 }
 
+int thumbnail_get_aspect_ratio(void *handle, int* num, int* den)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+
+    if( !frame->displayAspectRatio.num || !frame->displayAspectRatio.den)
+        return 0;
+
+    *num = frame->displayAspectRatio.num;
+    *den = frame->displayAspectRatio.den;
+
+    return 1;
+}
+
 int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
 {
     struct video_frame *frame = (struct video_frame *)handle;
@@ -217,9 +240,6 @@ int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
     tag = av_dict_get(stream->pFormatCtx->metadata, key, tag, AV_METADATA_IGNORE_SUFFIX);
     if(tag) {
         *value = tag->value;
-        //log_print("99999: %s\n", key);
-        //strcpy(value, tag->value);
-        //log_print("88888888: %s\n",  tag->value);
         return 1;
     }
 
