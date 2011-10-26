@@ -218,7 +218,6 @@ static int rtp_parse_mp4_au(PayloadContext *data, const uint8_t *buf)
         return -1;
 
     data->nb_au_headers = au_headers_length / au_header_size;
-	av_log(NULL,AV_LOG_INFO,"rtp_parse_mp4_au num after=[[[%d]]]\n", data->nb_au_headers);
     if (!data->au_headers || data->au_headers_allocated < data->nb_au_headers) {
         av_free(data->au_headers);
         data->au_headers = av_malloc(sizeof(struct AUHeaders) * data->nb_au_headers);

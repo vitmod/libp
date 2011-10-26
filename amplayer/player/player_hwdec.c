@@ -159,7 +159,7 @@ void adts_add_header(play_para_t *para)
     buf = para->astream_info.extradata;
 
 	if(pkt->avpkt && (pkt->avpkt->flags & AV_PKT_FLAG_AAC_WITH_ADTS_HEADER)){
-		log_error("have add adts header in low level,don't add again\n");
+		//log_info("have add adts header in low level,don't add again\n");
 		pkt->hdr->size = 0;
 		return ; /*have added before */
 	}	
