@@ -156,7 +156,7 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
             }
 			
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
-	     if(frameFinished){
+	     if(frameFinished && stream->pFrameYUV->key_frame){
 		  count++;
 	         struct SwsContext *img_convert_ctx;
 		  img_convert_ctx = sws_getContext(stream->pCodecCtx->width, stream->pCodecCtx->height, 
