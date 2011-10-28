@@ -541,37 +541,40 @@ static int64_t http_seek(URLContext *h, int64_t off, int whence)
     int64_t old_off = s->off;
     uint8_t old_buf[BUFFER_SIZE];
     int old_buf_size;
-
+	
     if (whence == AVSEEK_SIZE)
         return s->filesize;
     else if ((s->filesize == -1 && whence == SEEK_END) || h->is_streamed)
         return -1;
-               
-       if (whence == SEEK_CUR && off==0){/*get cur pos only*/
-               return s->off;
-       }
-
+	if (whence == SEEK_CUR && off==0)/*get cur pos only*/
+		return s->off;
+       
+	if (whence == SEEK_CUR)
+        off += s->off;		
+    else if (whence == SEEK_END)
+        off += s->filesize;
+	
+    if (off >= s->filesize && s->filesize > 0){
+			av_log(h, AV_LOG_ERROR, "http_seek %lld exceed filesize %lld, return -2\n",off, s->filesize);
+			return -2;
+		}  
     /* we save the old context in case the seek fails */
     old_buf_size = s->buf_end - s->buf_ptr;
     memcpy(old_buf, s->buf_ptr, old_buf_size);
-    s->hd = NULL;
-    if (whence == SEEK_CUR)
-        off += s->off;
-    else if (whence == SEEK_END)
-        off += s->filesize;
+    s->hd = NULL;    
     s->off = off;
 	s->is_seek=1;
+	ffurl_close(old_hd);
     /* if it fails, continue on old connection */
     if (http_open_cnx(h) < 0) {
         memcpy(s->buffer, old_buf, old_buf_size);
         s->buf_ptr = s->buffer;
         s->buf_end = s->buffer + old_buf_size;
-        s->hd = old_hd;
+        s->hd = old_hd = 0;
         s->off = old_off;
-        return -1;
+        return -3;
     }
-	s->is_seek=0;
-    ffurl_close(old_hd);
+	s->is_seek=0;    
     return off;
 }
 

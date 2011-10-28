@@ -360,7 +360,7 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 		}else if ((offset1=s->prot->url_seek(s, offset, SEEK_SET)) < 0)
 		{
 			lp->valid_data_size=0;/*seek failed clear all old datas*/
-			s->prot->url_seek(s, lp->pos, SEEK_SET);/*clear the lowlevel errors*/
+			offset1 = s->prot->url_seek(s, lp->pos, SEEK_SET);/*clear the lowlevel errors*/
 			lp_unlock(&lp->mutex);
 			return  offset1;
 		}

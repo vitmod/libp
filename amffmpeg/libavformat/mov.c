@@ -2514,6 +2514,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     AVIndexEntry *sample;
     AVStream *st = NULL;
     int ret;
+	int64_t offset = 0;
  retry:
     sample = mov_find_next_sample(s, &st);
     if (!sample) {
@@ -2530,9 +2531,10 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     sc->current_sample++;
 
     if (st->discard != AVDISCARD_ALL) {
-        if (avio_seek(sc->pb, sample->pos, SEEK_SET) != sample->pos) {
-            av_log(mov->fc, AV_LOG_ERROR, "stream %d, offset 0x%"PRIx64": partial file\n",
-                   sc->ffindex, sample->pos);
+		offset = avio_seek(sc->pb, sample->pos, SEEK_SET);
+        if (offset != sample->pos) {
+            av_log(mov->fc, AV_LOG_ERROR, "stream %d, seekto offset 0x%"PRIx64" ret 0x%"PRIx64":partial file\n", 
+				sc->ffindex, sample->pos, offset);
             if (sample->pos > s->file_size)
                 return AVERROR_EOF;
             else
