@@ -3,12 +3,16 @@
 #include <log_print.h>
 #include "thumbnail_type.h"
 
-static inline void calc_aspect_ratio(rational ratio, struct stream *stream)
+static inline void calc_aspect_ratio(rational *ratio, struct stream *stream)
 {
-    av_reduce(&ratio.num, &ratio.den, 
+    int num, den;
+	
+    av_reduce(&num, &den, 
 			stream->pCodecCtx->width * stream->pCodecCtx->sample_aspect_ratio.num, 
 			stream->pCodecCtx->height * stream->pCodecCtx->sample_aspect_ratio.den,
 			1024*1024);
+    ratio->num = num;
+    ratio->den = den;
 }
 
 void * thumbnail_res_alloc(void)
@@ -100,8 +104,8 @@ int thumbnail_decoder_open(void *handle, const char* filename)
     frame->height = stream->pCodecCtx->height;
     frame->duration = stream->pFormatCtx->duration;
 
-    calc_aspect_ratio(frame->displayAspectRatio, stream);
-	
+    calc_aspect_ratio(&frame->displayAspectRatio, stream);
+
     stream->pFrameYUV = avcodec_alloc_frame();
     if(stream->pFrameYUV == NULL) {
         log_print("alloc YUV frame failed!\n");
