@@ -224,9 +224,9 @@ float thumbnail_get_aspect_ratio(void *handle)
     struct video_frame *frame = (struct video_frame *)handle;
 
     if( !frame->displayAspectRatio.num || !frame->displayAspectRatio.den)
-        return (float)(frame->width / frame->height);
+        return (float)frame->width / frame->height;
     else
-        return (float)(frame->displayAspectRatio.num / frame->displayAspectRatio.den);
+        return (float)frame->displayAspectRatio.num / frame->displayAspectRatio.den;
 }
 
 int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
