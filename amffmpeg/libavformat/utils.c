@@ -505,6 +505,9 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
     int ret = 0, probe_size;
 	int data_offset = 0;
 	int pre_data= 0;
+	int probe_flag = 0;
+	int64_t oldoffset;
+	int64_t old_dataoff;
 	AVFormatContext *s = logctx;
 
     if (!max_probe_size) {
@@ -519,7 +522,10 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
         return AVERROR(EINVAL);
     }
 
-	if (av_match_ext(filename, "ts") || av_match_ext(filename, "m2ts")) {
+	oldoffset = avio_tell(pb);
+	old_dataoff = s->data_offset;
+	if (av_match_ext(filename, "ts") || av_match_ext(filename, "m2ts")) {		
+		probe_flag = 1;
 		do{
 			pre_data = avio_r8(pb);
 			data_offset ++;	
@@ -533,6 +539,7 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
 		}while(1);
 	}
 	
+retry_probe:	
     for(probe_size= PROBE_BUF_MIN; probe_size<=max_probe_size && !*fmt && ret >= 0;
         probe_size = FFMIN(probe_size<<1, FFMAX(max_probe_size, probe_size+1))) {
         int ret, score = probe_size < max_probe_size ? AVPROBE_SCORE_MAX/4 : 0;
@@ -565,13 +572,21 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
                 av_log(logctx, AV_LOG_WARNING, "Format %s detected only with low score of %d, misdetection possible!\n", (*fmt)->name, score);
             }else
                 av_log(logctx, AV_LOG_INFO, "Format %s probed with size=%d and score=%d\n", (*fmt)->name, probe_size, score);
-        }
+       }
     }
-
+	
     if (!*fmt) {
         av_free(buf);
         return AVERROR_INVALIDDATA;
+    } else if(strcmp((*fmt)->name,"mpegts") && probe_flag){
+		s->data_offset = old_dataoff;	
+		probe_flag =0;
+		*fmt = NULL;
+		avio_seek(pb, oldoffset, SEEK_SET);
+		av_log(logctx, AV_LOG_INFO, "Format not ts, probe again\n");
+		goto retry_probe;			
     }
+	
 
     /* rewind. reuse probe buffer to avoid seeking */
     if ((ret = ffio_rewind_with_probe_data(pb, buf, pd.buf_size)) < 0)
