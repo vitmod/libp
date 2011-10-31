@@ -915,7 +915,8 @@ int pre_header_feeding(play_para_t *para)
             if (ret != PLAYER_SUCCESS) {
                 return ret;
             }
-        } else if ((MKV_FILE == para->file_type) && (VFORMAT_MPEG4 == para->vstream_info.video_format)) {
+        } else if ((MKV_FILE == para->file_type) 
+        && ((VFORMAT_MPEG4 == para->vstream_info.video_format) || (VFORMAT_MPEG12 == para->vstream_info.video_format))) {
             ret = mkv_write_header(para);
             if (ret != PLAYER_SUCCESS) {
                 return ret;
