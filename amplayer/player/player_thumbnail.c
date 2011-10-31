@@ -89,6 +89,10 @@ int thumbnail_decoder_open(void *handle, const char* filename)
     stream->pCodecCtx = stream->pFormatCtx->streams[video_index]->codec;
     if(stream->pCodecCtx == NULL)
         log_print("pCodecCtx is NULL !\n");
+
+    frame->width = stream->pCodecCtx->width;
+    frame->height = stream->pCodecCtx->height;
+
     stream->pCodec = avcodec_find_decoder(stream->pCodecCtx->codec_id);
     if(stream->pCodec == NULL){
         log_print("Didn't find codec!\n");
@@ -100,8 +104,6 @@ int thumbnail_decoder_open(void *handle, const char* filename)
 	 goto err1;
     }
 	
-    frame->width = stream->pCodecCtx->width;
-    frame->height = stream->pCodecCtx->height;
     frame->duration = stream->pFormatCtx->duration;
 
     calc_aspect_ratio(&frame->displayAspectRatio, stream);
