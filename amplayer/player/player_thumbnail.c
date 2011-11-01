@@ -249,6 +249,24 @@ int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
     return 0;
 }
 
+int thumbnail_get_key_data(void* handle, char* key, const void** data, int* data_size)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+    AVDictionaryEntry *tag=NULL;
+	
+    if( !stream->pFormatCtx->metadata)
+        return 0;
+
+    if(av_dict_get(stream->pFormatCtx->metadata, key, tag, AV_METADATA_IGNORE_SUFFIX)) {
+        *data = stream->pFormatCtx->cover_data;
+        *data_size = stream->pFormatCtx->cover_data_len;
+        return 1;
+    }
+
+    return 0;
+}
+
 int thumbnail_decoder_close(void *handle)
 {
     struct video_frame *frame = (struct video_frame *)handle;

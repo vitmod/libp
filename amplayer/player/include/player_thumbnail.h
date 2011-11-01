@@ -13,6 +13,7 @@ int thumbnail_read_frame(void *handle, char* buffer);
 void thumbnail_get_video_size(void *handle, int* width, int* height);
 float thumbnail_get_aspect_ratio(void *handle);
 int thumbnail_get_key_metadata(void* handle, char* key, const char** value);
+int thumbnail_get_key_data(void* handle, char* key, const void** data, int* data_size);
 int thumbnail_decoder_close(void *handle);
 void thumbnail_res_free(void* handle);
 

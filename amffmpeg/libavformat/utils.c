@@ -3070,6 +3070,9 @@ void avformat_free_context(AVFormatContext *s)
     int i;
     AVStream *st;
 
+    if(s->cover_data)
+        av_free(s->cover_data);
+	
     av_opt_free(s);
     if (s->iformat && s->iformat->priv_class && s->priv_data)
         av_opt_free(s->priv_data);
