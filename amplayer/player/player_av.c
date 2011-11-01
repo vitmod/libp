@@ -1062,12 +1062,14 @@ int time_search(play_para_t *am_p)
             if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
                 timestamp += s->start_time;
             }
+			#if 0
             if (timestamp == s->start_time) {
                 if (am_p->file_type == AVI_FILE) {
                     stream_index = am_p->first_index;
                     seek_flags |= AVSEEK_FLAG_ANY;
                 }
             }
+			#endif
 
 			if (am_p->vstream_info.video_format == VFORMAT_MJPEG ||
 				am_p->file_type == MKV_FILE) {
