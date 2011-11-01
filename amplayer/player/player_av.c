@@ -1996,6 +1996,14 @@ void player_switch_audio(play_para_t *para)
             return;
         }
     }
+
+	if(para->playctrl_info.read_end_flag){
+		para->playctrl_info.reset_flag = 1;
+		para->playctrl_info.end_flag = 1;
+		para->playctrl_info.time_point = para->state.current_time;	
+		log_print("[%s]read end, reset decoder for switch!curtime=%d\n", __FUNCTION__, para->playctrl_info.time_point);
+		return ;
+	}
 /*
     if (para->playctrl_info.raw_mode 
         && para->astream_info.audio_format == AFORMAT_PCM_BLURAY) {
@@ -2068,7 +2076,7 @@ void player_switch_audio(play_para_t *para)
         log_print("[%s:%d]reset audio failed\n", __FUNCTION__, __LINE__);
         return;
     }
-
+	
     /* backup next video packet and time search if it is ES */
     if (para->stream_type == STREAM_ES && para->vstream_info.has_video) {
         AVPacket *avPkt = para->p_pkt->avpkt;
