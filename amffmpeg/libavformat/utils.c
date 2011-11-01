@@ -1929,6 +1929,16 @@ static void av_update_stream_timings(AVFormatContext *ic)
     duration = INT64_MIN;
     for(i = 0;i < ic->nb_streams; i++) {
         st = ic->streams[i];
+        
+        /* added by Z.C. to set start time */
+        if (st->start_time == 0) {
+            if (st->nb_index_entries) {
+                st->start_time = st->index_entries[0].timestamp;
+                av_log(NULL, AV_LOG_INFO, "[%s:%d] set stream %d start_time to first pts 0x%llx\n", 
+                    __FUNCTION__, __LINE__, i, st->start_time);
+            }
+        }
+
         if (st->start_time != AV_NOPTS_VALUE && st->time_base.den) {
             start_time1= av_rescale_q(st->start_time, st->time_base, AV_TIME_BASE_Q);
             if (st->codec->codec_id == CODEC_ID_DVB_TELETEXT) {
@@ -3070,6 +3080,9 @@ void avformat_free_context(AVFormatContext *s)
     int i;
     AVStream *st;
 
+    if(s->cover_data)
+        av_free(s->cover_data);
+	
     av_opt_free(s);
     if (s->iformat && s->iformat->priv_class && s->priv_data)
         av_opt_free(s->priv_data);

@@ -893,6 +893,10 @@ typedef struct AVFormatContext {
     /* added by C.S for divx drm certification:drm information */
     drm_t       drm;
 //--***********************************************  
+
+    /* added by GP for storing music's embedded picture */
+    int cover_data_len;
+    uint8_t *cover_data;
 } AVFormatContext;
 
 typedef struct AVPacketList {

@@ -89,6 +89,10 @@ int thumbnail_decoder_open(void *handle, const char* filename)
     stream->pCodecCtx = stream->pFormatCtx->streams[video_index]->codec;
     if(stream->pCodecCtx == NULL)
         log_print("pCodecCtx is NULL !\n");
+
+    frame->width = stream->pCodecCtx->width;
+    frame->height = stream->pCodecCtx->height;
+
     stream->pCodec = avcodec_find_decoder(stream->pCodecCtx->codec_id);
     if(stream->pCodec == NULL){
         log_print("Didn't find codec!\n");
@@ -100,8 +104,6 @@ int thumbnail_decoder_open(void *handle, const char* filename)
 	 goto err1;
     }
 	
-    frame->width = stream->pCodecCtx->width;
-    frame->height = stream->pCodecCtx->height;
     frame->duration = stream->pFormatCtx->duration;
 
     calc_aspect_ratio(&frame->displayAspectRatio, stream);
@@ -241,6 +243,24 @@ int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
     tag = av_dict_get(stream->pFormatCtx->metadata, key, tag, AV_METADATA_IGNORE_SUFFIX);
     if(tag) {
         *value = tag->value;
+        return 1;
+    }
+
+    return 0;
+}
+
+int thumbnail_get_key_data(void* handle, char* key, const void** data, int* data_size)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+    AVDictionaryEntry *tag=NULL;
+	
+    if( !stream->pFormatCtx->metadata)
+        return 0;
+
+    if(av_dict_get(stream->pFormatCtx->metadata, key, tag, AV_METADATA_IGNORE_SUFFIX)) {
+        *data = stream->pFormatCtx->cover_data;
+        *data_size = stream->pFormatCtx->cover_data_len;
         return 1;
     }
 
