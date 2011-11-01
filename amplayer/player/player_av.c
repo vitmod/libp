@@ -18,8 +18,17 @@
 #include "thread_mgt.h"
 #include "player_update.h"
 
-#define DUMP_WRITE   (0)
-#define DUMP_READ    (0)
+#define DUMP_WRITE_VIDEO  (0)
+#define DUMP_WRITE_AUDIO  (0)
+#define DUMP_WRITE_AVDATA (0)
+
+#define DUMP_READ_VIDEO    (0)
+#define DUMP_READ_AUDIO	   (0)
+#define DUMP_READ_AVDATA   (0)
+
+#define DUMP_WRITE (DUMP_WRITE_VIDEO||DUMP_WRITE_AUDIO||DUMP_WRITE_AVDATA)
+#define DUMP_READ  (DUMP_READ_VIDEO||DUMP_READ_AUDIO||DUMP_READ_AVDATA)
+
 #if (DUMP_WRITE || DUMP_READ)
 #include <fcntl.h>
 int fdw = -1, fdr = -1;
@@ -452,14 +461,13 @@ static int raw_read(play_para_t *para)
     static int try_count = 0;
     int64_t cur_offset = 0;
 	
-#if DUMP_READ
+#if DUMP_READ_AVDATA
     if (fdr == -1) {
         fdr = open("./dump/dump_read.dat", O_CREAT | O_RDWR);
         if (fdr < 0) {
             log_print("creat dump file failed!fd=%d\n", fdr);
         }
     }
-    log_print("=============================open dump_read.data ok!\n");
 #endif
 
     if (pkt->data_size > 0) {
@@ -496,7 +504,7 @@ static int raw_read(play_para_t *para)
             pkt->avpkt_newflag = 1;
             pkt->avpkt_isvalid = 1;
 	     pkt->pts_checkin_ok = 0;
-#if DUMP_READ
+#if DUMP_READ_AVDATA
             if (fdr > 0) {
                 int dsize;
                 dsize = write(fdr,  pkt->data, pkt->data_size);
@@ -511,7 +519,7 @@ static int raw_read(play_para_t *para)
             /*if the return is EAGAIN,we need to try more times*/
             para->playctrl_info.read_end_flag = 1;
             log_print("raw read: read end!,%d,%lld,%lld\n",rev_byte ,cur_offset,para->pFormatCtx->valid_offset);
-#if DUMP_READ
+#if DUMP_READ_AVDATA
             if (fdr > 0) {
                 close(fdr);
             }
@@ -617,12 +625,15 @@ static int non_raw_read(play_para_t *para)
             try_count = 0;
 #if DUMP_READ
             if (fdr == -1) {
-                fdr = open("./dump/dump_read.dat", O_CREAT | O_RDWR);
+#if DUMP_READ_VIDEO
+                fdr = open("./dump/dump_video.dat", O_CREAT | O_RDWR);
+#elif DUMP_READ_AUDIO
+				fdr = open("./dump/dump_audio.dat", O_CREAT | O_RDWR);
+#endif
                 if (fdr < 0) {
                     log_print("creat dump file failed!fd=%d\n", fdr);
                 }
             }
-            log_print("=============================open dump_read.data ok!\n");
 #endif
 
             //log_print("av_read_frame return (%d) pkt->avpkt=%p pkt->avpkt->data=%p\r",ret,pkt->avpkt,pkt->avpkt->data);
@@ -694,7 +705,14 @@ static int non_raw_read(play_para_t *para)
             pkt->data = pkt->avpkt->data;
             pkt->data_size = pkt->avpkt->size;
 #if DUMP_READ
-            if (fdr > 0) {
+#if DUMP_READ_VIDEO
+            if (fdr > 0 && pkt->type == CODEC_VIDEO) 
+#elif DUMP_READ_AUDIO
+			if (fdr > 0 && pkt->type == CODEC_AUDIO) 
+#else
+			if (fdr > 0)
+#endif
+			{
                 int dsize;
                 dsize = write(fdr,  pkt->data, pkt->data_size);
                 if (dsize != pkt->data_size) {
@@ -766,8 +784,14 @@ static int write_header(play_para_t *para)
             } else {
 #if DUMP_WRITE
                 int size;
-                //if(fd > 0 && pkt->type == CODEC_VIDEO)
-                if (fdw > 0) {
+#if DUMP_WRITE_VIDEO
+                if(fd > 0 && pkt->type == CODEC_VIDEO)
+#elif DUMP_WRITE_AUDIO	
+				if(fd > 0 && pkt->type == CODEC_AUDIO)
+#else					
+                if (fdw > 0)
+#endif					
+				{
                     size = write(fdw, pkt->hdr->data + len, write_bytes);
                     if (size != write_bytes) {
                         log_print("dump data write failed!size=%d bytes=%d\n", size, write_bytes);
@@ -1156,7 +1180,13 @@ int write_av_packet(play_para_t *para)
     int size ;
 #if DUMP_WRITE
     if (fdw == -1) {
+		#if DUMP_WRITE_VIDEO
+		fdw = open("./dump/dump_video.dat", O_CREAT | O_RDWR);
+		#elif DUMP_WRITE_AUDIO
+		fdw = open("./dump/dump_audio.dat", O_CREAT | O_RDWR);
+		#else
         fdw = open("./dump/dump_write.dat", O_CREAT | O_RDWR);
+		#endif
         if (fdw < 0) {
             log_print("creat dump file failed!fd=%d\n", fdw);
         }
@@ -1252,8 +1282,14 @@ int write_av_packet(play_para_t *para)
         } else {
 #if DUMP_WRITE
             int dsize;
-            //if(fd > 0 && debug && pkt->type == CODEC_VIDEO)
-            if (fdw > 0) {
+#if DUMP_WRITE_VIDEO
+			if(fd > 0 && debug && pkt->type == CODEC_VIDEO)
+#elif DUMP_WRITE_AUDIO
+            if(fd > 0 && debug && pkt->type == CODEC_AUDIO)
+#else        
+            if (fdw > 0) 
+#endif
+			{
                 dsize = write(fdw, buf, write_bytes);
                 if (dsize != write_bytes) {
                     log_print("dump data write failed!size=%d len=%d\n", size, len);
