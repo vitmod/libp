@@ -71,6 +71,7 @@ ADEC_BEGIN_DECLS
 #define MCODEC_FMT_WMAPRO       (1<<11)
 #define MCODEC_FMT_ALAC             (1<<12)
 #define MCODEC_FMT_VORBIS               (1<<13)
+#define MCODEC_FMT_AAC_LATM          (1<<14)
 
 /*********************************************************************************************/
 typedef struct dsp_operations dsp_operations_t;

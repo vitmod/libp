@@ -80,6 +80,11 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
         format = AFORMAT_MPEG;
         break;
 
+    case CODEC_ID_AAC_LATM:
+            format = AFORMAT_AAC_LATM;
+        break;
+
+
     case CODEC_ID_AAC:
         if (File_type == RM_FILE) {
             format = AFORMAT_RAAC;
@@ -1668,7 +1673,7 @@ int set_header_info(play_para_t *para)
             }
         } else if (pkt->type == CODEC_AUDIO) {
             if ((!para->playctrl_info.raw_mode) &&
-                (para->astream_info.audio_format == AFORMAT_AAC)) {
+                para->astream_info.audio_format == AFORMAT_AAC) {
                 if (pkt->hdr == NULL) {
                     pkt->hdr = MALLOC(sizeof(hdr_buf_t));
                     if (!pkt->hdr) {

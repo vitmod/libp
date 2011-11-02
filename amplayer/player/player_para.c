@@ -226,7 +226,7 @@ static void get_av_codec_type(play_para_t *p_para)
             p_para->astream_info.has_audio = 0;           
         }
 
-        if (p_para->astream_info.audio_format == AFORMAT_AAC) {
+        if (p_para->astream_info.audio_format == AFORMAT_AAC||p_para->astream_info.audio_format == AFORMAT_AAC_LATM) {
             pCodecCtx->profile = FF_PROFILE_UNKNOWN;
             AVCodecContext  *pCodecCtx = p_para->pFormatCtx->streams[audio_index]->codec;
             uint8_t *ppp = pCodecCtx->extradata;
@@ -243,7 +243,11 @@ static void get_av_codec_type(play_para_t *p_para)
                 //  p_para->astream_info.has_audio = 0;
             } else {
 
-                AVCodec * aac_codec = avcodec_find_decoder_by_name("aac");
+                AVCodec * aac_codec;
+                if (pCodecCtx->codec_id==CODEC_ID_AAC_LATM) 
+           		aac_codec = avcodec_find_decoder_by_name("aac_latm");
+		else
+                	aac_codec = avcodec_find_decoder_by_name("aac");
 
                 if (aac_codec) {
                     int len;
