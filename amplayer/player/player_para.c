@@ -523,7 +523,8 @@ static int set_decode_para(play_para_t*am_p)
     int rev_byte = 0;
     int total_rev_bytes = 0;
 	vformat_t vfmt;
-	int filter_vfmt = 0;
+	aformat_t afmt;
+	int filter_vfmt = 0, filter_afmt = 0;
     unsigned char* buf;
     ByteIOContext *pb = am_p->pFormatCtx->pb;
 
@@ -536,7 +537,17 @@ static int set_decode_para(play_para_t*am_p)
 	if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
 		log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
 			filter_vfmt, am_p->vstream_info.video_format, (1 << am_p->vstream_info.video_format));
-		return PLAYER_UNSUPPORT_VCODEC;
+		am_p->vstream_info.has_video = 0;
+		set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
+	    update_player_states(am_p, 1);
+	}
+	filter_afmt = PlayerGetAFilterFormat("media.amplayer.disable-acodecs");		
+	if (((1 << am_p->astream_info.audio_format) & filter_afmt) != 0) {
+		log_error("Can't support audio codec! filter_afmt=%x afmt=%x  (1<<afmt)=%x\n", \
+			filter_afmt, am_p->astream_info.audio_format, (1 << am_p->astream_info.audio_format));
+		am_p->astream_info.has_audio = 0;
+		set_player_error_no(am_p, PLAYER_UNSUPPORT_ACODEC);
+	    update_player_states(am_p, 1);
 	}
 	
 	if (am_p->playctrl_info.no_video_flag) {
