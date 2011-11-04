@@ -43,6 +43,9 @@
 #define OPEN_RETRY_MAX 3
 #define READ_RETRY_MAX 10
 
+#define READ_RETRY_MAX_TIME_MS (120*1000) 
+/*60 seconds no data get,we will reset it*/
+
 typedef struct {
     const AVClass *class;
     URLContext *hd;
@@ -56,7 +59,9 @@ typedef struct {
     unsigned char headers[BUFFER_SIZE];
     int willclose;          /**< Set if the server correctly handles Connection: close and will close the connection after feeding us the content. */
 	int is_seek;
+	int canseek;
 	int max_connects;
+	int latest_get_time_ms;
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
@@ -120,6 +125,7 @@ static int http_open_cnx(URLContext *h)
     use_proxy = (proxy_path != NULL) && !getenv("no_proxy") &&
         av_strstart(proxy_path, "http://", NULL);
 
+	s->latest_get_time_ms=0;
     /* fill the dest addr */
  redo:
     /* needed in any case to build the host string */
@@ -198,6 +204,7 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
 	}else{
 		if(old_hd)
 			ffurl_close(old_hd);
+		old_hd=NULL;
 	}
     s->chunksize = -1;
     if (http_open_cnx(h) < 0) {
@@ -211,16 +218,15 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
 							we think the server have link limited*/
 	        return -1;
 		}else{	
-			s->chunksize=old_chunksize;
-	        s->hd = old_hd;
-	        s->off = old_off;
-			memcpy(s->buffer, old_buf, old_buf_size);
-			s->buf_end = s->buffer + old_buf_size;
+			s->chunksize=-1;
+	        s->hd = 0;
+	        s->off = 0;
 	        return -1;
 		}
     }
 	if(s->max_connects>1){
-    	ffurl_close(old_hd);
+		if(old_hd)
+    		ffurl_close(old_hd);
 	}
     return off;
 }
@@ -234,11 +240,13 @@ static int http_open(URLContext *h, const char *uri, int flags)
 	
     s->filesize = -1;
 	s->is_seek=1;
+	s->canseek=1;
     av_strlcpy(s->location, uri, sizeof(s->location));
 	s->max_connects=1000;
 	ret = http_open_cnx(h);
 	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
-		s->is_seek=!s->is_seek;
+		s->is_seek=0;
+		s->canseek=0;
     	ret = http_open_cnx(h);
     }
 	s->is_seek=0;
@@ -253,11 +261,13 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 
     s->filesize = -1;
 	s->is_seek=1;
+	s->canseek=1;
     av_strlcpy(s->location, uri+1, sizeof(s->location));
 	s->max_connects=1000;
 	ret = http_open_cnx(h);
 	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
-		s->is_seek=!s->is_seek;
+		s->is_seek=0;
+		s->canseek=0;
     	ret = http_open_cnx(h);
     }
 
@@ -541,7 +551,24 @@ retry:
         if (s->chunksize > 0)
             s->chunksize -= len;
     }
+	if(s->canseek && len==AVERROR(EAGAIN)){
+		struct timeval  new_time;
+		long new_time_mseconds;
+    	gettimeofday(&new_time, NULL);
+		new_time_mseconds = (new_time.tv_usec / 1000 + new_time.tv_sec * 1000);
+		av_log(NULL, AV_LOG_INFO, "new_time_mseconds=%d,latest_get_time_ms=%d\n", new_time_mseconds,s->latest_get_time_ms);
+		if(s->latest_get_time_ms<=0)
+			s->latest_get_time_ms=new_time_mseconds;
+		if(new_time_mseconds-s->latest_get_time_ms>READ_RETRY_MAX_TIME_MS){
+			av_log(NULL, AV_LOG_INFO, "new_time_mseconds=%d,latest_get_time_ms=%d  TIMEOUT\n", new_time_mseconds,s->latest_get_time_ms);
+			len=-1;/*force it goto reopen */
+		}
+	}else{
+		s->latest_get_time_ms=0;/*0 means have  just get data*/
+	}
+		
 errors:
+	
 	if(len<0 && len!=AVERROR(EAGAIN)&& err_retry-->0 && !url_interrupt_cb())
 	{
 		av_log(NULL, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
