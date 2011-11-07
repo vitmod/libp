@@ -2915,6 +2915,10 @@ typedef struct AVCodecContext {
     /* added by Z.C
      * to record interlace or progressive */
      int frame_interlace;
+
+    /* added by Z.C
+     * to record mpeg4 vol_sprite_usage */
+     int mpeg4_vol_sprite;
 } AVCodecContext;
 
 /**

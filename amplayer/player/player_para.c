@@ -184,6 +184,10 @@ static void get_av_codec_type(play_para_t *p_para)
                 p_para->vstream_info.extradata_size = pCodecCtx->extradata_size;
                 p_para->vstream_info.extradata      = pCodecCtx->extradata;
             }
+            if (p_para->vstream_info.video_format == VFORMAT_MPEG4) {
+                log_print("[%s:%d]mpeg4 vol sprite usage %d\n",
+                    __FUNCTION__, __LINE__, pCodecCtx->mpeg4_vol_sprite);
+            }
             p_para->vstream_info.start_time = pStream->start_time * pStream->time_base.num * PTS_FREQ / pStream->time_base.den;
           
             /* added by Z.C for mov file frame duration */
