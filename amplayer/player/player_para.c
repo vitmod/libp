@@ -184,6 +184,10 @@ static void get_av_codec_type(play_para_t *p_para)
                 p_para->vstream_info.extradata_size = pCodecCtx->extradata_size;
                 p_para->vstream_info.extradata      = pCodecCtx->extradata;
             }
+            if (p_para->vstream_info.video_format == VFORMAT_MPEG4) {
+                log_print("[%s:%d]mpeg4 vol sprite usage %d\n",
+                    __FUNCTION__, __LINE__, pCodecCtx->mpeg4_vol_sprite);
+            }
             p_para->vstream_info.start_time = pStream->start_time * pStream->time_base.num * PTS_FREQ / pStream->time_base.den;
           
             /* added by Z.C for mov file frame duration */
@@ -226,7 +230,7 @@ static void get_av_codec_type(play_para_t *p_para)
             p_para->astream_info.has_audio = 0;           
         }
 
-        if (p_para->astream_info.audio_format == AFORMAT_AAC) {
+        if (p_para->astream_info.audio_format == AFORMAT_AAC||p_para->astream_info.audio_format == AFORMAT_AAC_LATM) {
             pCodecCtx->profile = FF_PROFILE_UNKNOWN;
             AVCodecContext  *pCodecCtx = p_para->pFormatCtx->streams[audio_index]->codec;
             uint8_t *ppp = pCodecCtx->extradata;
@@ -243,7 +247,11 @@ static void get_av_codec_type(play_para_t *p_para)
                 //  p_para->astream_info.has_audio = 0;
             } else {
 
-                AVCodec * aac_codec = avcodec_find_decoder_by_name("aac");
+                AVCodec * aac_codec;
+                if (pCodecCtx->codec_id==CODEC_ID_AAC_LATM) 
+           		aac_codec = avcodec_find_decoder_by_name("aac_latm");
+		else
+                	aac_codec = avcodec_find_decoder_by_name("aac");
 
                 if (aac_codec) {
                     int len;
@@ -519,7 +527,8 @@ static int set_decode_para(play_para_t*am_p)
     int rev_byte = 0;
     int total_rev_bytes = 0;
 	vformat_t vfmt;
-	int filter_vfmt = 0;
+	aformat_t afmt;
+	int filter_vfmt = 0, filter_afmt = 0;
     unsigned char* buf;
     ByteIOContext *pb = am_p->pFormatCtx->pb;
 
@@ -532,7 +541,17 @@ static int set_decode_para(play_para_t*am_p)
 	if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
 		log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
 			filter_vfmt, am_p->vstream_info.video_format, (1 << am_p->vstream_info.video_format));
-		return PLAYER_UNSUPPORT_VCODEC;
+		am_p->vstream_info.has_video = 0;
+		set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
+	    update_player_states(am_p, 1);
+	}
+	filter_afmt = PlayerGetAFilterFormat("media.amplayer.disable-acodecs");		
+	if (((1 << am_p->astream_info.audio_format) & filter_afmt) != 0) {
+		log_error("Can't support audio codec! filter_afmt=%x afmt=%x  (1<<afmt)=%x\n", \
+			filter_afmt, am_p->astream_info.audio_format, (1 << am_p->astream_info.audio_format));
+		am_p->astream_info.has_audio = 0;
+		set_player_error_no(am_p, PLAYER_UNSUPPORT_ACODEC);
+	    update_player_states(am_p, 1);
 	}
 	
 	if (am_p->playctrl_info.no_video_flag) {

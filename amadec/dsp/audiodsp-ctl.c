@@ -37,6 +37,7 @@ firmware_s_t firmware_list[] = {
     {11, MCODEC_FMT_WMAPRO, "audiodsp_codec_wmapro.bin"},
     {12, MCODEC_FMT_ALAC, "audiodsp_codec_alac.bin"},
     {13, MCODEC_FMT_VORBIS, "audiodsp_codec_vorbis.bin"},
+    {14, MCODEC_FMT_AAC_LATM, "audiodsp_codec_aac.bin"},
 
 };
 
@@ -72,6 +73,9 @@ static int switch_audiodsp(audio_format_t fmt)
     switch (fmt) {
     case  AUDIO_FORMAT_MPEG:
         return MCODEC_FMT_MPEG123;
+
+    case  AUDIO_FORMAT_AAC_LATM:
+        return MCODEC_FMT_AAC_LATM;
 
     case  AUDIO_FORMAT_AAC:
         return MCODEC_FMT_AAC;
