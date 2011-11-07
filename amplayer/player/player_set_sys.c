@@ -711,7 +711,7 @@ int EnableFreeScale(display_mode mode) {
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_HEIGHT,osd_height);	
 			ioctl(fd0,FBIOPUT_OSD_FREE_SCALE_ENABLE,1);
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,1);
-			if ((fd_video >= 0)&&(fd_ppmgr >= 0)) 	write(fd_video, "2", strlen("2"));			
+			if ((fd_video >= 0)&&(fd_ppmgr >= 0)) 	write(fd_video, "1", strlen("1"));			
 			ret = 0;
 			break;
 		case DISP_MODE_720P: //720p
@@ -732,7 +732,7 @@ int EnableFreeScale(display_mode mode) {
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_HEIGHT,osd_height);	
 			ioctl(fd0,FBIOPUT_OSD_FREE_SCALE_ENABLE,1);
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,1);
-			if ((fd_video >= 0)&&(fd_ppmgr >= 0)) 	write(fd_video, "2", strlen("2"));
+			if ((fd_video >= 0)&&(fd_ppmgr >= 0)) 	write(fd_video, "1", strlen("1"));
 			ret = 0;
 			break;
 		case DISP_MODE_1080I: //1080i			
@@ -754,7 +754,7 @@ int EnableFreeScale(display_mode mode) {
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_HEIGHT,osd_height);	
 			ioctl(fd0,FBIOPUT_OSD_FREE_SCALE_ENABLE,1);
 			ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,1);
-			if ((fd_video >= 0)&&(fd_ppmgr >= 0)) 	write(fd_video, "2", strlen("2"));		
+			if ((fd_video >= 0)&&(fd_ppmgr >= 0)) 	write(fd_video, "1", strlen("1"));		
 			ret = 0;
 			break;	
 		default:			
