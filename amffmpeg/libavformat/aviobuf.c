@@ -212,11 +212,14 @@ int64_t avio_seek(AVIOContext *s, int64_t offset, int whence)
                offset1 <= s->buf_end + SHORT_SEEK_THRESHOLD - s->buffer) &&
                !s->write_flag && offset1 >= 0 &&
               (whence != SEEK_END || force)) {
-        while(s->pos < offset && !s->eof_reached) {
-			if(s->error)
-				av_log(NULL, AV_LOG_ERROR, "[%s]fill buffer error %d\n", __FUNCTION__, s->error);
+        while(s->pos < offset && !s->eof_reached && !s->error) {
             fill_buffer(s);
         }
+		if(s->error){
+			av_log(NULL, AV_LOG_ERROR, "[%s]fill buffer error %d\n", __FUNCTION__, s->error);
+			return s->error;
+		}
+
         if (s->eof_reached)
             return AVERROR_EOF;
         s->buf_ptr = s->buf_end + offset - s->pos;
