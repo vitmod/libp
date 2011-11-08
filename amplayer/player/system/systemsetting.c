@@ -172,7 +172,7 @@ int PlayerGetAFilterFormat(const char* path)
 			filter_fmt |= FILTER_AFMT_VORBIS;
 		}
     }
-	log_print("[%s:%d]filter_vfmt=%x\n", __FUNCTION__, __LINE__, filter_fmt);
+	log_print("[%s:%d]filter_afmt=%x\n", __FUNCTION__, __LINE__, filter_fmt);
     return filter_fmt;
 }
 
