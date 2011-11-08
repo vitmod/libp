@@ -42,6 +42,7 @@
 #define MAX_REDIRECTS 8
 #define OPEN_RETRY_MAX 3
 #define READ_RETRY_MAX 10
+#define MAX_CONNECT_LINKS 1
 
 #define READ_RETRY_MAX_TIME_MS (120*1000) 
 /*60 seconds no data get,we will reset it*/
@@ -242,7 +243,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
 	s->is_seek=1;
 	s->canseek=1;
     av_strlcpy(s->location, uri, sizeof(s->location));
-	s->max_connects=1000;
+	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
 	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
 		s->is_seek=0;
@@ -262,8 +263,8 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     s->filesize = -1;
 	s->is_seek=1;
 	s->canseek=1;
-    av_strlcpy(s->location, uri+1, sizeof(s->location));
-	s->max_connects=1000;
+    av_strlcpy(s->location, uri+1, sizeof(s->location));	
+	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
 	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
 		s->is_seek=0;
