@@ -324,6 +324,7 @@ static void get_stream_info(play_para_t *p_para)
     int bitrate = 0;
     int read_packets = 0;
     int ret = 0;
+	aformat_t audio_format;
 
     p_para->first_index = pFormat->first_index;
     
@@ -360,15 +361,14 @@ static void get_stream_info(play_para_t *p_para)
             }
         } else if (pCodec->codec_type == CODEC_TYPE_AUDIO) {
             p_para->astream_num ++;
+			audio_format = audio_type_convert(pCodec->codec_id, p_para->file_type);
             if (p_para->file_type == RM_FILE) {
                 if ((temp_aidx == -1)
                     && (CODEC_ID_SIPR != pCodec->codec_id)) { // SIPR not supported now
                     temp_aidx = i;
                 }
-            } else {
-                if (temp_aidx == -1) {
-                    temp_aidx = i;
-                }
+            } else if (temp_aidx == -1 && audio_format != AFORMAT_UNSUPPORT) {
+	        	temp_aidx = i;	               
             }
         } else if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
             p_para->sstream_num ++;
