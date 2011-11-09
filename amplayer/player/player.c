@@ -22,6 +22,7 @@
 #include "thread_mgt.h"
 #include "stream_decoder.h"
 #include "player_ffmpeg_ctrl.h"
+#include "amutils_msg.h"
 
 #define BREAK_FLAG      0x01
 #define CONTINUE_FLAG   0x02
@@ -348,7 +349,13 @@ int check_flag(play_para_t *p_para)
         check_msg(p_para, msg);
         message_free(msg);
         msg = NULL;
-    }
+    }else{
+		player_cmd_t cmd;
+		memset(&cmd,0,sizeof(cmd));
+		if(!get_amutils_msg(&cmd)){
+			check_msg(p_para, &cmd);
+		}
+	}
 	
     if (p_para->playctrl_info.end_flag) {
         if (!p_para->playctrl_info.search_flag &&
@@ -520,6 +527,7 @@ static int check_start_cmd(play_para_t *player)
         message_free(msg);
         msg = NULL;
     }
+	
     return flag;
 }
 static int check_stop_cmd(play_para_t *player)
@@ -631,6 +639,7 @@ void *player_thread(play_para_t *player)
     set_player_state(player, PLAYER_INITOK);
     update_playing_info(player);
     update_player_states(player, 1);
+	set_amutils_enable(1);
 #if 0
     switch(player->pFormatCtx->drm.drm_check_value){
     case 1: // unauthorized
@@ -994,10 +1003,12 @@ release0:
     update_player_states(player, 1);
     av_packet_release(&am_pkt);
     player_para_release(player);
-    set_player_state(player, PLAYER_EXIT);
-    update_player_states(player, 1);
+    set_player_state(player, PLAYER_EXIT);	
+    update_player_states(player, 1);	
+	set_amutils_enable(0);
     log_print("\npid[%d]::stop play, exit player thead!(sta:0x%x)\n", player->player_id, get_player_state(player));
     pthread_exit(NULL);
+	
     return NULL;
 }
 

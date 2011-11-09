@@ -98,7 +98,6 @@ player_cmd_t * get_message_locked(play_para_t *para)
     }
     return cmd;
 }
-
 player_cmd_t * get_message(play_para_t *para)
 {
     player_cmd_t *cmd = NULL;

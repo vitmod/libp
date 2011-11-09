@@ -950,3 +950,45 @@ int set_stb_demux_source_hiu()
     }
     return -1;
 }
+
+int set_amutils_enable(int isOn){
+    int fd;
+    char *path = "/sys/class/amstream/amutils_enable" ;
+    char  bcmd[16];
+    fd = open(path,O_RDWR);
+    if (fd >= 0) {
+        sprintf(bcmd, "%d", isOn);
+        write(fd, bcmd, strlen(bcmd));
+        close(fd);
+        return 0;
+    }
+    return -1;	
+}
+
+int set_amutils_cmd(const char* cmd){
+	return 0;
+}
+int get_amutils_cmd(char* cmd){
+    int fd;
+    char *path = "/sys/class/amstream/amutils_cmd";
+    if (!cmd) {
+        log_error("[get_amutils_cmd]Invalide parameter!");
+        return -1;
+    }
+    fd = open(path, O_RDWR);
+    if (fd >= 0) {
+        int ret = -1;
+		ret = read(fd, cmd, 32);
+		if(ret>0){
+			//log_print("[get_amutils_cmd]cmd=%s strlen=%d\n", cmd, strlen(cmd));
+			cmd[strlen(cmd)] = '\0';
+			write(fd,"clear",strlen("clear"));
+		}
+        close(fd);
+    } else {
+        sprintf(cmd, "%s", "fail");
+		return -1;
+    }
+    //log_print("[get_amutils_cmd]cmd=%s\n", cmd);
+    return 0;
+}
