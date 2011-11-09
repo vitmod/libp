@@ -7,6 +7,7 @@ extern "C" {
 
 void * thumbnail_res_alloc(void);
 int thumbnail_find_stream_info(void *handle, const char* filename);
+int thumbnail_find_stream_info_end(void *handle);
 int thumbnail_decoder_open(void *handle, const char* filename);
 int thumbnail_extract_video_frame(void * handle, int64_t time, int flag);
 int thumbnail_read_frame(void *handle, char* buffer);

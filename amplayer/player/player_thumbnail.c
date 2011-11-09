@@ -54,6 +54,16 @@ err:
     return -1;   
 }
 
+int thumbnail_find_stream_info_end(void *handle)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+
+    av_close_input_file(stream->pFormatCtx);
+
+    return 0;
+}
+
 int thumbnail_decoder_open(void *handle, const char* filename)
 {
     int i;
