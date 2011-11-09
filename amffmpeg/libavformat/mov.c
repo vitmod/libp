@@ -2535,7 +2535,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         if (offset != sample->pos) {
             av_log(mov->fc, AV_LOG_ERROR, "stream %d, seekto offset 0x%"PRIx64" ret 0x%"PRIx64":partial file\n", 
 				sc->ffindex, sample->pos, offset);
-            if (sample->pos > s->file_size)
+            if (sample->pos > s->file_size || offset == AVERROR_EOF)
                 return AVERROR_EOF;
             else
                 return -1;
