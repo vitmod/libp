@@ -1644,7 +1644,7 @@ static int mpegts_read_header(AVFormatContext *s,
                 st->start_time / 1000000.0, pcrs[0] / 27e6, ts->pcr_incr);
     }
 
-    check_ac3_dts(s)
+    check_ac3_dts(s);
     avio_seek(pb, pos, SEEK_SET);
     return 0;
  fail:
