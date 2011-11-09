@@ -980,7 +980,7 @@ int get_amutils_cmd(char* cmd){
         int ret = -1;
 		ret = read(fd, cmd, 32);
 		if(ret>0){
-			log_print("[get_amutils_cmd]cmd=%s strlen=%d\n", cmd, strlen(cmd));
+			//log_print("[get_amutils_cmd]cmd=%s strlen=%d\n", cmd, strlen(cmd));
 			cmd[strlen(cmd)] = '\0';
 			write(fd,"clear",strlen("clear"));
 		}
@@ -989,6 +989,6 @@ int get_amutils_cmd(char* cmd){
         sprintf(cmd, "%s", "fail");
 		return -1;
     }
-    log_print("[get_amutils_cmd]cmd=%s\n", cmd);
+    //log_print("[get_amutils_cmd]cmd=%s\n", cmd);
     return 0;
 }
