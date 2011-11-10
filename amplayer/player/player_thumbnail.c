@@ -241,6 +241,14 @@ float thumbnail_get_aspect_ratio(void *handle)
         return (float)frame->displayAspectRatio.num / frame->displayAspectRatio.den;
 }
 
+void thumbnail_get_duration(void *handle, int64_t *duration)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+
+    *duration = stream->pFormatCtx->duration;
+}
+
 int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
 {
     struct video_frame *frame = (struct video_frame *)handle;
