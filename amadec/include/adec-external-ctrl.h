@@ -34,6 +34,9 @@ extern "C"
     int audio_dec_ready(void *handle);
     int audio_get_decoded_nb_frames(void *handle);
 
+    int audio_decode_set_lrvolume(void *, float lvol,float rvol);	
+    int audio_decode_get_lrvolume(void *, float* lvol,float* rvol);		
+
 #ifdef  __cplusplus
 }
 #endif

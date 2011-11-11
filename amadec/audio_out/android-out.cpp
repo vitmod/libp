@@ -288,6 +288,32 @@ extern "C" int android_set_volume(struct aml_audio_dec* audec, float vol)
     return 0;
 }
 
+/**
+ * \brief set left/right output volume
+ * \param audec pointer to audec
+ * \param lvol refer to left volume value
+ * \param rvol refer to right volume value
+ * \return 0 on success otherwise negative error code
+ */
+extern "C" int android_set_lrvolume(struct aml_audio_dec* audec, float lvol,float rvol)
+{
+    adec_print("android set left and right volume separately");
+
+    audio_out_operations_t *out_ops = &audec->aout_ops;
+    AudioTrack *track = (AudioTrack *)out_ops->private_data;
+
+    Mutex::Autolock _l(mLock);
+
+    if (!track) {
+        adec_print("No track instance!\n");
+        return -1;
+    }
+
+    track->setVolume(lvol, rvol);
+
+    return 0;
+}
+
 extern "C" void android_basic_init()
 {
     adec_print("android basic init!");

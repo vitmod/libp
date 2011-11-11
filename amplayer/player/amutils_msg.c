@@ -30,6 +30,20 @@ int get_amutils_msg(player_cmd_t* cmd){
 				return -1;
 			}	
 		}
+
+		else if(memcmp(buf,"leftmono",strlen("leftmono"))==0 ){		    		
+			cmd->ctrl_cmd = CMD_LEFT_MONO;
+			return 0;
+		}
+		else if(memcmp(buf,"rightmono",strlen("rightmono"))==0 ){		    		
+    		cmd->ctrl_cmd = CMD_RIGHT_MONO;
+			return 0;
+		}
+		else if(memcmp(buf,"setreo",strlen("setreo"))==0 ){	
+    		cmd->ctrl_cmd = CMD_SET_STEREO;
+			return 0;   		
+		}	
+	
 	}
 	return -1;
 }

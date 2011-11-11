@@ -1012,6 +1012,48 @@ int audio_get_volume(int pid, float *vol)
 
 /* --------------------------------------------------------------------------*/
 /**
+ * @brief   audio_set_lrvolume
+ *
+ * @param[in]   pid player tag which get from player_start return value
+ * @param[in]   lval: left volume value
+ * @param[in]   rval: right volume value
+ *
+ * @return  PLAYER_SUCCESS  success
+ *          PLAYER_FAILED   failed
+ *
+ * @details set volume to val
+ */
+/* --------------------------------------------------------------------------*/
+int audio_set_lrvolume(int pid, float lvol,float rvol)
+{
+    return codec_set_lrvolume(NULL, lvol,rvol );
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+ * @brief   audio_get_volume
+ *
+ * @param[in]   pid player tag which get from player_start return value
+ *
+ * @return  r   current volume
+ *
+ * @details get volume
+ */
+/* --------------------------------------------------------------------------*/
+int audio_get_lrvolume(int pid, float *lvol,float* rvol)
+{
+    int r;
+
+    r = codec_get_lrvolume(NULL, lvol,rvol);
+    log_print("[audio_get_volume:%d]r=%d\n", __LINE__, r);
+
+    return r;//codec_get_volume(NULL);
+}
+
+
+
+/* --------------------------------------------------------------------------*/
+/**
  * @brief   audio_set_volume_balance
  *
  * @param[in]   pid     player tag which get from player_start return value
