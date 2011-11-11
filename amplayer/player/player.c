@@ -249,8 +249,11 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
     if ((msg->ctrl_cmd & CMD_EXIT) || (msg->ctrl_cmd & CMD_STOP)) {
         para->playctrl_info.end_flag = 1;
         para->playctrl_info.loop_flag = 0;
-        para->playctrl_info.search_flag = 0;
-        para->playctrl_info.pause_flag = 0;
+        para->playctrl_info.search_flag = 0;   
+		if (para->playctrl_info.pause_flag) { 
+			 codec_resume(para->codec);  	//clear pause state
+			 para->playctrl_info.pause_flag = 0;
+		}
         para->playctrl_info.fast_forward = 0;
         para->playctrl_info.fast_backward = 0;
     } else if (msg->ctrl_cmd & CMD_SEARCH) {
