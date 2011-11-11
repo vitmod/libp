@@ -12,8 +12,6 @@ LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
            dsp/audiodsp-ctl.c audio_out/android-out.cpp
 
-#just remove it,open it if use by DVB team,
-##LOCAL_CFLAGS += -DENABLE_WAIT_FORMAT
 
 LOCAL_MODULE := libamadec
 
