@@ -334,6 +334,32 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
     }
 #endif
 }
+static void check_amutils_msg(play_para_t *para, player_cmd_t *msg){
+	codec_para_t *p;
+	if(msg->set_mode&CMD_LEFT_MONO){
+		log_print("set soundtrack left mono\n");
+		p = get_audio_codec(para);
+		if (p != NULL) {
+			codec_left_mono(p);
+		}		
+		 
+	}
+	else if(msg->set_mode&CMD_RIGHT_MONO){	
+		log_print("set soundtrack right mono\n");		
+		p = get_audio_codec(para);
+		if (p != NULL) {
+			codec_right_mono(p);
+		}				
+
+	}
+	else if(msg->set_mode&CMD_SET_STEREO){	   
+		log_print("set soundtrack stereo\n");					
+		p = get_audio_codec(para);
+		if (p != NULL) {
+			codec_stereo(p);
+		}	
+	}
+}
 
 int check_flag(play_para_t *p_para)
 {
@@ -357,6 +383,7 @@ int check_flag(play_para_t *p_para)
 		memset(&cmd,0,sizeof(cmd));
 		if(!get_amutils_msg(&cmd)){
 			check_msg(p_para, &cmd);
+			check_amutils_msg(p_para, &cmd);
 		}
 	}
 	

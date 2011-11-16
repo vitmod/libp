@@ -12,7 +12,7 @@ int get_amutils_msg(player_cmd_t* cmd){
 	ret = get_amutils_cmd(buf);
 	if(ret==0){
 		if(memcmp(buf,"switchaid:",strlen("switchaid:"))==0 ||
-			(buf[0]=='a' && buf[1]=='i'&&buf[2]=='d') == 0){		    		
+			(buf[0]=='a' && buf[1]=='i'&&buf[2]=='d')){		    		
     		char *p;  
 			int value = -1;
     		p=strstr(buf,":");
@@ -31,16 +31,16 @@ int get_amutils_msg(player_cmd_t* cmd){
 			}	
 		}
 
-		else if(memcmp(buf,"leftmono",strlen("leftmono"))==0 ){		    		
-			cmd->ctrl_cmd = CMD_LEFT_MONO;
+		else if(memcmp(buf,"lmono",strlen("lmono"))==0 ){		    		
+			cmd->set_mode = CMD_LEFT_MONO;
 			return 0;
 		}
-		else if(memcmp(buf,"rightmono",strlen("rightmono"))==0 ){		    		
-    		cmd->ctrl_cmd = CMD_RIGHT_MONO;
+		else if(memcmp(buf,"rmono",strlen("rmono"))==0 ){		    		
+    		cmd->set_mode = CMD_RIGHT_MONO;
 			return 0;
 		}
-		else if(memcmp(buf,"setreo",strlen("setreo"))==0 ){	
-    		cmd->ctrl_cmd = CMD_SET_STEREO;
+		else if(memcmp(buf,"stereo",strlen("stereo"))==0 ){	
+    		cmd->set_mode = CMD_SET_STEREO;
 			return 0;   		
 		}	
 	
