@@ -982,7 +982,7 @@ int get_amutils_cmd(char* cmd){
 		if(ret>0){
 			//log_print("[get_amutils_cmd]cmd=%s strlen=%d\n", cmd, strlen(cmd));
 			cmd[strlen(cmd)] = '\0';
-			write(fd,"clear",strlen("clear"));
+			//write(fd,"clear",strlen("clear"));
 		}
         close(fd);
     } else {
