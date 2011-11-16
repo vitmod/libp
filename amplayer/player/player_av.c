@@ -276,6 +276,7 @@ vdec_type_t video_codec_type_convert(unsigned int id)
         break;
 
         // h263
+    case CODEC_ID_H263:
     case CODEC_TAG_H263:
     case CODEC_TAG_h263:
     case CODEC_TAG_s263:
