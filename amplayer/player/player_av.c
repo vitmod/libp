@@ -618,7 +618,7 @@ static int non_raw_read(play_para_t *para)
 				if(audio_idx>=0) 
 				{
                     			st = para->pFormatCtx->streams[audio_idx];
-                    			if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
+                    			if (st->codec->codec_type==CODEC_TYPE_AUDIO&&st->codec->codec_id==CODEC_ID_AAC) {
 						pkt->avpkt->data=av_mallocz(2048);
 						pkt->avpkt->size=2048;	
                     				pkt->avpkt->stream_index = st->index;
