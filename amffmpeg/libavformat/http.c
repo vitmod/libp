@@ -544,7 +544,7 @@ retry:
         	len = ffurl_read(s->hd, buf, size);
 		}else{
 			av_log(h, AV_LOG_INFO, "http read hd not opened,force to retry open\n");
-			len=AVERROR(EAGAIN);/*hd not opened,force to retry open*/
+			len=-1;/*hd not opened,force to retry open*/
 			goto errors;
 		}
 		//av_log(h, AV_LOG_ERROR, "ffurl_read %d\n",len);
@@ -564,14 +564,14 @@ retry:
 			s->latest_get_time_ms=new_time_mseconds;
 		if(new_time_mseconds-s->latest_get_time_ms>READ_RETRY_MAX_TIME_MS){
 			av_log(h, AV_LOG_INFO, "new_time_mseconds=%d,latest_get_time_ms=%d  TIMEOUT\n", new_time_mseconds,s->latest_get_time_ms);
-			len=AVERROR(EAGAIN);/*force it goto reopen */
+			len=-1;/*force it goto reopen */
 		}
 	}else{
 		s->latest_get_time_ms=0;/*0 means have  just get data*/
 	}
 	if(len==0 && (s->off < s->filesize-10)){
 		av_log(h, AV_LOG_INFO, "http_read return 0,but off not reach filesize,maybe close by server try again\n");
-		len=AVERROR(EAGAIN);/*force to retry,if else data <10,don't do it*/
+		len=-1;/*force to retry,if else data <10,don't do it*/
 	}
 errors:
 	
