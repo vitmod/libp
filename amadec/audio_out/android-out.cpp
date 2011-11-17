@@ -339,6 +339,7 @@ extern "C" void get_output_func(struct aml_audio_dec* audec)
     out_ops->latency = android_latency;
     out_ops->mute = android_mute;
     out_ops->set_volume = android_set_volume;
+    out_ops->set_lrvolume = android_set_lrvolume;
 }
 
 }

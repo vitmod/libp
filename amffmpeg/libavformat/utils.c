@@ -581,7 +581,11 @@ retry_probe:
     } else if(strcmp((*fmt)->name,"mpegts") && probe_flag){
 		s->data_offset = old_dataoff;	
 		probe_flag =0;
-		*fmt = NULL;
+		*fmt = NULL;	
+		av_free(buf);
+		buf = NULL;
+		pd.buf = NULL;
+		pd.buf_size = 0;
 		avio_seek(pb, oldoffset, SEEK_SET);
 		av_log(logctx, AV_LOG_INFO, "Format not ts, probe again\n");
 		goto retry_probe;			

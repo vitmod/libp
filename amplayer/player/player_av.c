@@ -276,6 +276,7 @@ vdec_type_t video_codec_type_convert(unsigned int id)
         break;
 
         // h263
+    case CODEC_ID_H263:
     case CODEC_TAG_H263:
     case CODEC_TAG_h263:
     case CODEC_TAG_s263:
@@ -608,13 +609,34 @@ static int non_raw_read(play_para_t *para)
                 if (AVERROR_EOF != ret) {
                     return PLAYER_RD_FAILED;
                 } else {
-                    para->playctrl_info.read_end_flag = 1;
-                    log_print("non_raw_read: read end!\n");
+			/*reach end add 6k audio data*/
+			static int reach_end=0;
+			AVStream *st;
+			if(reach_end<3)
+			{
+				reach_end++;
+				if(audio_idx>=0) 
+				{
+                    			st = para->pFormatCtx->streams[audio_idx];
+                    			if (st->codec->codec_type==CODEC_TYPE_AUDIO&&st->codec->codec_id==CODEC_ID_AAC) {
+						pkt->avpkt->data=av_mallocz(2048);
+						pkt->avpkt->size=2048;	
+                    				pkt->avpkt->stream_index = st->index;
+						ret=0;
+                    			}
+                		}
+			}
+			else
+			{//audio data add end	
+		    		reach_end=0;
+                    		para->playctrl_info.read_end_flag = 1;
+                    		log_print("non_raw_read: read end!\n");
 #if DUMP_READ
-                    if (fdr > 0) {
-                        close(fdr);
-                    }
+                    		if (fdr > 0) {
+                        		close(fdr);
+                    		}
 #endif
+			}
                 }
             } else {
                 try_count ++;
