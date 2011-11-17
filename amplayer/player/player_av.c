@@ -2194,6 +2194,7 @@ void player_switch_sub(play_para_t *para)
     AVStream *pstream;
     unsigned int i;
     AVFormatContext *pFCtx = para->pFormatCtx;
+    s_stream_info_t *sinfo = &para->sstream_info;
 
     /* check if it has audio */
     if (para->sstream_info.has_sub == 0) {
@@ -2258,6 +2259,7 @@ void player_switch_sub(play_para_t *para)
         log_print("[%s:%d]set invalid sub pid failed\n", __FUNCTION__, __LINE__);
         return;
     }
+    sinfo->sub_pid = pcodec->sub_pid;
     if (codec_reset_subtile(pcodec)) {
         log_print("[%s:%d]reset subtile failed\n", __FUNCTION__, __LINE__);
     }
