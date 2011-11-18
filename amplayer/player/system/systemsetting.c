@@ -44,7 +44,7 @@ float PlayerGetSettingfloat(const char* path)
 #define FILTER_VFMT_AVS		(1 << 7)
 #define FILTER_VFMT_SW		(1 << 8)
 
-int PlayerGetVFilterFormat()
+int PlayerGetVFilterFormat(const char* path)
 {
 	char value[1024];
 	int filter_fmt = 0;
