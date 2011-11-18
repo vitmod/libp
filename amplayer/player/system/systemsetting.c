@@ -44,40 +44,40 @@ float PlayerGetSettingfloat(const char* path)
 #define FILTER_VFMT_AVS		(1 << 7)
 #define FILTER_VFMT_SW		(1 << 8)
 
-int PlayerGetVFilterFormat(const char* path)
+int PlayerGetVFilterFormat()
 {
 	char value[1024];
 	int filter_fmt = 0;
 	
 	log_print("[%s:%d]path=%s\n", __FUNCTION__, __LINE__, path);
 	
-    if (GetSystemSettingString(path, value, NULL) > 0) {
+    if (GetSystemSettingString("media.amplayer.disable-vcodecs", value, NULL) > 0) {
 		log_print("[%s:%d]disable_vdec=%s\n", __FUNCTION__, __LINE__, value);
-		if (strstr(value,"MPEG12") != NULL) {
+		if (strstr(value,"MPEG12") != NULL || strstr(value,"mpeg12") != NULL) {
 			filter_fmt |= FILTER_VFMT_MPEG12;
 		} 
-		if (strstr(value,"MPEG4") != NULL) {
+		if (strstr(value,"MPEG4") != NULL || strstr(value,"mpeg4") != NULL) {
 			filter_fmt |= FILTER_VFMT_MPEG4;
 		} 
-		if (strstr(value,"H264") != NULL) {
+		if (strstr(value,"H264") != NULL || strstr(value,"h264") != NULL) {
 			filter_fmt |= FILTER_VFMT_H264;
 		} 
-		if (strstr(value,"MJPEG") != NULL) {
+		if (strstr(value,"MJPEG") != NULL || strstr(value,"mjpeg") != NULL) {
 			filter_fmt |= FILTER_VFMT_MJPEG;
 		} 
-		if (strstr(value,"REAL") != NULL) {
+		if (strstr(value,"REAL") != NULL || strstr(value,"real") != NULL) {
 			filter_fmt |= FILTER_VFMT_REAL;
 		} 
-		if (strstr(value,"JPEG") != NULL) {
+		if (strstr(value,"JPEG") != NULL || strstr(value,"jpeg") != NULL) {
 			filter_fmt |= FILTER_VFMT_JPEG;
 		} 
-		if (strstr(value,"VC1") != NULL) {
+		if (strstr(value,"VC1") != NULL || strstr(value,"vc1") != NULL) {
 			filter_fmt |= FILTER_VFMT_VC1;
 		} 
-		if (strstr(value,"AVS") != NULL) {
+		if (strstr(value,"AVS") != NULL || strstr(value,"avs") != NULL) {
 			filter_fmt |= FILTER_VFMT_AVS;
 		} 
-		if (strstr(value,"SW") != NULL) {
+		if (strstr(value,"SW") != NULL || strstr(value,"sw") != NULL) {
 			filter_fmt |= FILTER_VFMT_SW;
 		}
     }
@@ -105,70 +105,68 @@ int PlayerGetVFilterFormat(const char* path)
 #define FILTER_AFMT_ALAC		(1 << 17)
 #define FILTER_AFMT_VORBIS		(1 << 18)
 
-int PlayerGetAFilterFormat(const char* path)
+int PlayerGetAFilterFormat()
 {
 	char value[1024];
-	int filter_fmt = 0;
+	int filter_fmt = 0;	
 	
-	log_print("[%s:%d]path=%s\n", __FUNCTION__, __LINE__, path);
-	
-    if (GetSystemSettingString(path, value, NULL) > 0) {
+    if (GetSystemSettingString("media.amplayer.disable-acodecs", value, NULL) > 0) {
 		log_print("[%s:%d]disable_adec=%s\n", __FUNCTION__, __LINE__, value);
-		if (strstr(value,"mpeg") != NULL) {
+		if (strstr(value,"mpeg") != NULL || strstr(value,"MPEG") != NULL) {
 			filter_fmt |= FILTER_AFMT_MPEG;
 		} 
-		if (strstr(value,"pcms16l") != NULL) {
+		if (strstr(value,"pcms16l") != NULL || strstr(value,"PCMS16L") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMS16L;
 		} 
-		if (strstr(value,"aac") != NULL) {
+		if (strstr(value,"aac") != NULL || strstr(value,"AAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_AAC;
 		} 
-		if (strstr(value,"ac3") != NULL) {
+		if (strstr(value,"ac3") != NULL || strstr(value,"AC#") != NULL) {
 			filter_fmt |= FILTER_AFMT_AC3;
 		} 
-		if (strstr(value,"alaw") != NULL) {
+		if (strstr(value,"alaw") != NULL || strstr(value,"ALAW") != NULL) {
 			filter_fmt |= FILTER_AFMT_ALAW;
 		} 
-		if (strstr(value,"mulaw") != NULL) {
+		if (strstr(value,"mulaw") != NULL || strstr(value,"MULAW") != NULL) {
 			filter_fmt |= FILTER_AFMT_MULAW;
 		} 
-		if (strstr(value,"dts") != NULL) {
+		if (strstr(value,"dts") != NULL || strstr(value,"DTS") != NULL) {
 			filter_fmt |= FILTER_AFMT_DTS;
 		} 
-		if (strstr(value,"pcms16b") != NULL) {
+		if (strstr(value,"pcms16b") != NULL || strstr(value,"PCMS16B") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMS16B;
 		} 
-		if (strstr(value,"flac") != NULL) {
+		if (strstr(value,"flac") != NULL || strstr(value,"FLAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_FLAC;
 		}
-		if (strstr(value,"cook") != NULL) {
+		if (strstr(value,"cook") != NULL || strstr(value,"COOK") != NULL) {
 			filter_fmt |= FILTER_AFMT_COOK;
 		} 
-		if (strstr(value,"pcmu8") != NULL) {
+		if (strstr(value,"pcmu8") != NULL || strstr(value,"PCMU8") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMU8;
 		} 
-		if (strstr(value,"adpcm") != NULL) {
+		if (strstr(value,"adpcm") != NULL || strstr(value,"ADPCM") != NULL) {
 			filter_fmt |= FILTER_AFMT_ADPCM;
 		} 
-		if (strstr(value,"amr") != NULL) {
+		if (strstr(value,"amr") != NULL || strstr(value,"AMR") != NULL) {
 			filter_fmt |= FILTER_AFMT_AMR;
 		} 
-		if (strstr(value,"raac") != NULL) {
+		if (strstr(value,"raac") != NULL || strstr(value,"RAAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_RAAC;
 		}
-		if (strstr(value,"wma") != NULL) {
+		if (strstr(value,"wma") != NULL || strstr(value,"WMA") != NULL) {
 			filter_fmt |= FILTER_AFMT_WMA;
 		} 
-		if (strstr(value,"wmapro") != NULL) {
+		if (strstr(value,"wmapro") != NULL || strstr(value,"WMAPRO") != NULL) {
 			filter_fmt |= FILTER_AFMT_WMAPRO;
 		} 
-		if (strstr(value,"pcmblueray") != NULL) {
+		if (strstr(value,"pcmblueray") != NULL || strstr(value,"PCMBLUERAY") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMBLU;
 		} 
-		if (strstr(value,"alac") != NULL) {
+		if (strstr(value,"alac") != NULL || strstr(value,"ALAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_ALAC;
 		} 
-		if (strstr(value,"vorbis") != NULL) {
+		if (strstr(value,"vorbis") != NULL || strstr(value,"VORBIS") != NULL) {
 			filter_fmt |= FILTER_AFMT_VORBIS;
 		}
     }

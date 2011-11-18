@@ -539,7 +539,7 @@ static int set_decode_para(play_para_t*am_p)
               am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
               am_p->astream_info.has_audio, am_p->astream_info.audio_format);
 	
-	filter_vfmt = PlayerGetVFilterFormat("media.amplayer.disable-vcodecs");		
+	filter_vfmt = PlayerGetVFilterFormat();		
 	if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
 		log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
 			filter_vfmt, am_p->vstream_info.video_format, (1 << am_p->vstream_info.video_format));
@@ -547,7 +547,7 @@ static int set_decode_para(play_para_t*am_p)
 		set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
 	    update_player_states(am_p, 1);
 	}
-	filter_afmt = PlayerGetAFilterFormat("media.amplayer.disable-acodecs");		
+	filter_afmt = PlayerGetAFilterFormat();		
 	if (((1 << am_p->astream_info.audio_format) & filter_afmt) != 0) {
 		log_error("Can't support audio codec! filter_afmt=%x afmt=%x  (1<<afmt)=%x\n", \
 			filter_afmt, am_p->astream_info.audio_format, (1 << am_p->astream_info.audio_format));
