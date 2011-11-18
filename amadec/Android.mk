@@ -59,6 +59,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_REQUIRED_MODULES := $(copy_from)
 
 audio_firmware: $(copy_from) | $(ACP)
+	$(hide) mkdir -p $(TARGET_OUT_ETC)/firmware/
 	$(hide) $(ACP) -fp $(copy_from) $(TARGET_OUT_ETC)/firmware/
 
 include $(BUILD_PHONY_PACKAGE)
