@@ -68,53 +68,53 @@ static int register_firmware(int fd, int fmt, char *name)
  * \param fmt audio format
  * \return new format on success otherwise zero
  */
-static int switch_audiodsp(audio_format_t fmt)
+static int switch_audiodsp(adec_audio_format_t fmt)
 {
     switch (fmt) {
-    case  AUDIO_FORMAT_MPEG:
+    case  ADEC_AUDIO_FORMAT_MPEG:
         return MCODEC_FMT_MPEG123;
 
-    case  AUDIO_FORMAT_AAC_LATM:
+    case  ADEC_AUDIO_FORMAT_AAC_LATM:
         return MCODEC_FMT_AAC_LATM;
 
-    case  AUDIO_FORMAT_AAC:
+    case  ADEC_AUDIO_FORMAT_AAC:
         return MCODEC_FMT_AAC;
 
-    case  AUDIO_FORMAT_AC3:
+    case  ADEC_AUDIO_FORMAT_AC3:
         return MCODEC_FMT_AC3;
 
-    case  AUDIO_FORMAT_DTS:
+    case  ADEC_AUDIO_FORMAT_DTS:
         return MCODEC_FMT_DTS;
 
-    case  AUDIO_FORMAT_FLAC:
+    case  ADEC_AUDIO_FORMAT_FLAC:
         return MCODEC_FMT_FLAC;
 
-    case  AUDIO_FORMAT_COOK:
+    case  ADEC_AUDIO_FORMAT_COOK:
         return MCODEC_FMT_COOK;
 
-    case  AUDIO_FORMAT_AMR:
+    case  ADEC_AUDIO_FORMAT_AMR:
         return MCODEC_FMT_AMR;
 
-    case  AUDIO_FORMAT_RAAC:
+    case  ADEC_AUDIO_FORMAT_RAAC:
         return MCODEC_FMT_RAAC;
 
-    case AUDIO_FORMAT_ADPCM:
+    case ADEC_AUDIO_FORMAT_ADPCM:
         return MCODEC_FMT_ADPCM;
 
-    case AUDIO_FORMAT_PCM_S16BE:
-    case AUDIO_FORMAT_PCM_S16LE:
-    case AUDIO_FORMAT_PCM_U8:
-    case AUDIO_AFORMAT_PCM_BLURAY:
+    case ADEC_AUDIO_FORMAT_PCM_S16BE:
+    case ADEC_AUDIO_FORMAT_PCM_S16LE:
+    case ADEC_AUDIO_FORMAT_PCM_U8:
+    case ADEC_AUDIO_AFORMAT_PCM_BLURAY:
         return MCODEC_FMT_PCM;
 
-    case AUDIO_FORMAT_WMA:
+    case ADEC_AUDIO_FORMAT_WMA:
         return MCODEC_FMT_WMA;
 
-    case  AUDIO_FORMAT_WMAPRO:
+    case  ADEC_AUDIO_FORMAT_WMAPRO:
         return MCODEC_FMT_WMAPRO;
-    case  AUDIO_AFORMAT_ALAC:
+    case  ADEC_AUDIO_AFORMAT_ALAC:
         return MCODEC_FMT_ALAC;
-    case  AUDIO_AFORMAT_VORBIS:
+    case  ADEC_AUDIO_AFORMAT_VORBIS:
         return MCODEC_FMT_VORBIS;
     default:
         return 0;

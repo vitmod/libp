@@ -82,10 +82,10 @@ extern "C" int android_init(struct aml_audio_dec* audec)
         return -1;
     }
 
-    status = track->set(AudioSystem::MUSIC,
+    status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
-                        AudioSystem::PCM_16_BIT,
-                        (audec->channels == 1) ? AudioSystem::CHANNEL_OUT_MONO : AudioSystem::CHANNEL_OUT_STEREO,
+                        AUDIO_FORMAT_PCM_16_BIT,
+                        (audec->channels == 1) ? AUDIO_CHANNEL_OUT_MONO : AUDIO_CHANNEL_OUT_STEREO,
                         0,       // frameCount
                         0,       // flags
                         audioCallback,

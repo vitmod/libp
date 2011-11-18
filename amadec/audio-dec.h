@@ -36,7 +36,7 @@ typedef struct aml_audio_dec    aml_audio_dec_t;
 struct aml_audio_dec {
     adec_state_t  state;
     pthread_t       thread_pid;
-    audio_format_t  format;
+    adec_audio_format_t  format;
     int channels;
     int samplerate;
     int data_width;
