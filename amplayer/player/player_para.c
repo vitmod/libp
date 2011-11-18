@@ -518,8 +518,7 @@ static void get_stream_info(play_para_t *p_para)
 			log_error("[%s]can't support h264 height exceed 1088\n", __FUNCTION__);
 			p_para->vstream_info.has_video = 0; 
 		}
-	}
-
+	}	
     return;
 }
 
@@ -1033,6 +1032,18 @@ int player_dec_init(play_para_t *p_para)
         log_error("set_decode_para failed, ret = -0x%x\n", -ret);
         goto init_fail;
     }
+	#ifdef DUMP_INDEX
+	int i,j;
+	AVStream *pStream;
+	log_print("*********************************************\n");
+	for(i = 0; i<p_para->pFormatCtx->nb_streams; i ++) {
+		pStream = p_para->pFormatCtx->streams[2];		
+		for(j = 0; j<pStream->nb_index_entries; j++){
+			log_print("stream[%d]:idx[%d] pos:%llx time:%llx\n",2, j, pStream->index_entries[j].pos, pStream->index_entries[j].timestamp);
+		}
+	}
+	log_print("*********************************************\n");
+	#endif
 
     if (p_para->stream_type != STREAM_TS && p_para->stream_type != STREAM_PS) {
         if (check_ctx_bitrate(p_para) == 0) {

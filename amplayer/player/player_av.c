@@ -1078,8 +1078,10 @@ int time_search(play_para_t *am_p)
 	int sample_size;
 
     /* If swith audio, then use audio stream index */
-    if (am_p->playctrl_info.audio_switch_flag) {
-        seek_flags = 0;
+    if (am_p->playctrl_info.audio_switch_flag) {       
+        seek_flags |= AVSEEK_FLAG_ANY;
+		stream_index = am_p->astream_info.audio_index;
+	    log_info("[time_search]switch audio, audio_idx=%d time=%d\n", stream_index, time_point);
     }
     
     temp = (unsigned int)(s->duration / AV_TIME_BASE);
