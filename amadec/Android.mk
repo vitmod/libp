@@ -42,25 +42,53 @@ LOCAL_MODULE_TAGS := optional
 include $(BUILD_SHARED_LIBRARY)
 
 
+#
+# audio_firmware module
+#   includes all audio firmware files, which are modules themselves.
+#
+
 include $(CLEAR_VARS)
 
+# generate md5 checksum files
 $(shell cd $(LOCAL_PATH)/firmware && { \
 for f in *.bin; do \
   md5sum "$$f" > "$$f".checksum; \
 done;})
 
-copy_from := $(wildcard $(LOCAL_PATH)/firmware/*.bin)
+# gather list of relative filenames
+audio_firmware_files := $(wildcard $(LOCAL_PATH)/firmware/*.bin)
+audio_firmware_files += $(wildcard $(LOCAL_PATH)/firmware/*.checksum)
+audio_firmware_files := $(patsubst $(LOCAL_PATH)/%,%,$(audio_firmware_files))
 
-copy_from += $(wildcard $(LOCAL_PATH)/firmware/*.checksum)
+# define function to create a module for each file
+# $(1): filename
+define _add-audio-firmware-module
+    include $$(CLEAR_VARS)
+    LOCAL_MODULE := audio-firmware_$(notdir $(1))
+    LOCAL_MODULE_STEM := $(notdir $(1))
+    _audio_firmware_modules += $$(LOCAL_MODULE)
+    LOCAL_SRC_FILES := $1
+    LOCAL_MODULE_TAGS := optional
+    LOCAL_MODULE_CLASS := ETC
+    LOCAL_MODULE_PATH := $$(TARGET_OUT_ETC)/firmware
+    include $$(BUILD_PREBUILT)
+endef
+
+# create modules, one for each file
+_audio_firmware_modules :=
+_audio_firmware :=
+$(foreach _firmware, $(audio_firmware_files), \
+  $(eval $(call _add-audio-firmware-module,$(_firmware))))
+
+include $(CLEAR_VARS)
 
 LOCAL_MODULE := audio_firmware
+LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_REQUIRED_MODULES := $(copy_from)
-
-audio_firmware: $(copy_from) | $(ACP)
-	$(hide) mkdir -p $(TARGET_OUT_ETC)/firmware/
-	$(hide) $(ACP) -fp $(copy_from) $(TARGET_OUT_ETC)/firmware/
+LOCAL_REQUIRED_MODULES := $(_audio_firmware_modules)
 
 include $(BUILD_PHONY_PACKAGE)
 
+_audio_firmware_modules :=
+_audio_firmware :=
