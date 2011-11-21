@@ -44,12 +44,10 @@ float PlayerGetSettingfloat(const char* path)
 #define FILTER_VFMT_AVS		(1 << 7)
 #define FILTER_VFMT_SW		(1 << 8)
 
-int PlayerGetVFilterFormat(const char* path)
+int PlayerGetVFilterFormat()
 {
 	char value[1024];
 	int filter_fmt = 0;
-	
-	log_print("[%s:%d]path=%s\n", __FUNCTION__, __LINE__, path);
 	
     if (GetSystemSettingString("media.amplayer.disable-vcodecs", value, NULL) > 0) {
 		log_print("[%s:%d]disable_vdec=%s\n", __FUNCTION__, __LINE__, value);
