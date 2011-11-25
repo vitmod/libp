@@ -57,6 +57,7 @@ static const media_type media_array[] = {
     {"m4a", MP4_FILE, STREAM_ES},
     {"m4v", MP4_FILE, STREAM_ES},
     {"rtsp", STREAM_FILE, STREAM_ES},
+    {"ape", APE_FILE, STREAM_ES},
 };
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
@@ -146,6 +147,10 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
     case CODEC_ID_VORBIS:
 	format = 	AFORMAT_VORBIS;
 	break;
+    case CODEC_ID_APE:
+	format = 	AFORMAT_APE;
+	break;
+
     default:
         format = AFORMAT_UNSUPPORT;
         log_print("audio codec_id=0x%x\n", id);
@@ -1743,6 +1748,40 @@ int set_header_info(play_para_t *para)
 			pkt->hdr->data[5] = 	(pkt->data_size)& 0xff;
 			pkt->hdr->size = 6;
             }
+
+		// add the frame head
+                if((!para->playctrl_info.raw_mode) &&(para->astream_info.audio_format == AFORMAT_APE))
+                {
+                if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
+                    FREE(pkt->hdr->data);
+                    pkt->hdr->data = NULL;
+                }
+                if (pkt->hdr == NULL) {
+                        pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+                            if (!pkt->hdr) {
+                                return PLAYER_NOMEM;
+                            }
+                                pkt->hdr->data = NULL;
+                                pkt->hdr->size = 0;
+                        }
+                        if(!pkt->hdr->data){
+                            pkt->hdr->data = (char *)MALLOC(8);
+                            if (!pkt->hdr->data) {
+                                return PLAYER_NOMEM;
+                            }
+                        }
+                        int extra_data = 8;
+                        pkt->hdr->data[0] =     'A';
+                        pkt->hdr->data[1] =     'P';
+                        pkt->hdr->data[2] =     'T';
+                        pkt->hdr->data[3] =     'S';
+                        pkt->hdr->data[4] =     (pkt->data_size -extra_data)& 0xff;
+                        pkt->hdr->data[5] =     (pkt->data_size -extra_data>>8)& 0xff;
+                        pkt->hdr->data[6] =     (pkt->data_size -extra_data>>16)& 0xff;
+                        pkt->hdr->data[7] =     (pkt->data_size -extra_data>>24)& 0xff;
+                        pkt->hdr->size = 8;
+            }
+
         }
     }
     return PLAYER_SUCCESS;

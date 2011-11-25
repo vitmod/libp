@@ -33,6 +33,7 @@ typedef enum {
     AUDIO_AFORMAT_ALAC,
     AUDIO_AFORMAT_VORBIS,
     AUDIO_FORMAT_AAC_LATM,
+    AUDIO_FORMAT_APE,
     AUDIO_FORMAT_MAX,
 } audio_format_t;
 
