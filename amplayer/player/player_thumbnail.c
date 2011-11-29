@@ -116,8 +116,6 @@ int thumbnail_decoder_open(void *handle, const char* filename)
 	
     frame->duration = stream->pFormatCtx->duration;
 
-    calc_aspect_ratio(&frame->displayAspectRatio, stream);
-
     stream->pFrameYUV = avcodec_alloc_frame();
     if(stream->pFrameYUV == NULL) {
         log_print("alloc YUV frame failed!\n");
@@ -234,6 +232,9 @@ void thumbnail_get_video_size(void *handle, int* width, int* height)
 float thumbnail_get_aspect_ratio(void *handle)
 {
     struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+
+    calc_aspect_ratio(&frame->displayAspectRatio, stream);
 
     if( !frame->displayAspectRatio.num || !frame->displayAspectRatio.den)
         return (float)frame->width / frame->height;
