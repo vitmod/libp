@@ -38,6 +38,7 @@ firmware_s_t firmware_list[] = {
     {12, MCODEC_FMT_ALAC, "audiodsp_codec_alac.bin"},
     {13, MCODEC_FMT_VORBIS, "audiodsp_codec_vorbis.bin"},
     {14, MCODEC_FMT_AAC_LATM, "audiodsp_codec_aac.bin"},
+    {15, MCODEC_FMT_APE, "audiodsp_codec_ape.bin"},
 
 };
 
@@ -116,6 +117,8 @@ static int switch_audiodsp(adec_audio_format_t fmt)
         return MCODEC_FMT_ALAC;
     case  ADEC_AUDIO_AFORMAT_VORBIS:
         return MCODEC_FMT_VORBIS;
+    case  ADEC_AUDIO_FORMAT_APE:
+        return MCODEC_FMT_APE;
     default:
         return 0;
     }

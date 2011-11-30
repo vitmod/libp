@@ -312,5 +312,10 @@ int codec_audio_spectrum_switch(codec_para_t *p, int isStart, int interval)
 
     return ret;
 }
+int codec_get_soundtrack(codec_para_t *p,int* strack)
+{
+    return audio_get_soundtrack(p->adec_priv, strack);
+
+}
 
 

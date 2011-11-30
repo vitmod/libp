@@ -581,7 +581,11 @@ retry_probe:
     } else if(strcmp((*fmt)->name,"mpegts") && probe_flag){
 		s->data_offset = old_dataoff;	
 		probe_flag =0;
-		*fmt = NULL;
+		*fmt = NULL;	
+		av_free(buf);
+		buf = NULL;
+		pd.buf = NULL;
+		pd.buf_size = 0;
 		avio_seek(pb, oldoffset, SEEK_SET);
 		av_log(logctx, AV_LOG_INFO, "Format not ts, probe again\n");
 		goto retry_probe;			
@@ -1846,12 +1850,11 @@ int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int f
         stream_index= av_find_default_stream_index(s);
         if(stream_index < 0)
             return -1;
-
-        st= s->streams[stream_index];
-       /* timestamp for default must be expressed in AV_TIME_BASE units */
-        timestamp = av_rescale(timestamp, st->time_base.den, AV_TIME_BASE * (int64_t)st->time_base.num);
     }
-
+    st= s->streams[stream_index];
+   /* timestamp for default must be expressed in AV_TIME_BASE units */
+    timestamp = av_rescale(timestamp, st->time_base.den, AV_TIME_BASE * (int64_t)st->time_base.num);
+   
     /* first, we try the format specific seek */
     if (s->iformat->read_seek)
         ret = s->iformat->read_seek(s, stream_index, timestamp, flags);

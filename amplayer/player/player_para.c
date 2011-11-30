@@ -154,10 +154,14 @@ static void get_av_codec_type(play_para_t *p_para)
         }else if (p_para->vstream_info.video_format == VFORMAT_SW){
         	p_para->vstream_info.has_video = 0;     
         }else if (p_para->vstream_info.video_format == VFORMAT_MPEG4) {
-            if (pCodecCtx->mpeg4_vol_sprite == 2) { // not support totally
-                log_print("[%s:%d]mpeg4 vol sprite usage %d, GMC\n",
-                    __FUNCTION__, __LINE__, pCodecCtx->mpeg4_vol_sprite);
-                p_para->vstream_info.has_video = 0; 
+            int wrap_points = (pCodecCtx->mpeg4_vol_sprite >> 16) & 0xffff;
+            int vol_sprite = pCodecCtx->mpeg4_vol_sprite & 0xffff;
+            if (vol_sprite == 2) { // not support totally
+                log_print("[%s:%d]mpeg4 vol sprite usage %d, GMC wrappoint %d\n",
+                    __FUNCTION__, __LINE__, vol_sprite, wrap_points);
+                if (wrap_points > 2) {
+                    p_para->vstream_info.has_video = 0;
+                }
             }
         }
 		
@@ -518,8 +522,7 @@ static void get_stream_info(play_para_t *p_para)
 			log_error("[%s]can't support h264 height exceed 1088\n", __FUNCTION__);
 			p_para->vstream_info.has_video = 0; 
 		}
-	}
-
+	}	
     return;
 }
 
@@ -540,7 +543,7 @@ static int set_decode_para(play_para_t*am_p)
               am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
               am_p->astream_info.has_audio, am_p->astream_info.audio_format);
 	
-	filter_vfmt = PlayerGetVFilterFormat("media.amplayer.disable-vcodecs");		
+	filter_vfmt = PlayerGetVFilterFormat();		
 	if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
 		log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
 			filter_vfmt, am_p->vstream_info.video_format, (1 << am_p->vstream_info.video_format));
@@ -548,7 +551,7 @@ static int set_decode_para(play_para_t*am_p)
 		set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
 	    update_player_states(am_p, 1);
 	}
-	filter_afmt = PlayerGetAFilterFormat("media.amplayer.disable-acodecs");		
+	filter_afmt = PlayerGetAFilterFormat();		
 	if (((1 << am_p->astream_info.audio_format) & filter_afmt) != 0) {
 		log_error("Can't support audio codec! filter_afmt=%x afmt=%x  (1<<afmt)=%x\n", \
 			filter_afmt, am_p->astream_info.audio_format, (1 << am_p->astream_info.audio_format));
@@ -1033,6 +1036,18 @@ int player_dec_init(play_para_t *p_para)
         log_error("set_decode_para failed, ret = -0x%x\n", -ret);
         goto init_fail;
     }
+	#ifdef DUMP_INDEX
+	int i,j;
+	AVStream *pStream;
+	log_print("*********************************************\n");
+	for(i = 0; i<p_para->pFormatCtx->nb_streams; i ++) {
+		pStream = p_para->pFormatCtx->streams[2];		
+		for(j = 0; j<pStream->nb_index_entries; j++){
+			log_print("stream[%d]:idx[%d] pos:%llx time:%llx\n",2, j, pStream->index_entries[j].pos, pStream->index_entries[j].timestamp);
+		}
+	}
+	log_print("*********************************************\n");
+	#endif
 
     if (p_para->stream_type != STREAM_TS && p_para->stream_type != STREAM_PS) {
         if (check_ctx_bitrate(p_para) == 0) {

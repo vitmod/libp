@@ -70,6 +70,7 @@ int codec_swap_left_right(codec_para_t *);
 int codec_left_mono(codec_para_t *p);
 int codec_right_mono(codec_para_t *p);
 int codec_stereo(codec_para_t *p);
+int codec_get_soundtrack(codec_para_t *p,int* strack);
 int codec_audio_automute(void *priv, int auto_mute);
 int codec_audio_spectrum_switch(codec_para_t *p, int isStart, int interval);
 int codec_audio_isready(codec_para_t *p);

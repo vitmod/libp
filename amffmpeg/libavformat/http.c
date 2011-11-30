@@ -517,7 +517,7 @@ retry:
 
                 s->chunksize = strtoll(line, NULL, 16);
 
-                av_dlog(NULL, "Chunked encoding data size: %"PRId64"'\n", s->chunksize);
+                av_dlog(h, "Chunked encoding data size: %"PRId64"'\n", s->chunksize);
 
                 if (!s->chunksize){
 					av_log(h, AV_LOG_ERROR, "http_read s->chunksize failed\n");
@@ -543,6 +543,8 @@ retry:
 		if(s->hd){
         	len = ffurl_read(s->hd, buf, size);
 		}else{
+			av_log(h, AV_LOG_INFO, "http read hd not opened,force to retry open\n");
+			len=-1;/*hd not opened,force to retry open*/
 			goto errors;
 		}
 		//av_log(h, AV_LOG_ERROR, "ffurl_read %d\n",len);
@@ -557,22 +559,25 @@ retry:
 		long new_time_mseconds;
     	gettimeofday(&new_time, NULL);
 		new_time_mseconds = (new_time.tv_usec / 1000 + new_time.tv_sec * 1000);
-		av_log(NULL, AV_LOG_INFO, "new_time_mseconds=%d,latest_get_time_ms=%d\n", new_time_mseconds,s->latest_get_time_ms);
+		av_log(h, AV_LOG_INFO, "new_time_mseconds=%d,latest_get_time_ms=%d\n", new_time_mseconds,s->latest_get_time_ms);
 		if(s->latest_get_time_ms<=0)
 			s->latest_get_time_ms=new_time_mseconds;
 		if(new_time_mseconds-s->latest_get_time_ms>READ_RETRY_MAX_TIME_MS){
-			av_log(NULL, AV_LOG_INFO, "new_time_mseconds=%d,latest_get_time_ms=%d  TIMEOUT\n", new_time_mseconds,s->latest_get_time_ms);
+			av_log(h, AV_LOG_INFO, "new_time_mseconds=%d,latest_get_time_ms=%d  TIMEOUT\n", new_time_mseconds,s->latest_get_time_ms);
 			len=-1;/*force it goto reopen */
 		}
 	}else{
 		s->latest_get_time_ms=0;/*0 means have  just get data*/
 	}
-		
+	if(len==0 && (s->off < s->filesize-10)){
+		av_log(h, AV_LOG_INFO, "http_read return 0,but off not reach filesize,maybe close by server try again\n");
+		len=-1;/*force to retry,if else data <10,don't do it*/
+	}
 errors:
 	
 	if(len<0 && len!=AVERROR(EAGAIN)&& err_retry-->0 && !url_interrupt_cb())
 	{
-		av_log(NULL, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
+		av_log(h, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
 		http_reopen_cnx(h,-1);
 		goto retry;
 	}

@@ -57,6 +57,7 @@ static const media_type media_array[] = {
     {"m4a", MP4_FILE, STREAM_ES},
     {"m4v", MP4_FILE, STREAM_ES},
     {"rtsp", STREAM_FILE, STREAM_ES},
+    {"ape", APE_FILE, STREAM_ES},
 };
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
@@ -146,6 +147,10 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
     case CODEC_ID_VORBIS:
 	format = 	AFORMAT_VORBIS;
 	break;
+    case CODEC_ID_APE:
+	format = 	AFORMAT_APE;
+	break;
+
     default:
         format = AFORMAT_UNSUPPORT;
         log_print("audio codec_id=0x%x\n", id);
@@ -276,6 +281,7 @@ vdec_type_t video_codec_type_convert(unsigned int id)
         break;
 
         // h263
+    case CODEC_ID_H263:
     case CODEC_TAG_H263:
     case CODEC_TAG_h263:
     case CODEC_TAG_s263:
@@ -608,13 +614,34 @@ static int non_raw_read(play_para_t *para)
                 if (AVERROR_EOF != ret) {
                     return PLAYER_RD_FAILED;
                 } else {
-                    para->playctrl_info.read_end_flag = 1;
-                    log_print("non_raw_read: read end!\n");
+			/*reach end add 6k audio data*/
+			static int reach_end=0;
+			AVStream *st;
+			if(reach_end<3)
+			{
+				reach_end++;
+				if(audio_idx>=0) 
+				{
+                    			st = para->pFormatCtx->streams[audio_idx];
+                    			if (st->codec->codec_type==CODEC_TYPE_AUDIO&&st->codec->codec_id==CODEC_ID_AAC) {
+						pkt->avpkt->data=av_mallocz(2048);
+						pkt->avpkt->size=2048;	
+                    				pkt->avpkt->stream_index = st->index;
+						ret=0;
+                    			}
+                		}
+			}
+			else
+			{//audio data add end	
+		    		reach_end=0;
+                    		para->playctrl_info.read_end_flag = 1;
+                    		log_print("non_raw_read: read end!\n");
 #if DUMP_READ
-                    if (fdr > 0) {
-                        close(fdr);
-                    }
+                    		if (fdr > 0) {
+                        		close(fdr);
+                    		}
 #endif
+			}
                 }
             } else {
                 try_count ++;
@@ -1056,8 +1083,10 @@ int time_search(play_para_t *am_p)
 	int sample_size;
 
     /* If swith audio, then use audio stream index */
-    if (am_p->playctrl_info.audio_switch_flag) {
-        seek_flags = 0;
+    if (am_p->playctrl_info.audio_switch_flag) {       
+        seek_flags |= AVSEEK_FLAG_ANY;
+		stream_index = am_p->astream_info.audio_index;
+	    log_info("[time_search]switch audio, audio_idx=%d time=%d\n", stream_index, time_point);
     }
     
     temp = (unsigned int)(s->duration / AV_TIME_BASE);
@@ -1719,6 +1748,40 @@ int set_header_info(play_para_t *para)
 			pkt->hdr->data[5] = 	(pkt->data_size)& 0xff;
 			pkt->hdr->size = 6;
             }
+
+		// add the frame head
+                if((!para->playctrl_info.raw_mode) &&(para->astream_info.audio_format == AFORMAT_APE))
+                {
+                if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
+                    FREE(pkt->hdr->data);
+                    pkt->hdr->data = NULL;
+                }
+                if (pkt->hdr == NULL) {
+                        pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+                            if (!pkt->hdr) {
+                                return PLAYER_NOMEM;
+                            }
+                                pkt->hdr->data = NULL;
+                                pkt->hdr->size = 0;
+                        }
+                        if(!pkt->hdr->data){
+                            pkt->hdr->data = (char *)MALLOC(8);
+                            if (!pkt->hdr->data) {
+                                return PLAYER_NOMEM;
+                            }
+                        }
+                        int extra_data = 8;
+                        pkt->hdr->data[0] =     'A';
+                        pkt->hdr->data[1] =     'P';
+                        pkt->hdr->data[2] =     'T';
+                        pkt->hdr->data[3] =     'S';
+                        pkt->hdr->data[4] =     (pkt->data_size -extra_data)& 0xff;
+                        pkt->hdr->data[5] =     (pkt->data_size -extra_data>>8)& 0xff;
+                        pkt->hdr->data[6] =     (pkt->data_size -extra_data>>16)& 0xff;
+                        pkt->hdr->data[7] =     (pkt->data_size -extra_data>>24)& 0xff;
+                        pkt->hdr->size = 8;
+            }
+
         }
     }
     return PLAYER_SUCCESS;
@@ -2194,6 +2257,7 @@ void player_switch_sub(play_para_t *para)
     AVStream *pstream;
     unsigned int i;
     AVFormatContext *pFCtx = para->pFormatCtx;
+    s_stream_info_t *sinfo = &para->sstream_info;
 
     /* check if it has audio */
     if (para->sstream_info.has_sub == 0) {
@@ -2258,6 +2322,7 @@ void player_switch_sub(play_para_t *para)
         log_print("[%s:%d]set invalid sub pid failed\n", __FUNCTION__, __LINE__);
         return;
     }
+    sinfo->sub_pid = pcodec->sub_pid;
     if (codec_reset_subtile(pcodec)) {
         log_print("[%s:%d]reset subtile failed\n", __FUNCTION__, __LINE__);
     }

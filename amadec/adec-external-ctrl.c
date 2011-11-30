@@ -327,7 +327,7 @@ int audio_decode_set_lrvolume(void *handle, float lvol,float rvol)
  */
 int audio_decode_get_volume(void *handle, float *vol)
 {
-    int ret;
+    int ret = 0;
     adec_cmd_t *cmd;
     aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
@@ -349,7 +349,7 @@ int audio_decode_get_volume(void *handle, float *vol)
  */
 int audio_decode_get_lrvolume(void *handle, float *lvol,float* rvol)
 {
-    int ret;
+    int ret = 0;
     adec_cmd_t *cmd;
     aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
@@ -382,6 +382,7 @@ int audio_channels_swap(void *handle)
 
     cmd = adec_message_alloc();
     if (cmd) {
+	 audec->soundtrack = HW_CHANNELS_SWAP;	 
         cmd->ctrl_cmd = CMD_CHANL_SWAP;
         ret = adec_send_message(audec, cmd);
     } else {
@@ -410,6 +411,7 @@ int audio_channel_left_mono(void *handle)
 
     cmd = adec_message_alloc();
     if (cmd) {
+	 audec->soundtrack = HW_LEFT_CHANNEL_MONO;
         cmd->ctrl_cmd = CMD_LEFT_MONO;
         ret = adec_send_message(audec, cmd);
     } else {
@@ -438,6 +440,7 @@ int audio_channel_right_mono(void *handle)
 
     cmd = adec_message_alloc();
     if (cmd) {
+	 audec->soundtrack = HW_RIGHT_CHANNEL_MONO;
         cmd->ctrl_cmd = CMD_RIGHT_MONO;
         ret = adec_send_message(audec, cmd);
     } else {
@@ -466,6 +469,7 @@ int audio_channel_stereo(void *handle)
 
     cmd = adec_message_alloc();
     if (cmd) {
+	 audec->soundtrack = HW_STEREO_MODE;
         cmd->ctrl_cmd = CMD_STEREO;
         ret = adec_send_message(audec, cmd);
     } else {
@@ -556,4 +560,18 @@ void audio_set_av_sync_threshold(void *handle, int threshold)
     }
 
     audec->avsync_threshold = threshold * 90;
+}
+int audio_get_soundtrack(void *handle, int* strack )
+{
+    int ret =0;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
+
+    if (!handle) {
+        adec_print("audio handle is NULL !\n");
+        return -1;
+    }
+
+    *strack= audec->soundtrack;
+
+    return ret;    
 }
