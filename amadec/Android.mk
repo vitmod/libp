@@ -8,6 +8,10 @@ LOCAL_CFLAGS := \
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
 
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
+    LOCAL_CFLAGS += -D_VERSION_ICS
+endif
+
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
            dsp/audiodsp-ctl.c audio_out/android-out.cpp
@@ -40,6 +44,10 @@ LOCAL_CFLAGS := \
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
+
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
+    LOCAL_CFLAGS += -D_VERSION_ICS
+endif
 
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
