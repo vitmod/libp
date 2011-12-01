@@ -82,6 +82,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
         return -1;
     }
 
+#ifdef _VERSION_ICS
     status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
                         AUDIO_FORMAT_PCM_16_BIT,
@@ -93,6 +94,19 @@ extern "C" int android_init(struct aml_audio_dec* audec)
                         0,       // notificationFrames
                         0,       // shared buffer
                         0);
+#else
+    status = track->set(AudioSystem::MUSIC,
+                        audec->samplerate,
+                        AudioSystem::PCM_16_BIT,
+                        (audec->channels == 1) ? AudioSystem::CHANNEL_OUT_MONO : AudioSystem::CHANNEL_OUT_STEREO,
+                        0,       // frameCount
+                        0,       // flags
+                        audioCallback,
+                        audec,    // user when callback
+                        0,       // notificationFrames
+                        0,       // shared buffer
+                        0);
+#endif
 
     if (status != NO_ERROR) {
         adec_print("track->set returns %d", status);
