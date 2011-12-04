@@ -19,6 +19,7 @@
 
 #include "player_id.h"
 #include "player_para.h"
+#include "player_set_sys.h"
 
 
 struct stream_decoder;
@@ -174,6 +175,7 @@ typedef struct play_para {
     struct am_packet *p_pkt;
 
 	void *player_mate;/*player's mate thread handle*/
+	vdec_profile_t vdec_profile;
 } play_para_t;
 
 typedef struct media_type_t {
