@@ -999,12 +999,12 @@ int get_amutils_cmd(char* cmd){
 
 static vdec_profile_t default_vdec_profiles = 
 {
-	{0},
-	{1, 0, 0, 0, 1},
-	{0},
-	{0},
-	{0},
-	{0}
+	.h264_para = {0},
+	.vc1_para = {1, 0, 0, 0, 1},
+	.real_para = {0},
+	.mpeg12_para = {0},
+	.mpeg4_para = {0},
+	.mjpeg_para = {0}
 };
 
 static int parse_vc1_param(char *str, sys_vc1_profile_t *para, int size)
@@ -1133,5 +1133,6 @@ int get_vdec_profile(vdec_profile_t *vdec_profiles)
 	log_print("[%s]str=%s\n", __FUNCTION__,valstr);
 	parse_sysparam_str(&m_vdec_profiles, valstr);
 	memcpy(vdec_profiles, &m_vdec_profiles, sizeof(vdec_profile_t));
+	close(fd);
 	return 0;	
 }
