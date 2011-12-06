@@ -146,7 +146,7 @@ int codec_h_write(CODEC_HANDLE handle, void *buffer, int size)
 {
     int r;
     r = write(handle, buffer, size);
-	if (r < 0) {
+	if (r < 0 && errno != EAGAIN) {
         CODEC_PRINT("write failed,handle=%d,ret=%d errno=%d\n", handle, r, errno);  
     }
     return r;

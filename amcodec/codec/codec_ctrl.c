@@ -1613,7 +1613,7 @@ int codec_set_syncenable(codec_para_t *pcodec, int enable)
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_set_syncdiscont  set sync discontinue state
+* @brief  codec_set_sync_audio_discont  set sync discontinue state
 *
 * @param[in]  pcodec       Pointer of codec parameter structure
 * @param[in]  discontinue  Discontinue state to be set
@@ -1621,31 +1621,66 @@ int codec_set_syncenable(codec_para_t *pcodec, int enable)
 * @return     0 for success, or fail type if < 0
 */
 /* --------------------------------------------------------------------------*/
-int codec_set_syncdiscont(codec_para_t *pcodec, int discontinue)
+int codec_set_sync_audio_discont(codec_para_t *pcodec, int discontinue)
 {
-    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_SYNCDISCON, (unsigned long)discontinue);
+    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_SYNC_ADISCON, (unsigned long)discontinue);
 }
 
 /* --------------------------------------------------------------------------*/
 /**
-* @brief  codec_get_syncdiscont  get sync discontinue state
+* @brief  codec_set_sync_video_discont  set sync discontinue state
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+* @param[in]  discontinue  Discontinue state to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_sync_video_discont(codec_para_t *pcodec, int discontinue)
+{
+    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_SYNC_VDISCON, (unsigned long)discontinue);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_sync_audio_discont  get audio sync discontinue state
 *
 * @param[in]  pcodec       Pointer of codec parameter structure
 *
 * @return     discontiue state, or fail if < 0
 */
 /* --------------------------------------------------------------------------*/
-int codec_get_syncdiscont(codec_para_t *pcodec)
+int codec_get_sync_audio_discont(codec_para_t *pcodec)
 {
     int discontinue = 0;
     int ret;
 
-    ret = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_SYNCDISCON, (unsigned long)&discontinue);
+    ret = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_SYNC_ADISCON, (unsigned long)&discontinue);
     if (ret < 0) {
         return ret;
-    } else {
-        return discontinue;
-    }
+    }	
+    return discontinue;   
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_sync_video_discont  get video sync discontinue state
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+*
+* @return     discontiue state, or fail if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_sync_video_discont(codec_para_t *pcodec)
+{
+    int discontinue = 0;
+    int ret;
+
+    ret = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_SYNC_VDISCON, (unsigned long)&discontinue);
+    if (ret < 0) {
+        return ret;
+    }	
+    return discontinue;   
 }
 
 int codec_get_sub_num(codec_para_t *pcodec)

@@ -736,6 +736,8 @@ void player_para_reset(play_para_t *para)
         para->discontinue_point = 0;
     }
     para->discontinue_flag = 0;
+	para->discontinue_point = 0;
+	para->discontinue_last_point = 0;
     //para->playctrl_info.pts_valid = 0;
     para->playctrl_info.check_audio_ready_ms = 0;
 	
