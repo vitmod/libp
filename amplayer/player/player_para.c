@@ -601,7 +601,8 @@ static int set_decode_para(play_para_t*am_p)
 
     if (am_p->vstream_info.has_video == 0) {
         am_p->playctrl_info.video_end_flag = 1;
-    } else {
+    } 
+    if (am_p->astream_info.has_audio == 0) {
         am_p->playctrl_info.audio_end_flag = 1;
     }
 
