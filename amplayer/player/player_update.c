@@ -814,6 +814,8 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
             }
 			if (!p_para->playctrl_info.loop_flag) {
                 set_player_state(p_para, PLAYER_PLAYEND);
+				update_playing_info(p_para);
+                update_player_states(p_para, 1);
                 p_para->state.status = get_player_state(p_para);
                 player_clear_ctrl_flags(&p_para->playctrl_info);
                 set_black_policy(p_para->playctrl_info.black_out);
@@ -875,6 +877,8 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
                     }
                     if (!p_para->playctrl_info.loop_flag) {
                         set_player_state(p_para, PLAYER_PLAYEND);
+						update_playing_info(p_para);
+                		update_player_states(p_para, 1);
                         p_para->state.status = get_player_state(p_para);
                         player_clear_ctrl_flags(&p_para->playctrl_info);
                         set_black_policy(p_para->playctrl_info.black_out);
@@ -1051,7 +1055,7 @@ int update_playing_info(play_para_t *p_para)
 
 		update_av_sync_for_audio(p_para, &abuf);
 
-		if (p_para->playctrl_info.audio_ready != 1){
+		if (get_player_state(p_para) > PLAYER_INITOK && p_para->playctrl_info.audio_ready != 1){
 			p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
             log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
 		}
