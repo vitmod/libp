@@ -699,6 +699,9 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
 {
     int len, size1;
 
+    if(size == 0)
+        return 0;
+
     size1 = size;
     while (size > 0) {
         len = s->buf_end - s->buf_ptr;
