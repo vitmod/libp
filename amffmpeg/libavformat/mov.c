@@ -191,6 +191,7 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         parse = mov_metadata_track_or_disc_number; break;
     case MKTAG( 'd','i','s','k'): key = "disc";
         parse = mov_metadata_track_or_disc_number; break;
+    case MKTAG( 'c','o','v','r'): key = "cover_pic"; break;
     }
 
     if (c->itunes_metadata && atom.size > 8) {
@@ -200,6 +201,7 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
             data_type = avio_rb32(pb); // type
             avio_rb32(pb); // unknown
             str_size = data_size - 16;
+	     cover_size = data_size -16;
             atom.size -= 16;
         } else return 0;
     } else if (atom.size > 4 && key && !c->itunes_metadata) {
