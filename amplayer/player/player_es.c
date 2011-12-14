@@ -52,6 +52,7 @@ static void vcodec_info_init(play_para_t *p_para, codec_para_t *v_codec)
         v_codec->am_sysinfo.param     = (void *)0;
     }
 
+    v_codec->am_sysinfo.param = (void *)((unsigned int)v_codec->am_sysinfo.param | (vinfo->video_rotation_degree << 16));
     v_codec->stream_type = stream_type_convert(p_para->stream_type, v_codec->has_video, 0);
     log_print("[%s:%d]video stream_type=%d rate=%d\n", __FUNCTION__, __LINE__, v_codec->stream_type, v_codec->am_sysinfo.rate);
 }

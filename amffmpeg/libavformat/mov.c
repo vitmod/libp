@@ -2006,8 +2006,30 @@ static int mov_read_tkhd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     sc->width = width >> 16;
     sc->height = height >> 16;
 
-    if (display_matrix[0][0] == -65536 && display_matrix[1][1] == -65536) {
-         av_dict_set(&st->metadata, "rotate", "180", 0);
+    if (display_matrix[0][0] == -65536 
+        && display_matrix[0][1] == 0
+        && display_matrix[1][0] == 0
+        && display_matrix[1][1] == -65536) {
+        av_dict_set(&st->metadata, "rotate", "180", 0);
+        st->rotation_degree = 180;
+    } else if (display_matrix[0][0] == 0 
+        && display_matrix[0][1] == 65536
+        && display_matrix[1][0] == -65536
+        && display_matrix[1][1] == 0) {
+        av_dict_set(&st->metadata, "rotate", "90", 0);
+        st->rotation_degree = 90;
+    } else if (display_matrix[0][0] == 0 
+        && display_matrix[0][1] == -65536
+        && display_matrix[1][0] == 65536
+        && display_matrix[1][1] == 0) {
+        av_dict_set(&st->metadata, "rotate", "270", 0);
+        st->rotation_degree = 270;
+    } else if (display_matrix[0][0] == 65536 
+        && display_matrix[0][1] == 0
+        && display_matrix[1][0] == 0
+        && display_matrix[1][1] == 65536) {
+        av_dict_set(&st->metadata, "rotate", "0", 0);
+        st->rotation_degree = 0;
     }
 
     // transform the display width/height according to the matrix
@@ -2503,7 +2525,7 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
     if (pb->seekable && mov->chapter_track > 0)
         mov_read_chapters(s);
-	
+
     return 0;
 }
 

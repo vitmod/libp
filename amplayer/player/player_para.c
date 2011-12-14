@@ -175,6 +175,7 @@ static void get_av_codec_type(play_para_t *p_para)
             p_para->vstream_info.video_height   = pCodecCtx->height;
             p_para->vstream_info.video_ratio    = (pStream->sample_aspect_ratio.num << 16) | pStream->sample_aspect_ratio.den;
             p_para->vstream_info.video_ratio64  = (pStream->sample_aspect_ratio.num << 32) | pStream->sample_aspect_ratio.den;
+            p_para->vstream_info.video_rotation_degree = pStream->rotation_degree;
 
 			log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d ratio=%d/%d video_pts=%.3f\n", __FUNCTION__, __LINE__, \
 						pCodecCtx->time_base.num, pCodecCtx->time_base.den, \

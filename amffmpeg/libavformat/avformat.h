@@ -642,7 +642,8 @@ typedef struct AVStream {
      */
      unsigned int stream_offset;
      int no_extra_offset;
-     float special_fps;  // for some special stream	
+     float special_fps;  // for some special stream
+     int rotation_degree;
 } AVStream;
 
 #define AV_PROGRAM_RUNNING 1

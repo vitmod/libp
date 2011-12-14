@@ -36,6 +36,7 @@ typedef struct {
     float           video_duration;
     float           video_pts;
     unsigned int    video_rate;
+    unsigned int    video_rotation_degree;
     unsigned int    video_codec_rate;
     vdec_type_t     video_codec_type;
     int             vdec_buf_len;
