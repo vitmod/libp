@@ -43,7 +43,7 @@ int system_error_to_codec_error(int error)
     case ENODEV:
         return -CODEC_ERROR_IO;
     default:
-        return -CODEC_ERROR_INVAL;
+        return -(C_PAE|error);
     }
 }
 
