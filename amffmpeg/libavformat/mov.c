@@ -2013,19 +2013,19 @@ static int mov_read_tkhd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         && display_matrix[1][0] == 0
         && display_matrix[1][1] == -65536) {
         av_dict_set(&st->metadata, "rotate", "180", 0);
-        st->rotation_degree = 180;
+        st->rotation_degree = 2;
     } else if (display_matrix[0][0] == 0 
         && display_matrix[0][1] == 65536
         && display_matrix[1][0] == -65536
         && display_matrix[1][1] == 0) {
         av_dict_set(&st->metadata, "rotate", "90", 0);
-        st->rotation_degree = 90;
+        st->rotation_degree = 1;
     } else if (display_matrix[0][0] == 0 
         && display_matrix[0][1] == -65536
         && display_matrix[1][0] == 65536
         && display_matrix[1][1] == 0) {
         av_dict_set(&st->metadata, "rotate", "270", 0);
-        st->rotation_degree = 270;
+        st->rotation_degree = 3;
     } else if (display_matrix[0][0] == 65536 
         && display_matrix[0][1] == 0
         && display_matrix[1][0] == 0
