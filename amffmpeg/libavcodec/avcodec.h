@@ -2919,6 +2919,10 @@ typedef struct AVCodecContext {
     /* added by Z.C
      * to record mpeg4 vol_sprite_usage */
      int mpeg4_vol_sprite;
+
+    /* added by Z.C
+     * to record vc1_profile */
+     int vc1_profile;
 } AVCodecContext;
 
 /**
