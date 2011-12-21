@@ -1071,19 +1071,20 @@ int update_playing_info(play_para_t *p_para)
     struct buf_status vbuf, abuf;
     struct vdec_status vdec;
     struct adec_status adec;
+	player_status sta;
+	int ret;
 
     MEMSET(&vbuf, 0, sizeof(struct buf_status));
     MEMSET(&abuf, 0, sizeof(struct buf_status));
 
-    /*if (get_player_state(p_para) == PLAYER_RUNNING ||
-        get_player_state(p_para) == PLAYER_BUFFERING ||
-		get_player_state(p_para) == PLAYER_SEARCHING ||
-        get_player_state(p_para) == PLAYER_PAUSE) {*/
-      if (get_player_state(p_para) > PLAYER_INITOK){
-        if (update_codec_info(p_para, &vbuf, &abuf, &vdec, &adec) != 0) {
-            return PLAYER_FAILED;
-        }
-
+	sta = get_player_state(p_para);	
+    if (sta > PLAYER_INITOK) {
+		if (sta != PLAYER_SEARCHING) {
+			ret = update_codec_info(p_para, &vbuf, &abuf, &vdec, &adec);
+	        if (ret != 0) {
+	            return PLAYER_FAILED;
+	        }
+		}
         update_dec_info(p_para, &vdec, &adec, &vbuf, &abuf);
 
 		update_decbuf_states(p_para, &vbuf, &abuf);
