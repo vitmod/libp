@@ -478,6 +478,14 @@ static void get_stream_info(play_para_t *p_para)
             }
       
 		}
+        
+		if (p_para->pFormatCtx->streams[video_index]->codec->vc1_profile == 2) {
+		    // complex profile, we don't support now
+		    log_print("[%s:%d]vc1 complex profile video, not support!\n", __FUNCTION__, __LINE__);
+            set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
+            p_para->vstream_info.has_video = 0;
+            p_para->vstream_info.video_index = -1;
+		}
     }
 
 	if ((p_para->vstream_info.video_format == VFORMAT_H264 || p_para->vstream_info.video_format == VFORMAT_H264MVC ) && video_index != -1){
