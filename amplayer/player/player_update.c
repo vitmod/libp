@@ -1092,7 +1092,10 @@ int update_playing_info(play_para_t *p_para)
 		    }
         }
 		
-        if (p_para->playctrl_info.audio_ready == 1){
+        if (p_para->playctrl_info.audio_ready == 1 || 
+			p_para->playctrl_info.fast_backward ||
+			p_para->playctrl_info.fast_forward)
+		{
         	update_current_time(p_para);
         }
 		
