@@ -156,7 +156,8 @@ static int check_decoder_worksta(play_para_t *para)
     }
     if (para->astream_info.has_audio) {
         if (check_audiodsp_fatal_err() == AUDIO_DSP_FATAL_ERROR) {
-            para->playctrl_info.time_point = para->state.current_time ;
+			para->playctrl_info.seek_base_audio = 1;
+            para->playctrl_info.time_point = para->state.current_time + 1;
             para->playctrl_info.reset_flag = 1;
             para->playctrl_info.end_flag = 1;
             log_print("adec err::[%s:%d]time=%d ret=%d, need reset\n", __FUNCTION__, __LINE__, para->playctrl_info.time_point, ret);
@@ -313,7 +314,7 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
 			set_player_error_no(para, PLAYER_FFFB_UNSUPPORT);
     	}
     } else if (msg->ctrl_cmd & CMD_SWITCH_AID) {
-        para->playctrl_info.audio_switch_flag = 1;
+        para->playctrl_info.seek_base_audio = 1;
         para->playctrl_info.switch_audio_id = msg->param;
 		set_black_policy(0);
     } else if (msg->set_mode & CMD_LOOP) {
@@ -444,9 +445,9 @@ int check_flag(play_para_t *p_para)
         }
     }
 
-    if (p_para->playctrl_info.audio_switch_flag) {
+    if (p_para->playctrl_info.seek_base_audio) {
         player_switch_audio(p_para);
-        p_para->playctrl_info.audio_switch_flag = 0;
+        p_para->playctrl_info.seek_base_audio = 0;
     }
 
     if (p_para->sstream_info.has_sub == 0) {

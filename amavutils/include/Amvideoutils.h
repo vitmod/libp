@@ -1,6 +1,6 @@
 
-#ifndef AMAV_UTILS_H
-#define AMAV_UTILS_H
+#ifndef AMVIDEO_UTILS_H
+#define AMVIDEO_UTILS_H
 
 #ifdef  __cplusplus
 extern "C" {

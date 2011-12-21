@@ -174,7 +174,7 @@ static int player_mate_thread_cmd_proxy(play_para_t *player,struct player_mate *
             update_player_states(player, 1);
         }
 	}else if (cmd->ctrl_cmd & CMD_SWITCH_AID) {
-        player->playctrl_info.audio_switch_flag = 1;
+        player->playctrl_info.seek_base_audio = 1;
         player->playctrl_info.switch_audio_id = cmd->param;
 		set_black_policy(0);
     } else if (cmd->set_mode & CMD_LOOP) {

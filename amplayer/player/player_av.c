@@ -1083,14 +1083,16 @@ int time_search(play_para_t *am_p)
 	int sample_size;
 
     /* If swith audio, then use audio stream index */
-    if (am_p->playctrl_info.audio_switch_flag) {       
+    if (am_p->playctrl_info.seek_base_audio) {       
         seek_flags |= AVSEEK_FLAG_ANY;
 		stream_index = am_p->astream_info.audio_index;
+		am_p->playctrl_info.seek_base_audio = 0;
 	    log_info("[time_search]switch audio, audio_idx=%d time=%d\n", stream_index, time_point);
     }
-    
-    temp = (unsigned int)(s->duration / AV_TIME_BASE);
-    log_info("[time_search:%d]time_point =%d temp=%d duration= %lld\n", __LINE__, time_point, temp, s->duration);
+    if(s->duration > 0){
+	    temp = (unsigned int)(s->duration / AV_TIME_BASE);
+	    log_info("[time_search:%d]time_point =%d temp=%d duration= %lld\n", __LINE__, time_point, temp, s->duration);
+    }
     /* if seeking requested, we execute it */
     if (url_support_time_seek(s->pb) && time_point > 0) {
         log_info("[time_search:%d] direct seek to time_point =%d\n", __LINE__, time_point);
@@ -1103,8 +1105,8 @@ int time_search(play_para_t *am_p)
         }
         /*failed*/
         return PLAYER_SEEK_FAILED;
-    } else if (time_point <= temp) {
-        if (am_p->file_type == AVI_FILE ||
+    } else if (time_point <= temp || temp <= 0) {
+        if (am_p->file_type == AVI_FILE || am_p->file_type == MPEG_FILE ||
             am_p->file_type == MP4_FILE ||
             am_p->file_type == MKV_FILE ||
             am_p->file_type == FLV_FILE ||

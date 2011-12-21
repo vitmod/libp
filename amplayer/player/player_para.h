@@ -94,7 +94,7 @@ typedef  struct {
     unsigned int fast_forward;
     unsigned int fast_backward;
     unsigned int init_ff_fr;
-    unsigned int audio_switch_flag;
+    unsigned int seek_base_audio;
     unsigned int audio_mute;   
 	unsigned int avsync_enable;
 	#ifdef DEBUG_VARIABLE_DUR
