@@ -114,6 +114,7 @@ typedef  struct {
     int last_seek_time_point;
     int64_t last_seek_offset;
     int seek_offset_same;
+	int seek_frame_fail;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);

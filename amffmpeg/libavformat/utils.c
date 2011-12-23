@@ -1592,10 +1592,15 @@ int av_seek_frame_binary(AVFormatContext *s, int stream_index, int64_t target_ts
     int index;
     int64_t ret;
     AVStream *st;
+	int64_t ts_limit;
 
     if (stream_index < 0)
         return -1;
 
+	if (s->seek_binary_failed){
+		av_log(NULL, AV_LOG_ERROR, "do not repeat av_seek_frame_binary, for failed before \n");
+		return -1;
+	}
     av_dlog(s, "read_seek: %d %"PRId64"\n", stream_index, target_ts);
 
     ts_max=
@@ -1633,9 +1638,25 @@ int av_seek_frame_binary(AVFormatContext *s, int stream_index, int64_t target_ts
     }
 
     pos= av_gen_search(s, stream_index, target_ts, pos_min, pos_max, pos_limit, ts_min, ts_max, flags, &ts, avif->read_timestamp);
-    if(pos<0)
+    if(pos<0){
+		s->seek_binary_failed = 1;
         return -1;
+    }
+	
+	if (s->duration > (AV_TIME_BASE * 2048))
+	{
+		ts_limit = s->duration >> 10;
+		av_log(NULL, AV_LOG_INFO, "[%s]ts_limit=%llx\n", __FUNCTION__, ts_limit);
+	}
+	if (ts_limit < AV_TIME_BASE)
+		ts_limit = AV_TIME_BASE << 1;
+	
+	if(ts > target_ts && (ts-target_ts) > ts_limit)
+		return -2;
+	if (ts < target_ts && (target_ts - ts) > ts_limit)
+		return -3;
 
+	s->seek_binary_failed = 0;
     /* do the seek */
     if ((ret = avio_seek(s->pb, pos, SEEK_SET)) < 0)
         return ret;
@@ -1655,8 +1676,10 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
     if(ts_min == AV_NOPTS_VALUE){
         pos_min = s->data_offset;
         ts_min = read_timestamp(s, stream_index, &pos_min, INT64_MAX);
-        if (ts_min == AV_NOPTS_VALUE)
+        if (ts_min == AV_NOPTS_VALUE){
+			av_log(NULL, AV_LOG_ERROR, "av_gen_search failed, first pts not found\n");
             return -1;
+        }
     }
 
     if(ts_max == AV_NOPTS_VALUE){
@@ -1664,14 +1687,19 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
         filesize = avio_size(s->pb);
         pos_max = filesize - 1;
         do{
+			if(url_interrupt_cb())
+				break;
             pos_max -= step;
             ts_max = read_timestamp(s, stream_index, &pos_max, pos_max + step);
             step += step;
-        }while(ts_max == AV_NOPTS_VALUE && pos_max >= step);
-        if (ts_max == AV_NOPTS_VALUE)
-            return -1;
+        }while(ts_max == AV_NOPTS_VALUE && pos_max >= step && step < 0x6400000/*100M*/);
 
-        for(;;){
+		if (ts_max == AV_NOPTS_VALUE){
+			av_log(NULL, AV_LOG_ERROR, "av_gen_search failed, max pts not found\n");
+            return -1;
+        }
+
+        while(ts_max > target_ts){
             int64_t tmp_pos= pos_max + 1;
             int64_t tmp_ts= read_timestamp(s, stream_index, &tmp_pos, INT64_MAX);
             if(tmp_ts == AV_NOPTS_VALUE)
@@ -1683,8 +1711,10 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
         }
         pos_limit= pos_max;
     }
-
-    if(ts_min > ts_max){
+	if(target_ts > ts_max){		
+		av_log(NULL, AV_LOG_ERROR, "target_ts(%llx) > ts_max(%llx)\n", target_ts , ts_max);
+        return -2;
+	} else if(ts_min > ts_max){		
         return -1;
     }else if(ts_min == ts_max){
         pos_limit= pos_min;
@@ -1869,7 +1899,7 @@ int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int f
     else if (!(s->iformat->flags & AVFMT_NOGENSEARCH))
         return av_seek_frame_generic(s, stream_index, timestamp, flags);
     else
-        return -1;
+        return ret;
 }
 
 int avformat_seek_file(AVFormatContext *s, int stream_index, int64_t min_ts, int64_t ts, int64_t max_ts, int flags)
@@ -2485,7 +2515,7 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     }
 	avio_seek(ic->pb,cur_offset,SEEK_SET);
 	
-	av_log(NULL, AV_LOG_INFO, "[%s:%d]file_size=%lld valid_offset=%d\n", __FUNCTION__, __LINE__,ic->file_size, ic->valid_offset);
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]file_size=%lld valid_offset=%llx\n", __FUNCTION__, __LINE__,ic->file_size, ic->valid_offset);
 
 
     if ((!strcmp(ic->iformat->name, "mpeg") ||

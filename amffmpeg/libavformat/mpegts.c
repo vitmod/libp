@@ -1879,9 +1879,12 @@ static int read_seek(AVFormatContext *s, int stream_index, int64_t target_ts, in
     MpegTSContext *ts = s->priv_data;
     uint8_t buf[TS_PACKET_SIZE];
     int64_t pos;
+	int ret;
 
-    if(av_seek_frame_binary(s, stream_index, target_ts, flags) < 0)
-        return -1;
+	ret = av_seek_frame_binary(s, stream_index, target_ts, flags);
+    if(ret < 0){		
+        return ret;
+    }
 
     pos= avio_tell(s->pb);
 
