@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
+#include <codec_type.h>
 #include <player_set_sys.h>
 
 #include "player_update.h"
@@ -727,8 +728,11 @@ static void update_current_time(play_para_t *p_para)
 	                p_para->discontinue_point = p_para->discontinue_point - time / PTS_FREQ;
 	                p_para->discontinue_flag = 1;
 	                log_print("[update_current_time:%d]dpoint=%d\n", __LINE__, p_para->discontinue_point);
-	            }
-	            time += p_para->discontinue_point * PTS_FREQ;
+	            } else if ((time / PTS_FREQ) > (p_para->discontinue_point - p_para->discontinue_last_point)) {
+	                time -= p_para->discontinue_point * PTS_FREQ;
+                }
+
+                time += p_para->discontinue_point * PTS_FREQ;
 	        }
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n", time / PTS_FREQ, p_para->state.current_time, p_para->state.last_time);
 	        p_para->state.current_ms = time / PTS_FREQ_MS;
@@ -758,7 +762,7 @@ static void update_current_time(play_para_t *p_para)
 	            p_para->state.current_ms = p_para->state.current_time * 1000;
 	        }
 	    }
-	    log_debug("[update_current_time]time=%d last_time=%d time_point=%d\n", p_para->state.current_time, p_para->state.last_time, p_para->playctrl_info.time_point);
+	    log_debug("[update_current_time:%d]time=%d last_time=%d time_point=%d\n", __LINE__, p_para->state.current_time, p_para->state.last_time, p_para->playctrl_info.time_point);
 
 #ifdef DEBUG_VARIABLE_DUR
 	    if (p_para->playctrl_info.info_variable) {
@@ -1015,7 +1019,7 @@ static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, s
 	}	
 }
 
-static void update_av_sync_for_audio(play_para_t *p_para, struct buf_status *abuf)
+static void update_av_sync_for_audio(play_para_t *p_para)
 {
     if (p_para->playctrl_info.audio_ready && 
 		p_para->vstream_info.has_video && 
@@ -1073,7 +1077,7 @@ int update_playing_info(play_para_t *p_para)
 
 		update_buffering_states(p_para, &vbuf, &abuf);
 
-		update_av_sync_for_audio(p_para, &abuf);
+		update_av_sync_for_audio(p_para);
 
 		if (get_player_state(p_para) > PLAYER_INITOK && p_para->playctrl_info.audio_ready != 1){
 			p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
@@ -1093,9 +1097,9 @@ int update_playing_info(play_para_t *p_para)
         }
 		
         if (p_para->playctrl_info.audio_ready == 1 || 
-			p_para->playctrl_info.fast_backward ||
-			p_para->playctrl_info.fast_forward)
-		{
+                       p_para->playctrl_info.fast_backward ||
+                       p_para->playctrl_info.fast_forward)
+        {
         	update_current_time(p_para);
         }
 		
@@ -1150,3 +1154,4 @@ int check_audio_ready_time(int *first_time)
 
     return 0;
 }
+
