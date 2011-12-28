@@ -286,6 +286,33 @@ int thumbnail_get_key_data(void* handle, char* key, const void** data, int* data
     return 0;
 }
 
+void thumbnail_get_video_rotation(void *handle, int* rotation)
+{
+    struct video_frame *frame = (struct video_frame *)handle;
+    struct stream *stream = &frame->stream;
+    int stream_rotation = stream->pFormatCtx->streams[stream->videoStream]->rotation_degree;
+
+    switch (stream_rotation) {
+        case 1:
+            *rotation = 90;
+            break;
+
+        case 2:
+            *rotation = 180;
+            break;
+
+        case 3:
+            *rotation = 270;
+            break;
+
+        default:
+            *rotation = 0;
+            break;
+    }
+
+    return;
+}
+
 int thumbnail_decoder_close(void *handle)
 {
     struct video_frame *frame = (struct video_frame *)handle;
