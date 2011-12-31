@@ -818,6 +818,12 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         }
         p_para->playctrl_info.audio_low_buffer = 1;
     }
+	else if(p_para->astream_info.has_audio&&p_para->astream_info.audio_format==AFORMAT_WMAPRO)
+	{
+		int frame_size=p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->block_align;
+		if(abuf->data_len<frame_size)
+			p_para->playctrl_info.audio_low_buffer = 1;
+	}
     //log_print("[%s:%d]abuf=0x%x   vbuf=0x%x\n", __FUNCTION__, __LINE__, abuf->data_len, abuf->data_len);
 
     if ((p_para->playctrl_info.video_low_buffer ||
@@ -856,7 +862,9 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
     //if (check_time_interrupt(&p_para->check_end.old_time_ms, p_para->check_end.interval)) {
     if (!p_para->playctrl_info.end_flag && (
 		(p_para->vstream_info.has_video && (p_para->state.video_bufferlevel < 0.04)) ||
-		(p_para->astream_info.has_audio && (p_para->state.audio_bufferlevel < 0.04)))){
+		(p_para->astream_info.has_audio && (p_para->state.audio_bufferlevel < 0.04)) ||
+		(p_para->astream_info.has_audio&&p_para->astream_info.audio_format==AFORMAT_WMAPRO&&abuf->data_len<p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->block_align)
+		)){
         //log_print("v:%d vlen=0x%x a:%d alen=0x%x count=%d, vrp 0x%x, arp 0x%x\n",
         //    p_para->vstream_info.has_video,vbuf->data_len, p_para->astream_info.has_audio,abuf->data_len,p_para->check_end.end_count,vbuf->read_pointer,abuf->read_pointer);
         if (p_para->vstream_info.has_video) {
