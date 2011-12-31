@@ -1089,7 +1089,8 @@ int update_playing_info(play_para_t *p_para)
 
 		if (get_player_state(p_para) > PLAYER_INITOK && p_para->playctrl_info.audio_ready != 1){
 			p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
-            log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
+			if(p_para->playctrl_info.audio_ready)
+            	log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
 		}
 		
         if (p_para->astream_info.has_audio 	&& (p_para->playctrl_info.audio_ready != 1)) {
@@ -1105,8 +1106,9 @@ int update_playing_info(play_para_t *p_para)
         }
 		
         if (p_para->playctrl_info.audio_ready == 1 || 
-                       p_para->playctrl_info.fast_backward ||
-                       p_para->playctrl_info.fast_forward)
+			p_para->playctrl_info.search_flag ||
+            p_para->playctrl_info.fast_backward ||
+            p_para->playctrl_info.fast_forward)
         {
         	update_current_time(p_para);
         }
