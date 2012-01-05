@@ -156,14 +156,18 @@ static int http_open_cnx(URLContext *h)
 
     s->hd = hd;
     cur_auth_type = s->auth_state.auth_type;
-    if (http_connect(h, path, hoststr, auth, &location_changed) < 0)
+    if (http_connect(h, path, hoststr, auth, &location_changed) < 0){
+       	av_log(h, AV_LOG_ERROR, "http_open_cnx:http_connect failed\n");
         goto fail;
+    }
     if (s->http_code == 401) {
         if (cur_auth_type == HTTP_AUTH_NONE && s->auth_state.auth_type != HTTP_AUTH_NONE) {
             ffurl_close(hd);
             goto redo;
-        } else
+        } else{
+        	av_log(h, AV_LOG_ERROR, "http_open_cnx:failed s->http_code=%d cur_auth_type=%d\n",s->http_code, cur_auth_type);
             goto fail;
+        }
     }
     if ((s->http_code == 301 || s->http_code == 302 || s->http_code == 303 || s->http_code == 307)
         && location_changed == 1) {

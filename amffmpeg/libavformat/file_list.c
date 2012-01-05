@@ -374,6 +374,7 @@ retry:
 			goto retry;
 		}
 		else{	
+			av_log(NULL, AV_LOG_INFO, "[%s]item->flags=%x \n", __FUNCTION__, item->flags);
 			goto retry;
 		}
 	}
@@ -381,7 +382,7 @@ retry:
 		fresh_item_list(mgt);	
 	}
 
-	av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d\n",buf,size);
+	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
     return len;
 }
 
@@ -412,7 +413,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 					buffed_time=mgt->full_time;/*read to end list, show full bufferd*/
 			}
 		}
-		av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
+		//av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
 		return buffed_time;
 	}
 	
