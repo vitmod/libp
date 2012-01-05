@@ -622,9 +622,10 @@ static unsigned int get_current_time(play_para_t *p_para)
 			p_para->discontinue_last_point = p_para->discontinue_point;
         	p_para->discontinue_point = p_para->state.current_time;        	
 			set_discontinue = 1;
-        	log_info("vpts discontinue, point=%d\n", p_para->discontinue_point);
+        	log_info("vpts discontinue, point=%d ldpoint=%d\n", p_para->discontinue_point,p_para->discontinue_last_point);
 		}
-		codec_set_sync_video_discont(p_para->codec, 0);		
+		codec_set_sync_video_discont(p_para->codec, 0);	
+		log_info("vpts discontinue, vpts=0x%x scr=0x%x apts=0x%x\n", get_pts_video(p_para),get_pts_pcrscr(p_para),get_pts_audio(p_para));
     }
 
 	if (audio_pts_discontinue)
@@ -636,9 +637,10 @@ static unsigned int get_current_time(play_para_t *p_para)
 			p_para->discontinue_last_point = p_para->discontinue_point;
         	p_para->discontinue_point = p_para->state.current_time;   
 			set_discontinue = 1;
-        	log_info("apts discontinue, point=%d\n", p_para->discontinue_point);			
+        	log_info("apts discontinue, point=%d ldpoint=%d\n", p_para->discontinue_point,p_para->discontinue_last_point);			
 		}
 		codec_set_sync_audio_discont(p_para->codec, 0);		
+		log_info("apts discontinue, vpts=0x%x scr=0x%x apts=0x%x\n", get_pts_video(p_para),get_pts_pcrscr(p_para),get_pts_audio(p_para));
 	}
 
     if (p_para->vstream_info.has_video && p_para->astream_info.has_audio) {
@@ -722,16 +724,19 @@ static void update_current_time(play_para_t *p_para)
 						__LINE__, time / PTS_FREQ, p_para->discontinue_point, p_para->discontinue_last_point);
 	            if (p_para->pFormatCtx && p_para->pFormatCtx->pb && 
 					url_support_time_seek(p_para->pFormatCtx->pb) && 
-					(time / PTS_FREQ > 0) && (!p_para->discontinue_flag) &&
-					(time / PTS_FREQ) < (p_para->discontinue_point - p_para->discontinue_last_point))  				 
+					(time / PTS_FREQ > 0) && (!p_para->discontinue_flag))					
 				{
-	                p_para->discontinue_point = p_para->discontinue_point - time / PTS_FREQ;
-	                p_para->discontinue_flag = 1;
-	                log_print("[update_current_time:%d]dpoint=%d\n", __LINE__, p_para->discontinue_point);
-	            } else if ((time / PTS_FREQ) > (p_para->discontinue_point - p_para->discontinue_last_point)) {
-	                time -= p_para->discontinue_point * PTS_FREQ;
-                }
-
+					if ((time / PTS_FREQ) < (p_para->discontinue_point - p_para->discontinue_last_point))  				 
+					{
+		                p_para->discontinue_point = p_para->discontinue_point - time / PTS_FREQ;
+		                log_print("[update_current_time:%d]time<dpoint dpoint=%d\n", __LINE__, p_para->discontinue_point);
+					} else if (time > p_para->discontinue_point * PTS_FREQ)
+					{
+						p_para->discontinue_point = 0;
+		                log_print("[update_current_time:%d]time>dpoint dpoint=%d\n", __LINE__, p_para->discontinue_point);
+					}
+					p_para->discontinue_flag = 1;
+	            } 				
                 time += p_para->discontinue_point * PTS_FREQ;
 	        }
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n", time / PTS_FREQ, p_para->state.current_time, p_para->state.last_time);
