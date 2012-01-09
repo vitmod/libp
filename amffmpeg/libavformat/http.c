@@ -241,7 +241,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     HTTPContext *s = h->priv_data;
 	int ret;
 	int open_retry=0;
-   // h->is_streamed = 1;
+    h->is_streamed = 1;
 	
     s->filesize = -1;
 	s->is_seek=1;
@@ -262,7 +262,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     HTTPContext *s = h->priv_data;
 	int ret;
 	int open_retry=0;
-   // h->is_streamed = 1;
+    h->is_streamed = 1;
 
     s->filesize = -1;
 	s->is_seek=1;
