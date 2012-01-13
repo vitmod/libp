@@ -536,7 +536,8 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
 				s->data_offset = data_offset;
 				break;	
 			}
-		}while(1);
+		/*find the ts sync header if no erroris,not eof and interrupt*/
+		}while(!(pb->error ||pb->eof_reached || url_interrupt_cb()));
 	}
 	
 retry_probe:	
