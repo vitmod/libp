@@ -20,6 +20,7 @@
 #include "player_id.h"
 #include "player_para.h"
 #include "player_set_sys.h"
+#include "player_profile.h"
 
 
 struct stream_decoder;

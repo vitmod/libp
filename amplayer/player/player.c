@@ -545,7 +545,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
             p_para->buffering_enable = 0;
         }
     }
-	get_vdec_profile(&p_para->vdec_profile);
+	player_get_vdec_profile(&p_para->vdec_profile,0);
     log_print("pid[%d]::Init State: mute_on=%d black=%d t_pos:%ds read_max_cnt=%d\n",
               p_para->player_id,
               p_para->playctrl_info.audio_mute,
