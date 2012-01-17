@@ -440,14 +440,14 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	av_log(NULL, AV_LOG_INFO, "list_seek pos=%lld,whence=%x\n",pos,whence);
 	if (whence == AVSEEK_FULLTIME)
 	{
-		if(mgt->have_list_end)
+		if(mgt->have_list_end){
+			av_log(NULL, AV_LOG_INFO, "return mgt->full_timet=%d\n",mgt->full_time);
 			return mgt->full_time;
-		else if(mgt->have_sub_list && mgt->cur_uio){
+		}else if(mgt->have_sub_list && mgt->cur_uio){
 				subh = mgt->cur_uio->opaque;
-				submgt = subh->priv_data;
-				av_log(NULL, AV_LOG_INFO, "submgt->full_timet=%d\n",submgt->full_time);
-				return submgt->full_time;
-			}
+				av_log(NULL, AV_LOG_INFO, "seek sub file for fulltime\n");
+				return list_seek(subh,pos, whence);
+		}else
 			return -1;
 	}
 	
