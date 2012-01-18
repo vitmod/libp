@@ -162,6 +162,7 @@ typedef struct player_info
 	player_status last_sta;
 	player_status status;		   /*stop,pause	*/
 	int full_time;	   /*Seconds	*/
+    int full_time_ms;  /* mSeconds */
 	int current_time;  /*Seconds	*/
 	int current_ms;	/*ms*/
 	int last_time;		

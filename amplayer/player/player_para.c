@@ -963,6 +963,7 @@ int player_dec_init(play_para_t *p_para)
     pstream_type stream_type = STREAM_UNKNOWN;
     int ret = 0;
     int full_time = 0;
+    int full_time_ms = 0;
 
     ret = ffmpeg_parse_file(p_para);
     if (ret != FFMPEG_SUCCESS) {
@@ -991,8 +992,10 @@ int player_dec_init(play_para_t *p_para)
 
 	if (p_para->pFormatCtx->duration != -1) {
     	p_para->state.full_time = p_para->pFormatCtx->duration / AV_TIME_BASE;
+        p_para->state.full_time_ms = p_para->pFormatCtx->duration * 1000 / AV_TIME_BASE;
 	} else {
 		p_para->state.full_time = -1;
+        p_para->state.full_time_ms = -1;
 	}
 		
     p_para->state.name = p_para->file_name;
@@ -1028,10 +1031,12 @@ int player_dec_init(play_para_t *p_para)
         if (check_ctx_bitrate(p_para) == 0) {
             if ((0 != p_para->pFormatCtx->bit_rate) && (0 != p_para->file_size)) {
                 full_time = (int)((p_para->file_size << 3) / p_para->pFormatCtx->bit_rate);
+                full_time_ms = (int)(((p_para->file_size << 3) * 1000) / p_para->pFormatCtx->bit_rate);
                 log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld full_time=%d\n", __LINE__, p_para->pFormatCtx->bit_rate, p_para->file_size, full_time);
 
                 if (abs(p_para->state.full_time - full_time) > 600) {
                     p_para->state.full_time = full_time;
+                    p_para->state.full_time_ms = full_time_ms;
                 }
             }
         }
@@ -1042,11 +1047,14 @@ int player_dec_init(play_para_t *p_para)
             check_ctx_bitrate(p_para);
             if ((0 != p_para->pFormatCtx->bit_rate) && (0 != p_para->file_size)) {
                 p_para->state.full_time = (int)((p_para->file_size << 3) / p_para->pFormatCtx->bit_rate);
+                p_para->state.full_time_ms = (int)(((p_para->file_size << 3) * 1000) / p_para->pFormatCtx->bit_rate);
             } else {
                 p_para->state.full_time = -1;
+                p_para->state.full_time_ms = -1;
             }
         } else {
             p_para->state.full_time = -1;
+            p_para->state.full_time_ms = -1;
         }
         if (p_para->state.full_time == -1) {
             if (p_para->pFormatCtx->pb) {
