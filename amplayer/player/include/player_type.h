@@ -239,7 +239,7 @@ typedef struct
 			unsigned int nosound:1;	
 			unsigned int novideo:1;	
 			unsigned int hassub:1;
-			unsigned int need_start:1;
+			unsigned int need_start:1;/*If set need_start, we need call	player_start_play to playback*/
 			#ifdef DEBUG_VARIABLE_DUR
 			unsigned int is_variable:1;
 			#endif
