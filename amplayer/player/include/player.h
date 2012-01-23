@@ -34,11 +34,11 @@ int 	player_start_play(int pid);
 int 	player_send_message(int pid, player_cmd_t *cmd);
 player_status 	player_get_state(int pid);
 unsigned int 	player_get_extern_priv(int pid);
-    int     player_enable_autobuffer(int pid, int enable);
-    int     player_set_autobuffer_level(int pid, float min, float middle, float max);
+int     player_enable_autobuffer(int pid, int enable);
+int     player_set_autobuffer_level(int pid, float min, float middle, float max);
 
 int 	audio_set_mute(int pid,int mute);
-int 	audio_get_volume_range(int pid,int *min,int *max);
+int 	audio_get_volume_range(int pid,float *min,float *max);
 int 	audio_set_volume(int pid,float val);
 int 	audio_get_volume(int pid, float *val);
 
