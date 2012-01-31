@@ -198,10 +198,10 @@ typedef struct player_file_type
 }player_file_type_t;
 
 
-#define state_pre(sta) (sta>>16)
-#define player_thread_init(sta)	(state_pre(sta)==0x1)
-#define player_thread_run(sta)	(state_pre(sta)==0x2)
-#define player_thread_stop(sta)	(state_pre(sta)==0x3)
+#define STATE_PRE(sta) (sta>>16)
+#define PLAYER_THREAD_IS_INITING(sta)	(STATE_PRE(sta)==0x1)
+#define PLAYER_THREAD_IS_RUNNING(sta)	(STATE_PRE(sta)==0x2)
+#define PLAYER_THREAD_IS_STOPPED(sta)	(STATE_PRE(sta)==0x3)
 
 typedef int (*update_state_fun_t)(int pid,player_info_t *) ;
 typedef int (*notify_callback)(int pid,int msg,unsigned long ext1,unsigned long ext2);

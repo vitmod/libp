@@ -218,6 +218,7 @@ int player_stop(int pid)
     player_cmd_t *cmd;
     int r = PLAYER_SUCCESS;
     play_para_t *player_para;
+	player_status sta;
 
     log_print("[player_stop:enter]pid=%d\n", pid);
 
@@ -225,8 +226,10 @@ int player_stop(int pid)
     if (player_para == NULL) {
         return PLAYER_NOT_VALID_PID;
     }    
-	
-	if ((get_player_state(player_para) && 0x30000) == 1) {
+
+	sta = get_player_state(player_para);
+	log_print("[player_stop]player_status=%x\n", sta);
+	if (PLAYER_THREAD_IS_STOPPED(sta)) {
 		player_close_pid_data(pid);
 		log_print("[player_stop]pid=%d thread is already stopped\n", pid);
         return PLAYER_SUCCESS;
@@ -275,14 +278,19 @@ int player_stop_async(int pid)
     player_cmd_t *cmd;
     int r = PLAYER_SUCCESS;
     play_para_t *player_para;	
+	player_status sta;
 	
     player_para = player_open_pid_data(pid);
 
     if (player_para == NULL) {
         return PLAYER_NOT_VALID_PID;
-    }   
-	if ((get_player_state(player_para) && 0x30000) == 1) {
+    } 
+	
+	sta = get_player_state(player_para);
+	log_print("[player_stop]player_status=%x\n", sta);
+	if (PLAYER_THREAD_IS_STOPPED(sta)) {
 		player_close_pid_data(pid);
+		log_print("[player_stop]pid=%d thread is already stopped\n", pid);
         return PLAYER_SUCCESS;
     }
     cmd = message_alloc();
