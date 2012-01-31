@@ -2,8 +2,8 @@
  * @file        player_ctrl.c
  * @brief
  * @author      Xu Hui <hui.xu@amlogic.com>
- * @version     1.0.0
- * @date        2011-02-21
+ * @version     1.0.1
+ * @date        2012-01-19
  */
 
 /* Copyright (c) 2007-2011, Amlogic Inc.
@@ -219,17 +219,18 @@ int player_stop(int pid)
     int r = PLAYER_SUCCESS;
     play_para_t *player_para;
 
-    log_print("[player_stop:enter]pid=%d player_status=0x%x\n", pid, get_player_state(player_para));
-
-	if ((get_player_state(player_para) & 0x30000) == 1) {
-        return PLAYER_SUCCESS;
-    }
+    log_print("[player_stop:enter]pid=%d\n", pid);
 
     player_para = player_open_pid_data(pid);
     if (player_para == NULL) {
         return PLAYER_NOT_VALID_PID;
     }    
-
+	
+	if ((get_player_state(player_para) && 0x30000) == 1) {
+		player_close_pid_data(pid);
+		log_print("[player_stop]pid=%d thread is already stopped\n", pid);
+        return PLAYER_SUCCESS;
+    }
     /*if (player_para->pFormatCtx) {
         av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
     }*/
