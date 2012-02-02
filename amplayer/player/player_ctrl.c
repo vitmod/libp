@@ -59,8 +59,8 @@ extern void print_version_info();
 
 int player_init(void)
 {
-	print_version_info();
-
+    print_version_info();
+    update_loglevel_setting();
 	/*register all formats and codecs*/
     ffmpeg_init();
 
@@ -106,7 +106,8 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     int ret;
     int pid = -1;
     play_para_t *p_para;
-	print_version_info();
+    update_loglevel_setting();
+    print_version_info();
     log_print("[player_start:enter]p= %p \n", ctrl_p);
 
     if (ctrl_p == NULL) {
