@@ -105,7 +105,7 @@ typedef  struct {
     unsigned int switch_audio_id;
     unsigned int switch_sub_id;
     unsigned int is_playlist;	
-    int time_point;
+    float time_point;
     int f_step;
     int read_max_retry_cnt;
 	int audio_ready;		

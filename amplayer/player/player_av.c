@@ -1116,7 +1116,7 @@ int time_search(play_para_t *am_p)
                 time_point = am_p->state.current_time;
             }
 
-            timestamp = (int64_t)time_point * AV_TIME_BASE;
+            timestamp = (int64_t)(time_point * AV_TIME_BASE);
             /* add the stream start time */
             if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
                 timestamp += s->start_time;
@@ -1139,7 +1139,7 @@ int time_search(play_para_t *am_p)
 
             if ((am_p->vstream_info.video_index == -1 || !am_p->vstream_info.has_video)
                 && am_p->stream_type != STREAM_ES) {
-                offset = ((int64_t)time_point * (s->bit_rate >> 3));
+                offset = ((int64_t)(time_point * (s->bit_rate >> 3)));
                 ret = url_fseek(s->pb, offset, SEEK_SET);
                 if (ret < 0) {
                     log_info("%s: could not seek to position 0x%llx  ret=0x%llx\n", s->filename, offset, ret);
@@ -1164,7 +1164,7 @@ int time_search(play_para_t *am_p)
         } else {  
         	if (am_p->file_type == MPEG_FILE && time_point > 0 
 				&& !am_p->playctrl_info.seek_frame_fail) {
-				timestamp = (int64_t)time_point * AV_TIME_BASE;	           
+				timestamp = (int64_t)(time_point * AV_TIME_BASE);	           
 	            if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
 	                timestamp += s->start_time;
 	            }
@@ -1175,7 +1175,7 @@ int time_search(play_para_t *am_p)
 					am_p->playctrl_info.seek_frame_fail = 1;
 			}
 				
-            offset = ((int64_t)time_point * (s->bit_rate >> 3));
+            offset = ((int64_t)(time_point * (s->bit_rate >> 3)));
             log_info("time_point = %f  bit_rate=%x offset=0x%llx\n", time_point, s->bit_rate, offset);
 
             if (am_p->file_type == RM_FILE) {
@@ -1196,7 +1196,7 @@ int time_search(play_para_t *am_p)
 				sample_size = 4;
 			else
 				sample_size = 2;
-			offset = /*am_p->data_offset + */((int64_t)time_point * (s->bit_rate >> 3));
+			offset = /*am_p->data_offset + */((int64_t)(time_point * (s->bit_rate >> 3)));
 			offset -= offset%codec->block_align;
 			offset -= (offset % (codec->channels* sample_size) );
 			offset += am_p->data_offset;

@@ -503,7 +503,7 @@ int player_timesearch(int pid, float s_time)
     player_cmd_t cmd;
     int ret;
 
-    log_print("[player_timesearch:enter]pid=%d s_time=%d\n", pid, s_time);
+    log_print("[player_timesearch:enter]pid=%d s_time=%f\n", pid, s_time);
 
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
 
