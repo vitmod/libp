@@ -19,7 +19,7 @@ int 	player_stop_async(int pid);
 int     player_exit(int pid);
 int 	player_pause(int pid);
 int	 	player_resume(int pid);
-int 	player_timesearch(int pid,int s_time);
+int 	player_timesearch(int pid,float s_time);
 int     player_forward(int pid,int speed);
 int     player_backward(int pid,int speed);
 int     player_aid(int pid,int audio_id);

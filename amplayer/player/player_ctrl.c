@@ -498,7 +498,7 @@ int player_noloop(int pid)
  * @details     After time search, player playback from a key frame
  */
 /* --------------------------------------------------------------------------*/
-int player_timesearch(int pid, int s_time)
+int player_timesearch(int pid, float s_time)
 {
     player_cmd_t cmd;
     int ret;
@@ -508,7 +508,7 @@ int player_timesearch(int pid, int s_time)
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
 
     cmd.ctrl_cmd = CMD_SEARCH;
-    cmd.param = s_time;
+    cmd.f_param = s_time;
 
     ret = player_send_message(pid, &cmd);
     log_print("[player_timesearch:exit]pid=%d ret=%d\n", pid, ret);
