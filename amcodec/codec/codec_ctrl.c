@@ -1683,6 +1683,15 @@ int codec_get_sync_video_discont(codec_para_t *pcodec)
     return discontinue;   
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_sub_num  get the number of subtitle
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+*
+* @return     the number of subtitle, or fail if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_sub_num(codec_para_t *pcodec)
 {
     int sub_num = 0;
@@ -1695,6 +1704,16 @@ int codec_get_sub_num(codec_para_t *pcodec)
     return sub_num;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_sub_info  get subtitle information
+*
+* @param[in]   pcodec       Pointer of codec parameter structure
+* @param[out]  sub_info     Pointer of subtitle_info_t to save the subtitle information
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
 int codec_get_sub_info(codec_para_t *pcodec, subtitle_info_t *sub_info)
 {    
     int ret = 0;
