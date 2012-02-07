@@ -15,6 +15,27 @@ static inline void calc_aspect_ratio(rational *ratio, struct stream *stream)
     ratio->den = den;
 }
 
+static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, int64_t *thumb_time)
+{
+    int i = 0;
+    int maxFrameSize = 0;
+    int64_t thumbTime = 0;
+    AVPacket packet;
+    AVStream *st = pFormatCtx->streams[video_index];
+
+    while((i < 20) && (av_read_frame(pFormatCtx, &packet) >= 0)){
+        if((packet.stream_index == video_index) && (packet.flags & AV_PKT_FLAG_KEY)){
+            ++i;
+            if(packet.size > maxFrameSize){
+                maxFrameSize = packet.size;
+                thumbTime = packet.pts;
+            }
+        }
+        av_free_packet(&packet);
+    }
+    *thumb_time = av_rescale_q(thumbTime, st->time_base, AV_TIME_BASE_Q);;
+}
+
 void * thumbnail_res_alloc(void)
 {
     struct video_frame * frame;
@@ -95,6 +116,8 @@ int thumbnail_decoder_open(void *handle, const char* filename)
 	 goto err1;
     }
 
+   find_thumbnail_frame(stream->pFormatCtx, video_index, &frame->thumbNailTime); 
+	
     stream->videoStream = video_index;
     stream->pCodecCtx = stream->pFormatCtx->streams[video_index]->codec;
     if(stream->pCodecCtx == NULL)
@@ -159,9 +182,20 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
     int count;
     struct video_frame *frame = (struct video_frame *)handle;
     struct stream *stream = &frame->stream;
+    AVFormatContext *pFormatCtx = stream->pFormatCtx;
     AVPacket        packet;
 
-    while(av_read_frame(stream->pFormatCtx, &packet) >= 0) {
+    if(time < 0){
+        av_seek_frame(pFormatCtx, stream->videoStream, frame->thumbNailTime, AVSEEK_FLAG_BACKWARD);	
+    }else{
+        //int64_t thumbTime;
+		
+        //thumbTime = av_rescale_q(time, AV_TIME_BASE_Q, stream->pFormatCtx->streams[stream->videoStream]->time_base);
+        av_seek_frame(pFormatCtx, stream->videoStream, time, AVSEEK_FLAG_BACKWARD);
+    }
+	avcodec_flush_buffers(stream->pCodecCtx);
+	
+    while(av_read_frame(pFormatCtx, &packet) >= 0) {
         if(packet.stream_index==stream->videoStream){
             if(count >= 10){
                 log_print("exceed count, cann't get frame!\n");
