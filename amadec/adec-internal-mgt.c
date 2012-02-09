@@ -83,6 +83,8 @@ static void start_adec(aml_audio_dec_t *audec)
         /*start  the  the pts scr,...*/
         ret = adec_pts_start(audec);
 
+        //adec_pts_droppcm(audec);
+		
         if (audec->auto_mute) {
             avsync_en(0);
             adec_pts_pause();
