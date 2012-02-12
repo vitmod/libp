@@ -242,7 +242,8 @@ void get_display_mode(char *mode)
     }
     fd = open(path, O_RDONLY);
     if (fd >= 0) {
-        read(fd, mode, 16);
+        memset(mode, 0, 16); // clean buffer and read 15 byte to avoid strlen > 15	
+        read(fd, mode, 15);
         log_print("[get_display_mode]mode=%s strlen=%d\n", mode, strlen(mode));
         mode[strlen(mode)] = '\0';
         close(fd);
