@@ -346,8 +346,6 @@ retry:
 	}
 	if(len==AVERROR(EAGAIN))
 		 return AVERROR(EAGAIN);/*not end,bug need to*/
-	else if(len==AVERROR_EOF)
-		 return 0;	/*eof*/
 	else if((len<=0)&& mgt->current_item!=NULL)
 	{/*end of the file*/
 		av_log(NULL, AV_LOG_INFO, "try switchto_next_item buf=%x,size=%d,len=%d\n",buf,size,len);
