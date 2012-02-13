@@ -329,6 +329,10 @@ static int flv_read_avcodec_info(AVFormatContext *s)
 	int64_t old_offset, next;
 	int type, size, info;	
 	int i = 0;
+
+	if((!s->seekable) || (!s->support_seek))
+		return ;
+	
 	/* find av stream */		
     do{
         st = s->streams[i];		         
