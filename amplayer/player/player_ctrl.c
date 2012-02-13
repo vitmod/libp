@@ -115,8 +115,8 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     }
 
 	/* if not set keep last frame, or change file playback, clear display last frame */
-	if (!ctrl_p->displast_frame) {
-		set_black_policy(1);            
+	if (ctrl_p->displast_frame) {
+		set_black_policy(0);            
 	} else if (!check_file_same(ctrl_p->file_name)) {
 		set_black_policy(1);                    
 	}
