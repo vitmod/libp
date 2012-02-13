@@ -210,8 +210,14 @@ int check_file_same(char *filename2)
 {
    char filename1[512];
    int len1 = 0, len2 = 0;
-   get_last_file(filename1, 512);
-   
+   int ret = -1;
+   memset(filename1,0,512);
+	
+   ret = get_last_file(filename1, 511);
+   if(ret !=0){ //maybe invalid sysfs file handle
+   	log_print("invalid sysfs handle:%s,drop check file policy\n","/sys/class/video/file_name");
+	return 1;
+   }
    len1 = strlen(filename1);
    len2 = strlen(filename2);
    
