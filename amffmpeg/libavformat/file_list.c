@@ -323,6 +323,10 @@ retry:
 				av_log(NULL, AV_LOG_INFO, "list url_fopen failed =%d\n",len);
 				return len;
 			}
+			if (mgt->have_sub_list) {
+				av_log(NULL, AV_LOG_INFO, "not switch to next sublist:%s\n",item->file);
+				return 0;
+			}
 			if(url_is_file_list(bio,item->file))
 			{
 				mgt->have_sub_list = 1;
