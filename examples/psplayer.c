@@ -14,17 +14,16 @@
 #include <ctype.h>
 
 #define READ_SIZE (64 * 1024)
-#define EXTERNAL_PTS    (1)
-#define SYNC_OUTSIDE    (2)
+#define AUDIO_INFO_SIZE 4096
 #define UNIT_FREQ       96000
 #define PTS_FREQ        90000
 #define AV_SYNC_THRESH    PTS_FREQ*30
 
-static codec_para_t v_codec_para;
-static codec_para_t a_codec_para;
-static codec_para_t *pcodec, *apcodec, *vpcodec;
+static codec_para_t codec_para;
+static codec_para_t *pcodec;
 static char *filename;
 FILE* fp = NULL;
+static char audio_info_buf[AUDIO_INFO_SIZE] = {0};
 static int axis[8] = {0};
 
 int osd_blank(char *path,int cmd)
@@ -125,8 +124,7 @@ int set_display_axis(int recovery)
 static void signal_handler(int signum)
 {   
     printf("Get signum=%x\n",signum);
-    codec_close(apcodec);
-    codec_close(vpcodec);
+    codec_close(pcodec);
     fclose(fp);
     set_display_axis(1);
     signal(signum, SIG_DFL);
@@ -137,6 +135,7 @@ int main(int argc,char *argv[])
 {
     int ret = CODEC_ERROR_NONE;
     char buffer[READ_SIZE];
+    unsigned int vformat = 0, aformat = 0;
 
     int len = 0;
     int size = READ_SIZE;
@@ -144,55 +143,39 @@ int main(int argc,char *argv[])
     uint32_t isize;
     struct buf_status vbuf;
 
-    if (argc < 6) {
-        printf("Corret command: cplay <filename> <width> <height> <fps> <format(1:mpeg4 2:h264)> [subformat for mpeg4]\n");
+    if (argc < 8) {
+        printf("Corret command: psplay <filename> <vid> <vformat(1 for mpeg2, 2 for h264)> <aid> <aformat(1 for mp3)> <channel> <samplerate>\n");
         return -1;
     }
     osd_blank("/sys/class/graphics/fb0/blank",1);
     osd_blank("/sys/class/graphics/fb1/blank",0);
     set_display_axis(0);
-#ifdef AUDIO_ES
-    apcodec = &a_codec_para;
-    memset(apcodec, 0, sizeof(codec_para_t ));
-#endif
 
-    vpcodec = &v_codec_para;
-    memset(vpcodec, 0, sizeof(codec_para_t ));
+    pcodec = &codec_para;
+    memset(pcodec, 0, sizeof(codec_para_t ));
 
-    vpcodec->has_video = 1;
-    vpcodec->video_type = atoi(argv[5]);
-    if (vpcodec->video_type == VFORMAT_H264) {
-        vpcodec->am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
-        vpcodec->am_sysinfo.param = (void *)(EXTERNAL_PTS | SYNC_OUTSIDE);
-    }
-    else if (vpcodec->video_type == VFORMAT_MPEG4) {
-        if (argc < 7) {
-            printf("No subformat for mpeg4, take the default VIDEO_DEC_FORMAT_MPEG4_5\n");
-            vpcodec->am_sysinfo.format = VIDEO_DEC_FORMAT_MPEG4_5;
-        }
-        else {
-            vpcodec->am_sysinfo.format = atoi(argv[6]);
-        }
-    }
-    
-    vpcodec->stream_type = STREAM_TYPE_ES_VIDEO;
-    vpcodec->am_sysinfo.rate = 96000 / atoi(argv[4]);
-    vpcodec->am_sysinfo.height = atoi(argv[3]);
-    vpcodec->am_sysinfo.width = atoi(argv[2]);
-    vpcodec->has_audio = 0;
-    vpcodec->noblock = 0;
+    pcodec->noblock = 0;
+    pcodec->has_video = 1;
+    pcodec->video_pid = atoi(argv[2]);
+    vformat = atoi(argv[3]);
+    if (vformat == 1)
+        pcodec->video_type = VFORMAT_MPEG12;
+    else if (vformat == 2)
+        pcodec->video_type = VFORMAT_H264;
+    else
+        pcodec->video_type = VFORMAT_MPEG12;
 
-#ifdef AUDIO_ES
-    apcodec->audio_type = AFORMAT_MPEG;
-    apcodec->stream_type = STREAM_TYPE_ES_AUDIO;
-    apcodec->audio_pid = 0x1023;
-    apcodec->has_audio = 1;
-    apcodec->audio_channels = 2;
-    apcodec->audio_samplerate = 48000;
-    apcodec->noblock = 0;
-    apcodec->audio_info.channels = 2;
-    apcodec->audio_info.sample_rate = 48000;
-#endif
+    pcodec->has_audio = 1;
+    pcodec->audio_pid = atoi(argv[4]);
+    aformat = atoi(argv[5]);
+    pcodec->audio_type = AFORMAT_MPEG; // take mp for example
+    pcodec->audio_channels = atoi(argv[6]);
+    pcodec->audio_samplerate = atoi(argv[7]);
+    pcodec->audio_info.channels = 2;
+    pcodec->audio_info.sample_rate = pcodec->audio_samplerate;
+    pcodec->audio_info.valid = 1;
+
+    pcodec->stream_type = STREAM_TYPE_PS;
 
     printf("\n*********CODEC PLAYER DEMO************\n\n");
     filename = argv[1];
@@ -204,29 +187,20 @@ int main(int argc,char *argv[])
        return -1;
     }
 
-#ifdef AUDIO_ES
-    ret = codec_init(apcodec);
+    ret = codec_init(pcodec);
     if(ret != CODEC_ERROR_NONE)
     {
         printf("codec init failed, ret=-0x%x", -ret);
         return -1;
     }
-#endif
 
-    ret = codec_init(vpcodec);
-    if(ret != CODEC_ERROR_NONE)
-    {
-        printf("codec init failed, ret=-0x%x", -ret);
-        return -1;
-    }
-    printf("video codec ok!\n");
+    printf("ps codec ok!\n");
 
     //codec_set_cntl_avthresh(vpcodec, AV_SYNC_THRESH);
     //codec_set_cntl_syncthresh(vpcodec, 0);
 
-    set_tsync_enable(0);
+    set_tsync_enable(1);
 
-    pcodec = vpcodec;
     while(!feof(fp))
     {
         Readlen = fread(buffer, 1, READ_SIZE,fp);
@@ -275,10 +249,7 @@ int main(int argc,char *argv[])
     } while (vbuf.data_len > 0x100);
     
 error:
-#ifdef AUDIO_ES
-    codec_close(apcodec);
-#endif
-    codec_close(vpcodec);
+    codec_close(pcodec);
     fclose(fp);
     set_display_axis(1);
     
