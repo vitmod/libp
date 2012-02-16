@@ -224,43 +224,43 @@ typedef struct
 
 typedef struct
  {
-	char  *file_name;	
-    char  *headers;
+	char  *file_name;						//file url
+    char  *headers;							//file name's authentication information,maybe used in network streaming
 	//List  *play_list;
-	int	video_index;
-	int	audio_index;
-	int sub_index;
-	int t_pos;	
-	int	read_max_cnt;
+	int	video_index;						//video track, no assigned, please set to -1
+	int	audio_index;						//audio track, no assigned, please set to -1
+	int sub_index;							//subtitle track, no assigned, please set to -1
+	int t_pos;								//start postion, use second as unit
+	int	read_max_cnt;						//read retry maxium counts, if exceed it, return error
 	union
 	{     
 		struct{
-			unsigned int loop_mode:1;
-			unsigned int nosound:1;	
-			unsigned int novideo:1;	
-			unsigned int hassub:1;
+			unsigned int loop_mode:1;		//file loop mode 0:loop 1:not loop
+			unsigned int nosound:1;			//0:play with audio  1:play without audio
+			unsigned int novideo:1;			//0:play with video  1:play without video
+			unsigned int hassub:1;			//0:ignore subtitle	 1:extract subtitle if have
 			unsigned int need_start:1;/*If set need_start, we need call	player_start_play to playback*/
 			#ifdef DEBUG_VARIABLE_DUR
-			unsigned int is_variable:1;
+			unsigned int is_variable:1;		//0:extrack duration from header 1:update duration during playback
 			#endif
-			unsigned int displast_frame : 1;
+			unsigned int displast_frame : 1;//0:black out when player exit	1:keep last frame when player exit
 		};
-		int mode;
+		int mode;							//no use
 	};  
-	callback_t callback_fn;
-	int byteiobufsize;
-	int loopbufsize;
-	int enable_rw_on_pause;
+	callback_t callback_fn;					//callback function
+	int byteiobufsize;						//byteio buffer size used in ffmpeg
+	int loopbufsize;						//loop buffer size used in ffmpeg
+	int enable_rw_on_pause;					//no use
 	/*
 	data%<min && data% <max  enter buffering;
 	data% >middle exit buffering;
 	*/
-	int auto_buffing_enable;
-	float buffing_min;
-	float buffing_middle;
-	float buffing_max;
-	int is_playlist;
-	int is_type_parser;/*is try to get file type */
+	int auto_buffing_enable;				 //auto buffering switch
+	float buffing_min;						 //auto buffering low limit
+	float buffing_middle;					 //auto buffering middle limit
+	float buffing_max;						 //auto buffering high limit
+	int is_playlist;						 //no use
+	int is_type_parser;						 //is try to get file type 
  }play_control_t; 
 
 #endif
