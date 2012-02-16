@@ -30,6 +30,7 @@ int main(int argc,char ** argv)
 		ctrl.video_index=-1;
 		ctrl.audio_index=-1;
 		ctrl.sub_index=-1;
+		ctrl.t_pos=-1;
 		pid=player_start(&ctrl,0);
 		if(pid<0)
 			{

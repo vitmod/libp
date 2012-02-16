@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include "avformat.h"
 #include "internal.h"
-
+#include "asf.h"
 const char szSixtyFour[65] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz{}";
 typedef unsigned char BYTE;
 typedef unsigned long DWORD;
@@ -83,6 +83,8 @@ struct nsc_file{
 	int beacon_cnt;
 	int packet_id;
 	int stream_id;
+	int min_packetlen;
+	ASFMainHeader hdr;
 };
 
 static int unicode_to_utf8(const char *buffer,int length,char *buf8)
@@ -225,6 +227,44 @@ static item_info_t * find_item_by_name(struct nsc_file *nsc,const char * name)
 	}
 	return NULL;
 }
+
+static int nsc_read_asf_file_properties(struct nsc_file *nsc,char * formatbuf,int size)
+{
+		unsigned char * pb=formatbuf;
+		int n=size;
+#define buf_r8(pb)		({pb=pb+1;pb[-1];})
+#define buf_rl16(pb)	(buf_r8(pb) |buf_r8(pb)<<8)
+#define buf_rl32(pb)	(buf_rl16(pb)|buf_rl16(pb)<<16)
+#define buf_rl64(pb)	((int64_t)buf_rl32(pb)| ((int64_t)buf_rl32(pb))<<32)
+
+    while(memcmp(ff_asf_file_header,pb,16)!=0 && n>0) 
+    {
+    		pb++;
+    		n--;
+    }
+    if(n==0){
+    	av_log(NULL,AV_LOG_INFO,"not valid asf file header\n");
+    	return -1;
+    }
+    pb+=16;///skip ff_asf_file_header;
+    buf_rl64(pb);// header size
+    pb+=16;///skip asf->hdr.guid;
+		nsc->hdr.file_size          = buf_rl64(pb);
+		av_log(NULL,AV_LOG_INFO,"parserd nsc->hdr.file_size  =%llx\n",nsc->hdr.file_size );
+		nsc->hdr.create_time        = buf_rl64(pb);
+		buf_rl64(pb);;                            /* number of packets */
+		nsc->hdr.play_time          = buf_rl64(pb);
+		nsc->hdr.send_time          = buf_rl64(pb);
+		nsc->hdr.preroll            = buf_rl32(pb);
+		nsc->hdr.ignore             = buf_rl32(pb);
+		nsc->hdr.flags              = buf_rl32(pb);
+		nsc->hdr.min_pktsize        = buf_rl32(pb);
+		av_log(NULL,AV_LOG_INFO,"parserd nsc->hdr.min_pktsize  =%x\n",nsc->hdr.min_pktsize );
+		nsc->hdr.max_pktsize        = buf_rl32(pb);
+		nsc->hdr.max_bitrate        = buf_rl32(pb);
+    return 0;
+}
+
 static int parser_nsc(struct nsc_file *nsc)
 {
 	char line[1024*10];
@@ -260,6 +300,10 @@ static int parser_nsc(struct nsc_file *nsc)
 		preitem=item;	
 		reta=0;//have add one item list,
 	}
+	item_info_t *format=find_item_by_name(nsc,FORMAT1_ITEM);
+	if(format && format->Buf16){
+		nsc_read_asf_file_properties(nsc,format->Buf16,format->Buf16datalen);
+	}
 	return reta;
 }
 
@@ -289,8 +333,8 @@ nsc/sdcard/xxx.nsc
 	nsc->flags=flags;
 	h->priv_data=nsc;
 	nsc->muticastmode=1;
-	//h->is_slowmedia=1;
-	//h->is_streamed=1;
+	h->is_slowmedia=1;
+	h->is_streamed=1;
 	return 0;
 error1:
 	if(nsc->bio)	avio_close(nsc->bio);
@@ -307,10 +351,13 @@ struct msb_packet
 static int ncs_muticast_read(struct nsc_file *nsc, uint8_t *buf, int size)
 {
 	int ret;
-	char tempbuf[2048];
-	char *pbuf=tempbuf;
+	char tempbuf[1024*64];
+	char *pbuf;
 	int len;
+	int i=0;
+	int expadlen;
 retry:	
+	pbuf=tempbuf;
 	if(url_interrupt_cb())
 		return -1;
 	if(!nsc->databio)
@@ -335,7 +382,7 @@ retry:
 		nsc->read_data_len+=len;
 		return len;
 	}
-	ret=ffurl_read(nsc->databio,tempbuf,2048);
+	ret=ffurl_read(nsc->databio,tempbuf,1024*64);
 	if(ret>0){
 		unsigned int *beacon=tempbuf;
 		if(*beacon==0x2042534D){
@@ -351,14 +398,25 @@ retry:
 			av_log(NULL,AV_LOG_INFO,"get data dwPacketID=%d,wStreamID=%d,wPacketSize=%d\n",msb->dwPacketID,msb->wStreamID,msb->wPacketSize);
 			pbuf+=sizeof(struct msb_packet);
 			ret-=sizeof(struct msb_packet);
-			if(ret!=msb->wPacketSize)
-				av_log(NULL,AV_LOG_INFO,"data else len and packetsize not eque %d!=%d\n",ret,msb->wPacketSize);
-			len=FFMIN(msb->wPacketSize,ret);
+			if(pbuf[0]&0x10)//0x10 is "Opaque Data Present" bit/
+				goto retry;/*no packet data.drop and read again*/
+			if(ret!=msb->wPacketSize-8)
+				av_log(NULL,AV_LOG_INFO,"data else len and packetsize not eque %d!=%d\n",ret,msb->wPacketSize-8);
+			len=FFMIN(msb->wPacketSize-8,ret);
 			len=FFMIN(len,size);
-			memcpy(buf,tempbuf,len);
+			memcpy(buf,pbuf,len);
+			buf[0]=0x82;
+			buf[1]=0x0;
+			buf[2]=0x0;
 			ret-=len;
+			expadlen=nsc->hdr.min_pktsize-len;
+			av_log(NULL,AV_LOG_INFO,"add ex pad len =%d\n",expadlen);
+			for(i=0;i<expadlen;i++)
+				buf[len+i]=0;
+			len+=expadlen;
+			
 			if(ret>0){
-				memcpy(nsc->buf,tempbuf+len,ret);
+				memcpy(nsc->buf,pbuf+len,ret);
 				nsc->buf_datalen=ret;
 			}
 			ret=len;
