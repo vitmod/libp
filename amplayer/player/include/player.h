@@ -65,6 +65,11 @@ int 	play_list_player(play_control_t *pctrl,unsigned long priv);
 //freescale
 int 	enable_freescale(int cfg);
 int 	disable_freescale(int cfg);
+int   disable_freescale_MBX();
+int   enable_2Xscale();
+int   enable_2XYscale();
+int   enable_freescale_MBX();
+int   disable_2X_2XYscale();
 
 #ifdef  __cplusplus
 }
