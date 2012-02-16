@@ -192,6 +192,7 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     case MKTAG( 'd','i','s','k'): key = "disc";
         parse = mov_metadata_track_or_disc_number; break;
     case MKTAG( 'c','o','v','r'): key = "cover_pic"; break;
+    case MKTAG(0xa9,'x','y','z'): key = "GPSCoordinates"; break;
     }
 
     if (c->itunes_metadata && atom.size > 8) {
@@ -236,6 +237,11 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         } else {
             avio_read(pb, str, str_size);
             str[str_size] = 0;
+        }
+        // Android MP4 writer put an additional '/' at the end, discard it.
+        // The CTS test seems the added '/' is not needed.
+        if ((atom.type == MKTAG(0xa9,'x','y','z')) && (str[str_size-1] == 0x2f)) {
+            str[str_size-1] = 0;
         }
         av_dict_set(&c->fc->metadata, key, str, 0);
         if (*language && strcmp(language, "und")) {
