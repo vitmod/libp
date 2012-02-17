@@ -974,7 +974,7 @@ int disable_2X_2XYscale()
 {
   char mode[16];
 	char m1080scale[8];
-	int scaleFile = -1;
+	int scaleFile = -1, scaleOsd1File = -1;
 	
   property_get("ro.platform.has.1080scale",m1080scale,"0");
 	get_display_mode(mode);
@@ -987,8 +987,12 @@ int disable_2X_2XYscale()
 	if((scaleFile = open("/sys/class/graphics/fb0/scale", O_RDWR)) < 0) {
 		log_print("open /sys/class/graphics/fb0/scale fail.");
 	}
+	if((scaleOsd1File = open("/sys/class/graphics/fb1/scale", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/scale fail.");
+	}
 	
 	write(scaleFile, "0", strlen("0"));
+	write(scaleOsd1File, "0", strlen("0"));
 	return 0;
 }
 
@@ -1028,7 +1032,7 @@ int enable_2XYscale()
 {
   char mode[16];
 	char m1080scale[8];
-	int scaleFile = -1, scaleaxisFile = -1;
+	int scaleFile = -1, scaleaxisFile = -1, scaleOsd1File = -1, scaleaxisOsd1File = -1;
 	
   property_get("ro.platform.has.1080scale",m1080scale,"0");
 	get_display_mode(mode);
@@ -1044,9 +1048,17 @@ int enable_2XYscale()
 	if((scaleaxisFile = open("/sys/class/graphics/fb0/scale_axis", O_RDWR)) < 0) {
 		log_print("open /sys/class/graphics/fb0/scale_axis fail.");
 	}
+	if((scaleOsd1File = open("/sys/class/graphics/fb1/scale", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/scale fail.");
+	}
+	if((scaleaxisOsd1File = open("/sys/class/graphics/fb1/scale_axis", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/scale_axis fail.");
+	}
 	
 	write(scaleaxisFile, "0 0 959 539", strlen("0 0 959 539"));
+	write(scaleaxisOsd1File, "1280 720 1920 1080", strlen("1280 720 1920 1080"));
 	write(scaleFile, "0x10001", strlen("0x10001"));
+	write(scaleOsd1File, "0x10001", strlen("0x10001"));
 	return 0;
 }
 
