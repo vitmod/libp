@@ -10,10 +10,16 @@
 #include "avformat.h"
 #include "internal.h"
 #include "asf.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+       
 const char szSixtyFour[65] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz{}";
 typedef unsigned char BYTE;
 typedef unsigned long DWORD;
 typedef unsigned short WORD;
+
+///#define DUMP_RX_DATA
 const unsigned char bInverseSixtyFour[128] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -353,7 +359,7 @@ static int ncs_muticast_read(struct nsc_file *nsc, uint8_t *buf, int size)
 	int ret;
 	char tempbuf[1024*64];
 	char *pbuf;
-	int len;
+	int len,datalen;
 	int i=0;
 	int expadlen;
 retry:	
@@ -402,19 +408,18 @@ retry:
 				goto retry;/*no packet data.drop and read again*/
 			if(ret!=msb->wPacketSize-8)
 				av_log(NULL,AV_LOG_INFO,"data else len and packetsize not eque %d!=%d\n",ret,msb->wPacketSize-8);
-			len=FFMIN(msb->wPacketSize-8,ret);
-			len=FFMIN(len,size);
-			memcpy(buf,pbuf,len);
-			buf[0]=0x82;
-			buf[1]=0x0;
-			buf[2]=0x0;
-			ret-=len;
-			expadlen=nsc->hdr.min_pktsize-len;
+			datalen=ret;
+			pbuf[0]=0x82;
+			pbuf[1]=0x0;//clear error info;
+			pbuf[2]=0x0;//clear error info;
+			expadlen=nsc->hdr.min_pktsize-datalen;
 			av_log(NULL,AV_LOG_INFO,"add ex pad len =%d\n",expadlen);
 			for(i=0;i<expadlen;i++)
-				buf[len+i]=0;
-			len+=expadlen;
-			
+				pbuf[datalen+i]=0;
+			datalen+=expadlen;
+			len=FFMIN(datalen,size);
+			memcpy(buf,pbuf,len);
+			ret=datalen-len;
 			if(ret>0){
 				memcpy(nsc->buf,pbuf+len,ret);
 				nsc->buf_datalen=ret;
@@ -467,10 +472,20 @@ retry:
 	}
 	/*do read....*/
 	if(nsc->muticastmode){
-		return ncs_muticast_read(nsc,buf,size);
+		ret= ncs_muticast_read(nsc,buf,size);
 	}else{//unicast ,maybe http,mssh
-		return ffurl_read(nsc->databio,buf,size);
+		ret= ffurl_read(nsc->databio,buf,size);
 	}
+	if(ret>0){
+#ifdef DUMP_RX_DATA
+		static int fd=-1;
+		if(fd<0){
+				fd=open("/tmp/nscdump.data",O_RDWR| O_CREAT );
+		}
+		write(fd,buf,ret);
+#endif
+	}
+	return ret;
 }
 static int nsc_close(URLContext *h)
 {
