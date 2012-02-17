@@ -849,8 +849,8 @@ int disable_freescale_MBX()
 	}
 	
   if (fd_ppmgr >= 0) 	write(fd_ppmgr, "0", strlen("0"));
-	if(fd_ppmgr_rect >= 0)
-    write(fd_ppmgr_rect, "0 0 0 0 1", strlen("0 0 0 0 1"));
+	//if(fd_ppmgr_rect >= 0)
+    //write(fd_ppmgr_rect, "0 0 0 0 1", strlen("0 0 0 0 1"));
 	write(freeScaleOsd0File, "0", strlen("0"));
 	write(freeScaleOsd1File, "0", strlen("0"));
 	return 0;
@@ -962,8 +962,8 @@ int enable_freescale_MBX()
 	sprintf(vaxis_str, "%d %d %d %d", vaxis_x, vaxis_y, vaxis_right, vaxis_bottom);
 	sprintf(ppmgr_rect_str, "%d %d %d %d 0", vaxis_x, vaxis_y, vaxis_right, vaxis_bottom);
   if (fd_ppmgr >= 0) 	write(fd_ppmgr, "1", strlen("1"));
-  if(fd_ppmgr_rect >= 0)
-    write(fd_ppmgr_rect, ppmgr_rect_str, strlen(ppmgr_rect_str));
+  //if(fd_ppmgr_rect >= 0)
+    //write(fd_ppmgr_rect, ppmgr_rect_str, strlen(ppmgr_rect_str));
 	write(videoAxisFile, vaxis_str, strlen(vaxis_str));
 	write(freeScaleOsd0File, "1", strlen("1"));
 	write(freeScaleOsd1File, "1", strlen("1"));
