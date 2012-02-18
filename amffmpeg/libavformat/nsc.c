@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
        
+#include "nsc.h"
 const char szSixtyFour[65] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz{}";
 typedef unsigned char BYTE;
 typedef unsigned long DWORD;
@@ -206,21 +207,35 @@ static int decode_item(const char *string,item_info_t *item)
 	return 0;	
 }
 
-static int is_ncs_file(const char * header,int len)
+int is_nsc_file(AVIOContext *pb,const char *name)
 {
 	int score=0;
-	if(!strncmp(header,ADDRESS_ITEM,strlen(ADDRESS_ITEM)))
-		score+=50;
-	else
-		return 0;
-	if(strstr(header,IP_ADDRESS_ITEM)!=NULL)
-		score+=30;
-	if(strstr(header,IP_PORT_ITEM)!=NULL)
-		score+=30;
-	if(strstr(header,UNICAST_URL_ITEM)!=NULL)
-		score+=50;
-	if(score>100) score=100;
-	return score;
+	char line[1024+1];
+	int ret;
+	int linecnt=0;
+	if(!pb) return 0;
+	ret=ff_get_line(pb,line,1024);
+	while(score>=0 && score<100 && ret>0 && linecnt<5)
+	{
+		if(ret<10) continue;
+		av_log(NULL,AV_LOG_INFO,"is_ncs_file check line%s\n",line);
+		if(!strncmp(line,ADDRESS_ITEM,strlen(ADDRESS_ITEM)))
+			score+=60;
+		else if(!strncmp(line,"Name=02",strlen("Name=02")))
+			score+=60;
+		else if(!strncmp(line,"IP Address=02",strlen("IP Address=02")))
+			score+=60;
+		else if(!strncmp(line,IP_PORT_ITEM,strlen(IP_PORT_ITEM)))
+			score+=60;
+		else if(!strncmp(line,FORMATS_ITEM,strlen(FORMATS_ITEM)))
+			score+=60;
+		else if(!strncmp(line,UNICAST_URL_ITEM,strlen(UNICAST_URL_ITEM)))
+			score+=50;
+		ret=ff_get_line(pb,line,1024);
+		linecnt++;
+	}
+	av_log(NULL,AV_LOG_INFO,"is_ncs_file=%d\n",score);
+	return score>=100?100:score;
 }
 static item_info_t * find_item_by_name(struct nsc_file *nsc,const char * name)
 {
@@ -320,7 +335,7 @@ url is:
 nschttp://
 nsc/sdcard/xxx.nsc
 */
-	struct nsc_file *nsc=av_malloc(sizeof(struct nsc_file ));
+	struct nsc_file *nsc=av_mallocz(sizeof(struct nsc_file ));
 	int ret;
 	if(!nsc)
 		return -1;

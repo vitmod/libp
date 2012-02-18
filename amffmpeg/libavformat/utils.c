@@ -40,6 +40,7 @@
 #include <strings.h>
 #include <stdarg.h>
 #include "file_list.h"
+#include "nsc.h"
 
 #if CONFIG_NETWORK
 #include "network.h"
@@ -640,12 +641,45 @@ int av_open_input_file_header(AVFormatContext **ic_ptr, const char *filename,
 
 #endif
 
+typedef struct auto_switch_protol{
+	char *prefix;
+	int (*probe_check)(ByteIOContext *,char *);	
+}auto_switch_protol_t;
+
+auto_switch_protol_t switch_table[]=
+{
+	{"list:",url_is_file_list},
+	{"nsc:",is_nsc_file},
+	{NULL,NULL}
+};
+
+static auto_switch_protol_t *try_get_mached_new_prot(ByteIOContext *pb,const char * name)
+{
+	auto_switch_protol_t *p=switch_table;
+	int i;
+	int64_t off=url_ftell(pb);
+	for(i=0;p!=NULL && p->prefix && p->probe_check;i++)
+	{
+		av_log(NULL,AV_LOG_INFO,"auto_switch_protol_t:%s:\n",p->prefix);
+		if(p->probe_check(pb,name)>=100){
+			return p;
+		}
+		url_fseek(pb,off,SEEK_SET);
+		p++;
+	}
+	return &switch_table[1];
+	return NULL;
+}
+
+
+
+
 /* open input file and probe the format if necessary */
 static int init_input(AVFormatContext *s, const char *filename,const char * headers)
 {
     int ret;
     AVProbeData pd = {filename, NULL, 0};
-
+    auto_switch_protol_t* newp=NULL;
     if (s->pb) {
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
         if (!s->iformat)
@@ -659,14 +693,15 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
         return 0;
     if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
        return ret;
-	if(url_is_file_list(s->pb,filename)){
+    newp=try_get_mached_new_prot(s->pb,filename);
+    if(newp!=NULL){
 			char *listfile;
 			int err;
 			listfile=av_malloc(strlen(filename)+10);
 			if(!listfile)
 				return AVERROR(ENOMEM);
-			strcpy(listfile,"list:");
-			strcpy(listfile+5,filename);
+			strcpy(listfile,newp->prefix);
+			strcpy(listfile+strlen(newp->prefix),filename);
 			url_fclose(s->pb);
 			s->pb=NULL;
 			if ((err=avio_open_h(&s->pb,listfile, AVIO_FLAG_READ, headers)) < 0) {

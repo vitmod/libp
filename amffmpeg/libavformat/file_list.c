@@ -165,7 +165,7 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 	{
 		url_fseek(lio, oldpos, SEEK_SET);
 	}
-	return demux!=NULL?1:0;
+	return demux!=NULL?100:0;
 }
 
 static int list_open_internet(ByteIOContext **pbio,struct list_mgt *mgt,const char *filename, int flags)
