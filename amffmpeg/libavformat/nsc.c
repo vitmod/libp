@@ -450,7 +450,7 @@ retry:
 				nsc->muticastmode=0;//
 				goto retry;//to unicast mode;
 			}
-			snprintf(nsc->streamurl,1024,"udp://%s:%d",ip->Buf8,port->Value);
+			snprintf(nsc->streamurl,1024,"udp://[%s]:%d",ip->Buf8,port->Value);
 			///snprintf(nsc->streamurl,1024,"udp://%s:%d","239.192.5.93",16606);
 			av_log(NULL,AV_LOG_INFO,"To start open %s\n",nsc->streamurl);
 		}else{//unicast mode,is step2 
