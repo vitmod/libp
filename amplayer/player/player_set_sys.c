@@ -1002,9 +1002,14 @@ int enable_2Xscale()
 	char m1080scale[8];
 	int scaleFile = -1, scaleaxisFile = -1;
 	char saxis_str[32];
+	display_mode disp_mode;
 	
   property_get("ro.platform.has.1080scale",m1080scale,"0");
 	get_display_mode(mode);
+	disp_mode = display_mode_convert(mode);
+	if (disp_mode < DISP_MODE_1080I || disp_mode > DISP_MODE_1080P) {
+		return 0;
+	}
 	if(strncmp(m1080scale, "2", 1) && (strncmp(m1080scale, "1", 1) || (strncmp(mode, "1080i", 5) && strncmp(mode, "1080p", 5) && strncmp(mode, "720p", 4))))
   {
     log_print("[enable_2Xscale]not freescale mode!\n");
