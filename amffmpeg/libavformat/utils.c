@@ -667,7 +667,7 @@ static auto_switch_protol_t *try_get_mached_new_prot(ByteIOContext *pb,const cha
 		url_fseek(pb,off,SEEK_SET);
 		p++;
 	}
-	return &switch_table[1];
+	//return &switch_table[1];
 	return NULL;
 }
 
