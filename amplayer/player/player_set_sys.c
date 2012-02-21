@@ -827,7 +827,11 @@ int disable_freescale_MBX()
 	int freeScaleOsd0File = -1, freeScaleOsd1File = -1;
 	int fd_ppmgr = -1,fd_ppmgr_rect = -1;
 	
-  property_get("ro.platform.has.1080scale",m1080scale,"0");
+  property_get("ro.platform.has.1080scale",m1080scale,"fail");
+  if(!strncmp(m1080scale, "fail", 4))
+  {
+  	return 0;
+  }
 	get_display_mode(mode);
   if(strncmp(m1080scale, "2", 1) && (strncmp(m1080scale, "1", 1) || (strncmp(mode, "1080i", 5) && strncmp(mode, "1080p", 5) && strncmp(mode, "720p", 4))))
   {
@@ -871,7 +875,11 @@ int enable_freescale_MBX()
 	char ppmgr_rect_str[32];
 	int vaxis_x, vaxis_y, vaxis_width, vaxis_height, vaxis_right, vaxis_bottom;
 
-  property_get("ro.platform.has.1080scale",m1080scale,"0");
+  property_get("ro.platform.has.1080scale",m1080scale,"fail");
+  if(!strncmp(m1080scale, "fail", 4))
+  {
+  	return 0;
+  }
 	get_display_mode(mode);
 	if(strncmp(m1080scale, "2", 1) && (strncmp(m1080scale, "1", 1) || (strncmp(mode, "1080i", 5) && strncmp(mode, "1080p", 5) && strncmp(mode, "720p", 4))))
   {
@@ -976,7 +984,11 @@ int disable_2X_2XYscale()
 	char m1080scale[8];
 	int scaleFile = -1, scaleOsd1File = -1;
 	
-  property_get("ro.platform.has.1080scale",m1080scale,"0");
+  property_get("ro.platform.has.1080scale",m1080scale,"fail");
+  if(!strncmp(m1080scale, "fail", 4))
+  {
+  	return 0;
+  }
 	get_display_mode(mode);
 	if(strncmp(m1080scale, "2", 1) && (strncmp(m1080scale, "1", 1) || (strncmp(mode, "1080i", 5) && strncmp(mode, "1080p", 5) && strncmp(mode, "720p", 4))))
   {
@@ -1004,7 +1016,11 @@ int enable_2Xscale()
 	char saxis_str[32];
 	display_mode disp_mode;
 	
-  property_get("ro.platform.has.1080scale",m1080scale,"0");
+  property_get("ro.platform.has.1080scale",m1080scale,"fail");
+  if(!strncmp(m1080scale, "fail", 4))
+  {
+  	return 0;
+  }
 	get_display_mode(mode);
 	disp_mode = display_mode_convert(mode);
 	if (disp_mode < DISP_MODE_1080I || disp_mode > DISP_MODE_1080P) {
@@ -1039,7 +1055,11 @@ int enable_2XYscale()
 	char m1080scale[8];
 	int scaleFile = -1, scaleaxisFile = -1, scaleOsd1File = -1, scaleaxisOsd1File = -1;
 	
-  property_get("ro.platform.has.1080scale",m1080scale,"0");
+  property_get("ro.platform.has.1080scale",m1080scale,"fail");
+  if(!strncmp(m1080scale, "fail", 4))
+  {
+  	return 0;
+  }
 	get_display_mode(mode);
 	if(strncmp(m1080scale, "2", 1) && (strncmp(m1080scale, "1", 1) || (strncmp(mode, "1080i", 5) && strncmp(mode, "1080p", 5))))
   {
