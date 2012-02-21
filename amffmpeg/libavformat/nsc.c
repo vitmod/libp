@@ -213,12 +213,12 @@ int is_nsc_file(AVIOContext *pb,const char *name)
 	char line[1024+1];
 	int ret;
 	int linecnt=0;
-	if(!pb) return 0;
-	ret=ff_get_line(pb,line,1024);
-	while(score>=0 && score<100 && ret>0 && linecnt<5)
-	{
-		if(ret<10) continue;
-		av_log(NULL,AV_LOG_INFO,"is_ncs_file check line%s\n",line);
+	if(!pb) return 0;	
+	do
+	{	
+		ret=ff_get_line(pb,line,1024);		
+		av_log(NULL,AV_LOG_INFO,"is_ncs_file check line%s ret=%d\n",line, ret);	
+		if(ret<10) continue;		
 		if(!strncmp(line,ADDRESS_ITEM,strlen(ADDRESS_ITEM)))
 			score+=60;
 		else if(!strncmp(line,"Name=02",strlen("Name=02")))
@@ -230,10 +230,8 @@ int is_nsc_file(AVIOContext *pb,const char *name)
 		else if(!strncmp(line,FORMATS_ITEM,strlen(FORMATS_ITEM)))
 			score+=60;
 		else if(!strncmp(line,UNICAST_URL_ITEM,strlen(UNICAST_URL_ITEM)))
-			score+=50;
-		ret=ff_get_line(pb,line,1024);
-		linecnt++;
-	}
+			score+=50;		
+	}while(score>=0 && score<100 && ret>0 && linecnt++<5);
 	av_log(NULL,AV_LOG_INFO,"is_ncs_file=%d\n",score);
 	return score>=100?100:score;
 }
