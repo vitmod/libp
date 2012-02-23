@@ -508,7 +508,11 @@ static int raw_read(play_para_t *para)
 
     if (!para->playctrl_info.read_end_flag && (0 == pkt->data_size)) {
         rev_byte = get_buffer(pb, pbuf, para->max_raw_size);
-        if ((rev_byte > 0) &&(cur_offset <= para->pFormatCtx->valid_offset)) {
+        if(AVERROR(ETIMEDOUT)==rev_byte && para->state.current_time >= para->state.full_time){
+                        //read timeout ,if playing current time reached end time,we think it is eof
+                        rev_byte=AVERROR_EOF;
+         }
+	if ((rev_byte > 0) &&(cur_offset <= para->pFormatCtx->valid_offset)) {
             try_count = 0;
             pkt->data_size = rev_byte;
             para->read_size.total_bytes += rev_byte;
@@ -610,7 +614,10 @@ static int non_raw_read(play_para_t *para)
             if (AVERROR(EAGAIN) != ret) {
                 /*if the return is EAGAIN,we need to try more times*/
                 log_error("[%s:%d]av_read_frame return (%d)\n", __FUNCTION__, __LINE__, ret);
-
+		if(AVERROR(ETIMEDOUT)==ret && para->state.current_time >= para->state.full_time){
+			//read timeout ,if playing current time reached end time,we think it is eof
+			ret=AVERROR_EOF;
+		}
                 if (AVERROR_EOF != ret) {
                     return PLAYER_RD_FAILED;
                 } else {
