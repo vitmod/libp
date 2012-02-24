@@ -165,7 +165,7 @@ static int set_display_axis(int recovery)
             count = get_axis(str, 8, axis);
         }
         if (recovery) {
-            sprintf(str, "%d %d %d %d %d %d %d %d", 
+            sprintf(str, "0 %d %d %d %d %d %d %d", 
                 axis[0],axis[1], axis[2], axis[3], axis[4], axis[5], axis[6], axis[7]);
         } else {
             sprintf(str, "2048 %d %d %d %d %d %d %d", 
@@ -212,8 +212,7 @@ int main(int argc,char *argv[])
 	}
 	player_init();		
 	set_display_axis(0);		//move osd out of screen to set video layer out
-	signal(SIGINT, signal_handler);
-	
+		
 	player_register_update_callback(&pCtrl->callback_fn,&update_player_info,1000);
 	printf("player callback register....\n");
 	
@@ -231,8 +230,8 @@ int main(int argc,char *argv[])
 //	pCtrl->buffing_middle = 0.02;
 //	pCtrl->buffing_max = 0.9;
 	
-	pCtrl->t_pos = 0;
-	pCtrl->need_start = 1; ///< f 0,you can omit player_start_play API.just play video/audio immediately. if 1,need call "player_start_play" API;
+	pCtrl->t_pos = -1;	// start position, if live streaming, need set to -1
+	pCtrl->need_start = 0; // if 0,you can omit player_start_play API.just play video/audio immediately. if 1,need call "player_start_play" API;
 	
 	pid=player_start(pCtrl,0);
 	if(pid<0)
@@ -240,8 +239,9 @@ int main(int argc,char *argv[])
 		printf("player start failed!error=%d\n",pid);
 		return -1;
 	}	
+	signal(SIGSEGV, signal_handler);
     //SYS_disable_osd0();	
-	while(!tmpneedexit&&!PLAYER_THREAD_IS_STOPPED(player_get_state(pid))){
+	while((!tmpneedexit)&&(!PLAYER_THREAD_IS_STOPPED(player_get_state(pid)))){
 		 switch (tmpstep) {                
     		case EMU_STEP_PAUSE:   
 				player_pause(pid);                
@@ -260,7 +260,7 @@ int main(int argc,char *argv[])
     		 		
     			break;
     		case EMU_STEP_STOP:
-                player_stop(pid);
+                player_stop(pid);				
                 tmpstep = EMU_STEP_MENU;    			
     			break; 
     		case EMU_STEP_FF:
@@ -318,6 +318,7 @@ int main(int argc,char *argv[])
 					printf(SCREEN_SPLITER); 
 					printf("please input you choice:");
 					memset(tmpcommand,0,TMP_COMMAND_MAX);
+					
 					scanf ("%s",tmpcommand);				    
 				    if (strcmp(tmpcommand,"1")==0){
 				        tmpstep = EMU_STEP_PAUSE;
@@ -358,13 +359,22 @@ int main(int argc,char *argv[])
 				}while (0);
 				
 				break;
-    	}		
-        signal(SIGINT, signal_handler);		
+    	}	
+		usleep(100*1000);
+        signal(SIGCHLD, SIG_IGN);        
+		signal(SIGTSTP, SIG_IGN);        
+		signal(SIGTTOU, SIG_IGN);        
+		signal(SIGTTIN, SIG_IGN);        
+		signal(SIGHUP, signal_handler);        
+		signal(SIGTERM, signal_handler);        
+		signal(SIGSEGV, signal_handler);        
+		signal(SIGINT, signal_handler);        
+		signal(SIGQUIT, signal_handler);		
 	}	
+	set_display_axis(1);	//recover osd
 	free(pCtrl->file_name);
 	free(pCtrl);       
-    printf("...........player exit,~,byeybe...........\n");
-	set_display_axis(1);	//recover osd
+    printf("...........player exit,~,byeybe...........\n");	
 	return 0;
 }
 
