@@ -74,10 +74,7 @@ int player_init(void)
     ps_register_stream_decoder();
     rm_register_stream_decoder();
     audio_register_stream_decoder();
-    video_register_stream_decoder();
-
-    /*keep last frame displaying --default*/
-    set_black_policy(0);
+    video_register_stream_decoder();    
 
 	/*enable demux and set demux channel, must*/
     set_stb_source_hiu();
@@ -113,7 +110,8 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     if (ctrl_p == NULL) {
         return PLAYER_EMPTY_P;
     }
-
+	/*keep last frame displaying --default*/
+    set_black_policy(0);
 	/* if not set keep last frame, or change file playback, clear display last frame */
 	if (!ctrl_p->displast_frame) {
 		set_black_policy(1);            
