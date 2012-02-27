@@ -151,15 +151,21 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	char *oprefix=mgt->location!=NULL?mgt->location:mgt->filename;
 	
 	if(oprefix){
-		char *tail,*tailex;
-		if(is_NET_URL(oprefix))
-			tail=strchr(oprefix+9,'/');/*skip Http:// and shttp:*/
-		else
-			tail=strchr(oprefix,'/');
-		if(is_NET_URL(oprefix))
-			tailex=strrchr(oprefix+9,'/');/*skip Http:// and shttp:*/
-		else
-			tailex=strrchr(oprefix,'/');
+		char *tail,*tailex,*extoptions;
+		extoptions=strchr(oprefix,'?');/*ext options is start with ? ,we don't need in nested*/
+		if(is_NET_URL(oprefix)){
+			tail=strchr(oprefix+9,'/');/*skip Http:// and shttp:,and to first '/'*/
+			if(!extoptions)// no ?
+				tailex=strrchr(oprefix+9,'/');/*skip Http:// and shttp:,start to  last '/'*/
+			else
+				tailex=memrchr(oprefix+9,'/',extoptions-oprefix-9);/*skip Http:// and shttp:,start to  last '/',between http-->? */
+		}else{
+			tail=strchr(oprefix,'/'); /*first '/'*/
+			if(!extoptions)//no ?
+				tailex=strrchr(oprefix,'/'); /*to last '/' */
+			else
+				tailex=memrchr(oprefix+9,'/',extoptions-oprefix-9);/*skip Http:// and shttp:,start to  last '/',between http-->? */
+		}
 		
 		if(tail!=NULL){
 			prefix_len=tail-oprefix+1;/*left '/'..*/
@@ -175,6 +181,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	}
 	memset(&tmpitem,0,sizeof(tmpitem));
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
+	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefixex=%s\n",prefixex);
 	while(m3u_format_get_line(s,line,1024)>=0)
 	{
 		ret = m3u_parser_line(mgt,line,&tmpitem);
