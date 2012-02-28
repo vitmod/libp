@@ -1087,7 +1087,7 @@ static AM_ErrorCode_t aml_start_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode, vo
 	AV_FilePlayerData_t *data;
 	AV_FilePlayPara_t *pp;
 	AV_JPEGData_t *jpeg;
-	
+	codec_para_t pcodec;
 	switch(mode)
 	{
 #if 0
@@ -1155,7 +1155,7 @@ static AM_ErrorCode_t aml_start_mode(AM_AV_Device_t *dev, AV_PlayMode_t mode, vo
         has_audio = 1;
 			  usleep(1500000);
 			  //adec_start();
-        audio_start(&adec_priv);
+        audio_start(&adec_priv, &pcodec);
       }
 		break;
 #if 0
