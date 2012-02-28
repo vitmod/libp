@@ -31,9 +31,10 @@ void audio_basic_init(void)
 * @brief  audio_start  Start audio decoder
 */
 /* --------------------------------------------------------------------------*/
-void audio_start(void **priv)
+void audio_start(void **priv, codec_para_t *pcodec)
 {
-    audio_decode_init(priv);
+
+    audio_decode_init(priv, pcodec);
     audio_decode_start(*priv);
 }
 

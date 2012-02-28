@@ -7,19 +7,26 @@ LOCAL_CFLAGS := \
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
+    $(LOCAL_PATH)/../amcodec/include \
+		$(LOCAL_PATH)/../amcodec \
+		$(LOCAL_PATH)/../amffmpeg \
+		$(LOCAL_PATH)/../amplayer/player \
+		$(LOCAL_PATH)/../amplayer/player/include
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
     LOCAL_CFLAGS += -D_VERSION_ICS
 endif
 
 LOCAL_SRC_FILES := \
-           adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
+           adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
            dsp/audiodsp-ctl.c audio_out/android-out.cpp
 
 
 LOCAL_MODULE := libamadec
 
 LOCAL_ARM_MODE := arm
+
+
 include $(BUILD_STATIC_LIBRARY)
 
 
@@ -30,19 +37,24 @@ LOCAL_CFLAGS := \
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
+    $(LOCAL_PATH)/../amcodec/include \
+		$(LOCAL_PATH)/../amcodec \
+		$(LOCAL_PATH)/../amffmpeg \
+		$(LOCAL_PATH)/../amplayer/player \
+		$(LOCAL_PATH)/../amplayer/player/include
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
     LOCAL_CFLAGS += -D_VERSION_ICS
 endif
 
 LOCAL_SRC_FILES := \
-           adec-external-ctrl.c adec-internal-mgt.c adec-message.c adec-pts-mgt.c feeder.c \
+           adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
            dsp/audiodsp-ctl.c audio_out/android-out.cpp
 
 LOCAL_MODULE := libamadec
 
 LOCAL_ARM_MODE := arm
-
+LOCAL_STATIC_LIBRARIES := libamcodec libavformat libswscale libavcodec libavutil libamadec 
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc
 
 LOCAL_PRELINK_MODULE := false

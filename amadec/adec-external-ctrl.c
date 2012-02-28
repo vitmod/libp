@@ -28,7 +28,7 @@ int audio_decode_basic_init(void)
  * \param handle pointer to player private data
  * \return 0 on success otherwise -1 if an error occurred
  */
-int audio_decode_init(void **handle)
+int audio_decode_init(void **handle, codec_para_t *pcodec)
 {
     int ret;
     aml_audio_dec_t *audec;
@@ -44,7 +44,8 @@ int audio_decode_init(void **handle)
         return -1;
     }
 
-    ret = audiodec_init(audec);
+//	adec_print("audio_decode_init  pcodec = %d, pcodec->ctxCodec = %d!\n", pcodec, pcodec->ctxCodec);
+    ret = audiodec_init(audec, pcodec);
     if (ret) {
         adec_print("adec init failed!");
         return -1;

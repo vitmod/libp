@@ -23,6 +23,7 @@
 #include <codec.h>
 #include <audio_priv.h>
 #include "codec_h_ctrl.h"
+#include <adec-external-ctrl.h>
 
 #define SUBTITLE_EVENT
 #define TS_PACKET_SIZE 188
@@ -653,7 +654,7 @@ int codec_init(codec_para_t *pcodec)
         return -CODEC_ERROR_INIT_FAILED;
     }
     if (pcodec->has_audio) {
-        audio_start(&pcodec->adec_priv);
+        audio_start(&pcodec->adec_priv, pcodec);
     }
     return ret;
 }
@@ -752,7 +753,7 @@ void codec_resume_audio(codec_para_t *pcodec, unsigned int orig)
 {
     pcodec->has_audio = orig;
     if (pcodec->has_audio) {
-        audio_start(&pcodec->adec_priv);
+        audio_start(&pcodec->adec_priv, pcodec);
     }
     return;
 }
@@ -844,6 +845,8 @@ int codec_get_vdec_state(codec_para_t *p, struct vdec_status *vdec)
 /* --------------------------------------------------------------------------*/
 int codec_get_adec_state(codec_para_t *p, struct adec_status *adec)
 {
+    if(get_audio_decoder()!=AUDIO_ARC_DECODER)
+	return get_decoder_status(p->adec_priv,adec);
     int r;
     struct am_io_param am_io;
     r = codec_h_control(p->handle, AMSTREAM_IOC_ADECSTAT, (unsigned long)&am_io);

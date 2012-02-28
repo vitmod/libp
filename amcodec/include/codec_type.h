@@ -12,6 +12,8 @@
 #ifndef CODEC_TYPE_H_
 #define CODEC_TYPE_H_
 
+#include <libavcodec/avcodec.h>
+
 #include "amports/amstream.h"
 #include "amports/vformat.h"
 #include "amports/aformat.h"
@@ -78,6 +80,7 @@ unsigned int noblock:
     audio_info_t audio_info;    ///< audio information pass to audiodsp
     int packet_size;            ///< data size per packet
     void * adec_priv;          ///<for adec>
+    AVCodecContext *ctxCodec; /**< codec context */
 } codec_para_t;
 
 typedef struct 
@@ -94,4 +97,8 @@ typedef struct
 #define IS_VALID_ATYPE(t)   (t>=0 && t<AFORMAT_MAX)
 #define IS_VALID_VTYPE(t)   (t>=0 && t<VFORMAT_MAX)
 
+//audio decoder type, default arc
+#define AUDIO_ARC_DECODER 0
+#define AUDIO_ARM_DECODER 1
+#define AUDIO_FFMPEG_DECODER 2
 #endif

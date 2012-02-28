@@ -18,7 +18,8 @@
 #include <adec-types.h>
 #include <adec-message.h>
 #include <log-print.h>
-
+#include <codec_type.h>
+#include <adec-armdec-mgt.h>
 ADEC_BEGIN_DECLS
 
 #define  AUDIO_CTRL_DEVICE    "/dev/amaudio_ctl"
@@ -53,16 +54,18 @@ struct aml_audio_dec {
     int avsync_threshold;
     float volume; //left or main volume
     float volume_ext; //right	
+    codec_para_t *pcodec;
     hw_command_t soundtrack;
     audio_out_operations_t aout_ops;
     dsp_operations_t adsp_ops;
     message_pool_t message_pool;
+	audio_decoder_operations_t *adec_ops;//non audiodsp decoder operations
 };
 
 
 /***********************************************************************************************/
 extern void android_basic_init(void);
-int audiodec_init(aml_audio_dec_t *);
+int audiodec_init(aml_audio_dec_t *aml_audio_dec, codec_para_t *pcodec);
 int adec_message_pool_init(aml_audio_dec_t *);
 adec_cmd_t *adec_message_alloc(void);
 int adec_message_free(adec_cmd_t *);
@@ -70,7 +73,6 @@ int adec_send_message(aml_audio_dec_t *, adec_cmd_t *);
 adec_cmd_t *adec_get_message(aml_audio_dec_t *);
 int feeder_init(aml_audio_dec_t *);
 int feeder_release(aml_audio_dec_t *);
-
+void *adec_armdec_loop(void *args);
 ADEC_END_DECLS
-
 #endif

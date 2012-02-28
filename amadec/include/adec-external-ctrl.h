@@ -16,7 +16,7 @@ extern "C"
 {
 #endif
 
-    int audio_decode_init(void **handle);
+	int audio_decode_init(void **handle, codec_para_t *pcodec);
     int audio_decode_start(void *handle);
     int audio_decode_pause(void *handle);
     int audio_decode_resume(void *handle);
@@ -37,6 +37,8 @@ extern "C"
     int audio_decode_set_lrvolume(void *, float lvol,float rvol);	
     int audio_decode_get_lrvolume(void *, float* lvol,float* rvol);	
     int audio_get_soundtrack(void *, int* );	
+	int get_audio_decoder(void);
+	int get_decoder_status(void *p,struct adec_status *adec);
 
 #ifdef  __cplusplus
 }
