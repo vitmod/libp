@@ -845,7 +845,8 @@ int audiodec_init(aml_audio_dec_t *audec, codec_para_t *pcodec)
 	
 	audec->pcodec = pcodec;
 	adec_print("audiodec_init  pcodec = %d, pcodec->ctxCodec = %d!\n", pcodec, pcodec->ctxCodec);
-    audec->adsp_ops.dsp_file_fd = -1;	
+    audec->adsp_ops.dsp_file_fd = -1;
+    if(pcodec->ctxCodec)	
 	set_audio_decoder(audec->pcodec);
 
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
