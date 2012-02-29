@@ -943,6 +943,12 @@ write_packet:
 				
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
+                if (player->playctrl_info.search_flag
+                    || player->playctrl_info.fast_forward
+                    || player->playctrl_info.fast_backward) {
+                    log_print("[%s:%d] clear read_end_flag\n", __FUNCTION__, __LINE__);
+                    player->playctrl_info.read_end_flag = 0;
+                }
                 break;
             } else if (ret == CONTINUE_FLAG) {
                 continue;

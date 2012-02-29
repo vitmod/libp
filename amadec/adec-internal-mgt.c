@@ -808,7 +808,7 @@ static int set_audio_decoder(codec_para_t *pcodec)
 
 int get_audio_decoder(void)
 {
-	adec_print("audio_decoder = %d\n", audio_decoder);
+	//adec_print("audio_decoder = %d\n", audio_decoder);
 
 	return audio_decoder;
 #if 0
