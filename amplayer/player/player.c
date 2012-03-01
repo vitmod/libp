@@ -300,7 +300,10 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
 	            para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
 	            para->playctrl_info.fast_forward = 1;
 	            para->playctrl_info.fast_backward = 0;
-				para->playctrl_info.pause_flag = 0;
+                if (para->playctrl_info.pause_flag) {
+                    codec_resume(para->codec);  	//clear pause state
+                    para->playctrl_info.pause_flag = 0;
+		        }
 				set_player_state(para, PLAYER_RUNNING);
 	        }
     	} else{
@@ -316,7 +319,10 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
 	            para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
 	            para->playctrl_info.fast_backward = 1;
 	            para->playctrl_info.fast_forward = 0;
-				para->playctrl_info.pause_flag = 0;
+                if (para->playctrl_info.pause_flag) {
+                    codec_resume(para->codec);  	//clear pause state
+                    para->playctrl_info.pause_flag = 0;
+		        }
 				set_player_state(para, PLAYER_RUNNING);
 	        }
     	} else{
