@@ -3139,8 +3139,12 @@ int av_read_pause(AVFormatContext *s)
 void av_close_input_stream(AVFormatContext *s)
 {
     flush_packet_queue(s);
-    if (s->iformat->read_close)
+	if (s->iformat)
+		av_log(NULL, AV_LOG_INFO, "[%s]format=%s\n", __FUNCTION__, s->iformat->name);
+    if (s->iformat->read_close){
+		av_log(NULL, AV_LOG_INFO, "format %s read_close\n", s->iformat->name);
         s->iformat->read_close(s);
+    }
     avformat_free_context(s);
 }
 

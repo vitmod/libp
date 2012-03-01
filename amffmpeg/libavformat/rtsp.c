@@ -1002,6 +1002,7 @@ static int ff_rtsp_send_cmd_with_content_async(AVFormatContext *s,
 int ff_rtsp_send_cmd_async(AVFormatContext *s, const char *method,
                            const char *url, const char *headers)
 {
+	av_log(NULL, AV_LOG_INFO, "ff_rtsp_send_cmd_async: %s \n", method);
     return ff_rtsp_send_cmd_with_content_async(s, method, url, headers, NULL, 0);
 }
 
@@ -1009,6 +1010,7 @@ int ff_rtsp_send_cmd(AVFormatContext *s, const char *method, const char *url,
                      const char *headers, RTSPMessageHeader *reply,
                      unsigned char **content_ptr)
 {
+	av_log(NULL, AV_LOG_INFO, "ff_rtsp_send_cmd: %s \n", method);
     return ff_rtsp_send_cmd_with_content(s, method, url, headers, reply,
                                          content_ptr, NULL, 0);
 }
@@ -1118,8 +1120,10 @@ int ff_rtsp_make_setup_request(AVFormatContext *s, const char *host, int port,
                                 "?localport=%d", j);
                     /* we will use two ports per rtp stream (rtp and rtcp) */
                     j += 2;
-                    if (ffurl_open(&rtsp_st->rtp_handle, buf, AVIO_FLAG_READ_WRITE) == 0)
+                    if (ffurl_open(&rtsp_st->rtp_handle, buf, AVIO_FLAG_READ_WRITE) == 0){
+						av_log(NULL, AV_LOG_INFO, "[%s]ffurl_open,handle=%d\n", __FUNCTION__, rtsp_st->rtp_handle);
                         goto rtp_opened;
+                    }
                 }
             }
 
