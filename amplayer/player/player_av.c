@@ -1100,7 +1100,7 @@ int time_search(play_para_t *am_p)
 	    log_info("[time_search:%d]time_point =%f temp=%d duration= %lld\n", __LINE__, time_point, temp, s->duration);
     }
     /* if seeking requested, we execute it */
-    if (url_support_time_seek(s->pb) && time_point > 0) {
+    if (url_support_time_seek(s->pb) && time_point >= 0) {
         log_info("[time_search:%d] direct seek to time_point =%f\n", __LINE__, time_point);
         ret = url_fseektotime(s->pb, time_point,seek_flags);
         if (ret >= 0) {
