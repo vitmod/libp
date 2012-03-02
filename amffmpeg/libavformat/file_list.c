@@ -474,6 +474,10 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 				}
 			}
 		} else {
+		    if(!mgt->cur_uio){
+   				av_log(NULL, AV_LOG_ERROR, "byteio already close, seek failed!\n");
+		        return -1;
+		    }
 			subh = mgt->cur_uio->opaque;	
 			submgt = subh->priv_data;
 			if(subh && submgt) {
