@@ -258,6 +258,9 @@ typedef struct {
 
     /* Record the position of media */
     uint64_t media_offset;
+
+    /* in read header process*/
+    int in_read_header;
 } MatroskaDemuxContext;
 
 #define MAX_OFFSET 0xffffffffffffffff
@@ -781,7 +784,7 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
         matroska->media_offset = url_ftell(matroska->ctx->pb) - 4;
     }
 
-    if ((MATROSKA_ID_TRACKS == id) && (url_ftell(matroska->ctx->pb) > matroska->media_offset)) {
+    if (matroska->in_read_header && (MATROSKA_ID_TRACKS == id) && (url_ftell(matroska->ctx->pb) > matroska->media_offset)) {
 		av_log(matroska->ctx, AV_LOG_ERROR, "Track exceed media offset %llx > %llx\n", url_ftell(matroska->ctx->pb), matroska->media_offset);
 		return -1;
     }
@@ -1280,8 +1283,11 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
     ebml_free(ebml_syntax, &ebml);
 
     /* The next thing is a segment. */
-    if ((res = ebml_parse(matroska, matroska_segments, matroska)) < 0)
+    matroska->in_read_header = 1;
+    if ((res = ebml_parse(matroska, matroska_segments, matroska)) < 0) {
+        matroska->in_read_header = 0;
         return res;
+    }
     matroska_execute_seekhead(matroska);
 
     if (!matroska->time_scale)
@@ -1376,8 +1382,10 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         }
 
         st = track->stream = av_new_stream(s, s->nb_streams);
-        if (st == NULL)
+        if (st == NULL) {
+            matroska->in_read_header = 0;
             return AVERROR(ENOMEM);
+        }
 
         if (!strcmp(track->codec_id, "V_MS/VFW/FOURCC")
             && track->codec_priv.size >= 40
@@ -1393,8 +1401,10 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             ffio_init_context(&b, track->codec_priv.data, track->codec_priv.size,
                           AVIO_FLAG_READ, NULL, NULL, NULL, NULL);
             ret = ff_get_wav_header(&b, st->codec, track->codec_priv.size);
-            if (ret < 0)
+            if (ret < 0) {
+                matroska->in_read_header = 0;
                 return ret;
+            }
             codec_id = st->codec->codec_id;
             extradata_offset = FFMIN(track->codec_priv.size, 18);
         } else if (!strcmp(track->codec_id, "V_QUICKTIME")
@@ -1420,8 +1430,10 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             int profile = matroska_aac_profile(track->codec_id);
             int sri = matroska_aac_sri(track->audio.samplerate);
             extradata = av_malloc(5);
-            if (extradata == NULL)
+            if (extradata == NULL) {
+                matroska->in_read_header = 0;
                 return AVERROR(ENOMEM);
+            }
             extradata[0] = (profile << 3) | ((sri&0x0E) >> 1);
             extradata[1] = ((sri&0x01) << 7) | (track->audio.channels<<3);
             if (strstr(track->codec_id, "SBR")) {
@@ -1435,8 +1447,10 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
         } else if (codec_id == CODEC_ID_TTA) {
             extradata_size = 30;
             extradata = av_mallocz(extradata_size);
-            if (extradata == NULL)
+            if (extradata == NULL) {
+                matroska->in_read_header = 0;
                 return AVERROR(ENOMEM);
+            }
             ffio_init_context(&b, extradata, extradata_size, 1,
                           NULL, NULL, NULL, NULL);
             avio_write(&b, "TTA1", 4);
@@ -1509,8 +1523,10 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             } else if(track->codec_priv.data && track->codec_priv.size > 0){
                 st->codec->extradata = av_mallocz(track->codec_priv.size +
                                                   FF_INPUT_BUFFER_PADDING_SIZE);
-                if(st->codec->extradata == NULL)
+                if(st->codec->extradata == NULL) {
+                    matroska->in_read_header = 0;
                     return AVERROR(ENOMEM);
+                }
                 st->codec->extradata_size = track->codec_priv.size;
                 memcpy(st->codec->extradata,
                        track->codec_priv.data + extradata_offset,
@@ -1637,6 +1653,7 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
 	
     matroska_convert_tags(s);
 
+    matroska->in_read_header = 0;
     return 0;
 }
 
