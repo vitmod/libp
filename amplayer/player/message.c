@@ -265,7 +265,7 @@ int cmd2str(player_cmd_t *cmd, char *buf)
             break;
 
         case CMD_SEARCH:
-            len = sprintf(buf, "%s:%d", "PLAYER_SEEK", cmd->param);
+            len = sprintf(buf, "%s:%d", "PLAYER_SEEK", cmd->f_param);
             break;
 
         case CMD_FF:

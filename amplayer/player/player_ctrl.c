@@ -105,7 +105,7 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     play_para_t *p_para;
     update_loglevel_setting();
     print_version_info();
-    log_print("[player_start:enter]p= %p \n", ctrl_p);
+    log_print("[player_start:enter]p=%p black=%d\n", ctrl_p, get_black_policy());
 
     if (ctrl_p == NULL) {
         return PLAYER_EMPTY_P;

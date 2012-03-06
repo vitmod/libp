@@ -391,7 +391,7 @@ int check_flag(play_para_t *p_para)
 
     msg = get_message(p_para);  //msg: pause, resume, timesearch,add file, rm file, move up, move down,...
     if (msg) {
-        log_print("pid[%d]:: [check_flag:%d]cmd=%x set_mode=%x info=%x param=%d\n", p_para->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param);
+        log_print("pid[%d]:: [check_flag:%d]cmd=%x set_mode=%x info=%x param=%d fparam=%f\n", p_para->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param, msg->f_param);
         check_msg(p_para, msg);
         message_free(msg);
         msg = NULL;
