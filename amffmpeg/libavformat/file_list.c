@@ -322,11 +322,7 @@ retry:
 			{
 				av_log(NULL, AV_LOG_INFO, "list url_fopen failed =%d\n",len);
 				return len;
-			}
-			if (mgt->have_sub_list) {
-				av_log(NULL, AV_LOG_INFO, "not switch to next sublist:%s\n",item->file);
-				return 0;
-			}
+			}			
 			if(url_is_file_list(bio,item->file))
 			{
 				mgt->have_sub_list = 1;
@@ -354,8 +350,12 @@ retry:
 	{/*end of the file*/
 		av_log(NULL, AV_LOG_INFO, "try switchto_next_item buf=%x,size=%d,len=%d\n",buf,size,len);
 
-		if(item && (item->flags & ENDLIST_FLAG))
+		if(item && (item->flags & ENDLIST_FLAG)){
+		    if(mgt->cur_uio)
+			    url_fclose(mgt->cur_uio);
+    		av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
 			return 0;
+		}
 		item=switchto_next_item(mgt);
 		if(!item){
 			if(mgt->flags&REAL_STREAMING_FLAG){
