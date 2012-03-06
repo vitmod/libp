@@ -455,7 +455,7 @@ unsigned int get_pts_pcrscr(play_para_t *p_para)
     char s[16];
     unsigned int value = 0;
     codec_para_t *pcodec;
-#if 1
+#if 0
     handle = open("/sys/class/tsync/pts_pcrscr", O_RDONLY);
     if (handle < 0) {
         log_error("[player_get_ctime]open pts_pcrscr error!\n");
@@ -492,7 +492,7 @@ unsigned int get_pts_video(play_para_t *p_para)
     unsigned int value = 0;
     codec_para_t *pcodec;
 
-#if 1
+#if 0
     handle = open("/sys/class/tsync/pts_video", O_RDONLY);
     if (handle < 0) {
         log_print("[player_get_ctime]open pts_pcrscr error!\n");
@@ -527,7 +527,7 @@ static unsigned int get_pts_audio(play_para_t *p_para)
     unsigned int value;
     codec_para_t *pcodec;
 
-#if 1
+#if 0
     handle = open("/sys/class/tsync/pts_audio", O_RDONLY);
     if (handle < 0) {
         log_error("[player_get_ctime]open pts_audio error!\n");
