@@ -630,6 +630,12 @@ int DisableFreeScale(display_mode mode) {
 		default:			
 			break;					
 	}	
+
+    char prop[16];
+    if (property_get("ro.vout.dualdisplay2", prop, "false")
+        && strcmp(prop, "true") == 0) {
+        property_set("rw.vout.scale", "off");
+    }	
 	
 exit:	
 	close(fd0);
@@ -768,6 +774,12 @@ int EnableFreeScale(display_mode mode) {
 		default:			
 			break;					
 	}	
+
+    char prop[16];
+    if (property_get("ro.vout.dualdisplay2", prop, "false")
+        && strcmp(prop, "true") == 0) {
+        property_set("rw.vout.scale", "on");
+    }
 
 exit:	
 	close(fd0);
