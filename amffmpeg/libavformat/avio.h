@@ -94,6 +94,7 @@ typedef struct {
     int seekable;
 	int enabled_lp_buffer;
 	int support_time_seek;
+	int is_encrypted_media;
 } AVIOContext;
 
 /* unbuffered I/O */
