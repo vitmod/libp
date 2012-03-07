@@ -70,6 +70,7 @@ int   enable_2Xscale();
 int   enable_2XYscale();
 int   enable_freescale_MBX();
 int   disable_2X_2XYscale();
+int   GL_2X_scale(int mSwitch);
 
 #ifdef  __cplusplus
 }
