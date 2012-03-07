@@ -82,6 +82,7 @@ typedef struct
 	int bit_rate;
     vformat_t format;
     int duartion;
+    unsigned int video_rotation_degree;
 }mvideo_info_t;
 
 typedef enum

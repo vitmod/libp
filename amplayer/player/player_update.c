@@ -97,6 +97,7 @@ static int set_vstream_info(play_para_t *p_para)
                 vinfo->aspect_ratio_den = pStream->sample_aspect_ratio.den;
                 vinfo->frame_rate_num   = pStream->r_frame_rate.num;
                 vinfo->frame_rate_den   = pStream->r_frame_rate.den;
+                vinfo->video_rotation_degree = pStream->rotation_degree;
                 p_para->media_info.video_info[vnum] = vinfo;
                 vnum ++;
                 if (vnum > p_para->media_info.stream_info.total_video_num) {
