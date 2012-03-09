@@ -631,11 +631,7 @@ int DisableFreeScale(display_mode mode) {
 			break;					
 	}	
 
-    char prop[16];
-    if (property_get("ro.vout.dualdisplay2", prop, "false")
-        && strcmp(prop, "true") == 0) {
-        property_set("rw.vout.scale", "off");
-    }	
+	
 	
 exit:	
 	close(fd0);
@@ -775,11 +771,7 @@ int EnableFreeScale(display_mode mode) {
 			break;					
 	}	
 
-    char prop[16];
-    if (property_get("ro.vout.dualdisplay2", prop, "false")
-        && strcmp(prop, "true") == 0) {
-        property_set("rw.vout.scale", "on");
-    }
+
 
 exit:	
 	close(fd0);
@@ -809,6 +801,11 @@ int disable_freescale(int cfg)
 			DisableFreeScale(disp_mode);
 		}
 	}
+    char prop[16];
+    if (property_get("ro.vout.dualdisplay2", prop, "false")
+        && strcmp(prop, "true") == 0) {
+        property_set("rw.vout.scale", "off");
+    }	
 	log_print("[disable_freescale]");
 	return 0;
 }
@@ -828,6 +825,11 @@ int enable_freescale(int cfg)
 			EnableFreeScale(disp_mode);
 		}
 	}
+    char prop[16];
+    if (property_get("ro.vout.dualdisplay2", prop, "false")
+        && strcmp(prop, "true") == 0) {
+        property_set("rw.vout.scale", "on");
+    }	
 	log_print("[enable_freescale]");
 	return 0;
 }
