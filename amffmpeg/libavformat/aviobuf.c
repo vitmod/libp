@@ -848,6 +848,22 @@ int ff_get_line(AVIOContext *s, char *buf, int maxlen)
     return i;
 }
 
+int ff_get_assic_line(AVIOContext *s, char *buf, int maxlen)
+{
+    int i = 0;
+    char c;
+
+    do {
+        c = avio_r8(s);
+        if (c && i < maxlen-1)
+            buf[i++] = c;
+    } while (c != '\n'  && c<128 && c);
+
+    buf[i] = 0;
+    return i;
+}
+
+
 int avio_get_str(AVIOContext *s, int maxlen, char *buf, int buflen)
 {
     int i;
@@ -951,9 +967,9 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 	    }
 	}
 #if FF_API_OLD_AVIO
-    (*s)->is_streamed = h->is_streamed;
+    	(*s)->is_streamed = h->is_streamed;
 	(*s)->is_slowmedia = h->is_slowmedia;
-
+	(*s)->fastdetectedinfo = h->fastdetectedinfo;
 #endif
 	(*s)->support_time_seek = h->support_time_seek;
 	(*s)->reallocation=h->location;

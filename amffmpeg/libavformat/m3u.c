@@ -487,7 +487,7 @@ static int m3u_probe(ByteIOContext *s,const char *file)
 	if(s)
 	{
 		char line[1024];
-		if(m3u_format_get_line(s,line,1024)>0)
+		if(ff_get_assic_line(s,line,1024)>0)
 		{
 
 			if(memcmp(line,EXTM3U,strlen(EXTM3U))==0)

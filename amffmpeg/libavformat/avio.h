@@ -69,6 +69,7 @@ typedef struct {
     attribute_deprecated int is_streamed;
 	int is_slowmedia;
 #endif
+    int fastdetectedinfo;
     int max_packet_size;
     unsigned long checksum;
     unsigned char *checksum_ptr;
@@ -121,6 +122,7 @@ typedef struct URLContext {
 	char *headers; /**< specified URL */
     int is_connected;
 	int is_slowmedia;
+	 int fastdetectedinfo;/*need fast detect*/
 	int support_time_seek;
 	char *location;
 } URLContext;
