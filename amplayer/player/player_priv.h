@@ -37,7 +37,7 @@ struct am_packet;
 #define VB_SIZE             (0x100000)
 #define AB_SIZE             (0x60000)
 #define MAX_BURST_WRITE     (VB_SIZE/32)
-#define MAX_RAW_DATA_SIZE   (0x10000)       //64k
+#define MAX_RAW_DATA_SIZE   (0x20000)       //128k
 #define MIN_RAW_DATA_SIZE   (0x1000)        //4k
 #define RESERVE_VIDEO_SIZE  (256)
 #define RESERVE_AUDIO_SIZE  (64)
