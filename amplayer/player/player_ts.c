@@ -45,7 +45,6 @@ static int stream_ts_init(play_para_t *p_para)
         codec->audio_channels = ainfo->audio_channel;
         codec->audio_samplerate = ainfo->audio_samplerate;
 		pCodecCtx = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec;	
-	codec->ctxCodec=pCodecCtx;
         /*if ((codec->audio_type == AFORMAT_ADPCM) || (codec->audio_type == AFORMAT_WMA)
             || (codec->audio_type == AFORMAT_WMAPRO) || (codec->audio_type == AFORMAT_PCM_S16BE)
             || (codec->audio_type == AFORMAT_PCM_S16LE) || (codec->audio_type == AFORMAT_PCM_U8)

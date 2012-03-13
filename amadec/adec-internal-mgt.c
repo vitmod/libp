@@ -26,6 +26,7 @@
  * \param cmd control commands
  * \return 0 on success otherwise -1
  */
+ #if 0
 #define ACODEC_FMT_NULL 	0
 #define ACODEC_FMT_AAC		1
 #define ACODEC_FMT_AC3		2
@@ -43,6 +44,30 @@
 #define ACODEC_FMT_AAC_LATM	14
 #define ACODEC_FMT_APE		15
 #define ACODEC_FMT_MPEG123 	16
+#endif
+#define    ACODEC_FMT_NULL   -1
+#define    ACODEC_FMT_MPEG   0
+#define    ACODEC_FMT_PCM_S16LE  1
+#define    ACODEC_FMT_AAC   2
+#define    ACODEC_FMT_AC3    3
+#define    ACODEC_FMT_ALAW  4
+#define    ACODEC_FMT_MULAW  5
+#define    ACODEC_FMT_DTS  6
+#define    ACODEC_FMT_PCM_S16BE  7
+#define    ACODEC_FMT_FLAC  8
+#define    ACODEC_FMT_COOK  9
+#define    ACODEC_FMT_PCM_U8  10
+#define    ACODEC_FMT_ADPCM  11
+#define    ACODEC_FMT_AMR   12
+#define    ACODEC_FMT_RAAC   13
+#define    ACODEC_FMT_WMA   14
+#define    ACODEC_FMT_WMAPRO    15
+#define    ACODEC_FMT_PCM_BLURAY   16
+#define    ACODEC_FMT_ALAC   17
+#define    ACODEC_FMT_VORBIS     18
+#define    ACODEC_FMT_AAC_LATM    19
+#define    ACODEC_FMT_APE    20
+
 
 
 typedef struct {
@@ -61,13 +86,11 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_RAAC, "raac"},
     {ACODEC_FMT_ADPCM, "adpcm"},
     {ACODEC_FMT_WMA, "wma"},
-    {ACODEC_FMT_PCM, "pcm"},
     {ACODEC_FMT_WMAPRO, "wmapro"},
     {ACODEC_FMT_ALAC, "alac"},
     {ACODEC_FMT_VORBIS, "vorbis"},
     {ACODEC_FMT_AAC_LATM, "aac_latm"},
     {ACODEC_FMT_APE, "ape"},
-	{ACODEC_FMT_MPEG123, "mp3"},
 };
 
 static int audio_decoder = AUDIO_ARC_DECODER;
@@ -620,7 +643,7 @@ static int get_dectype(int id)
 {
 	switch (id) {
 		case  CODEC_ID_MP3:
-			return ACODEC_FMT_MPEG123;
+			return ACODEC_FMT_MPEG;
 	
 		case  CODEC_ID_AAC_LATM:
 			return ACODEC_FMT_AAC_LATM;
@@ -706,7 +729,7 @@ static int get_dectype(int id)
 		case CODEC_ID_PCM_BLURAY:
 		case CODEC_ID_PCM_LXF:
 		case CODEC_ID_S302M:
-			return ACODEC_FMT_PCM;
+			return ACODEC_FMT_PCM_U8;
 	
 		case CODEC_ID_WMAV1:
     	case CODEC_ID_WMAV2:
@@ -757,7 +780,7 @@ int match_types(const char *filetypestr,const char *typesetting)
 	}
 	return 0;
 }
-
+#if 0
 static int set_audio_decoder(codec_para_t *pcodec)
 {
 	int audio_id;
@@ -805,10 +828,58 @@ static int set_audio_decoder(codec_para_t *pcodec)
 	audio_decoder = AUDIO_ARC_DECODER; //set arc decoder as default
 	return 0;
 }
+#endif
+static int set_audio_decoder(int codec_id)
+{
+	int audio_id;
+	int i;	
+    int num;
+	int ret;
+    audio_type_t *t;
+	char value[PROPERTY_VALUE_MAX];
+	
+
+	audio_id = codec_id;
+
+    num = ARRAY_SIZE(audio_type);
+    for (i = 0; i < num; i++) {
+        t = &audio_type[i];
+        if (t->audio_id == audio_id) {
+            break;
+        }
+    }
+	
+	ret = property_get("media.arm.audio.decoder",value,NULL);
+	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
+	if (ret>0 && match_types(t->type,value))
+	{	
+		audio_decoder = AUDIO_ARM_DECODER;
+		return 0;
+	} 
+	
+	ret = property_get("media.arc.audio.decoder",value,NULL);
+	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
+	if (ret>0 && match_types(t->type,value))
+	{	
+		audio_decoder = AUDIO_ARC_DECODER;
+		return 0;
+	} 
+	
+	ret = property_get("media.ffmpeg.audio.decoder",value,NULL);
+	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
+	if (ret>0 && match_types(t->type,value))
+	{	
+		audio_decoder = AUDIO_FFMPEG_DECODER;
+		return 0;
+	} 
+	
+	audio_decoder = AUDIO_ARC_DECODER; //set arc decoder as default
+	return 0;
+}
 
 int get_audio_decoder(void)
 {
-	//adec_print("audio_decoder = %d\n", audio_decoder);
+	adec_print("audio_decoder = %d\n", audio_decoder);
 
 	return audio_decoder;
 #if 0
@@ -844,10 +915,13 @@ int audiodec_init(aml_audio_dec_t *audec, codec_para_t *pcodec)
     get_output_func(audec);
 	
 	audec->pcodec = pcodec;
-	adec_print("audiodec_init  pcodec = %d, pcodec->ctxCodec = %d!\n", pcodec, pcodec->ctxCodec);
+	//adec_print("audiodec_init  pcodec = %d, pcodec->ctxCodec = %d!\n", pcodec, pcodec->ctxCodec);
+	adec_print("audiodec_init  pcodec = %d, pcodec->codec_id = %d!\n", pcodec, pcodec->audio_type);
     audec->adsp_ops.dsp_file_fd = -1;
-    if(pcodec->ctxCodec)	
-	set_audio_decoder(audec->pcodec);
+    int nCodecType=pcodec->audio_type;
+    set_audio_decoder(nCodecType);
+ //   if(pcodec->ctxCodec)	
+//	set_audio_decoder(audec->pcodec);
 
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);

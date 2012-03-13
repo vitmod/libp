@@ -57,7 +57,6 @@ static int stream_rm_init(play_para_t *p_para)
         codec->audio_pid = ainfo->audio_pid;
         codec->audio_channels = ainfo->audio_channel;
         codec->audio_samplerate = ainfo->audio_samplerate;
-        codec->ctxCodec = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec;
         if (ainfo->extradata && ainfo->extradata_size > 0) {
             MEMCPY(codec->audio_info.extradata, ainfo->extradata, ainfo->extradata_size);
         } else {

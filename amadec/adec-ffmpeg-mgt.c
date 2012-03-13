@@ -25,6 +25,8 @@ static unsigned long decode_offset=0;
 static int nDecodeErrCount=0;
 static buffer_stream_t *g_bst=NULL;
 static int fd_uio=-1;
+static AudioInfo g_AudioInfo;
+
 
 void *audio_decode_loop(void *args);
 static int set_sysfs_int(const char *path, int val);
@@ -39,9 +41,11 @@ typedef struct
 } audio_lib_t;
 
 
+//    CODEC_ID_AAC
 audio_lib_t audio_lib_list[] =
 {
-	{CODEC_ID_AAC, "libfaad.so"},
+	{AFORMAT_AAC, "libfaad.so"},
+	{AFORMAT_AAC_LATM, "libfaad.so"},
 } ;
 
 int find_audio_lib(aml_audio_dec_t *audec)
@@ -57,7 +61,8 @@ int find_audio_lib(aml_audio_dec_t *audec)
 	
 	for (i = 0; i < num; i++) {        
 		f = &audio_lib_list[i];        
-		if (f->codec_id & pcodec->ctxCodec->codec_id) 
+		//if (f->codec_id & pcodec->ctxCodec->codec_id) 
+		if (f->codec_id & pcodec->audio_type) 
 		{            
 			fd = dlopen(audio_lib_list[i].name,RTLD_NOW);
 			//adec_print("dlopen failed, fd = %d,\n %s",fd,dlerror());
@@ -102,6 +107,7 @@ audio_decoder_operations_t AudioArmDecoder=
 #if 1//***************ffmpeg Decoder******************
 static int FFmpegDecoderInit(audio_decoder_operations_t *adec_ops)
 {
+#if 0
        aml_audio_dec_t *audec=(aml_audio_dec_t *)(adec_ops->priv_data);
        AVCodecContext *ctxCodec = NULL;
 	AVCodec *acodec = NULL;
@@ -128,13 +134,16 @@ static int FFmpegDecoderInit(audio_decoder_operations_t *adec_ops)
         //int samplerate=audec->samplerate=audec->pcodec->ctxCodec->sample_rate;
 	adec_ops->nInBufSize=READ_ABUFFER_SIZE;
 	adec_ops->nOutBufSize=DEFAULT_PCM_BUFFER_SIZE;
+	#endif
 	return 0;
 }
 static int FFmpegDecode(audio_decoder_operations_t *adec_ops, char *outbuf, int *outlen, char *inbuf, int inlen){
+#if 0
         aml_audio_dec_t *audec=(aml_audio_dec_t *)(adec_ops->priv_data);
         AVCodecContext *ctxCodec=audec->pcodec->ctxCodec;
+        AVCodecContext *ctxCodec=NULL;
 	AVPacket avpkt;
-	int ret;
+	
 	av_init_packet(&avpkt);
 	avpkt.data = inbuf;
 	avpkt.size = inlen;
@@ -159,13 +168,15 @@ static int FFmpegDecode(audio_decoder_operations_t *adec_ops, char *outbuf, int 
 		pkt_end_data = 0;
 	}
 	  ret = avcodec_decode_audio3(ctxCodec, (int16_t *)outbuf, outlen, &avpkt);
+	  #endif
+	  int ret;
 	  return ret;
 }
 
 static int FFmpegDecoderRelease(audio_decoder_operations_t *adec_ops)
 {
     aml_audio_dec_t *audec=(aml_audio_dec_t *)(adec_ops->priv_data);
-    avcodec_close(audec->pcodec->ctxCodec);
+    //avcodec_close(audec->pcodec->ctxCodec);
     return 0;
 }
 
@@ -321,9 +332,13 @@ static int OutBufferInit(aml_audio_dec_t *audec)
         adec_print("=====pcm buffer init failed !\n");
         return -1;
     }
-    g_bst->data_width=audec->pcodec->ctxCodec->sample_fmt;
-    g_bst->channels=audec->channels=audec->pcodec->ctxCodec->channels;
-    g_bst->samplerate=audec->samplerate=audec->pcodec->ctxCodec->sample_rate;
+//    g_bst->data_width=audec->pcodec->ctxCodec->sample_fmt;
+//    g_bst->channels=audec->channels=audec->pcodec->ctxCodec->channels;
+//    g_bst->samplerate=audec->samplerate=audec->pcodec->ctxCodec->sample_rate;
+
+    g_bst->data_width=AV_SAMPLE_FMT_S16;
+    g_bst->channels=audec->channels=audec->pcodec->audio_channels;
+    g_bst->samplerate=audec->samplerate=audec->pcodec->audio_samplerate;
     adec_print("=====pcm buffer init ok buf_size:%d buf_data:0x%x  end:0x%x !\n",g_bst->buf_length,g_bst->data,g_bst->data+1024*1024);
     
     return 0;
@@ -348,6 +363,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
             adec_print("====set codec fatal   failed ! \n");
             usleep(100000);
         }
+        usleep(100000);
         adec_print("====set codec fatal  success ! \n");
         //1-decoder init
         audec->adec_ops->init(audec->adec_ops);
@@ -355,11 +371,12 @@ static int audio_codec_init(aml_audio_dec_t *audec)
         OutBufferInit(audec);
 	//3-init uio
 	InBufferInit(audec);
-	//4-other init
+	   //4-other init
 	audec->adsp_ops.dsp_on = 1;
        audec->adsp_ops.dsp_read = armdec_stream_read;
        audec->adsp_ops.get_cur_pts = armdec_get_pts;
        audec->adsp_ops.dsp_file_fd=audec->pcodec ->handle;
+   
        return 0;
 }
 static int audio_codec_release(aml_audio_dec_t *audec)
@@ -642,6 +659,7 @@ void *audio_decode_loop(void *args)
     char startcode[5];	
     int extra_data = 8;
     int nCodecID;
+    int nAudioFormat;
 
     char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];//max frame size out buf
     int outlen = 0;
@@ -652,12 +670,14 @@ void *audio_decode_loop(void *args)
     adec_ops=audec->adec_ops;
     memset(outbuf, 0, AVCODEC_MAX_AUDIO_FRAME_SIZE);
 
-    nCodecID=audec->pcodec->ctxCodec->codec_id;
+    //nCodecID=audec->pcodec->ctxCodec->codec_id;
+    nAudioFormat=audec->pcodec->audio_type;
     inlen=0;
     nNextFrameSize=READ_ABUFFER_SIZE;//default frame size
     
     while (1){
 exit_decode_loop:
+          //detect quit condition
           if(exit_decode_thread)
 	      {
         	        if (inbuf) 
@@ -674,9 +694,25 @@ exit_decode_loop:
         		  exit_decode_thread_success=1;
         		  break;
 	      }
+	      //detect audio info changed
+	     adec_ops->getinfo(audec->adec_ops, &g_AudioInfo);
+	      if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
+	      {
+	        if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
+	        {
+	            //adec_print("====Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
+	            g_bst->channels=audec->channels=g_AudioInfo.channels;
+                   g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+	            //send Message
+	            //reset param
+	            aout_ops->stop(audec);
+	            aout_ops->init(audec);
+	            aout_ops->start(audec);
+	        }
+	      }
 	      //step 2  get read buffer size
-
-	      if ( nCodecID== CODEC_ID_APE || nCodecID == CODEC_ID_ALAC)
+             //if ( nCodecID== CODEC_ID_APE || nCodecID == CODEC_ID_ALAC)
+	      if(nAudioFormat==AFORMAT_APE ||nAudioFormat==AFORMAT_ALAC)
 	      {	
 		      inlen=0;//not save the left data
 			  if (read_buffer(startcode,4) > 0)

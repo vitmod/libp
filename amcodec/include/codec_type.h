@@ -80,7 +80,6 @@ unsigned int noblock:
     audio_info_t audio_info;    ///< audio information pass to audiodsp
     int packet_size;            ///< data size per packet
     void * adec_priv;          ///<for adec>
-    AVCodecContext *ctxCodec; /**< codec context */
 } codec_para_t;
 
 typedef struct 

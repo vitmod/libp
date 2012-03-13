@@ -37,24 +37,40 @@
 #endif
 
 #include "libaacdec.h"
-
-#if 1 //#ifdef ANDROID
 #include <android/log.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-
 #define  LOG_TAG    "audio_codec"
 #define audio_codec_print(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-#else
-#define adec_print(f,s...) fprintf(stderr,f,##s)
-#endif
 
-#ifndef min
 #define min(a,b) ( (a) < (b) ? (a) : (b) )
-#endif
 
-#define AVCODEC_AAC_OUT_BUFFER 1024*1024
+/* MicroSoft channel definitions */
+#define SPEAKER_FRONT_LEFT             0x1
+#define SPEAKER_FRONT_RIGHT            0x2
+#define SPEAKER_FRONT_CENTER           0x4
+#define SPEAKER_LOW_FREQUENCY          0x8
+#define SPEAKER_BACK_LEFT              0x10
+#define SPEAKER_BACK_RIGHT             0x20
+#define SPEAKER_FRONT_LEFT_OF_CENTER   0x40
+#define SPEAKER_FRONT_RIGHT_OF_CENTER  0x80
+#define SPEAKER_BACK_CENTER            0x100
+#define SPEAKER_SIDE_LEFT              0x200
+#define SPEAKER_SIDE_RIGHT             0x400
+#define SPEAKER_TOP_CENTER             0x800
+#define SPEAKER_TOP_FRONT_LEFT         0x1000
+#define SPEAKER_TOP_FRONT_CENTER       0x2000
+#define SPEAKER_TOP_FRONT_RIGHT        0x4000
+#define SPEAKER_TOP_BACK_LEFT          0x8000
+#define SPEAKER_TOP_BACK_CENTER        0x10000
+#define SPEAKER_TOP_BACK_RIGHT         0x20000
+#define SPEAKER_RESERVED               0x80000000
+
+#define DefaultReadSize 1024*10 //read count from kernel audio buf one time
+#define DefaultOutBufSize 1024*1024
+#define MAX_CHANNELS 6 /* make this higher to support files with more channels */
+
 
 typedef struct {
     long bytes_into_buffer;
@@ -64,22 +80,6 @@ typedef struct {
     int at_eof;
     FILE *infile;
 } aac_buffer;
-
-#define MAX_CHANNELS 6 /* make this higher to support files with more channels */
-#define INBUFSIZE 1024*10
-
-static int quiet = 0;
-
-#if 0
-NeAACDecHandle hDecoder;
-aac_buffer b;
-int init_flag = 0;
-//int audio_out = -1;
-//int object_type = LC;  //set defaute type LC
-//int outputFormat = FAAD_FMT_16BIT;
-//int infoOnly = 0;
-#endif
-
 typedef struct FaadContext {
 	NeAACDecHandle hDecoder;
 	aac_buffer b;
@@ -90,45 +90,41 @@ typedef struct FaadContext {
 //	int infoOnly;
 }FaadContext;
 
-typedef struct FileInfo {
-    int bitrate;
-    unsigned long samplerate;
-    unsigned char channels;
-	int file_profile;
-}FileInfo;
-
+static int quiet = 0;
 FaadContext gFaadCxt;
-
-#if 1
-
-#if 0
-static int read_buf(void *buf, int size, aac_buffer *b, inbuf_data *pinbuf_data)
+static int header_type = 1;
+static int gSampleRate=0;
+static int gChannels=0;
+static int adts_sample_rates[] = {96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350,0,0,0};
+/* globals */
+char *progName;
+static const char *file_ext[] =
 {
-	int ret = fread((void*)buf, 1, size, b->infile);
-	pinbuf_data->inbuf_size += ret;
-	pinbuf_data->inbuf_consumed = 0;
-	
-	audio_codec_print("read buf! inbuf_size=%d, ret=%d \n", pinbuf_data->inbuf_size, ret);
-	return ret;
-}
-#endif
+    NULL,
+    ".wav",
+    ".aif",
+    ".au",
+    ".au",
+    ".pcm",
+    NULL
+};
 
-#if 1
+//=================func====================
+/*
+    param: 
+    b:buffer need to fill
+    in_buf:src buf
+    inbuf_size: src buf size
+    inbuf_consumed: inbuf_size-inbuf_consumed =left size
+*/
 static int fill_buffer(aac_buffer *b, char *in_buf, long *inbuf_size, long *inbuf_consumed)
 {
+    int nReadSize=0;
     int bread;
-	
-	audio_codec_print("fill_buffer in! inbuf_size=%d, inbuf_consumed=%d, b->bytes_consumed = %d \n", 
-		*inbuf_size, *inbuf_consumed, b->bytes_consumed);
-
+    int nDefaultAACBufSize=FAAD_MIN_STREAMSIZE*MAX_CHANNELS;//768*6
+    //audio_codec_print("fill_buffer in! inbuf_size=%d, inbuf_consumed=%d, b->bytes_consumed = %d \n", 	*inbuf_size, *inbuf_consumed, b->bytes_consumed);
     if (b->bytes_consumed > 0)
     {
-#if 0    
-    	if (b->bytes_consumed > inbuf_size)
-		{
-			return b->bytes_consumed;
-		}
-#endif		
         if (b->bytes_into_buffer)
         {
             memmove((void*)b->buffer, (void*)(b->buffer + b->bytes_consumed),
@@ -137,18 +133,18 @@ static int fill_buffer(aac_buffer *b, char *in_buf, long *inbuf_size, long *inbu
 
         if (!b->at_eof)
         {
-            //bread = fread((void*)(b->buffer + b->bytes_into_buffer), 1, b->bytes_consumed, b->infile);
-			memcpy((void*)(b->buffer + b->bytes_into_buffer), in_buf + *inbuf_consumed, b->bytes_consumed);
-			*inbuf_size -= b->bytes_consumed;
-			*inbuf_consumed += b->bytes_consumed;
-//            if (bread != b->bytes_consumed)
-//                b->at_eof = 1;
-
-            b->bytes_into_buffer += b->bytes_consumed;
+              if((inbuf_size-*inbuf_consumed)>=b->bytes_consumed)
+              {
+        		memcpy((void*)(b->buffer + b->bytes_into_buffer), in_buf + *inbuf_consumed, b->bytes_consumed);
+        		*inbuf_size -= b->bytes_consumed;
+        		*inbuf_consumed += b->bytes_consumed;
+                      b->bytes_into_buffer += b->bytes_consumed;
+                      nReadSize=b->bytes_consumed;
+                }
+                else //no enough data
+                    return nReadSize;
         }
-
         b->bytes_consumed = 0;
-
         if (b->bytes_into_buffer > 3)
         {
             if (memcmp(b->buffer, "TAG", 3) == 0)
@@ -165,20 +161,19 @@ static int fill_buffer(aac_buffer *b, char *in_buf, long *inbuf_size, long *inbu
                 b->bytes_into_buffer = 0;
         }
     }
-	else if (b->bytes_consumed == -1){
-			memcpy((void*)(b->buffer), in_buf, FAAD_MIN_STREAMSIZE*MAX_CHANNELS);
-			*inbuf_size -= FAAD_MIN_STREAMSIZE*MAX_CHANNELS;
-			*inbuf_consumed = FAAD_MIN_STREAMSIZE*MAX_CHANNELS;
-            b->bytes_into_buffer = FAAD_MIN_STREAMSIZE*MAX_CHANNELS;
-			b->bytes_consumed = 0;
-	}
-	audio_codec_print("fill_buffer! inbuf_size=%d, inbuf_consumed=%d, b->bytes_consumed = %d \n", 
-		*inbuf_size, *inbuf_consumed, b->bytes_consumed);
+    else if (b->bytes_consumed == -1)//first fill
+    {
+    	memcpy((void*)(b->buffer), in_buf, nDefaultAACBufSize);
+    	*inbuf_size -= nDefaultAACBufSize;
+    	*inbuf_consumed = nDefaultAACBufSize;
+        b->bytes_into_buffer = nDefaultAACBufSize;
+    	 b->bytes_consumed = 0;
+    	 nReadSize=nDefaultAACBufSize;
+    }
+    //audio_codec_print("fill_buffer! inbuf_size=%d, inbuf_consumed=%d, b->bytes_consumed = %d \n", *inbuf_size, *inbuf_consumed, b->bytes_consumed);
 
-    return 0;
+    return nReadSize;
 }
-#endif
-
 static void advance_buffer(aac_buffer *b, int bytes)
 {
     b->file_offset += bytes;
@@ -187,7 +182,7 @@ static void advance_buffer(aac_buffer *b, int bytes)
 	if (b->bytes_into_buffer < 0)
 		b->bytes_into_buffer = 0;
 }
-#endif
+
 
 static void faad_fprintf(FILE *stream, const char *fmt, ...)
 {
@@ -202,91 +197,6 @@ static void faad_fprintf(FILE *stream, const char *fmt, ...)
         va_end(ap);
     }
 }
-
-/* FAAD file buffering routines */
-
-#if 0
-static int refill_buffer(aac_buffer *b)
-{
-    int bread;
-
-
-
-        if (!b->at_eof)
-        {
-            bread = fread((void*)(b->buffer), 1, FAAD_MIN_STREAMSIZE*MAX_CHANNELS, b->infile);
-
-            if (bread != b->bytes_consumed)
-                b->at_eof = 1;
-
-            b->bytes_into_buffer = bread;
-        }
-
-        b->bytes_consumed = 0;
-		b->file_offset = 0;
-
-
-    return 1;
-}
-
-static int fill_buffer(aac_buffer *b)
-{
-    int bread;
-
-    if (b->bytes_consumed > 0)
-    {
-		printf("fill_buffer b->bytes_into_buffer = %d, b->bytes_consumed = %d\n", b->bytes_into_buffer, b->bytes_consumed);
-        if (b->bytes_into_buffer)
-        {        
-            memmove((void*)b->buffer, (void*)(b->buffer + b->bytes_consumed),
-                b->bytes_into_buffer*sizeof(unsigned char));
-        }
-
-        if (!b->at_eof)
-        {
-            bread = fread((void*)(b->buffer + b->bytes_into_buffer), 1, b->bytes_consumed, b->infile);
-
-            if (bread != b->bytes_consumed)
-                b->at_eof = 1;
-
-            b->bytes_into_buffer += bread;
-        }
-
-        b->bytes_consumed = 0;
-
-        if (b->bytes_into_buffer > 3)
-        {
-            if (memcmp(b->buffer, "TAG", 3) == 0)
-                b->bytes_into_buffer = 0;
-        }
-        if (b->bytes_into_buffer > 11)
-        {
-            if (memcmp(b->buffer, "LYRICSBEGIN", 11) == 0)
-                b->bytes_into_buffer = 0;
-        }
-        if (b->bytes_into_buffer > 8)
-        {
-            if (memcmp(b->buffer, "APETAGEX", 8) == 0)
-                b->bytes_into_buffer = 0;
-        }
-    }
-
-    return 1;
-}
-
-static void advance_buffer(aac_buffer *b, int bytes)
-{
-    b->file_offset += bytes;
-    b->bytes_consumed = bytes;
-    b->bytes_into_buffer -= bytes;
-	if (b->bytes_into_buffer < 0)
-		b->bytes_into_buffer = 0;
-	printf("b->file_offset=%d, b->bytes_into_buffer = %d, b->bytes_consumed = %d\n", b->file_offset,b->bytes_into_buffer, b->bytes_consumed);
-	
-}
-#endif
-
-static int adts_sample_rates[] = {96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350,0,0,0};
 
 #if 0
 static int adts_parse(aac_buffer *b, int *bitrate, float *length)
@@ -343,40 +253,6 @@ static int adts_parse(aac_buffer *b, int *bitrate, float *length)
     return 1;
 }
 #endif
-
-
-
-uint32_t read_callback(void *user_data, void *buffer, uint32_t length)
-{
-    return fread(buffer, 1, length, (FILE*)user_data);
-}
-
-uint32_t seek_callback(void *user_data, uint64_t position)
-{
-    return fseek((FILE*)user_data, position, SEEK_SET);
-}
-
-/* MicroSoft channel definitions */
-#define SPEAKER_FRONT_LEFT             0x1
-#define SPEAKER_FRONT_RIGHT            0x2
-#define SPEAKER_FRONT_CENTER           0x4
-#define SPEAKER_LOW_FREQUENCY          0x8
-#define SPEAKER_BACK_LEFT              0x10
-#define SPEAKER_BACK_RIGHT             0x20
-#define SPEAKER_FRONT_LEFT_OF_CENTER   0x40
-#define SPEAKER_FRONT_RIGHT_OF_CENTER  0x80
-#define SPEAKER_BACK_CENTER            0x100
-#define SPEAKER_SIDE_LEFT              0x200
-#define SPEAKER_SIDE_RIGHT             0x400
-#define SPEAKER_TOP_CENTER             0x800
-#define SPEAKER_TOP_FRONT_LEFT         0x1000
-#define SPEAKER_TOP_FRONT_CENTER       0x2000
-#define SPEAKER_TOP_FRONT_RIGHT        0x4000
-#define SPEAKER_TOP_BACK_LEFT          0x8000
-#define SPEAKER_TOP_BACK_CENTER        0x10000
-#define SPEAKER_TOP_BACK_RIGHT         0x20000
-#define SPEAKER_RESERVED               0x80000000
-
 static long aacChannelConfig2wavexChannelMask(NeAACDecFrameInfo *hInfo)
 {
     if (hInfo->channels == 6 && hInfo->num_lfe_channels)
@@ -500,19 +376,7 @@ static unsigned char *MakeAdtsHeader(int *dataSize, NeAACDecFrameInfo *hInfo, in
     return data;
 }
 
-/* globals */
-char *progName;
 
-static const char *file_ext[] =
-{
-    NULL,
-    ".wav",
-    ".aif",
-    ".au",
-    ".au",
-    ".pcm",
-    NULL
-};
 /*
 static void usage(void)
 {
@@ -561,14 +425,193 @@ int AACFindSyncWord(unsigned char *buf, int nBytes)
 	}
 	return nBytes;
 }
-#if 1
+//read data form kernel audio buffer
+//basic init
+int audio_dec_init(audio_decoder_operations_t *adec_ops)
+{
+    memset(&(gFaadCxt.b), 0, sizeof(aac_buffer));
+    gFaadCxt.b.buffer=(unsigned char*)malloc(FAAD_MIN_STREAMSIZE*MAX_CHANNELS);
+    if (!(gFaadCxt.b.buffer))
+    {
+            audio_codec_print("===Init Err: buffer malloc failed! \n");
+            return -1;
+    }
+    memset((gFaadCxt.b).buffer, 0, FAAD_MIN_STREAMSIZE*MAX_CHANNELS);
+    (gFaadCxt.b).bytes_consumed = -1; //init
+    adec_ops->nInBufSize=DefaultReadSize;
+    adec_ops->nOutBufSize=DefaultOutBufSize;
+    gFaadCxt.init_flag = 0;
+    header_type=1;//default adts
+    return 0;
+}
+//real init aac relative
+#define SKIP_BYTES 16*4
+int audio_decoder_init(audio_decoder_operations_t *adec_ops, char *outbuf, int *outlen, char *inbuf, int inlen, long *inbuf_consumed)
+{
+    unsigned long samplerate;
+    unsigned char channels;
+    int bread;
+    int tagsize;
+    int pos = 0;
+    NeAACDecConfigurationPtr config;
+
+    char *in_buf;
+    long inbuf_size;
+    //long inbuf_consumed;
+    in_buf = inbuf;
+    inbuf_size = inlen;
+    int nReadLen=0;
+    fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, inbuf_consumed);
+    if (gFaadCxt.b.bytes_into_buffer != FAAD_MIN_STREAMSIZE*MAX_CHANNELS)
+    {
+        audio_codec_print("==init err : not read enough data");
+        return -1;
+    }
+
+    if ((gFaadCxt.b.buffer[0] == 'A')&&(gFaadCxt.b.buffer[1] == 'D')&&(gFaadCxt.b.buffer[2] == 'I')&&(gFaadCxt.b.buffer[3] == 'F')){
+    	header_type = 0;
+    }
+
+    tagsize = 0;
+    if (!memcmp(gFaadCxt.b.buffer, "ID3", 3))
+    {
+    	tagsize = (gFaadCxt.b.buffer[6] << 21) | (gFaadCxt.b.buffer[7] << 14) |
+    		(gFaadCxt.b.buffer[8] << 7) | (gFaadCxt.b.buffer[9] <<0);
+    	tagsize += 10;
+    	advance_buffer(&(gFaadCxt.b), tagsize);
+    	fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, inbuf_consumed);
+    }
+
+retry:
+    gFaadCxt.hDecoder = NeAACDecOpen();
+    config = NeAACDecGetCurrentConfiguration(gFaadCxt.hDecoder);
+    config->defObjectType = LC;
+    config->outputFormat = FAAD_FMT_16BIT;
+    config->downMatrix = 0x01;
+    config->useOldADTSFormat = 0;
+    //config->dontUpSampleImplicitSBR = 1;
+    NeAACDecSetConfiguration(gFaadCxt.hDecoder, config);
+    if ((bread = NeAACDecInit(gFaadCxt.hDecoder, gFaadCxt.b.buffer,gFaadCxt.b.bytes_into_buffer, &samplerate, &channels)) < 0)
+    {
+        /* If some error initializing occured, skip the file */
+        advance_buffer(&(gFaadCxt.b), SKIP_BYTES);
+        nReadLen=fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, inbuf_consumed);
+        //NeAACDecClose(gFaadCxt.hDecoder);
+        audio_codec_print("==ERR:Init failed");
+        if(nReadLen)//have enough data
+            goto retry;
+        return -1;
+    }
+    advance_buffer(&(gFaadCxt.b), bread);
+    fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, inbuf_consumed);
+    NeAACDecStruct* hDecoder = (NeAACDecStruct*)(gFaadCxt.hDecoder);
+    gFaadCxt.init_flag=1;
+    //audio_codec_print("====Init OK consumed:%ld byte used :%d real used:%d  sample:%d channel:%d  ",*inbuf_consumed,bread,gFaadCxt.b.bytes_consumed,samplerate,channels);
+    audio_codec_print("====Init OK adif_present :%d adts_present:%d latm_present:%d  ",hDecoder->adif_header_present,hDecoder->adts_header_present,hDecoder->latm_header_present);
+    return 0;
+}
+
+
 int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *outlen, char *inbuf, int inlen)
 {
     int tagsize;
-	unsigned long samplerate;
-	unsigned char channels;
-	void *sample_buffer;
-	NeAACDecFrameInfo frameInfo;
+    unsigned long samplerate;
+    unsigned char channels;
+    void *sample_buffer;
+    
+    unsigned char *adtsData;
+    int adtsDataSize;
+    NeAACDecFrameInfo frameInfo;
+    NeAACDecConfigurationPtr config;
+
+    char percents[200];
+    int percent, old_percent = -1;
+    int bread;
+    int bitrate = 0;
+    float length = 0;
+    int outmaxlen = 0;
+
+    char *in_buf;
+    long inbuf_size;
+    long inbuf_consumed;
+    in_buf = inbuf;
+    inbuf_size = inlen;
+    if (inbuf_consumed > 0)
+    	inbuf_consumed = 0;
+    outmaxlen = (*outlen);
+    (*outlen) = 0;
+    //memset(&g_frameInfo,0,sizeof(NeAACDecFrameInfo));
+    if (!gFaadCxt.init_flag)
+    {
+        int ret = audio_decoder_init(adec_ops,outbuf,outlen,inbuf,inlen,&inbuf_consumed);
+        if(ret==-1)
+        {
+            audio_codec_print(" ====Init failed,Need More data");
+            return 0;
+         }
+    }
+    fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
+    #if 0
+        if(header_type) //if adts
+        {
+            int nSeekNum = AACFindSyncWord(gFaadCxt.b.buffer, gFaadCxt.b.bytes_into_buffer);
+            advance_buffer(&gFaadCxt.b, nSeekNum);
+            fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
+            audio_codec_print("==adts case  seek :%d byte %02x %02x \n",nSeekNum,*(gFaadCxt.b.buffer),*(gFaadCxt.b.buffer+1));
+        }
+    #endif
+        
+//START_DECODER:
+//    do
+    {
+        /* fill buffer */
+	if ((inbuf_size < FAAD_MIN_STREAMSIZE*MAX_CHANNELS)||(outmaxlen < (*outlen + 4096)))
+	{
+	       audio_codec_print("= Err=has consumed :%d bytes \n",inbuf_consumed);
+		return inbuf_consumed;
+	}
+        if ((gFaadCxt.b).bytes_into_buffer == 0)
+            sample_buffer = NULL; /* to make sure it stops now */
+        sample_buffer = NeAACDecDecode(gFaadCxt.hDecoder, &frameInfo, (gFaadCxt.b).buffer, (gFaadCxt.b).bytes_into_buffer);
+        audio_codec_print("======start decode samples:%d sample_rate:%d  channel:%d  \n",frameInfo.samples,frameInfo.samplerate,frameInfo.channels);
+        //audio_codec_print("======start decode samples: g_frameInfo.bytesconsumed:%d \n",frameInfo.bytesconsumed);
+        gSampleRate=frameInfo.samplerate;
+        gChannels=frameInfo.channels;
+        advance_buffer(&(gFaadCxt.b), frameInfo.bytesconsumed);
+        fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
+        if ((frameInfo.error == 0) && (frameInfo.samples > 0) )
+        {
+		memcpy(outbuf+(*outlen), sample_buffer, 2*frameInfo.samples);
+		*outlen+=2*frameInfo.samples;
+	}
+	if (frameInfo.error > 0)//failed seek to the head
+	{
+	       audio_codec_print( "Error: %s\n", NeAACDecGetErrorMessage(frameInfo.error));
+        	advance_buffer(&gFaadCxt.b, 1);
+        	fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
+		//fill_buffer(&b);
+		//if(header_type)//if adts case need to fix
+		NeAACDecStruct* hDecoder = (NeAACDecStruct*)(gFaadCxt.hDecoder);
+		if(hDecoder->adts_header_present)
+		{
+			int num;
+			num = AACFindSyncWord(gFaadCxt.b.buffer, gFaadCxt.b.bytes_into_buffer);
+			advance_buffer(&gFaadCxt.b, num);
+			fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
+		}
+	}
+    }// while (sample_buffer != NULL);
+
+    return inbuf_consumed;
+}
+#if 0
+int audio_dec_decode2(audio_decoder_operations_t *adec_ops, char *outbuf, int *outlen, char *inbuf, int inlen)
+{
+    int tagsize;
+    unsigned long samplerate;
+    unsigned char channels;
+    void *sample_buffer;
+    //NeAACDecFrameInfo frameInfo;
 
     //audio_file *aufile;
 
@@ -584,29 +627,27 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
     int header_type = 0;
     int bitrate = 0;
     float length = 0;
-	int outmaxlen = 0;
+    int outmaxlen = 0;
 
-	char *in_buf;
-	long inbuf_size;
-	long inbuf_consumed;
+    char *in_buf;
+    long inbuf_size;
+    long inbuf_consumed;
+    in_buf = inbuf;
+    inbuf_size = inlen;
+    if (inbuf_consumed > 0)
+    	inbuf_consumed = 0;
+    outmaxlen = (*outlen);
+    (*outlen) = 0;
 
-//	inbuf_data inbuf_d;
+    if (gFaadCxt.init_flag)
+    	goto START_DECODER;
 
-	in_buf = inbuf;
-	inbuf_size = inlen;
-	if (inbuf_consumed > 0)
-		inbuf_consumed = 0;
-	outmaxlen = (*outlen);
-	(*outlen) = 0;
-	
-	if (gFaadCxt.init_flag)
-		goto START_DECODER;
-	
-	fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
-    int nSeekNum = AACFindSyncWord(gFaadCxt.b.buffer, gFaadCxt.b.bytes_into_buffer);
+    fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
+#if 0
+        int nSeekNum = AACFindSyncWord(gFaadCxt.b.buffer, gFaadCxt.b.bytes_into_buffer);
 	advance_buffer(&gFaadCxt.b, nSeekNum);
 	fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
-
+#endif
     tagsize = 0;
 #if 0	
     if (!memcmp(b.buffer, "ID3", 3))
@@ -646,7 +687,7 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
     {
     
 		faad_fprintf(stderr, "((b.buffer[0] == 0xFF) && ((b.buffer[1] & 0xF6) == 0xF0)), tagsize = %d\n", tagsize);
-        //adts_parse(&b, &bitrate, &length);
+               //adts_parse(&b, &bitrate, &length);
 		
 		//refill_buffer(&b);
 		
@@ -755,17 +796,17 @@ START_DECODER:
         if ((gFaadCxt.b).bytes_into_buffer == 0)
             sample_buffer = NULL; /* to make sure it stops now */
 		
-        sample_buffer = NeAACDecDecode(gFaadCxt.hDecoder, &frameInfo, (gFaadCxt.b).buffer, (gFaadCxt.b).bytes_into_buffer);
+        sample_buffer = NeAACDecDecode(gFaadCxt.hDecoder, &g_frameInfo, (gFaadCxt.b).buffer, (gFaadCxt.b).bytes_into_buffer);
 
 //		audio_codec_print("77777777777777777777, frameInfo.bytesconsumed = %d, b.bytes_into_buffer = %d\n\n", frameInfo.bytesconsumed, (gFaadCxt.b).bytes_into_buffer);
 
 
         /* update buffer indices */
-        advance_buffer(&(gFaadCxt.b), frameInfo.bytesconsumed);
+        advance_buffer(&(gFaadCxt.b), g_frameInfo.bytesconsumed);
         fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
-        if (frameInfo.error > 0)
+        if (g_frameInfo.error > 0)
         {
-            faad_fprintf(stderr, "Error: %s\n", NeAACDecGetErrorMessage(frameInfo.error));
+            faad_fprintf(stderr, "Error: %s\n", NeAACDecGetErrorMessage(g_frameInfo.error));
         }
 
 
@@ -781,22 +822,23 @@ START_DECODER:
 #endif
         }
 #endif
-        if ((frameInfo.error == 0) && (frameInfo.samples > 0) )
+        if ((g_frameInfo.error == 0) && (g_frameInfo.samples > 0) )
         {
 //			audio_codec_print("888888888888888888888, frameInfo.samples = %d\n\n", frameInfo.samples);
 
 //			if (audio_out >= 0) {
-				memcpy(outbuf+(*outlen), sample_buffer, 2*frameInfo.samples);
-				*outlen+=2*frameInfo.samples;
+				memcpy(outbuf+(*outlen), sample_buffer, 2*g_frameInfo.samples);
+				*outlen+=2*g_frameInfo.samples;
 				//write(audio_out, sample_buffer, 2*frameInfo.samples);
 //			}
 		}
 	#if 1
-	if (frameInfo.error > 0)//failed seek to the head
+	if (g_frameInfo.error > 0)//failed seek to the head
 	{
         	advance_buffer(&gFaadCxt.b, 1);
         	fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
 		//fill_buffer(&b);
+		if(0)
 		{
 			int num;
 			num = AACFindSyncWord(gFaadCxt.b.buffer, gFaadCxt.b.bytes_into_buffer);
@@ -829,39 +871,23 @@ static inline double get_time(void)
     gettimeofday(&tv, 0);
     return tv.tv_sec + tv.tv_usec * 1e-6;
 }
-#if 1
-
-#if 1
-int audio_dec_init(audio_decoder_operations_t *adec_ops)
-{
-    memset(&(gFaadCxt.b), 0, sizeof(aac_buffer));
-	if (!((gFaadCxt.b).buffer = (unsigned char*)malloc(FAAD_MIN_STREAMSIZE*MAX_CHANNELS)))
-    {
-        faad_fprintf(stderr, "Memory allocation error\n");
-        return -1;
-    }
-    memset((gFaadCxt.b).buffer, 0, FAAD_MIN_STREAMSIZE*MAX_CHANNELS);
-	
-    (gFaadCxt.b).bytes_consumed = -1; //init
-    adec_ops->nInBufSize=INBUFSIZE;
-	adec_ops->nOutBufSize=AVCODEC_AAC_OUT_BUFFER;
-
-	gFaadCxt.init_flag = 0;
-//	gFaadCxt.infoOnly = 0;
-	return 0;
-}
-#endif
-
 int audio_dec_release(audio_decoder_operations_t *adec_ops)
 {
 	NeAACDecClose(gFaadCxt.hDecoder);
-//	fclose(gFaadCxt.b.infile);
 	if (gFaadCxt.b.buffer)
 		free(gFaadCxt.b.buffer);
 	return 0;
 }
 
-int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *fileInfo, char *inbuf, int inlen)
+int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *pAudioInfo)
+{
+    ((AudioInfo *)pAudioInfo)->channels = gChannels;
+    ((AudioInfo *)pAudioInfo)->samplerate = gSampleRate;
+    return 0;
+}
+
+#if 0
+int audio_dec_getinfo2(audio_decoder_operations_t *adec_ops, void *fileInfo, char *inbuf, int inlen)
 {
 	int tagsize;
 	unsigned long samplerate;
@@ -902,31 +928,11 @@ int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *fileInfo, char
 	fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
 
 	tagsize = 0;
-#if 0	
-	if (!memcmp(b.buffer, "ID3", 3))
-	{
-		/* high bit is not used */
-		tagsize = (b.buffer[6] << 21) | (b.buffer[7] << 14) |
-			(b.buffer[8] <<  7) | (b.buffer[9] <<  0);
-
-		tagsize += 10;
-		
-		faad_fprintf(stderr, " tagsize = %d\n", tagsize);
-		advance_buffer(&b, tagsize);
-		fill_buffer(&b);
-	}
-#endif	
-	audio_codec_print("44444444444444444444444\n\n");
-
 	gFaadCxt.hDecoder = NeAACDecOpen();
 
 	/* Set the default object type and samplerate */
 	/* This is useful for RAW AAC files */
 	config = NeAACDecGetCurrentConfiguration(gFaadCxt.hDecoder);
-#if 0 //def_srate == 0
-	if (def_srate)
-		config->defSampleRate = def_srate;
-#endif
 	config->defObjectType = LC;
 	config->outputFormat = FAAD_FMT_16BIT;
 	config->downMatrix = 0; //downMatrix;
@@ -945,21 +951,6 @@ int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *fileInfo, char
 		//refill_buffer(&b);
 		
 		//faad_fprintf(stderr, "refill buffer\n");
-#if 0
-		int filelen = ftell(b.infile);
-		faad_fprintf(stderr, "filelen = %d\n", filelen);
-
-		fseek(b.infile, tagsize, SEEK_SET);
-
-		bread = fread(b.buffer, 1, FAAD_MIN_STREAMSIZE*MAX_CHANNELS, b.infile);
-		if (bread != FAAD_MIN_STREAMSIZE*MAX_CHANNELS)
-			b.at_eof = 1;
-		else
-			b.at_eof = 0;
-		b.bytes_into_buffer = bread;
-		b.bytes_consumed = 0;
-		b.file_offset = tagsize;
-#endif
 		faad_fprintf(stderr, "b.bytes_into_buffer = %d, b.file_offset = %d\n", (gFaadCxt.b).bytes_into_buffer, (gFaadCxt.b).file_offset);
 		faad_fprintf(stderr, "bitrate = %d, length = %d\n", bitrate, length);
 		bitrate = -1;
@@ -987,7 +978,6 @@ int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *fileInfo, char
 		header_type = 2;
 	}
 
-	audio_codec_print("555555555555555555555555555\n\n");
 
 	fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
 	if ((bread = NeAACDecInit(gFaadCxt.hDecoder, (gFaadCxt.b).buffer,
@@ -1043,125 +1033,7 @@ int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *fileInfo, char
 //	audio_codec_print("get info return----------------------------------------\n");
 	return 0;
 }
-
-
-#if 0
-int main(int argc, char *argv[])
-{
-    int declen;
-	int ret;
-
-	char inbuf[INBUFSIZE];
-	char outbuf[192000];
-	int inlen,outlen;
-/* System dependant types */
-
-    /* Only calculate the path and open the file for writing if
-       we are not writing to stdout.
-     */
-    printf("lujian call decodeAACfile---------------------------------------------------------\n\n");
-
-	audio_out = open("./sdcard/1/tt.pcm", O_CREAT | O_RDWR);
-    if (audio_out < 0) {
-        printf("Create output file failed! fd=%d-------------------------------\n", audio_out);
-    }
-	init_aac();
-
-	b.infile = fopen("./sdcard/wav/main.aac", "rb");
-    if (b.infile == NULL)
-    {
-        /* unable to open file */
-        faad_fprintf(stderr, "Error opening file: -----\n");
-        return 1;
-    }
-
-#if FILELEN	
-    fseek(b.infile, 0, SEEK_END);
-    fileread = ftell(b.infile);
-    fseek(b.infile, 0, SEEK_SET);	
 #endif
-
-
-
-#if 0
-    bread = fread(b.buffer, 1, FAAD_MIN_STREAMSIZE*MAX_CHANNELS, b.infile);
-    if (bread != FAAD_MIN_STREAMSIZE*MAX_CHANNELS)
-        b.at_eof = 1;
-    b.bytes_into_buffer = bread;
-    b.bytes_consumed = 0;
-    b.file_offset = 0;
-#endif
-    printf("1111111111111111111111\n\n");
-
-	ret = read_buf(inbuf, INBUFSIZE, &b);
-	printf("ret = %d", ret);
-    printf("2222222222222222222222\n\n");
-
-    b.bytes_consumed = -1; //init
-    //fill_buffer(&b);
-	
-    printf("3333333333333333333333333\n\n");
-
-	while(ret!=0){
-		if (inbuf_consumed > 0)
-			ret = read_buf(inbuf+(INBUFSIZE - inbuf_consumed), inbuf_consumed, &b);
-		inlen = INBUFSIZE;
-		outlen=0;
-    	declen = decodeAACfile(outbuf, &outlen, inbuf, inlen);
-
-		write(audio_out, outbuf, outlen);
-		
-		printf("main! inbuf_size=%d, inbuf_consumed=%d, declen = %d, outlen = %d\n", inbuf_size, inbuf_consumed, declen, outlen);
-		memmove(in_buf, in_buf+inbuf_consumed, (INBUFSIZE - inbuf_consumed));
-	}
-
-    printf("lujian end call decodeAACfile----------------------------\n\n");
-
-#if 0
-    if (!result && !infoOnly)
-    {
-#ifdef _WIN32
-        float dec_length = (float)(GetTickCount()-begin)/1000.0;
-        SetConsoleTitle("FAAD");
-#else
-        /* clock() grabs time since the start of the app but when we decode
-           multiple files, each file has its own starttime (begin).
-         */
-        float dec_length = (float)(clock() - begin)/(float)CLOCKS_PER_SEC;
-#endif
-    //    printf("Decoding %s took: %5.2f sec. %5.2fx real-time.\n", aacFileName, dec_length, length/dec_length);
-    }
-#endif	
-
-#if 0	
-	set_player_state(player, PLAYER_ERROR);
-	player_mate_release(player);
-	set_black_policy(player->playctrl_info.black_out);
-	set_amutils_enable(0);
-    pthread_exit(NULL);
-#endif
-
-    return NULL;
-}
-#endif
-
-#if 0
-audio_decoder_operations_t AudioFFmpegDecoder=
-{
-    "FFmpegDecoder",
-    AUDIO_FFMPEG_DECODER,
-    0,
-    0,
-    .init=FFmpegDecoderInit,
-    .decode=FFmpegDecode,
-    .release=FFmpegDecoderRelease,
-    .getinfo=NULL,
-    NULL,
-    NULL
-};
-#endif
-
-
 audio_decoder_operations_t AudioAacDecoder = {
 	"AacDecoder",
 	2,
@@ -1175,6 +1047,5 @@ audio_decoder_operations_t AudioAacDecoder = {
 	NULL
 };
 
-#endif
 
 

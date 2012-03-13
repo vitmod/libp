@@ -22,17 +22,16 @@
 #include <getopt.h>
 
 #include "neaacdec.h"
-#include "../../amadec/adec_write.h"
+//#include "../../amadec/adec_write.h"
 #include "../../amadec/adec-armdec-mgt.h"
 //#include <mp4ff.h>
 //int main(int argc, char *argv[]);
 
-extern audio_decoder_operations_t AudioAacDecoder;
-
+//extern audio_decoder_operations_t AudioAacDecoder;
 int audio_dec_init(audio_decoder_operations_t *adec_ops);
 int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *outlen, char *inbuf, int inlen);
 int audio_dec_release(audio_decoder_operations_t *adec_ops);
-int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *fileInfo, char *inbuf, int inlen);
+int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *pAudioInfo);
 //void libaacdec(void);
 #endif
 
