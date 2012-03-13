@@ -217,7 +217,12 @@ reload:
 				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",mgt->filename);
 				goto reload;
 			}else if(mgt->ctype ==MIDDLE_BANDWIDTH){
-				struct variant *v =mgt->variants[mgt->n_variants/2 -1];
+				struct variant *v = NULL;
+				if(mgt->n_variants>4){
+					v =mgt->variants[mgt->n_variants/2 -1];
+				}else{
+					v =mgt->variants[mgt->n_variants-1];
+				}
 				url = v->url;
 				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",mgt->filename);
 				goto reload;
@@ -635,6 +640,10 @@ static int list_close(URLContext *h)
 	}
 	av_freep(&mgt->variants);
 	mgt->n_variants = 0;
+	if(NULL!=mgt->prefix){
+		av_free(mgt->prefix);
+		mgt->prefix = NULL;
+	}
 	av_free(mgt);
 	unused(h);
 	return 0;
