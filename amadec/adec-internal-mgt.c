@@ -773,7 +773,7 @@ int match_types(const char *filetypestr,const char *typesetting)
 			strcpy(typestr,psets);
 			psets=NULL;
 		}
-		if(strlen(typestr)>0){
+		if(strlen(typestr)>0&&(strlen(typestr)==strlen(filetypestr))){
 			if(strstr(filetypestr,typestr)!=NULL)
 				return 1;
 		}
