@@ -294,6 +294,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 static int http_getc(HTTPContext *s)
 {
     int len = 0;
+    int retry=0;
     if (s->buf_ptr >= s->buf_end) {
 		do {
 	        len = ffurl_read(s->hd, s->buffer, BUFFER_SIZE);
@@ -306,7 +307,9 @@ static int http_getc(HTTPContext *s)
 	        } else if (len > 0) {
 	        	s->buf_ptr = s->buffer;
 				s->buf_end = s->buffer + len;
-	        }		
+	        }	
+		 if(retry++>10)
+		 	return AVERROR(EIO);/*10 times,avoid alway no return problem*/
 		}while (len == AVERROR(EAGAIN));		
     }
     return *s->buf_ptr++;
