@@ -1601,6 +1601,35 @@ int codec_get_pcrscr(codec_para_t *pcodec)
 
 /* --------------------------------------------------------------------------*/
 /**
+* @brief  codec_set_pcrscr  set system pcrscr
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  val  system pcrscr value
+*
+* @return     0 is success , or -1 failed.
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_pcrscr(codec_para_t *pcodec, int val)
+{
+    unsigned int pcrscr;
+    int ret;
+    
+    if (!pcodec) {
+        CODEC_PRINT("[%s]ERROR invalid pointer!\n", __FUNCTION__);
+        return -1;
+    }
+	
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_PCRSCR, val);
+    if (ret < 0) {
+        CODEC_PRINT("[%s]ioctl failed %d\n", __FUNCTION__, ret);
+        return -1;
+    }
+
+    return 0;
+}
+
+/* --------------------------------------------------------------------------*/
+/**
 * @brief  codec_set_syncenable  enable or disable av sync
 *
 * @param[in]  pcodec  Pointer of codec parameter structure
