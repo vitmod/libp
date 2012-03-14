@@ -1095,6 +1095,9 @@ int time_search(play_para_t *am_p)
 		am_p->playctrl_info.seek_base_audio = 0;
 	    log_info("[time_search]switch audio, audio_idx=%d time=%f\n", stream_index, time_point);
     }
+    if (time_point == 0) {
+        seek_flags |= AVSEEK_FLAG_ANY;
+    }
     if(s->duration > 0){
 	    temp = (unsigned int)(s->duration / AV_TIME_BASE);
 	    log_info("[time_search:%d]time_point =%f temp=%d duration= %lld\n", __LINE__, time_point, temp, s->duration);
