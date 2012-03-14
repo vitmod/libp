@@ -879,7 +879,7 @@ static int set_audio_decoder(int codec_id)
 
 int get_audio_decoder(void)
 {
-	adec_print("audio_decoder = %d\n", audio_decoder);
+	//adec_print("audio_decoder = %d\n", audio_decoder);
 
 	return audio_decoder;
 #if 0
