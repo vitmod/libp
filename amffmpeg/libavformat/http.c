@@ -60,6 +60,7 @@ typedef struct {
     int http_code;
     int64_t chunksize;      /**< Used if "Transfer-Encoding: chunked" otherwise -1. */
     int64_t off, filesize;
+    int do_readseek_size;
     char location[MAX_URL_SIZE];
     HTTPAuthState auth_state;
     unsigned char headers[BUFFER_SIZE];
@@ -480,6 +481,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     s->off = 0;
     s->filesize = -1;
     s->willclose = 0;
+    s->do_readseek_size=0;//
     if (post) {
         /* Pretend that it did work. We didn't read any header yet, since
          * we've still to send the POST data, but the code calling this
@@ -505,7 +507,13 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
         s->line_count++;
     }
 
-    return (off == s->off) ? 0 : -1;
+
+    if(off>s->off && (off-s->off)<1024*1024){/*if seek failed & the gap  is not too big(1M),we can do read seek*/
+		/*server can't support seek,the off is ignored.we do read seek later;*/
+		s->do_readseek_size=off-s->off;
+		s->off=off;
+     }
+	return (off == s->off) ? 0 : -1;
 }
 
 
@@ -604,7 +612,17 @@ errors:
 		http_reopen_cnx(h,-1);
 		goto retry;
 	}
-	
+	if(s->do_readseek_size>0){
+		/*we have do seek failed,the offset is not  same as uper level need drop data here now.*/
+		if(len>s->do_readseek_size){
+			len=len-s->do_readseek_size;
+			memmove(buf,buf+s->do_readseek_size,len);
+			s->do_readseek_size=0;
+		}else{///(len<=s->do_readseek_size)
+			s->do_readseek_size-=len;
+			goto retry;
+		}
+	}
 	return len;
 
 }
