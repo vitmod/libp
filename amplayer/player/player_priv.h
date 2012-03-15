@@ -27,7 +27,14 @@ struct stream_decoder;
 struct am_packet;
 
 #define  MALLOC(s)      malloc(s)
-#define  FREE(d)        free(d)
+///#define  FREE(d)        free(d)
+/* macro to free allocated memory */
+#define FREE(d) \
+do { \
+    if((d)!=NULL)\
+    		free((d)); \
+    (d) = NULL; \
+}while(0)
 #define  MEMCPY(d,s,l)  memcpy(d,s,l)
 #define  MEMSET(d,s,l)  memset(d,s,l)
 #define  MIN(x,y)       ((x)<(y)?(x):(y))
