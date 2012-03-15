@@ -1848,6 +1848,7 @@ int set_header_info(play_para_t *para)
                 }
                 if (pkt->hdr == NULL) {
                     	pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+			 memset(pkt->hdr,0,sizeof(hdr_buf_t));
 	                    if (!pkt->hdr) {
 	                        return PLAYER_NOMEM;
 	                    }
