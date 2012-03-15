@@ -386,8 +386,11 @@ static int process_line(URLContext *h, char *line, int line_count,
         } else if (!strcasecmp (tag, "Content-Range")) {
             /* "bytes $from-$to/$document_size" */
             const char *slash;
-            if (!strncmp (p, "bytes ", 6)) {
-                p += 6;
+            if (!strncmp (p, "bytes ", 5)) {
+                p += 5;
+		   while((*p) == ' ' ) {//eat blank
+			p++;
+		   }		
                 s->off = atoll(p);
                 if ((slash = strchr(p, '/')) && strlen(slash) > 0)
                     s->filesize = atoll(slash+1);
