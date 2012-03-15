@@ -579,6 +579,17 @@ retry_probe:
 	
     if (!*fmt) {
         av_free(buf);
+        if(probe_flag)
+        {
+            s->data_offset = old_dataoff;	
+		    probe_flag =0;
+		    buf = NULL;
+    		pd.buf = NULL;
+    		pd.buf_size = 0;
+    		avio_seek(pb, oldoffset, SEEK_SET);
+    		av_log(logctx, AV_LOG_INFO, "not real ts/m2ts,probe again\n");
+    		goto retry_probe;			
+        }
         return AVERROR_INVALIDDATA;
     } else if(strcmp((*fmt)->name,"mpegts") && probe_flag){
 		s->data_offset = old_dataoff;	

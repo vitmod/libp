@@ -69,15 +69,21 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
+ifeq ($(TARGET_BOARD_PLATFORM),meson6)
+    audio_firmware_dir := firmware-m6
+else
+    audio_firmware_dir := firmware
+endif
+
 # generate md5 checksum files
-$(shell cd $(LOCAL_PATH)/firmware && { \
+$(shell cd $(LOCAL_PATH)/$(audio_firmware_dir) && { \
 for f in *.bin; do \
   md5sum "$$f" > "$$f".checksum; \
 done;})
 
 # gather list of relative filenames
-audio_firmware_files := $(wildcard $(LOCAL_PATH)/firmware/*.bin)
-audio_firmware_files += $(wildcard $(LOCAL_PATH)/firmware/*.checksum)
+audio_firmware_files := $(wildcard $(LOCAL_PATH)/$(audio_firmware_dir)/*.bin)
+audio_firmware_files += $(wildcard $(LOCAL_PATH)/$(audio_firmware_dir)/*.checksum)
 audio_firmware_files := $(patsubst $(LOCAL_PATH)/%,%,$(audio_firmware_files))
 
 # define function to create a module for each file
