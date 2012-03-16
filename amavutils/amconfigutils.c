@@ -13,8 +13,11 @@ static int    amconfig_inited = 0;
 #define lp_lock(x)      pthread_mutex_lock(x)
 #define lp_unlock(x)    pthread_mutex_unlock(x)
 #define lp_trylock(x)   pthread_mutex_trylock(x)
+#ifdef ANDROID
+#include <cutils/properties.h>
 
- 
+#include <sys/system_properties.h>
+ #endif
 //#define CONFIG_DEBUG
 #ifdef CONFIG_DEBUG
 #define DBGPRINT printf
@@ -84,6 +87,12 @@ int am_getconfig(const char * path, char *val, const char * def)
         strcpy(val, def);
     }
     lp_unlock(&config_lock);
+#ifdef ANDROID
+	if(i<0){
+		/*get failed,get from android prop settings*/
+	 	i=property_get(path, val, def);	
+	}
+#endif
     return i >= 0 ? 0 : i;
 }
 

@@ -3,8 +3,8 @@
 
 #define MAX_CONFIG 128
 #define CONFIG_PATH_MAX    32
-#define CONFIG_VALUE_MAX   32
-#define CONFIG_VALUE_OFF   36
+#define CONFIG_VALUE_MAX   92
+#define CONFIG_VALUE_OFF   (CONFIG_PATH_MAX+4)
 #ifdef  __cplusplus
 extern "C" {
 #endif
