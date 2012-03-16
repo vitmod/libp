@@ -12,11 +12,10 @@
 #ifndef CODEC_TYPE_H_
 #define CODEC_TYPE_H_
 
-#include <libavcodec/avcodec.h>
-
 #include "amports/amstream.h"
 #include "amports/vformat.h"
 #include "amports/aformat.h"
+#include "ppmgr/ppmgr.h"
 
 typedef int CODEC_HANDLE;
 
