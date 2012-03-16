@@ -31,7 +31,7 @@
 #include <stdarg.h>
 #include "aviolpcache.h"
 #include "aviolpbuf.h"
-
+#include "amconfigutils.h"
 /*
 										Pos		
 buffer    rp                         wp                   buffer_end 
@@ -82,35 +82,59 @@ Can seek back size:
 int url_lpopen(URLContext *s,int size)
 {
 	url_lpbuf_t *lp;
+	int blocksize=32*1024;
+	int ret;
+	float value=0.0;
+	int bufsize=0;
+	
 	lp_bprint( AV_LOG_INFO,"url_lpopen=%d\n",size);
 	if(!s)
 		return -1;
 		lp_bprint( AV_LOG_INFO,"url_lpopen2=%d\n",size);
+	ret=am_getconfig_float("libplayer.ffmpeg.lpbufblocksize",&value);
+	if(ret>=0 && value>=32){
+		blocksize=(int)value;
+	}	
+	lp_sprint( AV_LOG_INFO,"lpbuffer block size=%d\n",blocksize);
 	lp=av_mallocz(sizeof(url_lpbuf_t));
 	if(!lp)
 		return AVERROR(ENOMEM);
 	lp->buffer=av_malloc(size);
 	if(!lp->buffer)
 	{
-		av_free(lp->buffer);
-		return AVERROR(ENOMEM);
+		int failedsize=size/2;/*if no memory used 1/2 size */
+		ret=am_getconfig_float("libplayer.ffmpeg.lpbuffaildsize",&value);
+		if(ret>=0 && value>=1024){
+			failedsize=(int)value;
+		}
+		lp_sprint( AV_LOG_INFO,"malloc buf failed,used failed size=%d\n",failedsize);
+		lp->buffer=av_malloc(failedsize);	
+		while(!lp->buffer){
+			failedsize=failedsize/2;
+			if(failedsize<16*1024)/*do't malloc too small size failed size*/
+				return AVERROR(ENOMEM);
+			lp->buffer=av_malloc(failedsize);
+		}
+		bufsize=failedsize;
+	}else{
+		bufsize=size;
 	}
-		lp_bprint( AV_LOG_INFO,"url_lpopen3=%d\n",size);
+	lp_sprint( AV_LOG_INFO,"url_lpopen used lp buf size=%d\n",bufsize);
 	s->lpbuf=lp;
-	lp->buffer_size=size;
+	lp->buffer_size=bufsize;
 	lp->rp=lp->buffer;
 	lp->wp=lp->buffer;
-	lp->buffer_end=lp->buffer+size;
+	lp->buffer_end=lp->buffer+bufsize;
 	lp->valid_data_size=0;
 	lp->pos=0;
-	lp->block_read_size=FFMIN(32*1024,size>>4);
+	lp->block_read_size=FFMIN(blocksize,bufsize>>4);
 	lp_lock_init(&lp->mutex,NULL);
 	lp->file_size=url_lpseek(s,0,AVSEEK_SIZE);
 	lp->cache_enable=0;
 	lp->cache_id=aviolp_cache_open(s->filename,url_filesize(s));
 	if(lp->cache_id!=0)
 		lp->cache_enable=1;
-		lp_bprint( AV_LOG_INFO,"url_lpopen4%d\n",size);
+	lp_bprint( AV_LOG_INFO,"url_lpopen4%d\n",bufsize);
 	return 0;
 }
 
@@ -474,7 +498,7 @@ int64_t url_lp_get_buffed_pos(URLContext *s)
 		lp_unlock(&lp->mutex);
 	}
 	/*lp_sprint(AV_LOG_INFO,"buffered pos=%lld,file_size=%lld,percent=%d.%02d%%,buffer_in_cache=%d\n",
-		pos,lp->file_size,(int)(pos*100/lp->file_size),(int)((pos*10000/lp->file_size)%100),buffer_in_cache);*/
+		pos,lp->file_size,(int)(pos*100/lp->file_size),(int)((pos*10000/lp->file_size)%100),buffer_in_cache); */
 	return pos;
 }
 
@@ -493,10 +517,10 @@ int url_lp_intelligent_buffering(URLContext *s,int size)
 	if(size <=0)
 		size=lp->block_read_size; 
 	datalen= url_lp_getbuffering_size(s,&forward_data,&back_data);
-	lp_bprint( AV_LOG_INFO, "url_lp buffering:datalen=%d,forward_datad=%d,back_data=%d,lp->buffer_size=%d,size=%d\n",
+	lp_rprint( AV_LOG_INFO, "url_lp buffering:datalen=%d,forward_datad=%d,back_data=%d,lp->buffer_size=%d,size=%d\n",
 		datalen,forward_data,back_data,lp->buffer_size,size);
-	if(datalen>=0 && ((datalen <lp->buffer_size-1024) || (back_data>(forward_data/2+1))))
-		ret=url_lpfillbuffer(s,size);
+	if(datalen>=0 && ((datalen <lp->buffer_size-1024) || (back_data>(forward_data/2+1)) || (back_data>3*1024*1024)))
+		ret=url_lpfillbuffer(s,size);/*lest 1/3 back data && < 3M back data*/
 
 	return ret;
 }

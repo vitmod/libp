@@ -27,7 +27,7 @@
 #include "internal.h"
 #include "url.h"
 #include <stdarg.h>
-
+#include "amconfigutils.h"
 
 #define IO_BUFFER_SIZE 32768
 
@@ -926,7 +926,21 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 {
     uint8_t *buffer;
     int buffer_size, max_packet_size;
-	int lpbuffer_size=(h->flags & URL_MINI_BUFFER)?IO_LP_BUFFER_MINI_SIZE:IO_LP_BUFFER_SIZE;
+    int lpbuffer_size=(h->flags & URL_MINI_BUFFER)?IO_LP_BUFFER_MINI_SIZE:IO_LP_BUFFER_SIZE;
+    int ret;
+    float value;
+    if((h->flags & URL_MINI_BUFFER)){
+		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemin",&value);
+		if(ret==0 && value>=1024){
+			lpbuffer_size=(int)value;
+		}	
+    }else{
+    		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemax",&value);
+		if(ret==0 && value>=1024*10){
+			lpbuffer_size=(int)value;
+		}	
+    }
+   av_log(NULL, AV_LOG_INFO, "getloopbuf size=%x\n",lpbuffer_size);
     max_packet_size = h->max_packet_size;
     if (max_packet_size) {
         buffer_size = max_packet_size; /* no need to bufferize more than one packet */
@@ -957,7 +971,6 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 	    }
 		(*s)->exseek=url_lpexseek;
 		(*s)->enabled_lp_buffer=1;
-	
 	}else{
 	    if (ffio_init_context(*s, buffer, buffer_size,
 	                      h->flags & AVIO_FLAG_WRITE, h,
