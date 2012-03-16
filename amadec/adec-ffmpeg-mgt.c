@@ -793,6 +793,11 @@ exit_decode_loop:
     			  //inlen = rlen;
     			  adec_print("declen=%d,rlen = %d--------------------------------------------------\n\n", declen,rlen);
     			  while (declen<rlen) {
+				 if(exit_decode_thread)
+    				  {
+					 adec_print("exit decoder,-----------------------------\n");
+    				        goto exit_decode_loop;
+    				  }
     				  outlen = AVCODEC_MAX_AUDIO_FRAME_SIZE;
     				  adec_print("decode_audio------------------------------------\n");
     				  //dlen = decode_audio(audec->pcodec->ctxCodec, outbuf, &outlen, inbuf+declen, inlen);
