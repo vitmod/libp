@@ -826,7 +826,7 @@ void *player_thread(play_para_t *player)
                 }
                 break;
             } else if (ret == CONTINUE_FLAG) {
-                if (!player->enable_rw_on_pause) { /*break for rw*/
+                if (player->enable_rw_on_pause) { /*enabled buffing on paused...*/
                     if (ffmpeg_buffering_data(player) < 0) {
                         player_thread_wait(player, 100 * 1000); //100ms
                         continue;

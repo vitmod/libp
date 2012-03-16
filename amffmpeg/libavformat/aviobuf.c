@@ -956,6 +956,7 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 	        return AVERROR(EIO);
 	    }
 		(*s)->exseek=url_lpexseek;
+		(*s)->enabled_lp_buffer=1;
 	
 	}else{
 	    if (ffio_init_context(*s, buffer, buffer_size,
