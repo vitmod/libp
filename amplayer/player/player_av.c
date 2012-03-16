@@ -486,7 +486,7 @@ static int raw_read(play_para_t *para)
         return PLAYER_SUCCESS;
     }
 
-    if (pkt->buf == NULL) {
+    if (pkt->buf == NULL || pkt->buf_size!=(para->max_raw_size + 16)) {/*may chaged to short,enarge it*/
         pkt->buf_size = para->max_raw_size + 16;
         pkt->buf = MALLOC(pkt->buf_size);
         if (pkt->buf == NULL) {
