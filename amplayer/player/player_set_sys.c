@@ -135,6 +135,11 @@ int check_audiodsp_fatal_err()
     return fatal_err;
 }
 
+int get_karaok_flag()
+{
+    return get_sysfs_int("/sys/class/amstream/karaok") & 1;
+}
+
 int set_tsync_enable(int enable)
 {
     return set_sysfs_int("/sys/class/tsync/enable", enable);

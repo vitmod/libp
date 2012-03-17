@@ -607,6 +607,7 @@ static void player_para_init(play_para_t *para)
     para->discontinue_point = 0;
     para->discontinue_flag = 0;
     para->first_index = -1;
+    para->karaok_flag = get_karaok_flag();
 }
 
 ///////////////////*main function *//////////////////////////////////////
@@ -811,6 +812,10 @@ void *player_thread(play_para_t *player)
             pre_header_feeding(player);
         }
         do {
+            /* if is karaok play, we slow down the player thread*/
+            if(player->karaok_flag)
+               player_thread_wait(player, 80 * 1000);
+
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
                 log_print("pid[%d]::[player_thread:%d]end=%d valid=%d new=%d pktsize=%d\n", player->player_id,
