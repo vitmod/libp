@@ -573,7 +573,7 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
         if ((gFaadCxt.b).bytes_into_buffer == 0)
             sample_buffer = NULL; /* to make sure it stops now */
         sample_buffer = NeAACDecDecode(gFaadCxt.hDecoder, &frameInfo, (gFaadCxt.b).buffer, (gFaadCxt.b).bytes_into_buffer);
-        audio_codec_print("======start decode samples:%d sample_rate:%d  channel:%d  \n",frameInfo.samples,frameInfo.samplerate,frameInfo.channels);
+        //audio_codec_print("======start decode samples:%d sample_rate:%d  channel:%d  \n",frameInfo.samples,frameInfo.samplerate,frameInfo.channels);
         //audio_codec_print("======start decode samples: g_frameInfo.bytesconsumed:%d \n",frameInfo.bytesconsumed);
         gSampleRate=frameInfo.samplerate;
         gChannels=frameInfo.channels;

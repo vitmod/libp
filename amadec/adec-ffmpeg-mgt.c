@@ -762,7 +762,7 @@ exit_decode_loop:
 		  else
 		    inlen=0;
                 //step 3  read buffer
-		  adec_print("====start read data:%d byte \n",nNextFrameSize);	  
+		//  adec_print("====start read data:%d byte \n",nNextFrameSize);	  
                 //rlen = read_buffer(inlen+inbuf, nNextFrameSize);
                 int nNextReadSize=nNextFrameSize;
                 int nRet=0;
@@ -791,7 +791,7 @@ exit_decode_loop:
               if (nCurrentReadCount > 0)
               {
     			  //inlen = rlen;
-    			  adec_print("declen=%d,rlen = %d--------------------------------------------------\n\n", declen,rlen);
+    			  //adec_print("declen=%d,rlen = %d--------------------------------------------------\n\n", declen,rlen);
     			  while (declen<rlen) {
 				 if(exit_decode_thread)
     				  {
@@ -799,20 +799,20 @@ exit_decode_loop:
     				        goto exit_decode_loop;
     				  }
     				  outlen = AVCODEC_MAX_AUDIO_FRAME_SIZE;
-    				  adec_print("decode_audio------------------------------------\n");
+    				  //adec_print("decode_audio------------------------------------\n");
     				  //dlen = decode_audio(audec->pcodec->ctxCodec, outbuf, &outlen, inbuf+declen, inlen);
     				  dlen = adec_ops->decode(audec->adec_ops, outbuf, &outlen, inbuf+declen, inlen);
     				  //dlen = decodeAACfile(outbuf, &outlen, inbuf+declen, inlen);
     				  if (dlen <= 0)
     				  {
-    				  	  adec_print("dlen = %d error----\n",dlen);
+    				  	  //adec_print("dlen = %d error----\n",dlen);
     					  if ((nCodecID == CODEC_ID_APE || nCodecID == CODEC_ID_ALAC))
     					  {
     					        inlen=0;	  
     					  }
     					  else if(inlen>0)
     					  {
-    					          adec_print("packet end %d bytes----\n",inlen);
+    					         // adec_print("packet end %d bytes----\n",inlen);
     						  //memcpy(apkt_end, (uint8_t *)(inbuf+declen), inlen);
     						  pRestData=malloc(inlen);
     						  if(pRestData)
@@ -824,7 +824,7 @@ exit_decode_loop:
     				  nDecodeErrCount=0;//decode success reset to 0
     				  declen += dlen;
     				  inlen -= dlen;
-    				  adec_print("after decode_audio rlen=%d,declen=%d,inlen=%d,dlen=%d,outlen=%d,-----------------------------\n",rlen,declen,inlen,dlen,outlen);
+    				  //adec_print("after decode_audio rlen=%d,declen=%d,inlen=%d,dlen=%d,outlen=%d,-----------------------------\n",rlen,declen,inlen,dlen,outlen);
 
     				  //write to the pcm buffer
     				  decode_offset+=dlen;
