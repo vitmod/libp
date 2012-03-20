@@ -493,8 +493,8 @@ static int raw_read(play_para_t *para)
             log_print("not enough memory,please fre memory\n");
             return PLAYER_RD_EMPTYP;
         }
-        pkt->data = pkt->buf;
     }
+    pkt->data = pkt->buf;
     pbuf = pkt->data;
     cur_offset = url_ftell(pb);
 
