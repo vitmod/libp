@@ -679,8 +679,8 @@ void *audio_decode_loop(void *args)
     //nCodecID=audec->pcodec->ctxCodec->codec_id;
     nAudioFormat=audec->pcodec->audio_type;
     inlen=0;
-    nNextFrameSize=READ_ABUFFER_SIZE;//default frame size
-    
+    //nNextFrameSize=READ_ABUFFER_SIZE;//default frame size
+    nNextFrameSize=adec_ops->nInBufSize;    
     while (1){
 exit_decode_loop:
           //detect quit condition
