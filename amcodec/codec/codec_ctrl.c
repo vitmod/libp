@@ -654,7 +654,12 @@ int codec_init(codec_para_t *pcodec)
         return -CODEC_ERROR_INIT_FAILED;
     }
     if (pcodec->has_audio) {
-        audio_start(&pcodec->adec_priv, pcodec);
+        arm_audio_info a_ainfo;
+        a_ainfo.channels=pcodec->audio_channels;
+        a_ainfo.sample_rate=pcodec->audio_samplerate;
+        a_ainfo.format=pcodec->audio_type;
+        a_ainfo.handle=pcodec->handle;
+        audio_start(&pcodec->adec_priv, &a_ainfo);
     }
     return ret;
 }

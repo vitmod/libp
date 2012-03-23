@@ -6,12 +6,9 @@
 #include <sys/ioctl.h>
 #include <dlfcn.h>
 
-#include <libavcodec/avcodec.h>
 #include <audio-dec.h>
 #include <adec-pts-mgt.h>
-#include <codec/codec_h_ctrl.h>
 #include <adec_write.h>
-//#include <libaacdec.h> 
 
 #if 1//************Macro Definitions**************
 #define DECODE_ERR_PATH "/sys/class/audiodsp/codec_fatal_err"
@@ -36,7 +33,8 @@ static int set_sysfs_int(const char *path, int val);
 /*audio decoder list structure*/
 typedef struct 
 {
-	enum CodecID codec_id;
+	//enum CodecID codec_id;
+	int codec_id;
 	char    name[64];
 } audio_lib_t;
 
@@ -44,8 +42,8 @@ typedef struct
 //    CODEC_ID_AAC
 audio_lib_t audio_lib_list[] =
 {
-	{AFORMAT_AAC, "libfaad.so"},
-	{AFORMAT_AAC_LATM, "libfaad.so"},
+	{ACODEC_FMT_AAC, "libfaad.so"},
+	{ACODEC_FMT_AAC_LATM, "libfaad.so"},
 } ;
 
 int find_audio_lib(aml_audio_dec_t *audec)
@@ -56,13 +54,12 @@ int find_audio_lib(aml_audio_dec_t *audec)
 	int fd = 0;
 
 	num = ARRAY_SIZE(audio_lib_list);   
-	codec_para_t *pcodec=audec->pcodec;
 	audio_decoder_operations_t *adec_ops=audec->adec_ops;
 	
 	for (i = 0; i < num; i++) {        
 		f = &audio_lib_list[i];        
 		//if (f->codec_id & pcodec->ctxCodec->codec_id) 
-		if (f->codec_id & pcodec->audio_type) 
+		if (f->codec_id & audec->format) 
 		{            
 			fd = dlopen(audio_lib_list[i].name,RTLD_NOW);
 			//adec_print("dlopen failed, fd = %d,\n %s",fd,dlerror());
@@ -340,12 +337,12 @@ static int OutBufferInit(aml_audio_dec_t *audec)
 //    g_bst->samplerate=audec->samplerate=audec->pcodec->ctxCodec->sample_rate;
 
     g_bst->data_width=AV_SAMPLE_FMT_S16;
-     if(audec->pcodec->audio_channels>0)
-        g_bst->channels=audec->channels=audec->pcodec->audio_channels;
+     if(audec->channels>0)
+        g_bst->channels=audec->channels;
     else
         g_bst->channels=audec->channels=2;
-    if(audec->pcodec->audio_samplerate>0)
-        g_bst->samplerate=audec->samplerate=audec->pcodec->audio_samplerate;
+    if(audec->samplerate>0)
+        g_bst->samplerate=audec->samplerate;
     else
         g_bst->samplerate=audec->samplerate=48000;
     adec_print("=====pcm buffer init ok buf_size:%d buf_data:0x%x  end:0x%x !\n",g_bst->buf_length,g_bst->data,g_bst->data+1024*1024);
@@ -384,7 +381,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
 	audec->adsp_ops.dsp_on = 1;
        audec->adsp_ops.dsp_read = armdec_stream_read;
        audec->adsp_ops.get_cur_pts = armdec_get_pts;
-       audec->adsp_ops.dsp_file_fd=audec->pcodec ->handle;
+       //audec->adsp_ops.dsp_file_fd=audec->pcodec ->handle;//handle has been set
    
        return 0;
 }
@@ -679,8 +676,8 @@ void *audio_decode_loop(void *args)
     adec_ops=audec->adec_ops;
     memset(outbuf, 0, AVCODEC_MAX_AUDIO_FRAME_SIZE);
 
-    //nCodecID=audec->pcodec->ctxCodec->codec_id;
-    nAudioFormat=audec->pcodec->audio_type;
+    //nAudioFormat=audec->pcodec->audio_type;
+    nAudioFormat=audec->format;
     inlen=0;
     //nNextFrameSize=READ_ABUFFER_SIZE;//default frame size
     nNextFrameSize=adec_ops->nInBufSize;    
@@ -721,27 +718,27 @@ exit_decode_loop:
 	      }
 	      //step 2  get read buffer size
              //if ( nCodecID== CODEC_ID_APE || nCodecID == CODEC_ID_ALAC)
-	      if(nAudioFormat==AFORMAT_APE ||nAudioFormat==AFORMAT_ALAC)
+	      if(nAudioFormat==ACODEC_FMT_APE ||nAudioFormat==ACODEC_FMT_ALAC)
 	      {	
 		      inlen=0;//not save the left data
 			  if (read_buffer(startcode,4) > 0)
 			  {	
 				    while(1)
 				    {
-	    				if (nCodecID == CODEC_ID_APE&&(startcode[0]=='A')&&(startcode[1]=='P')&&(startcode[2]=='T')&&(startcode[3]=='S'))
+	    				if (nAudioFormat==ACODEC_FMT_APE&&(startcode[0]=='A')&&(startcode[1]=='P')&&(startcode[2]=='T')&&(startcode[3]=='S'))
 	    						break;	
-	    				if (nCodecID == CODEC_ID_ALAC&&(startcode[0] == 0x11)&&(startcode[1] == 0x22)&&(startcode[2] == 0x33)&&(startcode[3] == 0x44))
+	    				if (nAudioFormat==ACODEC_FMT_ALAC&&(startcode[0] == 0x11)&&(startcode[1] == 0x22)&&(startcode[2] == 0x33)&&(startcode[3] == 0x44))
 	    						break;
 	    				read_buffer(&startcode[4],1);
 	    				memcpy(startcode,&startcode[1],4);
 					}
 
-					if (nCodecID== CODEC_ID_APE){			
+					if (nAudioFormat==ACODEC_FMT_APE){			
 						read_buffer(startcode,4);			
 						nNextFrameSize  = startcode[3]<<24|startcode[2]<<16|startcode[1]<<8|startcode[0]+extra_data;		
 						nNextFrameSize  = (nNextFrameSize+3)&(~3);				
 					}
-					if (nCodecID == CODEC_ID_ALAC){	
+					if (nAudioFormat==ACODEC_FMT_ALAC){	
 						read_buffer(startcode,2);
 						nNextFrameSize = startcode[0]<<8|startcode[1];		
 					}
@@ -815,7 +812,7 @@ exit_decode_loop:
     				  if (dlen <= 0)
     				  {
     				  	  //adec_print("dlen = %d error----\n",dlen);
-    					  if ((nCodecID == CODEC_ID_APE || nCodecID == CODEC_ID_ALAC))
+    					  if ((nAudioFormat==ACODEC_FMT_APE ||nAudioFormat==ACODEC_FMT_ALAC))
     					  {
     					        inlen=0;	  
     					  }

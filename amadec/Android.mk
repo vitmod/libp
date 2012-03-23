@@ -7,11 +7,6 @@ LOCAL_CFLAGS := \
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
-    $(LOCAL_PATH)/../amcodec/include \
-		$(LOCAL_PATH)/../amcodec \
-		$(LOCAL_PATH)/../amffmpeg \
-		$(LOCAL_PATH)/../amplayer/player \
-		$(LOCAL_PATH)/../amplayer/player/include
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
     LOCAL_CFLAGS += -D_VERSION_ICS
@@ -37,11 +32,6 @@ LOCAL_CFLAGS := \
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
-    $(LOCAL_PATH)/../amcodec/include \
-		$(LOCAL_PATH)/../amcodec \
-		$(LOCAL_PATH)/../amffmpeg \
-		$(LOCAL_PATH)/../amplayer/player \
-		$(LOCAL_PATH)/../amplayer/player/include
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
     LOCAL_CFLAGS += -D_VERSION_ICS
@@ -54,7 +44,6 @@ LOCAL_SRC_FILES := \
 LOCAL_MODULE := libamadec
 
 LOCAL_ARM_MODE := arm
-LOCAL_STATIC_LIBRARIES := libamcodec libavformat libswscale libavcodec libavutil libamadec 
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc
 
 LOCAL_PRELINK_MODULE := false

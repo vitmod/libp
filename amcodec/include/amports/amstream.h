@@ -99,9 +99,6 @@
 #define AMSTREAM_IOC_SUB_NUM	_IOR(AMSTREAM_IOC_MAGIC, 0x50, unsigned long)
 #define AMSTREAM_IOC_SUB_INFO	_IOR(AMSTREAM_IOC_MAGIC, 0x51, unsigned long)
 
-//for ffmpeg audio decode
-#define AMSTREAM_IOC_APTS_LOOKUP    _IOR(AMSTREAM_IOC_MAGIC, 0x81,unsigned long)   
-#define GET_FIRST_APTS_FLAG			_IOR(AMSTREAM_IOC_MAGIC, 0x82, long)
 struct buf_status {
     int size;
     int data_len;

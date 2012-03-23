@@ -15,10 +15,8 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 
-#include <libavcodec/avcodec.h>
 #include <audio-dec.h>
 #include <adec-pts-mgt.h>
-#include <codec/codec_h_ctrl.h>
 #include <cutils/properties.h>
 
 /**
@@ -45,30 +43,6 @@
 #define ACODEC_FMT_APE		15
 #define ACODEC_FMT_MPEG123 	16
 #endif
-#define    ACODEC_FMT_NULL   -1
-#define    ACODEC_FMT_MPEG   0
-#define    ACODEC_FMT_PCM_S16LE  1
-#define    ACODEC_FMT_AAC   2
-#define    ACODEC_FMT_AC3    3
-#define    ACODEC_FMT_ALAW  4
-#define    ACODEC_FMT_MULAW  5
-#define    ACODEC_FMT_DTS  6
-#define    ACODEC_FMT_PCM_S16BE  7
-#define    ACODEC_FMT_FLAC  8
-#define    ACODEC_FMT_COOK  9
-#define    ACODEC_FMT_PCM_U8  10
-#define    ACODEC_FMT_ADPCM  11
-#define    ACODEC_FMT_AMR   12
-#define    ACODEC_FMT_RAAC   13
-#define    ACODEC_FMT_WMA   14
-#define    ACODEC_FMT_WMAPRO    15
-#define    ACODEC_FMT_PCM_BLURAY   16
-#define    ACODEC_FMT_ALAC   17
-#define    ACODEC_FMT_VORBIS     18
-#define    ACODEC_FMT_AAC_LATM    19
-#define    ACODEC_FMT_APE    20
-
-
 
 typedef struct {
 //	int no;
@@ -295,6 +269,7 @@ static void adec_flag_check(aml_audio_dec_t *audec)
  * \param args pointer to thread private data
  * \return NULL
  */
+ #if 0 
 static int decode_audio(AVCodecContext *ctxCodec, char *outbuf, int *outlen, char *inbuf, int inlen){
 	AVPacket avpkt;
 	int ret;
@@ -316,6 +291,7 @@ static int decode_audio(AVCodecContext *ctxCodec, char *outbuf, int *outlen, cha
 
 	return ret;
 }
+#endif
 static int write_buffer(char *outbuf, int outlen){
 	return 0;
 }
@@ -638,7 +614,7 @@ error:
  * \param audec pointer to audec
  * \return 0 on success otherwise -1 if an error occurred
  */
- 
+ #if 0
 static int get_dectype(int id)
 {
 	switch (id) {
@@ -751,7 +727,7 @@ static int get_dectype(int id)
 			return ACODEC_FMT_NULL;
 	}
 }
-
+#endif
 int match_types(const char *filetypestr,const char *typesetting)
 {
 	const char * psets=typesetting;
@@ -903,25 +879,22 @@ int get_audio_decoder(void)
 #endif	
 }
 
-int audiodec_init(aml_audio_dec_t *audec, codec_para_t *pcodec)
+int audiodec_init(aml_audio_dec_t *audec)
 {
     int ret = 0;
     pthread_t    tid;
     adec_print("audiodec_init!");
 
-    memset(audec, 0, sizeof(aml_audio_dec_t));
+    //memset(audec, 0, sizeof(aml_audio_dec_t));
 
     adec_message_pool_init(audec);
     get_output_func(audec);
 	
-	audec->pcodec = pcodec;
-	//adec_print("audiodec_init  pcodec = %d, pcodec->ctxCodec = %d!\n", pcodec, pcodec->ctxCodec);
-	adec_print("audiodec_init  pcodec = %d, pcodec->codec_id = %d!\n", pcodec, pcodec->audio_type);
+    //audec->pcodec = pcodec;
     audec->adsp_ops.dsp_file_fd = -1;
-    int nCodecType=pcodec->audio_type;
+    //int nCodecType=pcodec->audio_type;
+    int nCodecType=audec->format;
     set_audio_decoder(nCodecType);
- //   if(pcodec->ctxCodec)	
-//	set_audio_decoder(audec->pcodec);
 
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);

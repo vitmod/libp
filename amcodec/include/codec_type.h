@@ -95,6 +95,14 @@ typedef struct
 #define IS_VALID_ATYPE(t)   (t>=0 && t<AFORMAT_MAX)
 #define IS_VALID_VTYPE(t)   (t>=0 && t<VFORMAT_MAX)
 
+//pass to arm audio decoder
+typedef struct {
+    int sample_rate;         ///< audio stream sample rate
+    int channels;            ///< audio stream channels
+    int format;            ///< codec format id
+    int handle;        ///< codec device handler
+} arm_audio_info;
+
 //audio decoder type, default arc
 #define AUDIO_ARC_DECODER 0
 #define AUDIO_ARM_DECODER 1
