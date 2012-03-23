@@ -891,7 +891,7 @@ int audiodec_init(aml_audio_dec_t *audec)
     get_output_func(audec);
 	
     //audec->pcodec = pcodec;
-    audec->adsp_ops.dsp_file_fd = -1;
+    //audec->adsp_ops.dsp_file_fd = -1;//has been set
     //int nCodecType=pcodec->audio_type;
     int nCodecType=audec->format;
     set_audio_decoder(nCodecType);
