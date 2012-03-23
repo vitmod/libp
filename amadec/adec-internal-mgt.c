@@ -897,6 +897,7 @@ int audiodec_init(aml_audio_dec_t *audec)
     set_audio_decoder(nCodecType);
 
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
+    		audec->adsp_ops.dsp_file_fd = -1;
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);
     }
 	else {
