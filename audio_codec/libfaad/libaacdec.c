@@ -165,7 +165,8 @@ static int fill_buffer(aac_buffer *b, char *in_buf, long *inbuf_size, long *inbu
     {
     	memcpy((void*)(b->buffer), in_buf, nDefaultAACBufSize);
     	*inbuf_size -= nDefaultAACBufSize;
-    	*inbuf_consumed = nDefaultAACBufSize;
+    	//*inbuf_consumed = nDefaultAACBufSize;
+    	*inbuf_consumed = 0;
         b->bytes_into_buffer = nDefaultAACBufSize;
     	 b->bytes_consumed = 0;
     	 nReadSize=nDefaultAACBufSize;
@@ -541,6 +542,9 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
     outmaxlen = (*outlen);
     (*outlen) = 0;
     //memset(&g_frameInfo,0,sizeof(NeAACDecFrameInfo));
+    (gFaadCxt.b).bytes_into_buffer=0;//reset param
+    (gFaadCxt.b).bytes_consumed = -1;
+    fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
     if (!gFaadCxt.init_flag)
     {
         int ret = audio_decoder_init(adec_ops,outbuf,outlen,inbuf,inlen,&inbuf_consumed);

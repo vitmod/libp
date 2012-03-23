@@ -229,7 +229,10 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     else
         adec_print("====abuf have not open!\n",val);
     pts=offset;
-    
+   
+    if(pts==0)
+        return -1; 
+
     int len = g_bst->buf_level;
     unsigned long long frame_nums = (len * 8 / (data_width * channels));
     unsigned long delay_pts = (frame_nums*90000/samplerate);
@@ -250,7 +253,7 @@ static int set_sysfs_int(const char *path, int val)
     int fd;
     int bytes;
     char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0664);
     if (fd >= 0) {
         sprintf(bcmd, "%d", val);
         bytes = write(fd, bcmd, strlen(bcmd));
