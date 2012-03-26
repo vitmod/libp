@@ -61,6 +61,8 @@ int set_fb1_scale_height(int height);
 int check_audiodsp_fatal_err(void);
 int set_stb_source_hiu(void);
 int set_stb_demux_source_hiu(void);
+int get_stb_demux_source(char *strval, int size);
+int get_stb_source(char *strval, int size);
 
 int set_subtitle_enable(int num);
 int set_subtitle_curr(int num);

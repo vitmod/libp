@@ -1272,6 +1272,17 @@ int enable_freescale(int cfg)
 }
 */
 
+int get_stb_source(char *strval, int size)
+{
+    int fd;
+    char *path = "/sys/class/stb/source";   
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        get_sysfs_str(path, strval, size);
+        return 1;
+    }
+    return 0;
+}
 int set_stb_source_hiu()
 {
     int fd;
@@ -1282,10 +1293,23 @@ int set_stb_source_hiu()
         sprintf(bcmd, "%s", "hiu");
         write(fd, bcmd, strlen(bcmd));
         close(fd);
+        log_print("set stb source to hiu!\n");
         return 0;
     }
     return -1;
 }
+
+int get_stb_demux_source(char *strval, int size)
+{
+    int fd;
+    char *path = "/sys/class/stb/demux1_source";   
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        get_sysfs_str(path, strval, size);
+        return 1;
+    }
+    return 0;
+} 
 
 int set_stb_demux_source_hiu()
 {
@@ -1297,6 +1321,7 @@ int set_stb_demux_source_hiu()
         sprintf(bcmd, "%s", "hiu");
         write(fd, bcmd, strlen(bcmd));
         close(fd);
+        log_print("set stb demux source to hiu!\n");
         return 0;
     }
     return -1;
