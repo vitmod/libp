@@ -44,6 +44,7 @@ audio_lib_t audio_lib_list[] =
 {
 	{ACODEC_FMT_AAC, "libfaad.so"},
 	{ACODEC_FMT_AAC_LATM, "libfaad.so"},
+	{ACODEC_FMT_APE, "libape.so"},
 } ;
 
 int find_audio_lib(aml_audio_dec_t *audec)
@@ -59,7 +60,7 @@ int find_audio_lib(aml_audio_dec_t *audec)
 	for (i = 0; i < num; i++) {        
 		f = &audio_lib_list[i];        
 		//if (f->codec_id & pcodec->ctxCodec->codec_id) 
-		if (f->codec_id & audec->format) 
+		if (f->codec_id == audec->format) 
 		{            
 			fd = dlopen(audio_lib_list[i].name,RTLD_NOW);
 			//adec_print("dlopen failed, fd = %d,\n %s",fd,dlerror());
@@ -90,13 +91,6 @@ audio_decoder_operations_t AudioArmDecoder=
     "FFmpegDecoder",
     AUDIO_ARM_DECODER,
     0,
-    0,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL
 };
 
 #endif//***************Arm Decoder******************
@@ -179,16 +173,12 @@ static int FFmpegDecoderRelease(audio_decoder_operations_t *adec_ops)
 
 audio_decoder_operations_t AudioFFmpegDecoder=
 {
-    "FFmpegDecoder",
-    AUDIO_FFMPEG_DECODER,
-    0,
-    0,
+    .name="FFmpegDecoder",
+    .nAudioDecoderType=AUDIO_FFMPEG_DECODER,
     .init=FFmpegDecoderInit,
     .decode=FFmpegDecode,
     .release=FFmpegDecoderRelease,
     .getinfo=NULL,
-    NULL,
-    NULL
 };
 
 #endif//***************Arm Decoder end***************
@@ -336,7 +326,7 @@ static int OutBufferInit(aml_audio_dec_t *audec)
 //    g_bst->channels=audec->channels=audec->pcodec->ctxCodec->channels;
 //    g_bst->samplerate=audec->samplerate=audec->pcodec->ctxCodec->sample_rate;
 
-    g_bst->data_width=AV_SAMPLE_FMT_S16;
+    g_bst->data_width=audec->data_width=AV_SAMPLE_FMT_S16;
      if(audec->channels>0)
         g_bst->channels=audec->channels;
     else
@@ -370,6 +360,35 @@ static int audio_codec_init(aml_audio_dec_t *audec)
             usleep(100000);
         }
         usleep(100000);
+       
+	audec->data_width=AV_SAMPLE_FMT_S16;
+        if(audec->channels>0)
+            audec->adec_ops->channels=audec->channels;
+        else
+            audec->adec_ops->channels=audec->channels=2;
+        if(audec->samplerate>0)
+            audec->adec_ops->samplerate=audec->samplerate;
+        else
+            audec->adec_ops->samplerate=audec->samplerate=48000;
+        switch(audec->data_width)
+        {
+            case AV_SAMPLE_FMT_U8:
+                audec->adec_ops->bps=8;
+                break;
+            case AV_SAMPLE_FMT_S16:
+                audec->adec_ops->bps=16;
+                break;
+                case AV_SAMPLE_FMT_S32:
+                audec->adec_ops->bps=32;
+                break;
+            default:
+                audec->adec_ops->bps=16;
+        }
+        audec->adec_ops->extradata_size=audec->extradata_size;
+        if(audec->extradata_size>0)
+            memcpy(audec->adec_ops->extradata,audec->extradata,audec->extradata_size);
+
+        
         adec_print("====set codec fatal  success ! \n");
         //1-decoder init
         audec->adec_ops->init(audec->adec_ops);
@@ -381,6 +400,9 @@ static int audio_codec_init(aml_audio_dec_t *audec)
 	audec->adsp_ops.dsp_on = 1;
        audec->adsp_ops.dsp_read = armdec_stream_read;
        audec->adsp_ops.get_cur_pts = armdec_get_pts;
+       
+       
+    
        //audec->adsp_ops.dsp_file_fd=audec->pcodec ->handle;//handle has been set
    
        return 0;
@@ -701,6 +723,7 @@ exit_decode_loop:
         		  break;
 	      }
 	      //detect audio info changed
+	      memset(&g_AudioInfo,0,sizeof(AudioInfo));
 	     adec_ops->getinfo(audec->adec_ops, &g_AudioInfo);
 	      if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
 	      {

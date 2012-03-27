@@ -49,6 +49,10 @@ int audio_decode_init(void **handle, arm_audio_info *a_ainfo)
     audec->samplerate=a_ainfo->sample_rate;
     audec->format=a_ainfo->format;
     audec->adsp_ops.dsp_file_fd=a_ainfo->handle;
+    audec->extradata_size=a_ainfo->extradata_size;
+    if(a_ainfo->extradata_size>0&&a_ainfo->extradata_size<=AUDIO_EXTRA_DATA_SIZE)
+        memcpy((char*)audec->extradata,(char*)a_ainfo->extradata,a_ainfo->extradata_size);
+   
 //	adec_print("audio_decode_init  pcodec = %d, pcodec->ctxCodec = %d!\n", pcodec, pcodec->ctxCodec);
     ret = audiodec_init(audec);
     if (ret) {

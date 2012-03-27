@@ -101,6 +101,8 @@ typedef struct {
     int channels;            ///< audio stream channels
     int format;            ///< codec format id
     int handle;        ///< codec device handler
+    int extradata_size;      ///< extra data size
+    char extradata[AUDIO_EXTRA_DATA_SIZE];
 } arm_audio_info;
 
 //audio decoder type, default arc
