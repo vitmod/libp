@@ -143,7 +143,7 @@ static int check_decoder_worksta(play_para_t *para)
 					}
 					if (((para->vbuffer.check_rp_change_cnt <= 0) ||
 						(para->vbuffer.check_rp_change_cnt < CHECK_VIDEO_HALT_CNT && para->playctrl_info.video_low_buffer)) && 
-						((para->state.full_time - para->state.current_time) > 6 )){
+						((para->state.full_time - para->state.current_time) > 10 )){
 						para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
 						para->playctrl_info.time_point = para->state.current_time + 1;
                         para->playctrl_info.reset_flag = 1;
