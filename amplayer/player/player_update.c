@@ -1035,6 +1035,8 @@ static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, s
 
 static void update_av_sync_for_audio(play_para_t *p_para)
 {
+    if(!p_para->abuffer.rp_is_changed && !check_time_interrupt(&p_para->playctrl_info.avsync_check_old_time,20))
+        return ;//no changed and time is no changed.do count---,1S no changesd..20*50
     if (p_para->playctrl_info.audio_ready && 
 		p_para->vstream_info.has_video && 
 		p_para->astream_info.has_audio &&

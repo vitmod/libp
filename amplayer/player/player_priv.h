@@ -222,5 +222,4 @@ int player_mate_wake(play_para_t *player,int delay);
 int player_mate_sleep(play_para_t *player);
 int player_mate_release(play_para_t *player);
 
-
 #endif
