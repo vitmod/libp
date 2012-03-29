@@ -845,7 +845,7 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
 
 		if (p_para->playctrl_info.video_low_buffer && p_para->playctrl_info.audio_low_buffer){
 			p_para->playctrl_info.end_flag = 1;   
-			player_thread_wait(p_para, 1000 * 000);	//4// wait 1s for display out all frame
+			player_thread_wait(p_para, 1000 * 1000);  // wait 1s for display out all frame
             if ((p_para->state.full_time - p_para->state.current_time) < 20) {
                 p_para->state.current_time = p_para->state.full_time;
             }
