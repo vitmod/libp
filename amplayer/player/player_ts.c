@@ -31,6 +31,8 @@ static int stream_ts_init(play_para_t *p_para)
         codec->video_pid = vinfo->video_pid;
         if ((codec->video_type == VFORMAT_H264) || (codec->video_type == VFORMAT_H264MVC)) {
             codec->am_sysinfo.format = vinfo->video_codec_type;
+            codec->am_sysinfo.width = vinfo->video_width;
+            codec->am_sysinfo.height = vinfo->video_height;
         } else if (codec->video_type == VFORMAT_VC1) {
             codec->am_sysinfo.format = vinfo->video_codec_type;
             codec->am_sysinfo.width = vinfo->video_width;
