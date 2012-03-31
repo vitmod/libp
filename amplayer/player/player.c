@@ -519,6 +519,10 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     p_para->playctrl_info.has_sub_flag  = c_para->hassub;
     p_para->playctrl_info.loop_flag     = c_para->loop_mode;
     p_para->playctrl_info.time_point    = c_para->t_pos;
+    if(am_getconfig_bool("media.amplayer.noaudio"))
+    	p_para->playctrl_info.no_audio_flag=1;
+    if(am_getconfig_bool("media.amplayer.novideo"))
+    	p_para->playctrl_info.no_video_flag=1;
 	#ifdef DEBUG_VARIABLE_DUR
 	p_para->playctrl_info.info_variable = c_para->is_variable;
 	#endif
