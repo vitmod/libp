@@ -227,7 +227,7 @@ const char * codec_error_msg(int error)
 /* --------------------------------------------------------------------------*/
 void print_error_msg(int error, int errno, char *func, int line)
 {
-    CODEC_PRINT("Error=%x : %s,errno=%d : %s,func=%s,line=%d\n", error, codec_error_msg(error),errno, codec_error_msg(errno),func, line);
+    CODEC_PRINT("Error=%x errno=%d : %s,func=%s,line=%d\n", error, errno, codec_error_msg(errno),func, line);
 }
 
 

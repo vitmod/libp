@@ -864,7 +864,9 @@ int codec_get_adec_state(codec_para_t *p, struct adec_status *adec)
     int r;
     struct am_io_param am_io;
     r = codec_h_control(p->handle, AMSTREAM_IOC_ADECSTAT, (unsigned long)&am_io);
-    memcpy(adec, &am_io.astatus, sizeof(*adec));
+    if(r == 0){
+        memcpy(adec, &am_io.astatus, sizeof(*adec));
+    }
     return system_error_to_codec_error(r);
 }
 
