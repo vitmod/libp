@@ -186,3 +186,16 @@ int am_getconfig_float(const char * path, float *value)
     }
     return ret > 0 ? 0 : -2;
 }
+
+int am_getconfig_bool(const char * path)
+{
+    char buf[CONFIG_VALUE_MAX];
+    int ret = -1;
+
+    ret = am_getconfig(path, buf, "false");
+    if (ret == 0) {
+	if(strcasecmp(buf,"true")==0 || strcmp(buf,"1")==0)
+		return 1;
+    }
+    return 0;
+}
