@@ -1174,10 +1174,12 @@ int audio_dec_init(audio_decoder_operations_t *adec_ops)
     if (!apedec) 
     {
         audio_codec_print("%s: FATAL ERROR creating the decoder instance\n","ape"); 
+        return -1;
     }
     if(ape_decode_init(apedec)!= APE_DECODE_INIT_FINISH)
     {
     	audio_codec_print( "%s: FATAL ERROR inititate the decoder instance\n", "ape");
+    	return -1;
     }
     adec_ops->nInBufSize=DefaultReadSize;
     adec_ops->nOutBufSize=DefaultOutBufSize;
