@@ -23,10 +23,12 @@ static int nDecodeErrCount=0;
 static buffer_stream_t *g_bst=NULL;
 static int fd_uio=-1;
 static AudioInfo g_AudioInfo;
-
+static int sn_threadid=-1;
 
 void *audio_decode_loop(void *args);
 static int set_sysfs_int(const char *path, int val);
+static void stop_decode_thread(aml_audio_dec_t *audec);
+
 #endif//**********Macro Definitions end************
 
 #if 1//***************Arm Decoder******************
@@ -316,15 +318,20 @@ static int InBufferRelease(aml_audio_dec_t *audec)
 static int OutBufferInit(aml_audio_dec_t *audec)
 {
     g_bst=malloc(sizeof(buffer_stream_t));
+    if(!g_bst)
+    {
+        adec_print("===g_bst malloc failed! \n");
+        g_bst=NULL;
+        return -1;
+    }
+    if(audec->adec_ops->nOutBufSize<=0) //set default if not set
+        audec->adec_ops->nOutBufSize=DEFAULT_PCM_BUFFER_SIZE;
     int ret=init_buff(g_bst,audec->adec_ops->nOutBufSize);
     if(ret==-1)
     {
         adec_print("=====pcm buffer init failed !\n");
         return -1;
     }
-//    g_bst->data_width=audec->pcodec->ctxCodec->sample_fmt;
-//    g_bst->channels=audec->channels=audec->pcodec->ctxCodec->channels;
-//    g_bst->samplerate=audec->samplerate=audec->pcodec->ctxCodec->sample_rate;
 
     g_bst->data_width=audec->data_width=AV_SAMPLE_FMT_S16;
      if(audec->channels>0)
@@ -335,18 +342,20 @@ static int OutBufferInit(aml_audio_dec_t *audec)
         g_bst->samplerate=audec->samplerate;
     else
         g_bst->samplerate=audec->samplerate=48000;
-    adec_print("=====pcm buffer init ok buf_size:%d buf_data:0x%x  end:0x%x !\n",g_bst->buf_length,g_bst->data,g_bst->data+1024*1024);
+    adec_print("=====pcm buffer init ok buf_size:%d\n",g_bst->buf_length);
     
     return 0;
 }
 static int OutBufferRelease(aml_audio_dec_t *audec)
 {
-    release_buffer(g_bst);
+    if(g_bst)
+        release_buffer(g_bst);
     return 0;
 }
 
 static int audio_codec_init(aml_audio_dec_t *audec)
 {
+        //reset static&global
         exit_decode_thread=0;
         exit_decode_thread_success=0;
         decode_offset=0;
@@ -359,7 +368,6 @@ static int audio_codec_init(aml_audio_dec_t *audec)
             adec_print("====set codec fatal   failed ! \n");
             usleep(100000);
         }
-        usleep(100000);
        
 	audec->data_width=AV_SAMPLE_FMT_S16;
         if(audec->channels>0)
@@ -387,44 +395,60 @@ static int audio_codec_init(aml_audio_dec_t *audec)
         audec->adec_ops->extradata_size=audec->extradata_size;
         if(audec->extradata_size>0)
             memcpy(audec->adec_ops->extradata,audec->extradata,audec->extradata_size);
-
-        
-        adec_print("====set codec fatal  success ! \n");
+        int ret=0;
         //1-decoder init
-        audec->adec_ops->init(audec->adec_ops);
+        ret=audec->adec_ops->init(audec->adec_ops);
+        if(ret==-1)
+        {
+            adec_print("====adec_ops init err \n");
+            goto err1;
+        }
         //2-pcm_buffer init
-        OutBufferInit(audec);
+        ret=OutBufferInit(audec);
+        if(ret==-1)
+        {
+            adec_print("====out buffer  init err \n");
+            goto err2;
+        }
 	//3-init uio
-	InBufferInit(audec);
+	ret=InBufferInit(audec);
+	 if(ret==-1)
+        {
+            adec_print("====in buffer  init err \n");
+            goto err3;
+        }
 	   //4-other init
 	audec->adsp_ops.dsp_on = 1;
        audec->adsp_ops.dsp_read = armdec_stream_read;
        audec->adsp_ops.get_cur_pts = armdec_get_pts;
-       
-       
-    
-       //audec->adsp_ops.dsp_file_fd=audec->pcodec ->handle;//handle has been set
-   
        return 0;
+
+err1:
+        audec->adec_ops->release(audec->adec_ops);
+        return -1;
+err2:
+        audec->adec_ops->release(audec->adec_ops);
+        OutBufferRelease(audec);
+        return -1;
+err3:
+        audec->adec_ops->release(audec->adec_ops);
+        OutBufferRelease(audec);
+        InBufferRelease(audec);
+        return -1;
+       
 }
 static int audio_codec_release(aml_audio_dec_t *audec)
 {
     //1-decode thread quit
     adec_print("====adec_ffmpeg_release start release ! \n");
-    exit_decode_thread=1;
-    while(!exit_decode_thread_success)
-        usleep(100000);
-     exit_decode_thread_success=0;
-     adec_print("====adec_ffmpeg_release quit decode ok ! \n");
+    stop_decode_thread(audec);
+    adec_print("====adec_ffmpeg_release quit decode ok ! \n");
      //2-decoder release
     audec->adec_ops->release(audec->adec_ops);
-    adec_print("====decoder release ok ! \n");
     //3-uio uninit
     InBufferRelease(audec);
-    adec_print("====inbuf release ok ! \n");
     //4-outbufferrelease
     OutBufferRelease(audec);
-    adec_print("====outbuf release ok ! \n");
     //5-other release
     audec->adsp_ops.dsp_on = -1;
     audec->adsp_ops.dsp_read = NULL;
@@ -651,19 +675,28 @@ static void adec_flag_check(aml_audio_dec_t *audec)
 #if 1 //main loop
 static void start_decode_thread(aml_audio_dec_t *audec)
 {
+    if(sn_threadid>0)
+    {
+        adec_print("thread is running \n");
+        return -1;
+    }
     pthread_t    tid;
-    //thread need to tongbu 
-     exit_decode_thread=0;
+    //thread need to sync
     int ret = pthread_create(&tid, NULL, (void *)audio_decode_loop, (void *)audec);
     if (ret != 0) {
         adec_print("Create ffmpeg decode thread failed!\n");
         return ret;
     }
     adec_print("Create ffmpeg decode thread success! tid = %d\n", tid);
+    sn_threadid=tid;
 }
 static void stop_decode_thread(aml_audio_dec_t *audec)
 {
     exit_decode_thread=1;
+    int ret = pthread_join(sn_threadid, NULL);
+    adec_print("thread exit success \n");
+    exit_decode_thread=0;
+    sn_threadid=-1;
 }
 
 void *audio_decode_loop(void *args)
@@ -883,6 +916,7 @@ exit_decode_loop:
 	}
     
     adec_print("Exit adec_armdec_loop Thread!");
+    pthread_exit(NULL);
 error:	
     pthread_exit(NULL);
     return NULL;

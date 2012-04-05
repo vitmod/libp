@@ -884,15 +884,8 @@ int audiodec_init(aml_audio_dec_t *audec)
     int ret = 0;
     pthread_t    tid;
     adec_print("audiodec_init!");
-
-    //memset(audec, 0, sizeof(aml_audio_dec_t));
-
     adec_message_pool_init(audec);
     get_output_func(audec);
-	
-    //audec->pcodec = pcodec;
-    //audec->adsp_ops.dsp_file_fd = -1;//has been set
-    //int nCodecType=pcodec->audio_type;
     int nCodecType=audec->format;
     set_audio_decoder(nCodecType);
 
@@ -900,19 +893,17 @@ int audiodec_init(aml_audio_dec_t *audec)
     		audec->adsp_ops.dsp_file_fd = -1;
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);
     }
-	else {
-		adec_print("Start Create adec main thread !\n");
+    else 
+    {
 		int codec_type=get_audio_decoder();
 		RegisterDecode(audec,codec_type);
 		ret = pthread_create(&tid, NULL, (void *)adec_armdec_loop, (void *)audec);
-	}
+    }
     if (ret != 0) {
         adec_print("Create adec main thread failed!\n");
         return ret;
     }
     adec_print("Create adec main thread success! tid = %d\n", tid);
-
     audec->thread_pid = tid;
-
     return ret;
 }
