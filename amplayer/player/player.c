@@ -117,7 +117,7 @@ static int check_decoder_worksta(play_para_t *para)
         return PLAYER_SUCCESS;
     }*/
 
-    if (para->vstream_info.has_video) {
+    if (para->vstream_info.has_video && (!para->playctrl_info.video_low_buffer)) {
         if (para->vcodec) {
             codec = para->vcodec;
         } else {
