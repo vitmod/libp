@@ -959,7 +959,7 @@ void *adec_armdec_loop(void *args)
         //  continue;
         //}
         
-       // adec_flag_check(audec);
+        adec_flag_check(audec);
 
         msg = adec_get_message(audec);
         if (!msg) {
