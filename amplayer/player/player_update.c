@@ -737,7 +737,9 @@ static void update_current_time(play_para_t *p_para)
 		                log_print("[update_current_time:%d]time>dpoint dpoint=%d\n", __LINE__, p_para->discontinue_point);
 					}
 					p_para->discontinue_flag = 1;
-	            } 				
+	            }else if ((time / PTS_FREQ) > (p_para->discontinue_point - p_para->discontinue_last_point)) {
+                       time -= p_para->discontinue_point * PTS_FREQ;
+                } 				
                 time += p_para->discontinue_point * PTS_FREQ;
 	        }
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n", time / PTS_FREQ, p_para->state.current_time, p_para->state.last_time);
