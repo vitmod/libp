@@ -47,6 +47,8 @@ audio_lib_t audio_lib_list[] =
 	{ACODEC_FMT_AAC, "libfaad.so"},
 	{ACODEC_FMT_AAC_LATM, "libfaad.so"},
 	{ACODEC_FMT_APE, "libape.so"},
+	{ACODEC_FMT_MPEG, "libmad.so"},
+	NULL
 } ;
 
 int find_audio_lib(aml_audio_dec_t *audec)
@@ -440,9 +442,9 @@ err3:
 static int audio_codec_release(aml_audio_dec_t *audec)
 {
     //1-decode thread quit
-    adec_print("====adec_ffmpeg_release start release ! \n");
+    //adec_print("====adec_ffmpeg_release start release ! \n");
     stop_decode_thread(audec);
-    adec_print("====adec_ffmpeg_release quit decode ok ! \n");
+    //adec_print("====adec_ffmpeg_release quit decode ok ! \n");
      //2-decoder release
     audec->adec_ops->release(audec->adec_ops);
     //3-uio uninit
@@ -675,9 +677,9 @@ static void adec_flag_check(aml_audio_dec_t *audec)
 #if 1 //main loop
 static void start_decode_thread(aml_audio_dec_t *audec)
 {
-    if(sn_threadid>0)
+    if(audec->state != INITTED)
     {
-        adec_print("thread is running \n");
+        adec_print("decode not inited quit \n");
         return -1;
     }
     pthread_t    tid;
@@ -751,7 +753,7 @@ exit_decode_loop:
         		  //  free(pRestData);
         		  //  pRestData=NULL;
         		  //}
-        		  adec_print("====exit decode thread\n");
+        		  //adec_print("====exit decode thread\n");
         		  exit_decode_thread_success=1;
         		  break;
 	      }
