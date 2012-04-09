@@ -665,7 +665,7 @@ void *player_thread(play_para_t *player)
     send_event(player, PLAYER_EVENTS_FILE_TYPE, &filetype, 0);
 	if(player->start_param->is_type_parser){
 		player_cmd_t *msg;
-		player_thread_wait(player,1000);
+		player_thread_wait(player,10 * 1000);
 		msg=peek_message(player);
 		if(msg && (msg->ctrl_cmd & (CMD_EXIT | CMD_STOP)))
 			goto release0;
@@ -947,14 +947,15 @@ write_packet:
             }
         } while (!player->playctrl_info.end_flag);
 
+        log_print("wait for play end...(sta:0x%x)\n", get_player_state(player));
+
         //wait for play end...
         while (!player->playctrl_info.end_flag) {
-            //player_thread_wait(player, 50 * 1000);
+            if(!player->playctrl_info.reset_flag){
+                player_thread_wait(player, 50 * 1000);
+            }
 
-			//if (!(player->vstream_info.has_video && player->playctrl_info.video_low_buffer)) 
-                        {
-				check_decoder_worksta(player);
-			}
+			check_decoder_worksta(player);
 				
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
