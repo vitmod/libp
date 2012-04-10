@@ -705,7 +705,9 @@ static int non_raw_read(play_para_t *para)
                 }
                 pkt->codec = para->vcodec;
                 pkt->type = CODEC_VIDEO;
-                para->read_size.vpkt_num ++;
+                if(ret != AVERROR_EOF)
+                    para->read_size.vpkt_num ++;
+
             } else if (has_audio && audio_idx == pkt->avpkt->stream_index) {
                 pkt->codec = para->acodec;
                 pkt->type = CODEC_AUDIO;
@@ -1253,6 +1255,15 @@ int write_av_packet(play_para_t *para)
 
     if ((para->playctrl_info.fast_forward || para->playctrl_info.fast_backward)
         && para->playctrl_info.seek_offset_same) {
+        if(pkt->type == CODEC_VIDEO){
+            para->write_size.vpkt_num ++;
+        }
+        else if (pkt->type == CODEC_AUDIO){
+            para->write_size.apkt_num ++;
+        }
+        else if (pkt->type == CODEC_COMPLEX){
+            para->write_size.total_bytes += pkt->data_size;
+        }
         av_free_packet(pkt->avpkt);
         pkt->avpkt_isvalid = 0;
         return PLAYER_SUCCESS;
@@ -1276,6 +1287,7 @@ int write_av_packet(play_para_t *para)
                 log_error("[%s]write header failed!\n", __FUNCTION__);
                 return PLAYER_WR_FAILED;
             } else if (ret == PLAYER_WR_AGAIN){
+                player_thread_wait(para, RW_WAIT_TIME);
             	return PLAYER_SUCCESS;
             }
         } else {
