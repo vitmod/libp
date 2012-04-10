@@ -190,6 +190,9 @@ int64_t avio_seek(AVIOContext *s, int64_t offset, int whence)
 
     if(!s)
         return AVERROR(EINVAL);
+ 
+    if(url_interrupt_cb())
+	return AVERROR_EXIT;
 
     pos = s->pos - (s->write_flag ? 0 : (s->buf_end - s->buffer));
 
