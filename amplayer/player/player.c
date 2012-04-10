@@ -116,7 +116,8 @@ static int check_decoder_worksta(play_para_t *para)
     /*if (para->vstream_info.video_format != VFORMAT_REAL) {
         return PLAYER_SUCCESS;
     }*/
-
+    if(get_player_state(para) == PLAYER_PAUSE)
+	return PLAYER_SUCCESS;//paused,don't care buf lowlevel
     if (para->vstream_info.has_video && (!para->playctrl_info.video_low_buffer)) {
         if (para->vcodec) {
             codec = para->vcodec;
@@ -1016,7 +1017,7 @@ write_packet:
                 update_player_states(player, 1);
 
                 if (player->playctrl_info.f_step == 0) {
-                    set_black_policy(player->playctrl_info.black_out);
+ 	               // set_black_policy(player->playctrl_info.black_out);
                 }
             }
 
