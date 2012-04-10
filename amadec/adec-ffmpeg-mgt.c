@@ -24,6 +24,7 @@ static buffer_stream_t *g_bst=NULL;
 static int fd_uio=-1;
 static AudioInfo g_AudioInfo;
 static int sn_threadid=-1;
+static int aout_stop_mutex=0;//aout stop mutex flag
 
 void *audio_decode_loop(void *args);
 static int set_sysfs_int(const char *path, int val);
@@ -364,6 +365,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
         nDecodeErrCount=0;
         g_bst=NULL;
         fd_uio=-1;
+        aout_stop_mutex=0;
 
         while(0!=set_sysfs_int(DECODE_ERR_PATH,DECODE_NONE_ERR))
         {
@@ -765,13 +767,18 @@ exit_decode_loop:
 	        if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
 	        {
 	            //adec_print("====Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
-	            g_bst->channels=audec->channels=g_AudioInfo.channels;
-                   g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
-	            //send Message
-	            //reset param
-	            aout_ops->stop(audec);
-	            aout_ops->init(audec);
-	            aout_ops->start(audec);
+	            if(aout_stop_mutex==0)
+	            {
+        	            aout_stop_mutex=1;
+        	            g_bst->channels=audec->channels=g_AudioInfo.channels;
+                           g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+        	            //send Message
+        	            //reset param
+        	            aout_ops->stop(audec);
+        	            aout_ops->init(audec);
+        	            aout_ops->start(audec);
+        	            aout_stop_mutex=0;
+	            }
 	        }
 	      }
 	      //step 2  get read buffer size
@@ -992,7 +999,13 @@ void *adec_armdec_loop(void *args)
         case CMD_STOP:
 
             adec_print("Receive STOP Command!");
+            while(aout_stop_mutex)
+            {
+                usleep(100000);
+            }
+            aout_stop_mutex=1;
             stop_adec(audec);
+            aout_stop_mutex=0;
             break;
 
         case CMD_MUTE:
