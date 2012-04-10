@@ -430,6 +430,7 @@ int AACFindSyncWord(unsigned char *buf, int nBytes)
 //basic init
 int audio_dec_init(audio_decoder_operations_t *adec_ops)
 {
+    memset(&gFaadCxt,0,sizeof(FaadContext));
     memset(&(gFaadCxt.b), 0, sizeof(aac_buffer));
     gFaadCxt.b.buffer=(unsigned char*)malloc(FAAD_MIN_STREAMSIZE*MAX_CHANNELS);
     if (!(gFaadCxt.b.buffer))
@@ -877,7 +878,8 @@ static inline double get_time(void)
 }
 int audio_dec_release(audio_decoder_operations_t *adec_ops)
 {
-	NeAACDecClose(gFaadCxt.hDecoder);
+	if( gFaadCxt.hDecoder)
+	    	NeAACDecClose(gFaadCxt.hDecoder);
 	if (gFaadCxt.b.buffer)
 		free(gFaadCxt.b.buffer);
 	return 0;
