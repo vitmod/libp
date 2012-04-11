@@ -452,6 +452,8 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
     av_dlog(s, "type:%d, size:%d, dts:%"PRId64"\n", type, size, dts);
     if (url_feof(s->pb))
         return AVERROR_EOF;
+    if (url_interrupt_cb())
+        return AVERROR_EXIT;
     avio_skip(s->pb, 3); /* stream id, always 0 */
     flags = 0;
 
