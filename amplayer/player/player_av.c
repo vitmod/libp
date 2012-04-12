@@ -1098,9 +1098,7 @@ int time_search(play_para_t *am_p)
 		am_p->playctrl_info.seek_base_audio = 0;
 	    log_info("[time_search]switch audio, audio_idx=%d time=%f\n", stream_index, time_point);
     }
-    if (time_point == 0) {
-        seek_flags |= AVSEEK_FLAG_ANY;
-    }
+
     if(s->duration > 0){
 	    temp = (unsigned int)(s->duration / AV_TIME_BASE);
 	    log_info("[time_search:%d]time_point =%f temp=%d duration= %lld\n", __LINE__, time_point, temp, s->duration);
@@ -1159,7 +1157,11 @@ int time_search(play_para_t *am_p)
                     return PLAYER_SEEK_FAILED;
                 }
             } else {
-                ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
+                if (time_point == 0 && am_p->file_type == MOV_FILE) { // maybe all file types can be seeked to dataoffset if timepoint==0
+                    ret = url_fseek(s->pb, s->media_dataoffset, SEEK_SET);
+                } else {
+                    ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
+                }
                 if (ret < 0) {
                     log_info("[%s] could not seek to position %0.3f s ret=%lld\n", __FUNCTION__, (double)timestamp / AV_TIME_BASE, ret);
                     return PLAYER_SEEK_FAILED;

@@ -884,7 +884,10 @@ typedef struct AVFormatContext {
     int valid_offset_done;
 
     /* added by Z.C for avi or some other files seekable */
-    int seekable;	
+    int seekable;
+
+    /* added by Z.C for some media types' media data offset, avoid to use the same data_offset above */
+    int64_t media_dataoffset;
 
 	int support_seek;
 
