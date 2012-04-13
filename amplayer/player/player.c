@@ -34,6 +34,7 @@
 static void release_subtitle()
 {
     set_subtitle_num(0);
+	set_subtitle_curr(0);
     set_subtitle_fps(0);
     set_subtitle_subtype(0);
     set_subtitle_startpts(0);
@@ -188,7 +189,9 @@ static int check_subtitle_info(play_para_t *player)
 			
 			codec_get_sub_info(player->codec, sub_info);			
 			if (set_ps_subtitle_info(player, sub_info, sub_stream_num) == PLAYER_SUCCESS) {
-				set_subtitle_num(sub_stream_num);			
+				set_subtitle_num(sub_stream_num);
+				
+				set_subtitle_curr(0);
 				set_subtitle_enable(1);	
 				set_player_state(player, PLAYER_FOUND_SUB);
                 update_playing_info(player);
