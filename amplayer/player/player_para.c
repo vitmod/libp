@@ -1085,7 +1085,20 @@ int player_dec_init(play_para_t *p_para)
             p_para->max_raw_size = MAX_BURST_WRITE;
         }
         log_print("====bitrate=%d max_raw_size=%d\n", p_para->pFormatCtx->bit_rate, p_para->max_raw_size);
-    }
+    }    
+    subtitle_para_init(p_para);
+    //set_tsync_enable(1);        //open av sync
+    //p_para->playctrl_info.avsync_enable = 1;
+    return PLAYER_SUCCESS;
+
+init_fail:
+    ffmpeg_close_file(p_para);
+    return ret;
+}
+
+int player_offset_init(play_para_t *p_para) 
+{
+    int ret = PLAYER_SUCCESS;
     if (p_para->playctrl_info.time_point >= 0) {
         ret = time_search(p_para);
         if (ret != PLAYER_SUCCESS) {
@@ -1103,9 +1116,6 @@ int player_dec_init(play_para_t *p_para)
         //log_print("*****data offset 0x%x\n", p_para->data_offset);
         url_fseek(p_para->pFormatCtx->pb, p_para->data_offset, SEEK_SET);
     }
-    subtitle_para_init(p_para);
-    //set_tsync_enable(1);        //open av sync
-    //p_para->playctrl_info.avsync_enable = 1;
     return PLAYER_SUCCESS;
 
 init_fail:

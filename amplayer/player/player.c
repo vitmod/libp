@@ -574,9 +574,18 @@ static int check_start_cmd(play_para_t *player)
     player_cmd_t *msg = NULL;
     msg = get_message(player);  //msg: pause, resume, timesearch,add file, rm file, move up, move down,...
     if (msg) {
-        log_print("pid[%d]::[check_flag:%d]ctrl=%x mode=%x info=%x param=%d\n", player->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param);
+        log_print("pid[%d]::[check_start_cmd:%d]ctrl=%x mode=%x info=%x param=%d\n", player->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param);
         if (msg->ctrl_cmd & CMD_START) {
             flag = 1;
+        }
+        if (msg->ctrl_cmd & CMD_SEARCH) {
+            if (msg->f_param < player->state.full_time && msg->f_param >= 0) {            	
+                player->playctrl_info.time_point = msg->f_param;
+                log_print("pid[%d]::seek before start, set time_point to %f\n", player->player_id, player->playctrl_info.time_point);
+                message_free(msg);
+                msg = NULL;
+                return 0;
+            }            
         }
         check_msg(player, msg);
         message_free(msg);
@@ -754,6 +763,8 @@ void *player_thread(play_para_t *player)
 	      }
     }
 #endif
+    log_print("pid[%d]::start offset prepare\n", player->player_id);
+    player_offset_init(player);
 	log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {

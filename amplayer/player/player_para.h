@@ -123,4 +123,5 @@ int player_decoder_init(struct play_para *p_para);
 void player_para_reset(struct play_para *para);
 int player_dec_reset(struct play_para *p_para);
 void player_clear_ctrl_flags(p_ctrl_info_t *cflag);
+int player_offset_init(struct play_para *p_para);
 #endif
