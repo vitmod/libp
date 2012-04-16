@@ -67,6 +67,7 @@ static void acodec_info_init(play_para_t *p_para, codec_para_t *a_codec)
     a_codec->audio_channels = ainfo->audio_channel;
     a_codec->audio_samplerate = ainfo->audio_samplerate;
     a_codec->noblock = !!p_para->buffering_enable;
+    a_codec->avsync_threshold = p_para->avsync_threshold;
     a_codec->stream_type = stream_type_convert(p_para->stream_type, 0, a_codec->has_audio);
     log_print("[%s:%d]audio stream_type=%d afmt=%d apid=%d asample_rate=%d achannel=%d\n",
               __FUNCTION__, __LINE__, a_codec->stream_type, a_codec->audio_type, a_codec->audio_pid,

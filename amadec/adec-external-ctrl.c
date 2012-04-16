@@ -556,7 +556,7 @@ int audio_get_decoded_nb_frames(void *handle)
  * \param handle pointer to player private data
  * \param threshold av sync time threshold in ms
  */
-void audio_set_av_sync_threshold(void *handle, int threshold)
+int audio_set_av_sync_threshold(void *handle, int threshold)
 {
     aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
 
@@ -570,6 +570,7 @@ void audio_set_av_sync_threshold(void *handle, int threshold)
     }
 
     audec->avsync_threshold = threshold * 90;
+    return 0;
 }
 int audio_get_soundtrack(void *handle, int* strack )
 {

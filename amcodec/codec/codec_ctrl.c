@@ -669,6 +669,8 @@ int codec_init(codec_para_t *pcodec)
                 a_ainfo.extradata_size=0;
         }
         audio_start(&pcodec->adec_priv, &a_ainfo);
+        if(pcodec->avsync_threshold > 0)
+            audio_set_avsync_threshold(pcodec->adec_priv, pcodec->avsync_threshold);
     }
     return ret;
 }
