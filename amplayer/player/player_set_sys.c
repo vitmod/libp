@@ -1110,7 +1110,7 @@ int GL_2X_scale(int mSwitch)
 {
   char mode[16];
 	char m1080scale[8];
-	int request2XScaleFile = -1, scaleOsd1File = -1, scaleaxisOsd1File = -1;
+	int request2XScaleFile = -1, scaleOsd1File = -1, scaleaxisOsd1File = -1, Fb0Blank = -1, Fb1Blank = -1;
 	char raxis_str[32],saxis_str[32];
 	
   property_get("ro.platform.has.1080scale",m1080scale,"fail");
@@ -1129,10 +1129,16 @@ int GL_2X_scale(int mSwitch)
 		log_print("open /sys/class/graphics/fb0/scale fail.");
 	}
 	if((scaleOsd1File = open("/sys/class/graphics/fb1/scale", O_RDWR)) < 0) {
-		log_print("open /sys/class/graphics/fb0/scale fail.");
+		log_print("open /sys/class/graphics/fb1/scale fail.");
 	}
 	if((scaleaxisOsd1File = open("/sys/class/graphics/fb1/scale_axis", O_RDWR)) < 0) {
-		log_print("open /sys/class/graphics/fb0/scale_axis fail.");
+		log_print("open /sys/class/graphics/fb1/scale_axis fail.");
+	}
+	if((Fb0Blank = open("/sys/class/graphics/fb0/blank", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/blank fail.");
+	}
+	if((Fb1Blank = open("/sys/class/graphics/fb1/blank", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb1/blank fail.");
 	}
 	if(mSwitch == 0)
 	{
@@ -1141,6 +1147,8 @@ int GL_2X_scale(int mSwitch)
 	}
 	else if(mSwitch == 1)
 	{
+		write(Fb0Blank, "1", strlen("1"));
+		write(Fb1Blank, "1", strlen("1"));
 		if(!strncmp(mode, "480i", 4) || !strncmp(mode, "480p", 4))
 		{
 			write(request2XScaleFile, "16 720 480", strlen("16 720 480"));
@@ -1152,6 +1160,10 @@ int GL_2X_scale(int mSwitch)
 			write(request2XScaleFile, "16 720 576", strlen("16 720 576"));
 			write(scaleaxisOsd1File, "1280 720 720 576", strlen("1280 720 720 576"));
 			write(scaleOsd1File, "0x10001", strlen("0x10001"));
+		}
+		else if(!strncmp(mode, "720p", 4))
+		{
+			write(request2XScaleFile, "2", strlen("2"));
 		}
 		else if(!strncmp(mode, "1080i", 5) || !strncmp(mode, "1080p", 5))
 		{
