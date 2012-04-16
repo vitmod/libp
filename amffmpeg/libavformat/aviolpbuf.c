@@ -58,6 +58,9 @@ Can seek back size:
 //#define LP_BUFFER_DEBUG
 #define LP_SK_DEBUG
 //#define LP_RD_DEBUG
+
+#define lp_print(level,fmt...) av_log(NULL,level,##fmt)
+
 #ifdef LP_SK_DEBUG
 #define lp_sprint(level,fmt...) av_log(NULL,level,##fmt)
 #else
@@ -132,6 +135,7 @@ int url_lpopen(URLContext *s,int size)
 	lp->file_size=url_lpseek(s,0,AVSEEK_SIZE);
 	lp->cache_enable=0;
 	lp->cache_id=aviolp_cache_open(s->filename,url_filesize(s));
+	lp->dbg_cnt=0;
 	if(lp->cache_id!=0)
 		lp->cache_enable=1;
 	lp_bprint( AV_LOG_INFO,"url_lpopen4%d\n",bufsize);
@@ -514,11 +518,13 @@ int url_lp_intelligent_buffering(URLContext *s,int size)
 
 	
 	lp=s->lpbuf;
+	lp->dbg_cnt++;
 	if(size <=0)
 		size=lp->block_read_size; 
 	datalen= url_lp_getbuffering_size(s,&forward_data,&back_data);
-	lp_rprint( AV_LOG_INFO, "url_lp buffering:datalen=%d,forward_datad=%d,back_data=%d,lp->buffer_size=%d,size=%d\n",
-		datalen,forward_data,back_data,lp->buffer_size,size);
+	if(lp->dbg_cnt%10==0)
+		lp_print( AV_LOG_INFO, "url_lp buffering:datalen=%d,forward_datad=%d,back_data=%d,lp->buffer_size=%d,size=%d\n",
+			datalen,forward_data,back_data,lp->buffer_size,size);
 	if(datalen>=0 && ((datalen <lp->buffer_size-1024) || (back_data>(forward_data/2+1)) || (back_data>3*1024*1024)))
 		ret=url_lpfillbuffer(s,size);/*lest 1/3 back data && < 3M back data*/
 
@@ -541,7 +547,3 @@ int url_lpfree(URLContext *s)
 	}
 	return 0;
 }
-
-
-
-
