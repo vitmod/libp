@@ -528,7 +528,7 @@ static int mkv_write_header(play_para_t *para)
         return PLAYER_EMPTY_P;
     }
 
-    if (head_size > pkt->hdr->size) {
+    if (head_size > HDR_BUF_SIZE) {
         FREE(pkt->hdr->data);
         pkt->hdr->size = 0;
 
@@ -879,6 +879,7 @@ int pre_header_feeding(play_para_t *para)
                 log_print("[pre_header_feeding] NOMEM!");
                 return PLAYER_NOMEM;
             }
+            pkt->hdr->size = 0;            
         }
 
         if (VFORMAT_MJPEG == para->vstream_info.video_format) {
