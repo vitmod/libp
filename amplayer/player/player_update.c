@@ -647,6 +647,7 @@ static unsigned int get_current_time(play_para_t *p_para)
     if (p_para->vstream_info.has_video && p_para->astream_info.has_audio) {
         pcr_scr = get_pts_pcrscr(p_para);
         apts = get_pts_audio(p_para);
+        vpts = get_pts_video(p_para);
         ctime = handle_current_time(p_para, pcr_scr, apts);
         log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);
     } else if (p_para->astream_info.has_audio)/* &&
@@ -746,7 +747,7 @@ static void update_current_time(play_para_t *p_para)
 	        p_para->state.current_ms = time / PTS_FREQ_MS;
 	        p_para->state.current_pts = time;
 	        time /= PTS_FREQ;
-	    } else if (!p_para->playctrl_info.reset_flag && !!p_para->playctrl_info.search_flag){
+	    } else if (!p_para->playctrl_info.reset_flag && !p_para->playctrl_info.search_flag){
 	    	time = p_para->state.full_time;
 	        log_print("[update_current_time:%d]play end, curtime: %d\n", __LINE__, time);
 	    }
@@ -1103,22 +1104,24 @@ int update_playing_info(play_para_t *p_para)
 
 		update_av_sync_for_audio(p_para);
 
-		if (get_player_state(p_para) > PLAYER_INITOK && p_para->playctrl_info.audio_ready != 1){
-			p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
-			if(p_para->playctrl_info.audio_ready)
-            	log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
-		}
+		if (sta > PLAYER_INITOK && sta < PLAYER_ERROR) {
+		    if (p_para->playctrl_info.audio_ready != 1){
+    			p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);
+    			if(p_para->playctrl_info.audio_ready)
+                	log_print("[%s:%d]audio_ready=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_ready);
+             }		
 		
-        if (p_para->astream_info.has_audio 	&& (p_para->playctrl_info.audio_ready != 1)) {
-			if (check_audiodsp_fatal_err() == AUDIO_DSP_INIT_ERROR){
-				p_para->playctrl_info.audio_ready = 1;
-	            log_print("[%s]dsp init failed, set audio_ready for time update\n", __FUNCTION__);
-			} else if (0 == p_para->abuffer.data_level) {
-			    if (check_audio_ready_time(&p_para->playctrl_info.check_audio_ready_ms)) {
-                    p_para->playctrl_info.audio_ready = 1;
-	                log_print("[%s]no audio data, set audio_ready for time update\n", __FUNCTION__);
-		        }
-		    }
+            if (p_para->astream_info.has_audio 	&& (p_para->playctrl_info.audio_ready != 1)) {
+    			if (check_audiodsp_fatal_err() == AUDIO_DSP_INIT_ERROR){
+    				p_para->playctrl_info.audio_ready = 1;
+    	            log_print("[%s]dsp init failed, set audio_ready for time update\n", __FUNCTION__);
+    			} else if (0 == p_para->abuffer.data_level) {
+    			    if (check_audio_ready_time(&p_para->playctrl_info.check_audio_ready_ms)) {
+                        p_para->playctrl_info.audio_ready = 1;
+    	                log_print("[%s]no audio data, set audio_ready for time update\n", __FUNCTION__);
+    		        }
+    		    }
+            }
         }
 		
         if (p_para->playctrl_info.audio_ready == 1 || 
