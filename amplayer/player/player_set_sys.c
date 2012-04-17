@@ -1163,7 +1163,7 @@ int GL_2X_scale(int mSwitch)
 		}
 		else if(!strncmp(mode, "720p", 4))
 		{
-			write(request2XScaleFile, "2", strlen("2"));
+			write(request2XScaleFile, "16 1280 720", strlen("16 1280 720"));	//for setting blank to 0
 		}
 		else if(!strncmp(mode, "1080i", 5) || !strncmp(mode, "1080p", 5))
 		{
