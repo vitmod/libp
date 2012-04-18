@@ -15,11 +15,12 @@ static inline void calc_aspect_ratio(rational *ratio, struct stream *stream)
     ratio->den = den;
 }
 
-static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, int64_t *thumb_time)
+static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, int64_t *thumb_time, int64_t *thumb_offset)
 {
     int i = 0;
     int maxFrameSize = 0;
     int64_t thumbTime = 0;
+    int64_t thumbOffset = 0;
     AVPacket packet;
     AVStream *st = pFormatCtx->streams[video_index];
 
@@ -29,11 +30,16 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
             if(packet.size > maxFrameSize){
                 maxFrameSize = packet.size;
                 thumbTime = packet.pts;
+                thumbOffset = avio_tell(pFormatCtx->pb);
             }
         }
         av_free_packet(&packet);
     }
-    *thumb_time = av_rescale_q(thumbTime, st->time_base, AV_TIME_BASE_Q);;
+    if(thumbTime != AV_NOPTS_VALUE)
+        *thumb_time = av_rescale_q(thumbTime, st->time_base, AV_TIME_BASE_Q);
+    else
+        *thumb_time = AV_NOPTS_VALUE;
+    *thumb_offset = thumbOffset;
 }
 
 void * thumbnail_res_alloc(void)
@@ -116,7 +122,7 @@ int thumbnail_decoder_open(void *handle, const char* filename)
 	 goto err1;
     }
 
-   find_thumbnail_frame(stream->pFormatCtx, video_index, &frame->thumbNailTime); 
+   find_thumbnail_frame(stream->pFormatCtx, video_index, &frame->thumbNailTime, &frame->thumbNailOffset); 
 	
     stream->videoStream = video_index;
     stream->pCodecCtx = stream->pFormatCtx->streams[video_index]->codec;
@@ -186,7 +192,14 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
     AVPacket        packet;
 
     if(time < 0){
-        av_seek_frame(pFormatCtx, stream->videoStream, frame->thumbNailTime, AVSEEK_FLAG_BACKWARD);	
+        if(frame->thumbNailTime != AV_NOPTS_VALUE) {
+	     log_print("seek to thumbnail frame by timestamp(0x%llx)!\n", frame->thumbNailTime);
+            av_seek_frame(pFormatCtx, stream->videoStream, frame->thumbNailTime, AVSEEK_FLAG_BACKWARD);
+	 }else{
+	     log_print("seek to thumbnail frame by offset(%lld)!\n", frame->thumbNailOffset);
+            avio_seek(pFormatCtx->pb, frame->thumbNailOffset, SEEK_SET);
+	 }
+	 	
     }else{
         //int64_t thumbTime;
 		

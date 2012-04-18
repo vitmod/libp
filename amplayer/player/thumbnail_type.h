@@ -29,6 +29,7 @@ typedef struct video_frame {
     int height;
     int64_t duration;
     int64_t thumbNailTime;
+    int64_t thumbNailOffset;
     rational displayAspectRatio;
     int DataSize;
     char *data;
