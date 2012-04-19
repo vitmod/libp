@@ -195,6 +195,7 @@ int audiodsp_init(dsp_operations_t *dsp_ops)
  * \param dsp_ops pointer to dsp operation struct
  * \return 0 on success otherwise negative code error
  */
+ static err_count = 0;
 int audiodsp_start(aml_audio_dec_t *audec)
 {
     int m_fmt;
@@ -221,11 +222,15 @@ int audiodsp_start(aml_audio_dec_t *audec)
     }
 
     ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_DECODE_START, 0);
+    err_count = 0;
     if(ret==0){
         do{
             ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_WAIT_FORMAT, 0);
 	    if(ret!=0 && !audec->need_stop){
+                err_count++;			
                 usleep(10000);
+                if (err_count > 10) // dead loop ? never 
+                    return -4;					
 	    }
         }while(!audec->need_stop && (ret!=0));
     }
