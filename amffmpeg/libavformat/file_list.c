@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include "os_support.h"
 #include "file_list.h"
+#include "amconfigutils.h"
+
 static struct list_demux *list_demux_list=NULL;
 #define unused(x)	(x=x)
 
@@ -154,6 +156,8 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 	list_demux_t *demux;
 	ByteIOContext *lio=s;
 	int64_t	   *oldpos=0;
+	if(am_getconfig_bool("media.amplayer.usedm3udemux"))
+		return 0;/*if used m3u demux,always failed;*/
 	if(!lio)
 	{
 		ret=url_fopen(&lio,filename,AVIO_FLAG_READ);

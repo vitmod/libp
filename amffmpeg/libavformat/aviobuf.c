@@ -839,13 +839,13 @@ char *get_strz(AVIOContext *s, char *buf, int maxlen)
 int ff_get_line(AVIOContext *s, char *buf, int maxlen)
 {
     int i = 0;
-    char c;
+    int  c;
 
     do {
         c = avio_r8(s);
-        if (c && i < maxlen-1)
+        if (c>0 && i < maxlen-1)
             buf[i++] = c;
-    } while (c != '\n' && c);
+    } while (c != '\n' && c != '\nr' && c>0);
 
     buf[i] = 0;
     return i;

@@ -572,8 +572,8 @@ retry:
         s->buf_ptr += len;
     } else {
         if (!s->willclose && s->filesize >= 0 && s->off >= s->filesize){
-			av_log(h, AV_LOG_ERROR, "http_read error %d\n",AVERROR_EOF);
-            return AVERROR_EOF;
+			av_log(h, AV_LOG_ERROR, "http_read eof len=%d\n",len);
+            return 0;
         }
 		if(s->hd){
         	len = ffurl_read(s->hd, buf, size);

@@ -524,7 +524,10 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
     }
 
 	oldoffset = avio_tell(pb);
-	old_dataoff = s->data_offset;
+	if(s)
+		old_dataoff = s->data_offset;
+	else
+		old_dataoff=0;
 	if (av_match_ext(filename, "ts") || av_match_ext(filename, "m2ts")) {		
 		probe_flag = 1;
 		do{
@@ -534,7 +537,8 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
 				avio_seek(pb, -1, SEEK_CUR);
 				data_offset --;
 				av_log(NULL,AV_LOG_INFO, "*****[%s] [%llx] data_offset=%d\n", __FUNCTION__, avio_tell(pb), data_offset);
-				s->data_offset = data_offset;
+				if(s)
+					s->data_offset = data_offset;
 				break;	
 			}
 		/*find the ts sync header if no erroris,not eof and interrupt*/
@@ -581,9 +585,10 @@ retry_probe:
         av_free(buf);
         if(probe_flag)
         {
-            s->data_offset = old_dataoff;	
-		    probe_flag =0;
-		    buf = NULL;
+        	if(s)
+            		s->data_offset = old_dataoff;	
+		probe_flag =0;
+		buf = NULL;
     		pd.buf = NULL;
     		pd.buf_size = 0;
     		avio_seek(pb, oldoffset, SEEK_SET);
@@ -657,9 +662,11 @@ typedef struct auto_switch_protol{
 	int (*probe_check)(ByteIOContext *,char *);	
 }auto_switch_protol_t;
 
+#include "hlsproto.h"
 auto_switch_protol_t switch_table[]=
 {
 	{"list:",url_is_file_list},
+/*	{"hls+",hlsproto_probe},*/
 	{"nsc:",is_nsc_file},
 	{NULL,NULL}
 };
@@ -3207,8 +3214,10 @@ void avformat_free_context(AVFormatContext *s)
 
 void av_close_input_file(AVFormatContext *s)
 {
+	av_log(NULL, AV_LOG_ERROR, "av_close_input_file--%d\n",__LINE__);
     AVIOContext *pb = (s->iformat->flags & AVFMT_NOFILE) || (s->flags & AVFMT_FLAG_CUSTOM_IO) ?
                        NULL : s->pb;
+	av_log(NULL, AV_LOG_ERROR, "av_close_input_file--%d\n",__LINE__);
     av_close_input_stream(s);
     if (pb)
         avio_close(pb);

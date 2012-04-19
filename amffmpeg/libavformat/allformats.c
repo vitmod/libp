@@ -260,4 +260,12 @@ void av_register_all(void)
 	ffurl_register_protocol(&ff_nsc_protocol, sizeof(ff_nsc_protocol)); 
 extern int register_list_demux_all(void);
 	register_list_demux_all();
+
+
+
+extern AVInputFormat ff_hls_demuxer;
+	av_register_input_format(&ff_hls_demuxer);
+extern URLProtocol ff_hls_protocol ;
+	ffurl_register_protocol(&ff_hls_protocol,sizeof(ff_hls_protocol));
+	
 }

@@ -29,8 +29,9 @@
 #include "avformat.h"
 #include "internal.h"
 #include "url.h"
+#include "version.h"
 #include <unistd.h>
-
+#include "hlsproto.h"
 /*
  * An apple http stream consists of a playlist with media segment files,
  * played sequentially. There may be several playlists with the same
@@ -53,7 +54,7 @@ struct variant {
     char url[MAX_URL_SIZE];
 };
 
-typedef struct AppleHTTPContext {
+typedef struct HLSContext {
     char playlisturl[MAX_URL_SIZE];
     int target_duration;
     int start_seq_no;
@@ -65,17 +66,23 @@ typedef struct AppleHTTPContext {
     int cur_seq_no;
     URLContext *seg_hd;
     int64_t last_load_time;
-} AppleHTTPContext;
+} HLSContext;
 
 static int read_chomp_line(AVIOContext *s, char *buf, int maxlen)
 {
     int len = ff_get_line(s, buf, maxlen);
     while (len > 0 && isspace(buf[len - 1]))
         buf[--len] = '\0';
+     if(len==0){
+	 	if(url_feof(s))
+			return AVERROR_EOF;
+		if(url_ferror(s))
+			return url_ferror(s);
+    }
     return len;
 }
 
-static void free_segment_list(AppleHTTPContext *s)
+static void free_segment_list(HLSContext *s)
 {
     int i;
     for (i = 0; i < s->n_segments; i++)
@@ -84,7 +91,7 @@ static void free_segment_list(AppleHTTPContext *s)
     s->n_segments = 0;
 }
 
-static void free_variant_list(AppleHTTPContext *s)
+static void free_variant_list(HLSContext *s)
 {
     int i;
     for (i = 0; i < s->n_variants; i++)
@@ -108,23 +115,34 @@ static void handle_variant_args(struct variant_info *info, const char *key,
 
 static int parse_playlist(URLContext *h, const char *url)
 {
-    AppleHTTPContext *s = h->priv_data;
+    HLSContext *s = h->priv_data;
     AVIOContext *in;
     int ret = 0, duration = 0, is_segment = 0, is_variant = 0, bandwidth = 0;
     char line[1024];
     const char *ptr;
-
-    if ((ret = avio_open(&in, url, AVIO_FLAG_READ)) < 0)
+    int segnum=0;
+#ifdef  AVIO_OPEN2		
+    if ((ret = avio_open2(&in, url, AVIO_FLAG_READ,
+                          &h->interrupt_callback, NULL)) < 0)
         return ret;
-
+#else
+	if ((ret = avio_open(&in, url, AVIO_FLAG_READ)) < 0)
+        return ret;
+#endif
     read_chomp_line(in, line, sizeof(line));
     if (strcmp(line, "#EXTM3U"))
         return AVERROR_INVALIDDATA;
 
     free_segment_list(s);
     s->finished = 0;
-    while (!url_feof(in)) {
-        read_chomp_line(in, line, sizeof(line));
+    while (1) {
+	if(url_interrupt_cb())
+	 	break;
+        ret=read_chomp_line(in, line, sizeof(line));
+	 if(ret<0){
+	 	ret=(segnum>0)?0:ret;
+	 	break;
+	 }
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
             struct variant_info info = {{0}};
             is_variant = 1;
@@ -152,6 +170,7 @@ static int parse_playlist(URLContext *h, const char *url)
                 seg->duration = duration;
                 ff_make_absolute_url(seg->url, sizeof(seg->url), url, line);
                 dynarray_add(&s->segments, &s->n_segments, seg);
+		  segnum++;	
                 is_segment = 0;
             } else if (is_variant) {
                 struct variant *var = av_malloc(sizeof(struct variant));
@@ -173,31 +192,60 @@ fail:
     return ret;
 }
 
-static int applehttp_open(URLContext *h, const char *uri, int flags)
+static int hls_close(URLContext *h)
 {
-    AppleHTTPContext *s;
+    HLSContext *s = h->priv_data;
+
+    free_segment_list(s);
+    free_variant_list(s);
+    ffurl_close(s->seg_hd);
+    return 0;
+}
+
+static int hls_open(URLContext *h, const char *uri, int flags)
+{
+    HLSContext *s = h->priv_data;
     int ret, i;
     const char *nested_url;
 
     if (flags & AVIO_FLAG_WRITE)
         return AVERROR(ENOSYS);
 
-    s = av_mallocz(sizeof(AppleHTTPContext));
-    if (!s)
-        return AVERROR(ENOMEM);
-    h->priv_data = s;
     h->is_streamed = 1;
+    h->is_slowmedia= 1;
 
-    if (av_strstart(uri, "applehttp+", &nested_url)) {
+    if (av_strstart(uri, "hls+", &nested_url)) {
         av_strlcpy(s->playlisturl, nested_url, sizeof(s->playlisturl));
+    } else if (av_strstart(uri, "hls://", &nested_url)) {
+        av_log(h, AV_LOG_ERROR,
+               "No nested protocol specified. Specify e.g. hls+http://%s\n",
+               nested_url);
+        ret = AVERROR(EINVAL);
+        goto fail;
+#if FF_API_APPLEHTTP_PROTO
+    } else if (av_strstart(uri, "applehttp+", &nested_url)) {
+        av_strlcpy(s->playlisturl, nested_url, sizeof(s->playlisturl));
+        av_log(h, AV_LOG_WARNING,
+               "The applehttp protocol is deprecated, use hls+%s as url "
+               "instead.\n", nested_url);
     } else if (av_strstart(uri, "applehttp://", &nested_url)) {
         av_strlcpy(s->playlisturl, "http://", sizeof(s->playlisturl));
         av_strlcat(s->playlisturl, nested_url, sizeof(s->playlisturl));
+        av_log(h, AV_LOG_WARNING,
+               "The applehttp protocol is deprecated, use hls+http://%s as url "
+               "instead.\n", nested_url);
+#endif
     } else {
         av_log(h, AV_LOG_ERROR, "Unsupported url %s\n", uri);
         ret = AVERROR(EINVAL);
         goto fail;
     }
+    av_log(h, AV_LOG_WARNING,
+           "Using the hls protocol is discouraged, please try using the "
+           "hls demuxer instead. The hls demuxer should be more complete "
+           "and work as well as the protocol implementation. (If not, "
+           "please report it.) To use the demuxer, simply use %s as url.\n",
+           s->playlisturl);
 
     if ((ret = parse_playlist(h, s->playlisturl)) < 0)
         goto fail;
@@ -228,15 +276,16 @@ static int applehttp_open(URLContext *h, const char *uri, int flags)
     return 0;
 
 fail:
-    av_free(s);
+    hls_close(h);
     return ret;
 }
 
-static int applehttp_read(URLContext *h, uint8_t *buf, int size)
+static int hls_read(URLContext *h, uint8_t *buf, int size)
 {
-    AppleHTTPContext *s = h->priv_data;
+    HLSContext *s = h->priv_data;
     const char *url;
     int ret;
+    int64_t reload_interval;
 
 start:
     if (s->seg_hd) {
@@ -249,12 +298,21 @@ start:
         s->seg_hd = NULL;
         s->cur_seq_no++;
     }
+    reload_interval = s->n_segments > 0 ?
+                      s->segments[s->n_segments - 1]->duration :
+                      s->target_duration;
+    reload_interval *= 1000000;
 retry:
     if (!s->finished) {
         int64_t now = av_gettime();
-        if (now - s->last_load_time >= s->target_duration*1000000)
+        if (now - s->last_load_time >= reload_interval) {
             if ((ret = parse_playlist(h, s->playlisturl)) < 0)
                 return ret;
+            /* If we need to reload the playlist again below (if
+             * there's still no more segments), switch to a reload
+             * interval of half the target duration. */
+            reload_interval = s->target_duration * 500000;
+        }
     }
     if (s->cur_seq_no < s->start_seq_no) {
         av_log(h, AV_LOG_WARNING,
@@ -265,8 +323,8 @@ retry:
     if (s->cur_seq_no - s->start_seq_no >= s->n_segments) {
         if (s->finished)
             return AVERROR_EOF;
-        while (av_gettime() - s->last_load_time < s->target_duration*1000000) {
-            if (url_interrupt_cb())
+        while (av_gettime() - s->last_load_time < reload_interval) {
+             if (url_interrupt_cb())
                 return AVERROR_EXIT;
             usleep(100*1000);
         }
@@ -285,21 +343,59 @@ retry:
     goto start;
 }
 
-static int applehttp_close(URLContext *h)
-{
-    AppleHTTPContext *s = h->priv_data;
 
-    free_segment_list(s);
-    free_variant_list(s);
-    ffurl_close(s->seg_hd);
-    av_free(s);
-    return 0;
+static int64_t hls_seek(URLContext *h, int64_t pos, int whence)
+{
+	HLSContext *s = h->priv_data;
+	return -1;
 }
 
+
+#if FF_API_APPLEHTTP_PROTO
 URLProtocol ff_applehttp_protocol = {
-    .name      = "applehttp",
-    .url_open  = applehttp_open,
-    .url_read  = applehttp_read,
-    .url_close = applehttp_close,
-    .flags     = URL_PROTOCOL_FLAG_NESTED_SCHEME,
+    .name           = "applehttp",
+    .url_open       = hls_open,
+    .url_read       = hls_read,
+    .url_close      = hls_close,
+    .flags          = URL_PROTOCOL_FLAG_NESTED_SCHEME,
+    .priv_data_size = sizeof(HLSContext),
 };
+#endif
+
+URLProtocol ff_hls_protocol = {
+    .name           = "hls",
+    .url_open       = hls_open,
+    .url_read       = hls_read,
+    .url_seek       = hls_seek,
+    .url_exseek       = hls_seek,
+    .url_close      = hls_close,
+    .flags          = URL_PROTOCOL_FLAG_NESTED_SCHEME,
+    .priv_data_size = sizeof(HLSContext),
+};
+
+
+int  hlsproto_probe(ByteIOContext *s,const char *file)
+{
+	if(s)
+	{
+		char line[1024];
+		if(read_chomp_line(s,line,1024)>0)
+		{
+
+			if(memcmp(line,EXTM3U,strlen(EXTM3U))==0)
+			{				
+				av_log(NULL, AV_LOG_INFO, "hls_probe get m3u flags!!\n");
+				return 100;
+			}
+		}	
+	}
+	else
+	{
+		if((av_match_ext(file, "m3u"))||(av_match_ext(file, "m3u8"))) 
+		{
+			return 50;
+		}
+	}
+	return 0;
+}
+
