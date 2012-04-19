@@ -136,16 +136,16 @@ static int check_decoder_worksta(play_para_t *para)
                     //log_print("pid[%d]::[%s:%d]find vdec error! ctime=%d ltime=%d cnt=%d\n", \
 					//		para->player_id, __FUNCTION__, __LINE__, para->state.current_time, para->state.last_time, para->vbuffer.check_rp_change_cnt);
 
-					if (!para->vbuffer.rp_is_changed){
-						para->vbuffer.check_rp_change_cnt --;								
-						player_thread_wait(para, 50 * 1000);
-						
+					if (!para->vbuffer.rp_is_changed) { 
+					    if(check_time_interrupt(&para->playctrl_info.vbuf_rpchanged_Old_time,20)){							
+	                        para->vbuffer.check_rp_change_cnt --;	
+	                    }
 					}else{
 						para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
 					}
-					if (((para->vbuffer.check_rp_change_cnt <= 0) ||
+					if ((para->vbuffer.check_rp_change_cnt <= 0) /*||
 						(para->vbuffer.check_rp_change_cnt < CHECK_VIDEO_HALT_CNT && para->playctrl_info.video_low_buffer)) && 
-						((para->state.full_time - para->state.current_time) > 10 )){
+						((para->state.full_time - para->state.current_time) > 10 )*/){
 						para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
 						para->playctrl_info.time_point = para->state.current_time + 1;
                         para->playctrl_info.reset_flag = 1;
@@ -574,7 +574,7 @@ static int check_start_cmd(play_para_t *player)
     player_cmd_t *msg = NULL;
     msg = get_message(player);  //msg: pause, resume, timesearch,add file, rm file, move up, move down,...
     if (msg) {
-        log_print("pid[%d]::[check_start_cmd:%d]ctrl=%x mode=%x info=%x param=%d\n", player->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param);
+        log_print("pid[%d]::[check_flag:%d]ctrl=%x mode=%x info=%x param=%d\n", player->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param);
         if (msg->ctrl_cmd & CMD_START) {
             flag = 1;
         }
