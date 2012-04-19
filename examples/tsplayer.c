@@ -26,7 +26,7 @@ FILE* fp = NULL;
 static char audio_info_buf[AUDIO_INFO_SIZE] = {0};
 static int axis[8] = {0};
 
-int osd_blank(char *path,int cmd)
+static int osd_blank(char *path,int cmd)
 {
     int fd;
     char  bcmd[16];
@@ -42,7 +42,7 @@ int osd_blank(char *path,int cmd)
     return -1;
 }
 
-int set_tsync_enable(int enable)
+static int set_avsync_enable(int enable)
 {
     int fd;
     char *path = "/sys/class/tsync/enable";
@@ -58,7 +58,7 @@ int set_tsync_enable(int enable)
     return -1;
 }
 
-int parse_para(const char *para, int para_num, int *result)
+static int parse_para(const char *para, int para_num, int *result)
 {
     char *endp;
     const char *startp = para;
@@ -93,7 +93,7 @@ int parse_para(const char *para, int para_num, int *result)
     return count;
 }
 
-int set_display_axis(int recovery)
+static int set_display_axis(int recovery)
 {
     int fd;
     char *path = "/sys/class/display/axis";
@@ -131,6 +131,38 @@ static void signal_handler(int signum)
     raise (signum);
 }
 
+static int set_stb_source_hiu()
+{
+    int fd;
+    char *path = "/sys/class/stb/source";
+    char  bcmd[16];
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        sprintf(bcmd, "%s", "hiu");
+        write(fd, bcmd, strlen(bcmd));
+        close(fd);
+        printf("set stb source to hiu!\n");
+        return 0;
+    }
+    return -1;
+}
+
+static int set_stb_demux_source_hiu()
+{
+    int fd;
+    char *path = "/sys/class/stb/demux1_source"; // use demux0 for record, and demux1 for playback
+    char  bcmd[16];
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        sprintf(bcmd, "%s", "hiu");
+        write(fd, bcmd, strlen(bcmd));
+        close(fd);
+        printf("set stb demux source to hiu!\n");
+        return 0;
+    }
+    return -1;
+}
+
 int main(int argc,char *argv[])
 {
     int ret = CODEC_ERROR_NONE;
@@ -150,6 +182,8 @@ int main(int argc,char *argv[])
     osd_blank("/sys/class/graphics/fb0/blank",1);
     osd_blank("/sys/class/graphics/fb1/blank",0);
     set_display_axis(0);
+    set_stb_source_hiu();
+    set_stb_demux_source_hiu();
 
     pcodec = &codec_para;
     memset(pcodec, 0, sizeof(codec_para_t ));
@@ -200,7 +234,7 @@ int main(int argc,char *argv[])
     //codec_set_cntl_avthresh(vpcodec, AV_SYNC_THRESH);
     //codec_set_cntl_syncthresh(vpcodec, 0);
 
-    set_tsync_enable(1);
+    set_avsync_enable(1);
 
     while(!feof(fp))
     {
