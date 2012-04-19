@@ -99,6 +99,8 @@
 #define AMSTREAM_IOC_SUB_NUM	_IOR(AMSTREAM_IOC_MAGIC, 0x50, unsigned long)
 #define AMSTREAM_IOC_SUB_INFO	_IOR(AMSTREAM_IOC_MAGIC, 0x51, unsigned long)
 
+#define AMSTREAM_IOC_SET_DEMUX  _IOW(AMSTREAM_IOC_MAGIC, 0x90, unsigned long)
+
 struct buf_status {
     int size;
     int data_len;

@@ -27,6 +27,28 @@
 
 #define SUBTITLE_EVENT
 #define TS_PACKET_SIZE 188
+#define DEMUX_PLAYER_SOURCE 1
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_demux_source  set ts demux source
+*
+* @param[in]  pcodec    Pointer of codec parameter structure
+* @param[in]  source    set 1 for player     
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+static int codec_set_demux_source(codec_para_t *pcodec, int source)
+{    
+    int ret = 0;		
+	
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_DEMUX, (unsigned long)source);
+	if (ret < 0) {
+		return ret;
+	}	
+    return ret;     
+}
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -482,6 +504,7 @@ static inline int codec_ts_init(codec_para_t *pcodec)
         return CODEC_OPEN_HANDLE_FAILED;
     }
     pcodec->handle = handle;
+    codec_set_demux_source(pcodec, DEMUX_PLAYER_SOURCE);
     if (pcodec->has_video) {
         r = set_video_format(pcodec);
         if (r < 0) {
@@ -1779,3 +1802,4 @@ int codec_get_sub_info(codec_para_t *pcodec, subtitle_info_t *sub_info)
 	}	
     return ret;     
 }
+
