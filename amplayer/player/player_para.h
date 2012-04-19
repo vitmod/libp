@@ -116,6 +116,7 @@ typedef  struct {
     int seek_offset_same;
 	int seek_frame_fail;
     long avsync_check_old_time;
+    long vbuf_rpchanged_Old_time;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);
