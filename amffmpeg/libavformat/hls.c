@@ -93,20 +93,6 @@ struct variant {
     uint8_t key[16];
 };
 
-typedef struct HLSContext {
-    int n_variants;
-    struct variant **variants;
-    int cur_seq_no;
-    int end_of_segment;
-    int first_packet;
-    int64_t first_timestamp;
-    int64_t seek_timestamp;
-    int seek_flags;
-#ifdef  AVIO_OPEN2		
-    AVIOInterruptCB *interrupt_callback;
-#endif
-} HLSContext;
-
 static int read_chomp_line(AVIOContext *s, char *buf, int maxlen)
 {
     int len = ff_get_line(s, buf, maxlen);
@@ -129,6 +115,23 @@ static void free_segment_list(struct variant *var)
     av_freep(&var->segments);
     var->n_segments = 0;
 }
+
+typedef struct HLSContext {
+    int n_variants;
+    struct variant **variants;
+    int cur_seq_no;
+    int end_of_segment;
+    int first_packet;
+    int64_t first_timestamp;
+    int64_t seek_timestamp;
+    int seek_flags;
+    int latest_3file_brate;
+    int latest_1file_brate;	
+    int total_brate;		
+#ifdef  AVIO_OPEN2		
+    AVIOInterruptCB *interrupt_callback;
+#endif
+} HLSContext;
 
 static void free_variant_list(HLSContext *c)
 {
@@ -170,6 +173,7 @@ static struct variant *new_variant(HLSContext *c, int bandwidth,
     reset_packet(&var->pkt);
     var->bandwidth = bandwidth;
     ff_make_absolute_url(var->url, sizeof(var->url), base, url);
+    //av_log(NULL,AV_LOG_INFO,"returl=%s\nbase=%s\nurl=%s\n",var->url,base,url);
     dynarray_add(&c->variants, &c->n_variants, var);
     return var;
 }
@@ -219,21 +223,26 @@ static int parse_playlist(HLSContext *c, const char *url,
     char line[1024];
     const char *ptr;
     int close_in = 0;
-
+    const char *locattion=NULL;
     if (!in) {
         close_in = 1;
 #ifdef  AVIO_OPEN2	
         if ((ret = avio_open2(&in, url, AVIO_FLAG_READ,c->interrupt_callback, NULL)) < 0)
             return ret;
 #else
-	if ((ret = avio_open(&in, url, AVIO_FLAG_READ)) < 0)
+	if ((ret = avio_open(&in, url, AVIO_FLAG_READ)) < 0){
+		av_log(NULL, AV_LOG_ERROR, "parse_playlist :open [%s]failed=%d\n",url,ret);	 
             return ret;
+	}		
 #endif
-	
     }
-
+    if(in->reallocation)
+		locattion=in->reallocation;
+    else
+		locattion=url;
     read_chomp_line(in, line, sizeof(line));
     if (strcmp(line, "#EXTM3U")) {
+	 av_log(NULL, AV_LOG_ERROR, "not a valid m3u file,first line is [%s]\n",line);	 
         ret = AVERROR_INVALIDDATA;
         goto fail;
     }
@@ -243,14 +252,17 @@ static int parse_playlist(HLSContext *c, const char *url,
         var->finished = 0;
     }
     while (1) {
+		int sret;
 		 line[0]=0;
 		 if(url_interrupt_cb())
 		 	break;
-	        ret=read_chomp_line(in, line, sizeof(line));
-		 if(ret<0){
-		 	ret=(var!=NULL)?0:ret;
+	        sret=read_chomp_line(in, line, sizeof(line));
+		 if(sret<0){
+		 	 av_log(NULL, AV_LOG_ERROR, "read_chomp_line end,ret=%d,var=%x,c->n_variants=%x\n",sret,var,c->n_variants);	 
+		 	ret=(var!=NULL ||c->n_variants>0)?0:sret;
 		 	break;
 		 }
+	    av_log(NULL, AV_LOG_INFO+1, "parse_playlist :[%s]\n",line);	 
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
             struct variant_info info = {{0}};
             is_variant = 1;
@@ -298,7 +310,7 @@ static int parse_playlist(HLSContext *c, const char *url,
             continue;
         } else if (line[0]) {
             if (is_variant) {
-                if (!new_variant(c, bandwidth, line, url)) {
+                if (!new_variant(c, bandwidth, line, locattion)) {
                     ret = AVERROR(ENOMEM);
                     goto fail;
                 }
@@ -329,7 +341,7 @@ static int parse_playlist(HLSContext *c, const char *url,
                     AV_WB32(seg->iv + 12, seq);
                 }
                 ff_make_absolute_url(seg->key, sizeof(seg->key), url, key);
-                ff_make_absolute_url(seg->url, sizeof(seg->url), url, line);
+                ff_make_absolute_url(seg->url, sizeof(seg->url), locattion, line);
                 dynarray_add(&var->segments, &var->n_segments, seg);
                 is_segment = 0;
             }
@@ -495,18 +507,51 @@ reload:
     goto restart;
 }
 
+static int select_best_variant(HLSContext *c,int bitrate)
+{
+	int i;
+	int best_index=-1,best_band=-1;
+	int min_index=0,min_band=-1;
+	int max_index=0,max_band=-1;
+	
+	for (i = 0; i < c->n_variants; i++) {
+		struct variant *v = c->variants[i];
+		if(v->bandwidth<=bitrate && v->bandwidth>best_band){
+			best_band=v->bandwidth;
+			best_index=i;
+		}	
+		if(v->bandwidth<min_band || min_band<0){
+			min_band=v->bandwidth;
+			min_index=i;
+		}	
+		if(v->bandwidth>max_band || max_band<0){
+			max_band=v->bandwidth;
+			max_index=i;
+		}	
+	}	
+	if(best_index<0)/*no low rate streaming found,used the lowlest*/
+		best_index=min_index;
+	return 0;
+}
+
 static int hls_read_header(AVFormatContext *s)
 {
     HLSContext *c = s->priv_data;
     int ret = 0, i, j, stream_offset = 0;
 
+    int only_parser_one_variants=1;
+    int parser_start,parser_end;
     //c->interrupt_callback = &s->interrupt_callback;
-
-    if ((ret = parse_playlist(c, s->filename, NULL, s->pb)) < 0)
+   c->total_brate=500*1024;
+   c->latest_3file_brate=c->total_brate;
+   c->latest_1file_brate=c->total_brate;	
+    if ((ret = parse_playlist(c, s->filename, NULL, s->pb)) < 0){
+	av_log(NULL, AV_LOG_WARNING, "parse_playlist failed ret=%d\n",ret);
         goto fail;
+    }
 
     if (c->n_variants == 0) {
-        av_log(NULL, AV_LOG_WARNING, "Empty playlist\n");
+        av_log(NULL, AV_LOG_WARNING, "Empty playlist 1\n");
         ret = AVERROR_EOF;
         goto fail;
     }
@@ -521,7 +566,7 @@ static int hls_read_header(AVFormatContext *s)
     }
 
     if (c->variants[0]->n_segments == 0) {
-        av_log(NULL, AV_LOG_WARNING, "Empty playlist\n");
+        av_log(NULL, AV_LOG_WARNING, "Empty playlist 2\n");
         ret = AVERROR_EOF;
         goto fail;
     }
@@ -534,9 +579,16 @@ static int hls_read_header(AVFormatContext *s)
             duration += c->variants[0]->segments[i]->duration;
         s->duration = duration * AV_TIME_BASE;
     }
-
+ 
+   if(only_parser_one_variants){	
+   		parser_start=select_best_variant(c,c->total_brate);
+		parser_end=parser_start+1;
+   }else{
+   		parser_start=0;
+		parser_end=c->n_variants;
+   }
     /* Open the demuxer for each variant */
-    for (i = 0; i < c->n_variants; i++) {
+    for (i = parser_start; i < parser_end; i++) {
         struct variant *v = c->variants[i];
         AVInputFormat *in_fmt = NULL;
         char bitrate_str[20];

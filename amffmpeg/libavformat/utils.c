@@ -4488,6 +4488,9 @@ void ff_make_absolute_url(char *buf, int size, const char *base,
                           const char *rel)
 {
     char *sep;
+    char* protol_prefix;
+    char* option_start;
+	
     /* Absolute path, relative to the current server */
     if (base && strstr(base, "://") && rel[0] == '/') {
         if (base != buf)
@@ -4502,14 +4505,24 @@ void ff_make_absolute_url(char *buf, int size, const char *base,
         av_strlcat(buf, rel, size);
         return;
     }
+    protol_prefix=strstr(rel, "://");
+    option_start=strstr(rel, "?");
     /* If rel actually is an absolute url, just copy it */
-    if (!base || strstr(rel, "://") || rel[0] == '/') {
+    if (!base  || rel[0] == '/' || (option_start==NULL  && protol_prefix) || (option_start  && protol_prefix<option_start) ) {
+	  /* refurl  have  http://,ftp://,and don't have "?"
+	  	refurl  have  http://,ftp://,and  have "?", so we must ensure it is not a option, link  refurl=filename?authurl=http://xxxxxx
+	  */
         av_strlcpy(buf, rel, size);
         return;
     }
     if (base != buf)
         av_strlcpy(buf, base, size);
     /* Remove the file name from the base url */
+	
+   option_start = strchr(buf, '?'); /*cut the ? tail, we don't need auth&parameters info..*/
+    if (option_start)
+        option_start[0] = '\0';
+	 
     sep = strrchr(buf, '/');
     if (sep)
         sep[1] = '\0';
