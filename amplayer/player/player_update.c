@@ -952,8 +952,12 @@ static int  update_buffering_states(play_para_t *p_para,
     p_para->state.audio_bufferlevel = alevel;
     p_para->state.video_bufferlevel = vlevel;
 	if (p_para->pFormatCtx && p_para->pFormatCtx->pb) {
-        p_para->state.bufed_pos=url_buffed_pos(p_para->pFormatCtx->pb);
-		p_para->state.bufed_time=(int)url_fbuffered_time(p_para->pFormatCtx->pb);
+		int buftime=-1;;
+        	p_para->state.bufed_pos=url_buffed_pos(p_para->pFormatCtx->pb);
+		buftime=(int)url_fbuffered_time(p_para->pFormatCtx->pb);
+		if(buftime<0)
+			buftime=(int)av_buffering_data(p_para->pFormatCtx,-1);
+		p_para->state.bufed_time=(int)buftime;
 		}
 	else{
 		p_para->state.bufed_pos=0;

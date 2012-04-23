@@ -1436,7 +1436,15 @@ int av_read_frame(AVFormatContext *s, AVPacket *pkt)
         }
     }
 }
-
+int av_buffering_data(AVFormatContext *s,int size)
+{
+	/*can add buffering on top level.
+	size <0 .get buffering time;
+	*/
+	if(s && s->iformat && s->iformat->bufferingdata)
+		return s->iformat->bufferingdata(s,size);
+	return -1;
+}
 /* XXX: suppress the packet queue */
 static void flush_packet_queue(AVFormatContext *s)
 {

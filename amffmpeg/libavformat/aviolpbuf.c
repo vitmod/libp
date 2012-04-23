@@ -89,7 +89,12 @@ int url_lpopen(URLContext *s,int size)
 	int ret;
 	float value=0.0;
 	int bufsize=0;
-	
+
+	if(size==0){
+		size=am_getconfig_float("libplayer.ffmpeg.lpbufsizemax",&value);
+		if(size<=0)
+			size=IO_LP_BUFFER_SIZE;
+	}
 	lp_bprint( AV_LOG_INFO,"url_lpopen=%d\n",size);
 	if(!s)
 		return -1;
@@ -142,6 +147,30 @@ int url_lpopen(URLContext *s,int size)
 	return 0;
 }
 
+int url_lpopen_ex(URLContext *s,
+			int size,
+			int flags,
+	 	    	int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
+                  	int64_t (*seek)(void *opaque, int64_t offset, int whence))
+{
+       int ret;    
+	URLContext   *uc=s;
+	uc->av_class = NULL;
+	uc->filename = (char *)NULL;
+	uc->prot =uc+ sizeof(URLContext) ;
+	uc->flags = flags;
+	uc->is_streamed = 0; 	      /* default = not streamed */
+	uc->max_packet_size = 0;  /* default: stream file */
+	ret=url_lpopen(uc,size);
+	if(ret==0){
+		uc->prot->url_read=read_packet;
+		uc->prot->url_seek=seek;
+		uc->prot->url_exseek=seek;
+		uc->prot->flags=uc->flags ;
+	}else{
+	}
+	return ret;
+}
 
 int url_lpfillbuffer(URLContext *s,int size)
 {
@@ -522,7 +551,7 @@ int url_lp_intelligent_buffering(URLContext *s,int size)
 	if(size <=0)
 		size=lp->block_read_size; 
 	datalen= url_lp_getbuffering_size(s,&forward_data,&back_data);
-	if(lp->dbg_cnt%10==0)
+	if(lp->dbg_cnt%100==0)
 		lp_print( AV_LOG_INFO, "url_lp buffering:datalen=%d,forward_datad=%d,back_data=%d,lp->buffer_size=%d,size=%d\n",
 			datalen,forward_data,back_data,lp->buffer_size,size);
 	if(datalen>=0 && ((datalen <lp->buffer_size-1024) || (back_data>(forward_data/2+1)) || (back_data>3*1024*1024)))
@@ -547,3 +576,4 @@ int url_lpfree(URLContext *s)
 	}
 	return 0;
 }
+

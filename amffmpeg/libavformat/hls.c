@@ -36,7 +36,8 @@
 #include "avio_internal.h"
 #include "url.h"
 
-#define INITIAL_BUFFER_SIZE 32768
+#define INITIAL_BUFFER_SIZE (1024*4)
+#define USED_LP_BUF
 
 /*
  * An apple http stream consists of a playlist with media segment files,
@@ -61,6 +62,7 @@ struct segment {
     char key[MAX_URL_SIZE];
     enum KeyType key_type;
     uint8_t iv[16];
+     int seg_starttime;	
 };
 
 /*
@@ -72,6 +74,7 @@ struct variant {
     int bandwidth;
     char url[MAX_URL_SIZE];
     AVIOContext pb;
+    URLContext urllpbuf;	
     uint8_t* read_buffer;
     URLContext *input;
     AVFormatContext *parent;
@@ -88,11 +91,11 @@ struct variant {
     int needed, cur_needed;
     int cur_seq_no;
     int64_t last_load_time;
-
+    int total_time_s;
     char key_url[MAX_URL_SIZE];
     uint8_t key[16];
 };
-
+static int recheck_discard_flags(AVFormatContext *s, int first);
 static int read_chomp_line(AVIOContext *s, char *buf, int maxlen)
 {
     int len = ff_get_line(s, buf, maxlen);
@@ -141,6 +144,8 @@ static void free_variant_list(HLSContext *c)
         free_segment_list(var);
         av_free_packet(&var->pkt);
         av_free(var->pb.buffer);
+        if(var->urllpbuf.lpbuf)
+		 url_lpfree(&var->urllpbuf);
         if (var->input)
             ffurl_close(var->input);
         if (var->ctx) {
@@ -224,13 +229,15 @@ static int parse_playlist(HLSContext *c, const char *url,
     const char *ptr;
     int close_in = 0;
     const char *locattion=NULL;
+    int totaltime=0;
+	
     if (!in) {
         close_in = 1;
 #ifdef  AVIO_OPEN2	
-        if ((ret = avio_open2(&in, url, AVIO_FLAG_READ,c->interrupt_callback, NULL)) < 0)
+        if ((ret = avio_open2(&in, url, AVIO_FLAG_READ | URL_NO_LP_BUFFER,c->interrupt_callback, NULL)) < 0)
             return ret;
 #else
-	if ((ret = avio_open(&in, url, AVIO_FLAG_READ)) < 0){
+	if ((ret = avio_open(&in, url, AVIO_FLAG_READ | URL_NO_LP_BUFFER)) < 0){
 		av_log(NULL, AV_LOG_ERROR, "parse_playlist :open [%s]failed=%d\n",url,ret);	 
             return ret;
 	}		
@@ -333,6 +340,8 @@ static int parse_playlist(HLSContext *c, const char *url,
                 }
                 seg->duration = duration;
                 seg->key_type = key_type;
+		  seg->seg_starttime=totaltime;	
+		  totaltime+=duration;
                 if (has_iv) {
                     memcpy(seg->iv, iv, sizeof(iv));
                 } else {
@@ -347,9 +356,10 @@ static int parse_playlist(HLSContext *c, const char *url,
             }
         }
     }
-    if (var)
+    if (var){
         var->last_load_time = av_gettime();
-
+	 var->total_time_s=totaltime;	
+     }
 fail:
     if (close_in)
         avio_close(in);
@@ -359,13 +369,15 @@ fail:
 static int open_input(struct variant *var)
 {
     struct segment *seg = var->segments[var->cur_seq_no - var->start_seq_no];
+    int ret;
     if (seg->key_type == KEY_NONE) {
 #ifdef  AVIO_OPEN2			
         return ffurl_open(&var->input, seg->url, AVIO_FLAG_READ,
                           &var->parent->interrupt_callback, NULL);
 #else
-	return ffurl_open(&var->input, seg->url, AVIO_FLAG_READ);
-
+	ret= ffurl_open(&var->input, seg->url, AVIO_FLAG_READ  |URL_MINI_BUFFER | URL_NO_LP_BUFFER);
+	av_log(NULL, AV_LOG_ERROR, "hls:open_input %s\n",seg->url);
+	return ret;
 #endif
     } else if (seg->key_type == KEY_AES_128) {
         char iv[33], key[33], url[MAX_URL_SIZE];
@@ -374,10 +386,10 @@ static int open_input(struct variant *var)
             URLContext *uc;
 	     		
 #ifdef  AVIO_OPEN2	
-		ret=ffurl_open(&uc, seg->key, AVIO_FLAG_READ,
+		ret=ffurl_open(&uc, seg->key, AVIO_FLAG_READ ,
                            &var->parent->interrupt_callback, NULL);
 #else
-		ret=ffurl_open(&uc, seg->key, AVIO_FLAG_READ);
+		ret=ffurl_open(&uc, seg->key, AVIO_FLAG_READ  |URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 #endif
             if (ret== 0) {
                 if (ffurl_read_complete(uc, var->key, sizeof(var->key))
@@ -404,7 +416,7 @@ static int open_input(struct variant *var)
                                &var->parent->interrupt_callback)) < 0)
                return ret;                
  #else
-	if ((ret = ffurl_alloc(&var->input, url, AVIO_FLAG_READ)) < 0)
+	if ((ret = ffurl_alloc(&var->input, url, AVIO_FLAG_READ  |URL_MINI_BUFFER | URL_NO_LP_BUFFER)) < 0)
 		return ret;
  #endif
             
@@ -426,10 +438,52 @@ static int open_input(struct variant *var)
     return AVERROR(ENOSYS);
 }
 
+
+static int64_t read_data_exseek(URLContext *opaque, int64_t offset, int whence)
+{
+#ifdef  USED_LP_BUF
+	URLContext *url=opaque;
+	struct variant *v = url->priv_data;
+	HLSContext *c = v->parent->priv_data;
+#else
+	struct variant *v = opaque;
+	HLSContext *c = v->parent->priv_data;
+#endif
+	int ret=AVERROR(EPIPE);;
+	if (whence == AVSEEK_FULLTIME)
+	{
+		//no support
+	}
+	else if (whence == AVSEEK_BUFFERED_TIME)
+	{
+		struct segment *seg = v->segments[v->cur_seq_no - v->start_seq_no];
+		int bufedtime=0;
+		if(seg){
+			bufedtime=seg->seg_starttime;
+			if(v->input)
+				bufedtime+=seg->duration*url_seek(v->input, 0, SEEK_CUR)/url_filesize(v->input);
+			return bufedtime;
+		}
+	}
+	else if(whence == AVSEEK_TO_TIME ){
+	 	//no support
+	}
+	else if(whence == AVSEEK_SIZE){
+	 	//no support
+	}
+	return ret;
+}	
 static int read_data(void *opaque, uint8_t *buf, int buf_size)
 {
+#ifdef  USED_LP_BUF
+    URLContext *url=opaque;
+    struct variant *v = url->priv_data;
+    HLSContext *c = v->parent->priv_data;
+#else
     struct variant *v = opaque;
     HLSContext *c = v->parent->priv_data;
+#endif
+
     int ret, i;
 
 restart:
@@ -533,7 +587,56 @@ static int select_best_variant(HLSContext *c,int bitrate)
 		best_index=min_index;
 	return 0;
 }
-
+static int hls_buffering_data(AVFormatContext *s,int size){
+	HLSContext *c = s->priv_data;
+	int i;
+	int ret=-1;
+	struct variant *var =NULL,*v;
+	 if (c && c->end_of_segment || c->first_packet) {
+        	recheck_discard_flags(s, c->first_packet);
+		c->end_of_segment=0;		
+		c->first_packet=0;
+    	}
+	
+	for (i = 0; i < c->n_variants; i++) {
+      	  	v = c->variants[i];
+		if(v->needed){
+			var=v;
+			break;
+		}
+	}
+	if(!var)
+		return ret;
+	if(size<0){
+		struct segment *seg = NULL;
+		int bufedtime=0;
+		if(var->cur_seq_no>=v->start_seq_no + v->n_segments){/*bufed to the end segments.*/
+			seg=var->segments[var->start_seq_no+v->n_segments-1];
+			if(seg)
+				bufedtime=seg->seg_starttime+seg->duration;
+			return bufedtime;
+		}
+		seg=var->segments[var->cur_seq_no - var->start_seq_no];
+		
+		if(seg){
+			int64_t pos,filesize;
+			bufedtime=seg->seg_starttime;
+			if(var->input ){
+				pos=url_seek(var->input, 0, SEEK_CUR);
+				filesize=url_filesize(var->input);
+				if(filesize>0 && pos<=filesize){
+					bufedtime+=seg->duration*pos/filesize;
+				}	
+			}
+			return bufedtime;
+		}
+		return -1;
+	}else{
+	 	if(var->urllpbuf.lpbuf)
+	  		ret=url_lp_intelligent_buffering(&var->urllpbuf,size);
+	}
+	 return ret;
+}
 static int hls_read_header(AVFormatContext *s)
 {
     HLSContext *c = s->priv_data;
@@ -609,10 +712,25 @@ static int hls_read_header(AVFormatContext *s)
         v->cur_seq_no = v->start_seq_no;
         if (!v->finished && v->n_segments > 3)
             v->cur_seq_no = v->start_seq_no + v->n_segments - 3;
-
+#ifdef  USED_LP_BUF
+	v->read_buffer = av_malloc(INITIAL_BUFFER_SIZE);
+       memset(&v->urllpbuf,0,sizeof(&v->urllpbuf));
+	if(url_lpopen_ex(&v->urllpbuf,0,AVIO_FLAG_READ,read_data,read_data_exseek)==0){
+		ffio_init_context(&v->pb, v->read_buffer, INITIAL_BUFFER_SIZE, 0, &v->urllpbuf,
+                          url_lpread, NULL, NULL);
+	}else{
+		
+        	ffio_init_context(&v->pb, v->read_buffer, INITIAL_BUFFER_SIZE, 0, &v->urllpbuf,
+                          read_data, NULL, NULL);
+	}
+	v->urllpbuf.is_streamed=1;
+	v->urllpbuf.is_slowmedia=1;
+	v->urllpbuf.priv_data=v;
+#else
         v->read_buffer = av_malloc(INITIAL_BUFFER_SIZE);
         ffio_init_context(&v->pb, v->read_buffer, INITIAL_BUFFER_SIZE, 0, v,
                           read_data, NULL, NULL);
+#endif		
         v->pb.seekable = 0;
         ret = av_probe_input_buffer(&v->pb, &in_fmt, v->segments[0]->url,
                                     NULL, 0, 0);
@@ -651,10 +769,16 @@ static int hls_read_header(AVFormatContext *s)
     c->first_timestamp = AV_NOPTS_VALUE;
     c->seek_timestamp  = AV_NOPTS_VALUE;
 
+   if(s->pb){
+	 	/*reset read and free lp buf.*/
+		/*del lp buf,to free memory*/
+		ffio_fdopen_resetlpbuf(s->pb,0);
+     }
     return 0;
 fail:
     free_variant_list(c);
-    return ret;
+    
+     return ret;
 }
 
 static int recheck_discard_flags(AVFormatContext *s, int first)
@@ -853,4 +977,5 @@ AVInputFormat ff_hls_demuxer = {
     .read_packet    = hls_read_packet,
     .read_close     = hls_close,
     .read_seek      = hls_read_seek,
+    .bufferingdata  =hls_buffering_data,
 };

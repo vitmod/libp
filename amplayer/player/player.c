@@ -849,13 +849,9 @@ void *player_thread(play_para_t *player)
                     }
                 }
                 break;
-            } else if (ret == CONTINUE_FLAG) {
-                if (player->enable_rw_on_pause) { /*enabled buffing on paused...*/
-                    if (ffmpeg_buffering_data(player) < 0) {
-                        player_thread_wait(player, 100 * 1000); //100ms
-                        continue;
-                    }
-                }
+            } else if (ret == CONTINUE_FLAG ) {
+                
+				
             }
             if (!pkt->avpkt_isvalid) {
                 ret = read_av_packet(player);
@@ -871,8 +867,15 @@ void *player_thread(play_para_t *player)
                     goto release;
                 }                
             } else {
-                /*packet is full ,do buffering only*/
-                ffmpeg_buffering_data(player);
+                /*low level buf is full ,do buffering or just do wait.*/
+                if (player->enable_rw_on_pause) { /*enabled buffing on paused...*/
+                    if (ffmpeg_buffering_data(player) < 0) {
+                        player_thread_wait(player, 100 * 1000); //100ms
+                        ///continue;
+                    }
+                }else{
+                	player_thread_wait(player, 100 * 1000); //100ms
+                }
             }
 			if ((player->playctrl_info.f_step == 0) &&
                 (ret == PLAYER_SUCCESS) &&

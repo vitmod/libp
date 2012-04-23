@@ -367,7 +367,8 @@ static int h264_write_header(play_para_t *para)
 	
     pStream = para->pFormatCtx->streams[index];
     avcodec = pStream->codec;
-    ret = h264_add_header(avcodec->extradata, avcodec->extradata_size, pkt);
+    if(avcodec->extradata)
+    	ret = h264_add_header(avcodec->extradata, avcodec->extradata_size, pkt);
     if (ret == PLAYER_SUCCESS) {
         if (para->vcodec) {
             pkt->codec = para->vcodec;

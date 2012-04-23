@@ -690,7 +690,7 @@ static inline int url_support_time_seek(AVIOContext *s)
  int64_t url_buffed_pos(ByteIOContext *s);
  int64_t url_fbuffered_time(ByteIOContext *s);
 #define av_read_frame_flush(s) ff_read_frame_flush(s)
-
+int ffio_fdopen_resetlpbuf(AVIOContext *s,int lpsize);
 
 #include "libavformat/url.h"
 #include "libavformat/aviolpbuf.h"

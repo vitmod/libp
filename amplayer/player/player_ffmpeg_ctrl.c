@@ -81,10 +81,13 @@ int ffmpeg_init(void)
 }
 int ffmpeg_buffering_data(play_para_t *para)
 {
-	int ret;
-    if (para && para->pFormatCtx && para->pFormatCtx->pb) {
+	int ret=-1;
+    if (para && para->pFormatCtx ) {
 		player_mate_wake(para,100*1000);
-        ret=url_buffering_data(para->pFormatCtx->pb, 0);
+		if(para->pFormatCtx->pb)	/*lpbuf buffering*/
+			ret=url_buffering_data(para->pFormatCtx->pb, 0);
+		if(ret<0) /*iformat may buffering.,call lp buf also*/
+			ret=av_buffering_data(para->pFormatCtx,0);		
 		player_mate_sleep(para);
 		return ret;
     } else {

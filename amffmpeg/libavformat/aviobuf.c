@@ -925,6 +925,30 @@ uint64_t ffio_read_varlen(AVIOContext *bc){
     return val;
 }
 
+int ffio_fdopen_resetlpbuf(AVIOContext *s,int lpsize)
+{
+	URLContext *h=s->opaque;
+	int ret=0;	
+	int64_t old_pos=s->pos;
+	if(h->lpbuf)
+		url_lpfree(h);
+	h->lpbuf=NULL;
+	if(lpsize>0 && url_lpopen(h,lpsize)==0){
+		av_log(NULL, AV_LOG_INFO, "ffio_fdopen_resetlpbuf");
+		ret=ffio_init_context(s, s->buffer, s->buffer_size,
+		          h->flags & AVIO_FLAG_WRITE, h,
+		          (void*)url_lpread, (void*)NULL, (void*)url_lpseek);
+		(s)->exseek=url_lpexseek;
+		(s)->enabled_lp_buffer=1;
+	}else{
+		ret=ffio_init_context(s, s->buffer, s->buffer_size,
+		          h->flags & AVIO_FLAG_WRITE, h,
+		         (void*)ffurl_read, (void*)ffurl_write, (void*)ffurl_seek);
+	}
+	s->pos=old_pos;
+	return ret;
+}
+
 int ffio_fdopen(AVIOContext **s, URLContext *h)
 {
     uint8_t *buffer;

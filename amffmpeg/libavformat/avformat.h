@@ -432,6 +432,7 @@ typedef struct AVInputFormat {
      */
     int (*read_seek2)(struct AVFormatContext *s, int stream_index, int64_t min_ts, int64_t ts, int64_t max_ts, int flags);
 
+    int (*bufferingdata)(struct AVFormatContext *,int size);
 #if FF_API_OLD_METADATA2
     const AVMetadataConv *metadata_conv;
 #endif
@@ -1661,4 +1662,7 @@ attribute_deprecated int avf_sdp_create(AVFormatContext *ac[], int n_files, char
  */
 int av_match_ext(const char *filename, const char *extensions);
 
+
+/*cal low level buffering data.*/
+int av_buffering_data(AVFormatContext *s,int size);
 #endif /* AVFORMAT_AVFORMAT_H */

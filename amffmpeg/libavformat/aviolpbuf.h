@@ -40,5 +40,11 @@ int url_lp_intelligent_buffering(URLContext *s,int size);
 int url_lp_getbuffering_size(URLContext *s,int *forward_data,int *back_data);
 int64_t url_lp_get_buffed_pos(URLContext *s);
 
+int url_lpopen_ex(URLContext *s,
+			int size,
+			int flags,
+	 	    	int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
+                  	int64_t (*seek)(void *opaque, int64_t offset, int whence));
+
 #endif
 
