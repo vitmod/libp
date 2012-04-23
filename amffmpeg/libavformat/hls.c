@@ -63,7 +63,11 @@ struct segment {
     enum KeyType key_type;
     uint8_t iv[16];
      int seg_starttime;	
+     int flags;	 
+#define DISCONTINUE_FLAG			(1<<0)
+	 
 };
+
 
 /*
  * Each variant has its own demuxer. If it currently is active,
@@ -131,6 +135,12 @@ typedef struct HLSContext {
     int latest_3file_brate;
     int latest_1file_brate;	
     int total_brate;		
+/* to support discontinue*/	
+    int64_t discontinue_diff_timestamp;
+    int64_t expect_next_pts;	
+    int64_t expect_next_dts;	
+    int discontinue_pts_interval_ms;
+	
 #ifdef  AVIO_OPEN2		
     AVIOInterruptCB *interrupt_callback;
 #endif
@@ -230,6 +240,7 @@ static int parse_playlist(HLSContext *c, const char *url,
     int close_in = 0;
     const char *locattion=NULL;
     int totaltime=0;
+    int isdiscontinued=0;
 	
     if (!in) {
         close_in = 1;
@@ -313,6 +324,8 @@ static int parse_playlist(HLSContext *c, const char *url,
         } else if (av_strstart(line, "#EXTINF:", &ptr)) {
             is_segment = 1;
             duration   = atoi(ptr);
+        }  else if (av_strstart(line, "#EXT-X-DISCONTINUITY", &ptr)) {
+            isdiscontinued   = 1;
         } else if (av_strstart(line, "#", NULL)) {
             continue;
         } else if (line[0]) {
@@ -341,6 +354,7 @@ static int parse_playlist(HLSContext *c, const char *url,
                 seg->duration = duration;
                 seg->key_type = key_type;
 		  seg->seg_starttime=totaltime;	
+		  seg->flags=DISCONTINUE_FLAG;
 		  totaltime+=duration;
                 if (has_iv) {
                     memcpy(seg->iv, iv, sizeof(iv));
@@ -768,7 +782,7 @@ static int hls_read_header(AVFormatContext *s)
     c->first_packet = 1;
     c->first_timestamp = AV_NOPTS_VALUE;
     c->seek_timestamp  = AV_NOPTS_VALUE;
-
+    c->discontinue_pts_interval_ms=2000;	
    if(s->pb){
 	 	/*reset read and free lp buf.*/
 		/*del lp buf,to free memory*/
@@ -815,12 +829,65 @@ static int recheck_discard_flags(AVFormatContext *s, int first)
     }
     return changed;
 }
+static int recalculated_pkt_pts(AVFormatContext *s,  AVStream *st,AVPacket *pkt)
+{
+	HLSContext *c = s->priv_data;
+	int64_t max_discontinue=av_rescale_rnd(c->discontinue_pts_interval_ms,st->time_base.den,1000*st->time_base.num,AV_ROUND_ZERO);
+	int64_t real_pts,real_dts;	
+	/*not on seek/ recalculated the pts/cts,because the pts,dts may reset on DISCONTINUE*/
+	real_pts=pkt->pts;
+	real_dts=pkt->dts;
+	av_log(s, AV_LOG_DEBUG1, "hls:recalculated_pkt_pts max_discontinue=%lld,realpts=%lld,expect_next_pts=%lld,discontinue_diff_timestamp=%lld\n", max_discontinue,real_pts,c->expect_next_pts,c->discontinue_diff_timestamp);
+	av_log(s, AV_LOG_DEBUG2, "hls:recalculated_pkt_pts max_discontinue=%lld,real_dts=%lld,expect_next_dts=%lld,discontinue_diff_timestamp=%lld\n", max_discontinue,real_dts,c->expect_next_dts,c->discontinue_diff_timestamp);
+	
+	if(c->discontinue_diff_timestamp!=0){	
+		if(pkt->pts>=0)
+			pkt->pts=pkt->pts+c->discontinue_diff_timestamp;
+		if(pkt->dts>=0)
+			pkt->dts=pkt->dts+c->discontinue_diff_timestamp;
+	}		
+	if(pkt->pts>=0 &&( c->expect_next_pts>0&& pkt->pts>c->expect_next_pts+max_discontinue || pkt->pts<c->expect_next_pts-max_discontinue)){
+		/*the pts is jumped,we think the stream have reset the pts. do fix here */
+		c->discontinue_diff_timestamp=c->expect_next_pts-real_pts;
+		pkt->pts=c->expect_next_pts;
+		av_log(s, AV_LOG_INFO, "hls:pts DISCONTINUE found max_discontinue=%lld,realpts=%lld,expect_next_pts=%lld,discontinue_diff_timestamp=%lld\n", max_discontinue,real_pts,c->expect_next_pts,c->discontinue_diff_timestamp);
+	}else if(pkt->dts>=0 && (c->expect_next_dts>0 && pkt->dts>c->expect_next_dts+max_discontinue || pkt->dts<c->expect_next_dts-max_discontinue)){
+		/*the pts is jumped,we think the stream have reset the pts. do fix here */	
+		c->discontinue_diff_timestamp=c->expect_next_dts-real_dts;
+		pkt->dts=c->expect_next_dts;
+		av_log(s, AV_LOG_INFO, "hls:pts DISCONTINUE found max_discontinue=%lld,realpts=%lld,expect_next_pts=%lld,discontinue_diff_timestamp=%lld\n", max_discontinue,real_pts,c->expect_next_pts,c->discontinue_diff_timestamp);
+	}
+	if(pkt->pts>0){
+		if(pkt->duration>0)
+			c->expect_next_pts=pkt->pts+pkt->duration;
+		else if(st->avg_frame_rate.den>0 && st->avg_frame_rate.num>0){
+			/*ex:	((timbasebase=dem/num)/(fram_rate)))=(dem/num)/framrate	 */
+			int64_t duration=av_rescale_rnd(st->avg_frame_rate.den,st->time_base.den,st->time_base.num*st->avg_frame_rate.num,AV_ROUND_ZERO);
+			c->expect_next_pts=pkt->pts+duration;
+		}else{
+			c->expect_next_pts=-1;
+		}
+	}
+	if(pkt->dts>0){
+		if(pkt->duration>0)
+			c->expect_next_dts=pkt->dts+pkt->duration;
+		else if(st->avg_frame_rate.den>0 && st->avg_frame_rate.num>0){
+			/*ex:	((timbasebase=dem/num)/(fram_rate)))=(dem/num)/framrate	 */
+			int64_t duration=av_rescale_rnd(st->avg_frame_rate.den,st->time_base.den,st->time_base.num*st->avg_frame_rate.num,AV_ROUND_ZERO);
+			c->expect_next_dts=pkt->dts+duration;
+		}else{
+			c->expect_next_dts=-1;
+		}
+	}
+	return 0;
+}
+
 
 static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     HLSContext *c = s->priv_data;
     int ret, i, minvariant = -1;
-
+    int retry=0;
     if (c->first_packet) {
         recheck_discard_flags(s, 1);
         c->first_packet = 0;
@@ -835,26 +902,33 @@ start:
             while (!url_interrupt_cb()) {
                 int64_t ts_diff;
                 AVStream *st;
+		  st = var->ctx->streams[var->pkt.stream_index];		
                 ret = av_read_frame(var->ctx, &var->pkt);
                 if (ret < 0) {
                     if (!url_feof(&var->pb))
                         return ret;
-                    reset_packet(&var->pkt);
-                    break;
+                   	reset_packet(&var->pkt);
+                    	break;
                 } else {
                     if (c->first_timestamp == AV_NOPTS_VALUE)
                         c->first_timestamp = var->pkt.dts;
+		      recalculated_pkt_pts(s,st,&var->pkt);
                 }
 
                 if (c->seek_timestamp == AV_NOPTS_VALUE)
                     break;
 
                 if (var->pkt.dts == AV_NOPTS_VALUE) {
-                    c->seek_timestamp = AV_NOPTS_VALUE;
-                    break;
+                   
+			if(retry++<20)		
+                   	 	continue;
+			else{
+				 c->seek_timestamp = AV_NOPTS_VALUE;
+				break;/*retry too long used this pkt*/
+			}	
                 }
 
-                st = var->ctx->streams[var->pkt.stream_index];
+               
                 ts_diff = av_rescale_rnd(var->pkt.dts, AV_TIME_BASE,
                                          st->time_base.den, AV_ROUND_DOWN) -
                           c->seek_timestamp;
@@ -922,11 +996,14 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
     for (i = 0; i < c->n_variants; i++) {
         /* Reset reading */
         struct variant *var = c->variants[i];
-        int64_t pos = c->first_timestamp == AV_NOPTS_VALUE ? 0 :
+        int64_t pos =0;
+	/*
+		c->first_timestamp == AV_NOPTS_VALUE ? 0 :
                       av_rescale_rnd(c->first_timestamp, 1, stream_index >= 0 ?
                                s->streams[stream_index]->time_base.den :
                                AV_TIME_BASE, flags & AVSEEK_FLAG_BACKWARD ?
                                AV_ROUND_DOWN : AV_ROUND_UP);
+          */                     
          if (var->input) {
             ffurl_close(var->input);
             var->input = NULL;
@@ -945,6 +1022,9 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
                 timestamp < pos + var->segments[j]->duration) {
                 var->cur_seq_no = var->start_seq_no + j;
                 ret = 0;
+		  c->discontinue_diff_timestamp=0;
+                c->expect_next_pts=av_rescale_rnd(pos,s->streams[stream_index]->time_base.den,s->streams[stream_index]->time_base.num,AV_ROUND_ZERO)+c->first_timestamp;	
+                c->expect_next_dts=c->expect_next_pts;
                 break;
             }
             pos += var->segments[j]->duration;
