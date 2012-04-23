@@ -74,10 +74,8 @@ int player_init(void)
     ps_register_stream_decoder();
     rm_register_stream_decoder();
     audio_register_stream_decoder();
-    video_register_stream_decoder();        
-	/*enable demux and set demux channel, must*/
-    set_stb_source_hiu();
-    set_stb_demux_source_hiu();
+    video_register_stream_decoder();    
+	
     return PLAYER_SUCCESS;
 }
 
@@ -102,7 +100,7 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     int ret;
     int pid = -1;
     play_para_t *p_para;
-    char stb_source[32];      
+    //char stb_source[32];      
     
     update_loglevel_setting();
     print_version_info();
@@ -110,22 +108,7 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
 
     if (ctrl_p == NULL) {
         return PLAYER_EMPTY_P;
-    }
-
-    memset(stb_source, 0, 32);
-    if(get_stb_source(stb_source, 32))
-    {       
-        if (strncmp(stb_source,"hiu", 3)){
-            set_stb_source_hiu();
-        }
-    }
-    memset(stb_source, 0, 32);
-    if(get_stb_demux_source(stb_source, 32))
-    {
-        if (strncmp(stb_source,"hiu", 3)){
-            set_stb_demux_source_hiu();
-        }
-    }
+    }    
     
 	/*keep last frame displaying --default*/
     set_black_policy(0);
