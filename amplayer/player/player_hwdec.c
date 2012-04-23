@@ -630,15 +630,14 @@ int mpeg_check_sequence(play_para_t *para)
 #define MAX_MPEG_PROBE_SIZE (0x100000)      //1M
 #define SEQ_START_CODE      (0x000001b3)
 #define EXT_START_CODE      (0x000001b5)
-    int code = 0;
-    int offset;
+    int code = 0;    
     int pos1 = 0, pos2 = 0;
     int i, j;
-    int len;
-    int read_size;
-    int seq_size = 0;
+    int len, offset, read_size, seq_size = 0;  
+    int64_t cur_offset = 0;    
     AVFormatContext *s = para->pFormatCtx;
     unsigned char buf[MPEG_PROBE_SIZE];
+    cur_offset = avio_tell(s->pb);
     offset = 0;
     len = 0;
     for (j = 0; j < (MAX_MPEG_PROBE_SIZE / MPEG_PROBE_SIZE); j++) {
@@ -646,6 +645,7 @@ int mpeg_check_sequence(play_para_t *para)
         read_size = get_buffer(s->pb, buf, MPEG_PROBE_SIZE);
         if (read_size < 0) {
             log_error("[mpeg_check_sequence:%d] read error: %d\n", __LINE__, read_size);
+            avio_seek(s->pb, cur_offset, SEEK_SET);
             return read_size;
         }
         offset += read_size;
@@ -674,6 +674,7 @@ int mpeg_check_sequence(play_para_t *para)
         read_size = get_buffer(s->pb, buf, seq_size);
         if (read_size < 0) {
             log_error("[mpeg_check_sequence:%d] read error: %d\n", __LINE__, read_size);
+             avio_seek(s->pb, cur_offset, SEEK_SET);
             return read_size;
         }
 #ifdef DEBUG_MPEG_SEARCH
@@ -703,6 +704,7 @@ int mpeg_check_sequence(play_para_t *para)
     } else {
         log_error("[mpeg_check_sequence:%d]max probe size reached! not find sequence header!\n", __LINE__);
     }
+    avio_seek(s->pb, cur_offset, SEEK_SET);
     return 0;
 }
 static int mpeg_add_header(play_para_t *para)
