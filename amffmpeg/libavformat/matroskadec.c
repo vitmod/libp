@@ -1987,6 +1987,10 @@ static int matroska_read_packet(AVFormatContext *s, AVPacket *pkt)
         if (matroska->done)
             return AVERROR_EOF;
         matroska_parse_cluster(matroska);
+        if (url_interrupt_cb()) {
+            av_log(s, AV_LOG_WARNING, "interrupt, exit\n");
+            return AVERROR_EXIT;
+        }
     }
 
     return 0;
