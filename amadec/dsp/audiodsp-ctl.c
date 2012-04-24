@@ -357,3 +357,31 @@ int audiodsp_get_first_pts_flag(dsp_operations_t *dsp_ops)
 
     return val;
 }
+
+int audiodsp_automute_on(dsp_operations_t *dsp_ops)
+{
+    int ret;
+
+    if (dsp_ops->dsp_file_fd < 0) {
+        adec_print("read error!! audiodsp have not opened\n");
+        return -1;
+    }
+
+    ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_AUTOMUTE_ON, 0);
+
+    return ret;
+}
+
+int audiodsp_automute_off(dsp_operations_t *dsp_ops)
+{
+    int ret;
+
+    if (dsp_ops->dsp_file_fd < 0) {
+        adec_print("read error!! audiodsp have not opened\n");
+        return -1;
+    }
+
+    ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_AUTOMUTE_OFF, 0);
+
+    return ret;
+}
