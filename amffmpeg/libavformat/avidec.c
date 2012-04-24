@@ -986,6 +986,11 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
     }
 
 resync:
+    if (url_interrupt_cb()){
+        av_log(s, AV_LOG_WARNING, "[%s]interrupt, return error!\n", __FUNCTION__);
+        return AVERROR_EXIT;
+    }
+    
     if(avi->stream_index >= 0){
         AVStream *st= s->streams[ avi->stream_index ];
         AVIStream *ast= st->priv_data;

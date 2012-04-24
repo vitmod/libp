@@ -2574,6 +2574,10 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     int ret;
 	int64_t offset = 0;
  retry:
+    if (url_interrupt_cb()) {
+        av_log(s, AV_LOG_WARNING, "interrupt, exit\n");
+        return AVERROR_EXIT;
+    }
     sample = mov_find_next_sample(s, &st);
     if (!sample) {
         mov->found_mdat = 0;
