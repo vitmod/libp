@@ -1148,7 +1148,7 @@ int GL_2X_scale(int mSwitch)
 	else if(mSwitch == 1)
 	{
 		write(Fb0Blank, "1", strlen("1"));
-		write(Fb1Blank, "1", strlen("1"));
+		//write(Fb1Blank, "1", strlen("1"));
 		if(!strncmp(mode, "480i", 4) || !strncmp(mode, "480p", 4))
 		{
 			write(request2XScaleFile, "16 720 480", strlen("16 720 480"));
