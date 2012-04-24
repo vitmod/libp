@@ -181,7 +181,8 @@ typedef struct play_para {
     float buffering_threshhold_min;
     float buffering_threshhold_middle;
     float buffering_threshhold_max;
-
+    float buffering_start_time_s;
+   
     struct am_packet *p_pkt;
 
 	void *player_mate;/*player's mate thread handle*/

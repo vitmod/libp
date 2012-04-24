@@ -949,6 +949,38 @@ static int  update_buffering_states(play_para_t *p_para,
     	vlevel = (float)vbuf->data_len / vbuf->size;
 	else
 		vlevel=0;
+
+    if(p_para->buffering_enable && p_para->buffering_start_time_s>0){
+		/*reset  buffering parameters for  frame rate*/
+		int bitrate=0;
+		int buftime=p_para->buffering_start_time_s;
+		
+		if(p_para->pFormatCtx){
+
+			bitrate=p_para->pFormatCtx->bit_rate;
+			if(bitrate<=0 && p_para->pFormatCtx->file_size>0 && p_para->pFormatCtx->duration>0)/*caculate is better */
+				bitrate=(p_para->pFormatCtx->file_size*8)/(p_para->pFormatCtx->duration / AV_TIME_BASE);
+		}
+		if(bitrate>0 && (vbuf->size>0 || abuf->size>0)){
+			/*===time * bitrate/8/bufsize=buflevel =====*/
+			p_para->buffering_threshhold_middle=((float)buftime*bitrate/8)/(vbuf->size+abuf->size);//for tmp start.we will reset after playing	
+			if(p_para->buffering_threshhold_middle<=p_para->buffering_threshhold_min*2)
+				p_para->buffering_threshhold_middle=p_para->buffering_threshhold_min*2;
+			if(p_para->buffering_threshhold_middle>=p_para->buffering_threshhold_max*9/10)
+				p_para->buffering_threshhold_middle=p_para->buffering_threshhold_max*9/10;
+		}else{
+			p_para->buffering_threshhold_middle=0.02;/*used default value*/
+		}
+		log_print("buffering threadhold  changed by bufering time(must min=%f<middle=%f<max=%f),buftime=%dS,bitrate=%d\n",
+                      p_para->buffering_threshhold_min,
+                      p_para->buffering_threshhold_middle,
+                      p_para->buffering_threshhold_max,
+                      buftime,
+			 bitrate);
+		/*seted,clear the value,we can changed later,and reset here again*/
+		p_para->buffering_start_time_s=0;
+    }			
+	
     p_para->state.audio_bufferlevel = alevel;
     p_para->state.video_bufferlevel = vlevel;
 	if (p_para->pFormatCtx && p_para->pFormatCtx->pb) {

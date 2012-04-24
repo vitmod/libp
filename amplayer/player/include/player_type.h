@@ -263,6 +263,8 @@ typedef struct
 	float buffing_max;						 //auto buffering high limit
 	int is_playlist;						 //no use
 	int is_type_parser;						 //is try to get file type 
+	int buffing_starttime_s;			//for rest buffing_middle,buffering seconds data to start.
+	int reserved [64];					//reserved  for furthur used,some one add more ,can del reserved num
  }play_control_t; 
 
 #endif

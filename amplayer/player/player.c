@@ -545,16 +545,31 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     p_para->enable_rw_on_pause = c_para->enable_rw_on_pause;
     if (p_para->buffering_enable) {
         /*check threshhold is valid*/
+	if(c_para->buffing_starttime_s>0 && c_para->buffing_middle<=0)
+		c_para->buffing_middle=0.02;//for tmp start.we will reset after start.
         if (c_para->buffing_min < c_para->buffing_middle &&
-            c_para->buffing_middle < c_para->buffing_max) {
+            c_para->buffing_middle < c_para->buffing_max &&
+            c_para->buffing_max<1 && 
+             c_para->buffing_min>0  
+            ) {
             p_para->buffering_threshhold_min = c_para->buffing_min;
             p_para->buffering_threshhold_middle = c_para->buffing_middle;
             p_para->buffering_threshhold_max = c_para->buffing_max;
+	     p_para->buffering_start_time_s	=  c_para->buffing_starttime_s;	
         } else {
             log_print("not a valid threadhold settings for buffering(must min=%f<middle=%f<max=%f)\n",
                       c_para->buffing_min,
                       c_para->buffing_middle,
                       c_para->buffing_max
+                     );
+	     p_para->buffering_threshhold_min = 0.01;
+            p_para->buffering_threshhold_middle = 0.02;
+            p_para->buffering_threshhold_max = 0.8;
+	     p_para->buffering_start_time_s	=  10;	//10 seonds		
+	     log_print("Auto changed  threadhold settings  for default buffering(must min=%f<middle=%f<max=%f)\n",
+                      p_para->buffering_threshhold_min,
+                      p_para->buffering_threshhold_middle,
+                      p_para->buffering_threshhold_max
                      );
             p_para->buffering_enable = 0;
         }

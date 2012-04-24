@@ -510,6 +510,7 @@ static int raw_read(play_para_t *para)
 
     if (!para->playctrl_info.read_end_flag && (0 == pkt->data_size)) {
         rev_byte = get_buffer(pb, pbuf, para->max_raw_size);
+	 log_debug1("get_buffer,%d,cur_offset=%lld,para->pFormatCtx->valid_offset==%lld\n",rev_byte ,cur_offset,para->pFormatCtx->valid_offset);	
         if(AVERROR(ETIMEDOUT)==rev_byte && para->state.current_time >= para->state.full_time){
                         //read timeout ,if playing current time reached end time,we think it is eof
                         rev_byte=AVERROR_EOF;
