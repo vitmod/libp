@@ -2066,7 +2066,8 @@ static void av_update_stream_timings(AVFormatContext *ic)
     }
     if (duration != INT64_MIN) {
         ic->duration = duration;
-        if (ic->file_size > 0) {
+        if (ic->file_size > 0 && ic->bit_rate<=0) {
+	     /*if bitrate have set,don't change it by file size,because the file size maybe not real media data for m3u demux*/
             /* compute the bitrate */
             ic->bit_rate = (double)ic->file_size * 8.0 * AV_TIME_BASE /
                 (double)ic->duration;

@@ -96,6 +96,7 @@ typedef struct {
 	int enabled_lp_buffer;
 	int support_time_seek;
 	int is_encrypted_media;
+	int flags;
 } AVIOContext;
 
 /* unbuffered I/O */
@@ -577,6 +578,10 @@ int avio_get_str16be(AVIOContext *pb, int maxlen, char *buf, int buflen);
  * silently ignored.
  */
 #define AVIO_FLAG_NONBLOCK 8
+
+
+#define AVIO_FLAG_SIZE_NOTVALID  0x10000
+
 
 /**
  * Create and initialize a AVIOContext for accessing the

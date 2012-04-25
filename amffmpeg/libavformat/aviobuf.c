@@ -275,7 +275,8 @@ int64_t avio_size(AVIOContext *s)
 
     if(!s)
         return AVERROR(EINVAL);
-
+    if(s->flags & AVIO_FLAG_SIZE_NOTVALID)
+		return -1;
     if (!s->seek)
         return AVERROR(ENOSYS);
     size = s->seek(s->opaque, 0, AVSEEK_SIZE);

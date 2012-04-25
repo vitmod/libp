@@ -63,6 +63,7 @@ struct segment {
     enum KeyType key_type;
     uint8_t iv[16];
      int seg_starttime;	
+     int64_t seg_filesize;	 
      int flags;	 
 #define DISCONTINUE_FLAG			(1<<0)
 	 
@@ -384,6 +385,7 @@ static int open_input(struct variant *var)
 {
     struct segment *seg = var->segments[var->cur_seq_no - var->start_seq_no];
     int ret;
+
     if (seg->key_type == KEY_NONE) {
 #ifdef  AVIO_OPEN2			
         return ffurl_open(&var->input, seg->url, AVIO_FLAG_READ,
@@ -391,6 +393,8 @@ static int open_input(struct variant *var)
 #else
 	ret= ffurl_open(&var->input, seg->url, AVIO_FLAG_READ  |URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 	av_log(NULL, AV_LOG_ERROR, "hls:open_input %s\n",seg->url);
+	if(var->input)
+		seg->seg_filesize=ffurl_size(var->input);
 	return ret;
 #endif
     } else if (seg->key_type == KEY_AES_128) {
@@ -447,6 +451,8 @@ static int open_input(struct variant *var)
             var->input = NULL;
             return ret;
         }
+	  if(var->input)
+		seg->seg_filesize=ffurl_size(var->input);	
         return 0;
     }
     return AVERROR(ENOSYS);
@@ -662,6 +668,7 @@ static int hls_read_header(AVFormatContext *s)
    c->total_brate=500*1024;
    c->latest_3file_brate=c->total_brate;
    c->latest_1file_brate=c->total_brate;	
+    s->bit_rate=0;
     if ((ret = parse_playlist(c, s->filename, NULL, s->pb)) < 0){
 	av_log(NULL, AV_LOG_WARNING, "parse_playlist failed ret=%d\n",ret);
         goto fail;
@@ -761,6 +768,9 @@ static int hls_read_header(AVFormatContext *s)
         ret = avformat_open_input(&v->ctx, v->segments[0]->url, in_fmt, NULL);
         if (ret < 0)
             goto fail;
+	 if(v->bandwidth<=0 && v->segments[0]->seg_filesize>0 && v->segments[0]->duration>0){
+	 	v->bandwidth=v->segments[0]->seg_filesize/v->segments[0]->duration;
+	 }
         v->stream_offset = stream_offset;
         snprintf(bitrate_str, sizeof(bitrate_str), "%d", v->bandwidth);
         /* Create new AVStreams for each stream in this variant */
@@ -775,18 +785,25 @@ static int hls_read_header(AVFormatContext *s)
             if (v->bandwidth)
                 av_dict_set(&st->metadata, "variant_bitrate", bitrate_str,
                                  0);
+		if(st->codec->bit_rate<=0)
+			st->codec->bit_rate=v->bandwidth/v->ctx->nb_streams;
         }
+	 v->ctx->bit_rate=v->bandwidth;
         stream_offset += v->ctx->nb_streams;
+	 s->bit_rate+=v->bandwidth;
     }
 
     c->first_packet = 1;
     c->first_timestamp = AV_NOPTS_VALUE;
     c->seek_timestamp  = AV_NOPTS_VALUE;
     c->discontinue_pts_interval_ms=2000;	
+    s->flags|=AVFMT_FLAG_FILESIZE_NOT_VALID;
    if(s->pb){
 	 	/*reset read and free lp buf.*/
 		/*del lp buf,to free memory*/
 		ffio_fdopen_resetlpbuf(s->pb,0);
+		s->pb->flags|=AVIO_FLAG_SIZE_NOTVALID;
+		s->file_size=-1;
      }
     return 0;
 fail:
