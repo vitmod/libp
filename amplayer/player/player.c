@@ -412,7 +412,13 @@ int check_flag(play_para_t *p_para)
         if (!p_para->playctrl_info.search_flag &&
             !p_para->playctrl_info.fast_forward &&
             !p_para->playctrl_info.fast_backward) {
-            set_black_policy(p_para->playctrl_info.black_out);
+		int sys_black = get_black_policy();
+		//log_print("%d, black policy value:%d\n",__LINE__,sys_p);
+		if(sys_black ==p_para->playctrl_info.black_out){
+			log_print("%d,force set black policy\n",__LINE__);
+			set_black_policy(p_para->playctrl_info.black_out);
+		}          
+           
             set_player_state(p_para, PLAYER_STOPED);
         } else if (p_para->playctrl_info.search_flag) {
             set_black_policy(0);
@@ -1084,8 +1090,14 @@ release:
     set_cntl_mode(player, TRICKMODE_NONE);
 
 release0:
-	player_mate_release(player);
-	set_black_policy(player->playctrl_info.black_out);
+    player_mate_release(player);
+    int cur_policy = get_black_policy();	
+    //log_print("%d, black policy value:%d\n",__LINE__,sys_policy);
+    if(cur_policy ==player->playctrl_info.black_out){
+        log_print("%d,force set black policy\n",__LINE__);
+        set_black_policy(player->playctrl_info.black_out);
+    }
+	
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
     if (get_player_state(player) == PLAYER_ERROR) {
 		if(check_stop_cmd(player)==1){
