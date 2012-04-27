@@ -909,6 +909,9 @@ typedef struct AVFormatContext {
 	 *added by XH for avoid repeat seek binary failed
 	 */
 	int seek_binary_failed;
+
+    /* added by Z.C for DRM content */
+    int drmcontent;
 } AVFormatContext;
 
 typedef struct AVPacketList {
