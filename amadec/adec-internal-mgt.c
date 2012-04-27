@@ -140,9 +140,9 @@ static void start_adec(aml_audio_dec_t *audec)
                 usleep(1000);
             }
 
+            audiodsp_automute_off(dsp_ops);
             avsync_en(1);
             adec_pts_resume();
-            audiodsp_automute_off(dsp_ops);
 
             audec->auto_mute = 0;
         }
