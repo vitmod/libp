@@ -113,6 +113,10 @@ static void get_av_codec_type(play_para_t *p_para)
         pStream = pFormatCtx->streams[video_index];
         pCodecCtx = pStream->codec;
         p_para->vstream_info.video_format   = video_type_convert(pCodecCtx->codec_id);
+        if (pFormatCtx->drmcontent) {
+            log_print("[%s:%d]DRM content found, not support yet.\n", __FUNCTION__, __LINE__);
+            p_para->vstream_info.video_format = VFORMAT_UNSUPPORT;
+        }
         if (pCodecCtx->codec_id == CODEC_ID_FLV1) {
             pCodecCtx->codec_tag = CODEC_TAG_F263;
             p_para->vstream_info.flv_flag = 1;
@@ -224,6 +228,10 @@ static void get_av_codec_type(play_para_t *p_para)
         pCodecCtx = pStream->codec;
         p_para->astream_info.audio_pid      = (unsigned short)pStream->id;
         p_para->astream_info.audio_format   = audio_type_convert(pCodecCtx->codec_id, p_para->file_type);
+        if (pFormatCtx->drmcontent) {
+            log_print("[%s:%d]DRM content found, not support yet.\n", __FUNCTION__, __LINE__);
+            p_para->astream_info.audio_format = AFORMAT_UNSUPPORT;
+        }
 		p_para->astream_info.audio_channel  = pCodecCtx->channels;
 		p_para->astream_info.audio_samplerate = pCodecCtx->sample_rate;
 		log_print("[%s:%d]afmt=%d apid=%d asr=%d ach=%d aidx=%d\n",
@@ -531,6 +539,13 @@ static int set_decode_para(play_para_t*am_p)
 		set_player_error_no(am_p, PLAYER_UNSUPPORT_ACODEC);
 	    update_player_states(am_p, 1);
 	}
+
+    if (am_p->pFormatCtx->drmcontent) {
+        set_player_error_no(am_p, DRM_UNSUPPORT);
+        update_player_states(am_p, 1);
+        log_error("[%s:%d]Can't support drm yet!\n", __FUNCTION__, __LINE__);
+        return PLAYER_UNSUPPORT;
+    }
 	
 	if (am_p->playctrl_info.no_video_flag) {
         set_player_error_no(am_p, PLAYER_SET_NOVIDEO);

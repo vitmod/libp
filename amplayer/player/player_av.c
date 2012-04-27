@@ -2168,6 +2168,10 @@ void player_switch_audio(play_para_t *para)
     }
 
     para->astream_info.audio_format = audio_type_convert(pCodecCtx->codec_id, para->file_type);
+    if (pFCtx->drmcontent) {
+        log_print("[%s:%d]DRM content found, not support yet.\n", __FUNCTION__, __LINE__);
+        para->astream_info.audio_format= VFORMAT_UNSUPPORT;
+    }
     if (para->astream_info.audio_format < 0 || para->astream_info.audio_format >= AFORMAT_MAX) {
         log_error("[%s:%d]unkown audio format\n", __FUNCTION__, __LINE__);
         para->astream_info.has_audio = 0;

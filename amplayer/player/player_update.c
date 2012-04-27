@@ -229,6 +229,10 @@ static int set_astream_info(play_para_t *p_para)
                 ainfo->duration     = (int)(pStream->duration * pStream->time_base.num / pStream->time_base.den);
                 ainfo->bit_rate     = pStream->codec->bit_rate;
                 ainfo->aformat      = audio_type_convert(pStream->codec->codec_id, p_para->file_type);
+                if (pCtx->drmcontent) {
+                    log_print("[%s:%d]DRM content found, not support yet.\n", __FUNCTION__, __LINE__);
+                    ainfo->aformat = AFORMAT_UNSUPPORT;
+                }
                 if (p_para->stream_type == STREAM_AUDIO) {
                     if (ainfo->bit_rate == 0) {
                         ainfo->bit_rate = info->bitrate;
