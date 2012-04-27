@@ -155,7 +155,19 @@ int iec958_pack_frame(char *buf,int frame_size)
 	}
 	return 0;		
 }
-int iec958_packaged_frame_write_958buf(char *buf,int frame_size)
+#define ALIGN 4096
+static int iec958_buf_space_size(int dev_fd)
+{
+	int  space = 0;
+	ioctl(dev_fd, AUDIO_SPDIF_GET_958_BUF_RD_OFFSET, &hw_rd_offset); 
+	if(wr_offset > hw_rd_offset)	{
+		space = iec958_buffer_size+hw_rd_offset - wr_offset;
+	}
+	else 
+		space = hw_rd_offset - wr_offset;
+	return space>ALIGN?(space-ALIGN):0/*&(~4095)*/;	
+}
+int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 {
 	int tail = 0;
 	int ret;

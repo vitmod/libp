@@ -36,7 +36,7 @@ static unsigned read_offset = 0;
 static unsigned buffer_size = 0;
 static int dev_fd = -1;
 
-int pcmenc_int()
+int pcmenc_init()
 {
 	buffer_size = 0;
 	read_offset = 0;
