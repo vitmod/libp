@@ -779,7 +779,12 @@ void *player_thread(play_para_t *player)
     }
 #endif
     log_print("pid[%d]::start offset prepare\n", player->player_id);
-    player_offset_init(player);
+    ret = player_offset_init(player);
+    if (ret != PLAYER_SUCCESS) {
+        log_error("pid[%d]::prepare offset failed!\n", player->player_id);
+        set_player_state(player, PLAYER_ERROR);
+        goto release;
+    }
 	log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {
