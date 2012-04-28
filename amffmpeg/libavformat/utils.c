@@ -547,10 +547,10 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
 	
 retry_probe:	
     for(probe_size= PROBE_BUF_MIN; probe_size<=max_probe_size && !*fmt && ret >= 0;
-        probe_size = FFMIN(probe_size<<1, FFMAX(max_probe_size, probe_size+1))) {
+        probe_size = FFMIN(pd.buf_size<<1, FFMAX(max_probe_size, probe_size+1))) {
         int ret, score = probe_size < max_probe_size ? AVPROBE_SCORE_MAX/4 : 0;
-        int buf_offset = (probe_size == PROBE_BUF_MIN) ? 0 : probe_size>>1;
-
+       // int buf_offset = (probe_size == PROBE_BUF_MIN) ? 0 : probe_size>>1;
+	 int buf_offset =  pd.buf_size ;
         if (probe_size < offset) {
             continue;
         }
@@ -559,7 +559,7 @@ retry_probe:
         buf = av_realloc(buf, probe_size + AVPROBE_PADDING_SIZE);
         if ((ret = avio_read(pb, buf + buf_offset, probe_size - buf_offset)) < 0) {
             /* fail if error was not end of file, otherwise, lower score */
-            if (ret != AVERROR_EOF) {
+            if (ret != AVERROR_EOF &&ret != AVERROR(EAGAIN)) {
                 av_free(buf);
                 return ret;
             }
@@ -910,7 +910,8 @@ int av_read_packet(AVFormatContext *s, AVPacket *pkt)
 			av_log(s, AV_LOG_DEBUG, "change stream type need revert\n");
 		}
                 if(    (st->codec->codec_id != CODEC_ID_NONE && score > AVPROBE_SCORE_MAX/4)
-                    || end || (s->pb && s->pb->fastdetectedinfo && score>0)){/*if is slowmedia do short detect.*/
+                    || end 
+                    || (st->codec->codec_id != CODEC_ID_NONE && s->pb && s->pb->fastdetectedinfo && score>0)){/*if is slowmedia do short detect.*/
                     pd->buf_size=0;
                     av_freep(&pd->buf);
                     st->request_probe= -1;

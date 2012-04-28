@@ -1065,12 +1065,17 @@ int ffio_rewind_with_probe_data(AVIOContext *s, unsigned char *buf, int buf_size
     int64_t buffer_start;
     int buffer_size;
     int overlap, new_size, alloc_size;
-
+    int ret;
+	
     if (s->write_flag)
         return AVERROR(EINVAL);
 
     buffer_size = s->buf_end - s->buffer;
-
+    if(s->enabled_lp_buffer){/*have lowlevel lpbuf,can seek back here*/
+		ret=avio_seek(s,0,SEEK_SET);
+		if(ret==0)
+			return ret;
+    }
     /* the buffers must touch or overlap */
     if ((buffer_start = s->pos - buffer_size) > buf_size)
         return AVERROR(EINVAL);
