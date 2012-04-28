@@ -838,7 +838,7 @@ void *player_thread(play_para_t *player)
         do {
             /* if is karaok play, we slow down the player thread*/
             if(player->karaok_flag)
-               player_thread_wait(player, 500 * 1000);
+               player_thread_wait(player, 200 * 1000);
 
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
