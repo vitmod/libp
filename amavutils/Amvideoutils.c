@@ -9,12 +9,17 @@
 #include <sys/ioctl.h>
 #include "include/Amvideoutils.h"
 #include "include/Amsysfsutils.h"
+#include "include/Amdisplayutils.h"
+
+#include "amports/amstream.h"
+#include "ppmgr/ppmgr.h"
 
 
 #define SYSCMD_BUFSIZE 40
 #define DISP_DEVICE_PATH "/sys/class/video/device_resolution"
 #define FB_DEVICE_PATH   "/sys/class/graphics/fb0/virtual_size"
-#define ANGLE_PATH       "/sys/class/ppmgr/angle"
+#define ANGLE_PATH       "/dev/ppmgr"
+#define VIDEO_PATH       "/dev/amvideo"
 #define VIDEO_GLOBAL_OFFSET_PATH "/sys/class/video/global_offset"
 
 static int rotation = 0;
@@ -41,22 +46,16 @@ int  amvideo_utils_get_global_offset(void)
     return offset;
 }
 
-static inline int amvideo_utils_open(int id)
-{
-    LOG_FUNCTION_NAME
-
-    return open("/sys/class/video/axis", O_RDWR);
-}
-
 int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t h, int rotation)
 {
     LOG_FUNCTION_NAME
-    int fd;
-    int dev_fd, dev_w, dev_h, disp_w, disp_h, video_global_offset;
+    int video_fd;
+    int dev_fd = -1, dev_w, dev_h, disp_w, disp_h, video_global_offset;
     int dst_x, dst_y, dst_w, dst_h;
     char buf[SYSCMD_BUFSIZE];
     int angle_fd = -1;
     int ret = -1;
+    int axis[4];
 
     LOGI("amvideo_utils_set_virtual_position:: x=%d y=%d w=%d h=%d\n", x, y, w, h);
 
@@ -67,8 +66,8 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     dst_w = w;
     dst_h = h;
 
-    fd = amvideo_utils_open(1);
-    if (fd < 0) {
+    video_fd = open(VIDEO_PATH, O_RDWR);
+    if (video_fd < 0) {
         goto OUT;
     }
 
@@ -82,15 +81,17 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     if (sscanf(buf, "%dx%d", &dev_w, &dev_h) == 2) {
         LOGI("device resolution %dx%d\n", dev_w, dev_h);
     } else {
-        close(dev_fd);
         ret = -2;
         goto OUT;
     }
-    close(dev_fd);
 
     amdisplay_utils_get_size(&disp_w, &disp_h);
     video_global_offset = amvideo_utils_get_global_offset();
 
+    /* if we are doing video output to a second display device with
+     * a different resolution, scale all the numbers.
+     * E.g. when a MID pad is connected to a HDMI output.
+     */
     if (((disp_w != dev_w) || (disp_h / 2 != dev_h)) && (video_global_offset == 0)) {
         dst_x = dst_x * dev_w / disp_w;
         dst_y = dst_y * dev_h / disp_h;
@@ -100,12 +101,17 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 
     angle_fd = open(ANGLE_PATH, O_WRONLY);
     if (angle_fd >= 0) {
-        const char *angle[4] = {"0", "1", "2", "3"};
-        write(angle_fd, angle[(rotation/90) & 3], 2);
-
-        LOGI("set ppmgr angle %s\n", angle[(rotation/90) & 3]);
+        ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, (rotation/90) & 3);
+        LOGI("set ppmgr angle %d\n", (rotation/90) & 3);
     }
 
+    /* this is unlikely and only be used when ppmgr does not exist
+     * to support video rotation. If that happens, we convert the window
+     * position to non-rotated window position.
+     * On ICS, this might not work at all because the transparent UI
+     * window is still drawn is it's direction, just comment out this for now.
+     */
+#if 0
     if (((rotation == 90) || (rotation == 270)) && (angle_fd < 0)) {
         if (dst_h == disp_h) {
             int center = x + w / 2;
@@ -121,15 +127,28 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
             }
         }
     }
+#endif
 
+    axis[0] = dst_x;
+    axis[1] = dst_y;
+    axis[2] = dst_x + dst_w - 1;
+    axis[3] = dst_y + dst_h - 1;
+    
+    ioctl(video_fd, AMSTREAM_IOC_SET_VIDEO_AXIS, &axis[0]);
+
+    ret = 0;
+OUT:
+    if (video_fd >= 0) {
+        close(video_fd);
+    }
+    
+    if (dev_fd >= 0) {
+        close(dev_fd);
+    }
+    
     if (angle_fd >= 0) {
         close(angle_fd);
     }
-    ret = 0;
-OUT:
-    snprintf(buf, 40, "%d %d %d %d", dst_x, dst_y, dst_x + dst_w - 1, dst_y + dst_h - 1);
-    write(fd, buf, strlen(buf));
-
     LOGI("amvideo_utils_set_virtual_position (corrected):: x=%d y=%d w=%d h=%d\n", dst_x, dst_y, dst_w, dst_h);
 
     return ret;
@@ -138,70 +157,53 @@ OUT:
 int amvideo_utils_set_absolute_position(int32_t x, int32_t y, int32_t w, int32_t h, int rotation)
 {
     LOG_FUNCTION_NAME
-    int fd;
-    int dev_fd, dev_w, dev_h, video_global_offset;
-    int dst_x, dst_y, dst_w, dst_h;
-    char buf[SYSCMD_BUFSIZE];
+    int video_fd;
     int angle_fd = -1;
-    int ret = -1;
+    int axis[4];
 
     LOGI("amvideo_utils_set_absolute_position:: x=%d y=%d w=%d h=%d\n", x, y, w, h);
 
-    dst_x = x;
-    dst_y = y;
-    dst_w = w;
-    dst_h = h;
-
-    fd = amvideo_utils_open(1);
-    if (fd < 0) {
-        goto OUT;
+    video_fd = open(VIDEO_PATH, O_RDWR);
+    if (video_fd < 0) {
+        return -1;
     }
 
     angle_fd = open(ANGLE_PATH, O_WRONLY);
     if (angle_fd >= 0) {
-        const char *angle[4] = {"0", "1", "2", "3"};
-        write(angle_fd, angle[(rotation/90) & 3], 2);
-
-        LOGI("set ppmgr angle %s\n", angle[(rotation/90) & 3]);
-    }
-
-    if (angle_fd >= 0) {
+        ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, (rotation/90) & 3);
+        LOGI("set ppmgr angle %d\n", (rotation/90) & 3);
         close(angle_fd);
     }
-    ret = 0;
-OUT:
-    snprintf(buf, 40, "%d %d %d %d", dst_x, dst_y, dst_x + dst_w - 1, dst_y + dst_h - 1);
-    write(fd, buf, strlen(buf));
 
-    LOGI("amvideo_utils_set_absolute_position (corrected):: x=%d y=%d w=%d h=%d\n", dst_x, dst_y, dst_w, dst_h);
+    axis[0] = x;
+    axis[1] = y;
+    axis[2] = x + w - 1;
+    axis[3] = y + h - 1;
+    
+    ioctl(video_fd, AMSTREAM_IOC_SET_VIDEO_AXIS, &axis[0]);
 
-    return ret;
+    close(video_fd);
+
+    return 0;
 }
-
-
 
 int amvideo_utils_get_position(int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
     LOG_FUNCTION_NAME
-    int ret = -1;
-    char buf[SYSCMD_BUFSIZE];
-    int x1, y1;
-    int fd;
+    int video_fd;
+    int axis[4];
 
-    fd = amvideo_utils_open(1);
-    if (fd < 0) {
-        goto OUT;
+    video_fd = open(VIDEO_PATH, O_RDWR);
+    if (video_fd < 0) {
+        return -1;
     }
 
-    read(fd, buf, SYSCMD_BUFSIZE);
+    ioctl(video_fd, AMSTREAM_IOC_GET_VIDEO_AXIS, &axis[0]);
 
-    sscanf(buf, "%d %d %d %d", x, y, &x1, &y1);
+    *x = axis[0];
+    *y = axis[1];
+    *w = axis[2] - axis[0] + 1;
+    *h = axis[3] - axis[1] + 1;
 
-    *w = x1 - *x + 1;
-    *h = y1 - *y + 1;
-    ret = 0;
-OUT:
     return 0;
 }
-
-
