@@ -31,8 +31,9 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
                 maxFrameSize = packet.size;
                 thumbTime = packet.pts;                
                 thumbOffset = avio_tell(pFormatCtx->pb)- maxFrameSize;    
+            }
+            av_free_packet(&packet);
         }
-        av_free_packet(&packet);
     }
     *time = thumbTime;
     *offset = thumbOffset;
@@ -45,7 +46,7 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
     int64_t thumbOffset = 0;
     AVPacket packet;
     AVStream *st = pFormatCtx->streams[video_index];
-    int64_t init_seek_time = (pFormatCtx->duration>0) ? MIN(2*US_TIME_BASE, (pFormatCtx->duration>>1)) : (2*US_TIME_BASE);
+    int64_t init_seek_time = (pFormatCtx->duration>0) ? MIN(10*US_TIME_BASE, (pFormatCtx->duration>>1)) : (10*US_TIME_BASE);
     log_print("[find_thumbnail_frame]duration=%lld init_seek_time=%lld\n",pFormatCtx->duration,init_seek_time);
 
     av_seek_frame(pFormatCtx, video_index, init_seek_time, AVSEEK_FLAG_BACKWARD);
