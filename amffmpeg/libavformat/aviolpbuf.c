@@ -91,9 +91,12 @@ int url_lpopen(URLContext *s,int size)
 	int bufsize=0;
 
 	if(size==0){
-		size=am_getconfig_float("libplayer.ffmpeg.lpbufsizemax",&value);
-		if(size<=0)
+		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemax",&value);
+		if(ret<0)
 			size=IO_LP_BUFFER_SIZE;
+		else{
+			size=(int)value;
+		}
 	}
 	lp_bprint( AV_LOG_INFO,"url_lpopen=%d\n",size);
 	if(!s)
@@ -141,6 +144,13 @@ int url_lpopen(URLContext *s,int size)
 	lp->cache_enable=0;
 	lp->cache_id=aviolp_cache_open(s->filename,url_filesize(s));
 	lp->dbg_cnt=0;
+	ret=am_getconfig_float("libplayer.ffmpeg.lpbufmaxbuflv",&value);
+		if(ret<0)
+			lp->max_forword_level=1;
+		else{
+			lp->max_forword_level=value;
+		}
+	
 	if(lp->cache_id!=0)
 		lp->cache_enable=1;
 	lp_bprint( AV_LOG_INFO,"url_lpopen4%d\n",bufsize);
@@ -554,7 +564,8 @@ int url_lp_intelligent_buffering(URLContext *s,int size)
 	if(lp->dbg_cnt%100==0)
 		lp_print( AV_LOG_INFO, "url_lp buffering:datalen=%d,forward_datad=%d,back_data=%d,lp->buffer_size=%d,size=%d\n",
 			datalen,forward_data,back_data,lp->buffer_size,size);
-	if(datalen>=0 && ((datalen <lp->buffer_size-1024) || (back_data>(forward_data/2+1)) || (back_data>3*1024*1024)))
+	if(datalen>=0 && ((forward_data/lp->buffer_size)<lp->max_forword_level) && 
+	    ((datalen <lp->buffer_size-1024) || (back_data>(forward_data/2+1)) || (back_data>3*1024*1024)) )
 		ret=url_lpfillbuffer(s,size);/*lest 1/3 back data && < 3M back data*/
 
 	return ret;
