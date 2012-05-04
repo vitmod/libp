@@ -5,7 +5,8 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 	
 LOCAL_SRC_FILES += $(notdir $(wildcard $(LOCAL_PATH)/*.cpp)) 
 
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/include\
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
+     $(LOCAL_PATH)/../amcodec/include \
 	 $(JNI_H_INCLUDE) 
 
 LOCAL_SHARED_LIBRARIES += libutils
@@ -25,7 +26,8 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 	
 LOCAL_SRC_FILES += $(notdir $(wildcard $(LOCAL_PATH)/*.cpp))
 
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/include\
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
+         $(LOCAL_PATH)/../amcodec/include \
          $(JNI_H_INCLUDE)
 
 LOCAL_SHARED_LIBRARIES += libutils

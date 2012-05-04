@@ -689,7 +689,7 @@ static void update_current_time(play_para_t *p_para)
 #endif
 	    } else  if (!p_para->playctrl_info.end_flag) {
 	        time = get_current_time(p_para);
-
+		  p_para->state.current_pts = time;
 	        if (p_para->state.start_time == -1) {
 	            if (p_para->astream_info.start_time != -1) {
 	                p_para->state.start_time = p_para->astream_info.start_time;
@@ -747,7 +747,7 @@ static void update_current_time(play_para_t *p_para)
 	        }
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n", time / PTS_FREQ, p_para->state.current_time, p_para->state.last_time);
 	        p_para->state.current_ms = time / PTS_FREQ_MS;
-	        p_para->state.current_pts = time;
+	      
 	        time /= PTS_FREQ;
 	    } else if (!p_para->playctrl_info.reset_flag && !p_para->playctrl_info.search_flag){
 	    	time = p_para->state.full_time;

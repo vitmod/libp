@@ -412,8 +412,8 @@ int check_flag(play_para_t *p_para)
         if (!p_para->playctrl_info.search_flag &&
             !p_para->playctrl_info.fast_forward &&
             !p_para->playctrl_info.fast_backward) {
-            set_black_policy(p_para->playctrl_info.black_out);
-            set_player_state(p_para, PLAYER_STOPED);
+		set_black_policy(p_para->playctrl_info.black_out);
+             set_player_state(p_para, PLAYER_STOPED);
         } else if (p_para->playctrl_info.search_flag) {
             set_black_policy(0);
         }
@@ -779,7 +779,12 @@ void *player_thread(play_para_t *player)
     }
 #endif
     log_print("pid[%d]::start offset prepare\n", player->player_id);
-    player_offset_init(player);
+    ret = player_offset_init(player);
+    if (ret != PLAYER_SUCCESS) {
+        log_error("pid[%d]::prepare offset failed!\n", player->player_id);
+        set_player_state(player, PLAYER_ERROR);
+        goto release;
+    }
 	log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {
@@ -848,7 +853,7 @@ void *player_thread(play_para_t *player)
         do {
             /* if is karaok play, we slow down the player thread*/
             if(player->karaok_flag)
-               player_thread_wait(player, 500 * 1000);
+               player_thread_wait(player, 200 * 1000);
 
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
@@ -1084,8 +1089,7 @@ release:
     set_cntl_mode(player, TRICKMODE_NONE);
 
 release0:
-	player_mate_release(player);
-	set_black_policy(player->playctrl_info.black_out);
+    player_mate_release(player);	
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
     if (get_player_state(player) == PLAYER_ERROR) {
 		if(check_stop_cmd(player)==1){
