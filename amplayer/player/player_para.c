@@ -167,6 +167,10 @@ static void get_av_codec_type(play_para_t *p_para)
                     p_para->vstream_info.has_video = 0;
                 }
             }
+            if (pCodecCtx->mpeg4_partitioned) {
+                log_print("[%s:%d]mpeg4 partitioned frame, not supported\n", __FUNCTION__, __LINE__);
+                p_para->vstream_info.has_video = 0;
+            }
         }
 		
         if (p_para->vstream_info.has_video) {
