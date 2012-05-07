@@ -21,6 +21,7 @@
 #define ANGLE_PATH       "/dev/ppmgr"
 #define VIDEO_PATH       "/dev/amvideo"
 #define VIDEO_GLOBAL_OFFSET_PATH "/sys/class/video/global_offset"
+#define FREE_SCALE_PATH  "/sys/class/graphics/fb0/free_scale"
 
 static int rotation = 0;
 static int disp_width = 1920;
@@ -92,11 +93,23 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
      * a different resolution, scale all the numbers.
      * E.g. when a MID pad is connected to a HDMI output.
      */
-    if (((disp_w != dev_w) || (disp_h / 2 != dev_h)) && (video_global_offset == 0)) {
-        dst_x = dst_x * dev_w / disp_w;
-        dst_y = dst_y * dev_h / disp_h;
-        dst_w = dst_w * dev_w / disp_w;
-        dst_h = dst_h * dev_h / disp_h;
+    if (((disp_w != dev_w) || (disp_h / 2 != dev_h)) &&
+        (video_global_offset == 0)) {
+        char val[256];
+        int free_scale_enable = 0;
+
+        memset(val, 0, sizeof(val));
+        if (amsysfs_get_sysfs_str(FREE_SCALE_PATH, val, sizeof(val)) == 0) {
+            /* the returned string should be "free_scale_enable:[0x%x]" */
+            free_scale_enable = (val[21] == '0') ? 0 : 1;
+        }
+
+        if (free_scale_enable == 0) {
+            dst_x = dst_x * dev_w / disp_w;
+            dst_y = dst_y * dev_h / disp_h;
+            dst_w = dst_w * dev_w / disp_w;
+            dst_h = dst_h * dev_h / disp_h;
+        }
     }
 
     angle_fd = open(ANGLE_PATH, O_WRONLY);
