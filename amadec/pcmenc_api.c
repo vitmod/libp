@@ -35,7 +35,7 @@ static char *map_buf;
 static unsigned read_offset = 0;
 static unsigned buffer_size = 0;
 static int dev_fd = -1;
-
+#include <log-print.h>
 int pcmenc_init()
 {
 	buffer_size = 0;
@@ -44,14 +44,16 @@ int pcmenc_init()
 	dev_fd = -1;
     dev_fd = open(AUDIODSP_PCMENC_DEV_NAME, O_RDONLY);
     if(dev_fd < 0){
-        printf("can not open %s\n", AUDIODSP_PCMENC_DEV_NAME);
+        //printf("can not open %s\n", AUDIODSP_PCMENC_DEV_NAME);
+        adec_print("can not open %s\n", AUDIODSP_PCMENC_DEV_NAME);
         return -1;
     }
     ioctl(dev_fd, AUDIODSP_PCMENC_GET_RING_BUF_SIZE, &buffer_size); 
 /* mapping the kernel buffer to user space to acess */    
     map_buf= mmap(0,buffer_size, PROT_READ , MAP_PRIVATE, dev_fd, 0);
     if((unsigned)map_buf == -1){
-    	printf("pcmenc:mmap failed,err id %d \n",errno);
+    	//printf("pcmenc:mmap failed,err id %d \n",errno);
+    	adec_print("pcmenc:mmap failed,err id %d \n",errno);
     	close(dev_fd);
     	return -1;
     }
@@ -65,7 +67,8 @@ int pcmenc_read_pcm(char *inputbuf,int size)
     ioctl(dev_fd, AUDIODSP_PCMENC_GET_RING_BUF_CONTENT, &ring_buf_content); 
     if(ring_buf_content > size){
     	if(read_offset+size > buffer_size){
-    		tail = size - read_offset;
+    		//tail = size - read_offset;
+    		tail = buffer_size - read_offset;
     		memcpy(inputbuf,map_buf+read_offset,tail);
     		read_offset = 0;
     		memcpy(inputbuf+tail,map_buf+read_offset,size-tail);

@@ -6,9 +6,7 @@
 #include <log-print.h>
 #include <pthread.h>
 #include "dts_enc.h"
-#include "pcmenc_api.h"
-#include "spdif_api.h"
-
+#include "dts_transenc_api.h"
 typedef enum {
     IDLE,
     TERMINATED,
@@ -78,91 +76,83 @@ static int get_dts_format(void)
 
 int dtsenc_init()
 {
+    int ret;
     memset(&dtsenc_info,0,sizeof(dtsenc_info_t));
-    /*dtsenc_info.dts_flag = get_dts_format();
+    dtsenc_info.dts_flag = get_dts_format();
     if(!dtsenc_info.dts_flag)
         return -1;
     dtsenc_info.raw_mode=get_dts_mode();
+    dtsenc_info.raw_mode=1;//default open
     if(!dtsenc_info.raw_mode)
-        return -1;*/
-   
-    //drive init
-    #if 0
-    int ret=pcmenc_init();
-    if(ret!=0)
-    {
-        adec_print("===pcmenc_init failed errno:%d \n",ret);
         return -1;
-     }
-    ret=iec958_init();
-    if(ret!=0)
+   //adec_print("====dts_flag:%d raw_mode:%d \n",dtsenc_info.dts_flag,dtsenc_info.raw_mode);
+    
+    ret=dts_transenc_init();
+    if(ret!=1)
     {
-        adec_print("===iec958_init failed errno:%d \n",ret);
-        pcmenc_deinit();
+        adec_print("====dts_trancenc init failed \n");
         return -1;
     }
-    #endif
-    
     dtsenc_info.state=INITTED;
+
+   pthread_t    tid;
+       ret = pthread_create(&tid, NULL, (void *)dts_enc_loop, NULL);
+        if (ret != 0) {
+           dtsenc_release();
+           return -1;
+       }
+       dtsenc_info.thread_pid = tid;
     adec_print("====dts_enc init success \n");
     return 0;
 }
 int dtsenc_start()
 {
+    int ret;
     if(dtsenc_info.state!=INITTED)
-        return -1;
-    pthread_t    tid;
-    int ret = pthread_create(&tid, NULL, (void *)dts_enc_loop, NULL);
-     if (ret != 0) {
-        return ret;
-    }
-    dtsenc_info.thread_pid = tid;
+           return -1;
     dtsenc_info.state=ACTIVE;
     adec_print("====dts_enc thread start success \n");
     return 0;
 }
 int dtsenc_pause()
 {
-    if(dtsenc_info.state!=ACTIVE)
-        return -1;
-    dtsenc_info.state=PAUSED;
+    if(dtsenc_info.state==ACTIVE)
+        dtsenc_info.state=PAUSED;
     return 0;
 }
 int dtsenc_resume()
 {
-    if(dtsenc_info.state!=PAUSED)
-        return -1;
-    dtsenc_info.state=ACTIVE;
+    if(dtsenc_info.state==PAUSED)
+        dtsenc_info.state=ACTIVE;
     return 0;
 }
 int dtsenc_stop()
 {
     if(dtsenc_info.state<INITTED)
-            return -1;
+           return -1;
     dtsenc_info.state=STOPPED;
     //jone the thread
     if(dtsenc_info.thread_pid<=0)
         return -1;
     int ret = pthread_join(dtsenc_info.thread_pid, NULL);
     dtsenc_info.thread_pid=0;
+    if(dtsenc_info.state!=STOPPED)
+            return -1;
+    dts_transenc_deinit();
     adec_print("====dts_enc stop ok\n");
     return 0;
 }
 int dtsenc_release()
 {
-    if(dtsenc_info.state!=STOPPED)
-            return -1;
-     //driver release 
-     #if 0
-     pcmenc_deinit();
-     iec958_deinit();
-     #endif
-     dtsenc_info.state=TERMINATED;
+    memset(&dtsenc_info,0,sizeof(dtsenc_info_t));
+    // dtsenc_info.state=TERMINATED;
+     adec_print("====dts_enc release ok\n");
      return 0;
 }
 
 static void *dts_enc_loop()
 {
+    int ret;
     while(1)
     {
         switch(dtsenc_info.state)
@@ -181,10 +171,9 @@ static void *dts_enc_loop()
                 goto err;
           }
           //shaoshuai --non_block
-          //enc_data();
-          //write data();
-          adec_print("====dts_enc thread is running \n");
-          usleep(100000);
+          ret=dts_transenc_process_frame();
+          //usleep(100000);
+          //adec_print("====dts_enc thread is running \n");
     }
  quit_loop:
     adec_print("====dts_enc thread exit success \n");
