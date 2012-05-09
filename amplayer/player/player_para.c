@@ -334,6 +334,7 @@ static void get_stream_info(play_para_t *p_para)
     AVFormatContext *pFormat = p_para->pFormatCtx;
     AVStream *pStream;
     AVCodecContext *pCodec;
+    AVDictionaryEntry *t;
     int video_index = p_para->vstream_info.video_index;
     int audio_index = p_para->astream_info.audio_index;
     int sub_index = p_para->sstream_info.sub_index;
@@ -379,6 +380,7 @@ static void get_stream_info(play_para_t *p_para)
         } else if (pCodec->codec_type == CODEC_TYPE_AUDIO) {
             p_para->astream_num ++;
 			audio_format = audio_type_convert(pCodec->codec_id, p_para->file_type);
+			
             if (p_para->file_type == RM_FILE) {
                 if ((temp_aidx == -1)
                     && (CODEC_ID_SIPR != pCodec->codec_id)) { // SIPR not supported now
@@ -387,14 +389,22 @@ static void get_stream_info(play_para_t *p_para)
             } else if (temp_aidx == -1 && audio_format != AFORMAT_UNSUPPORT) {
 	        	temp_aidx = i;	               
             }
+             /* find chinese language audio track */
+			if (t = av_dict_get(pStream->metadata, "language", NULL, 0)){			    
+			    if(!strncmp(t->value, "chi",3)) {
+			        temp_aidx = i;
+			        log_print("[%s]key=%s value=%s audio track, %d\n", __FUNCTION__, t->key, t->value, i);
+			    }
+			}
+              
         } else if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
             p_para->sstream_num ++;
             if (temp_sidx == -1) {
                 temp_sidx = i;
             }
         }
-    }
-
+    }   
+    
     if (p_para->vstream_num >= 1) {
         p_para->vstream_info.has_video = 1;
     } else {
