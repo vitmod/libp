@@ -254,7 +254,8 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
     if ((msg->ctrl_cmd & CMD_EXIT) || (msg->ctrl_cmd & CMD_STOP)) {
         para->playctrl_info.end_flag = 1;
         para->playctrl_info.loop_flag = 0;
-        para->playctrl_info.search_flag = 0;   
+        para->playctrl_info.search_flag = 0;
+	 para->playctrl_info.request_end_flag=1;
 		if (para->playctrl_info.pause_flag) { 
 			 codec_resume(para->codec);  	//clear pause state
 			 para->playctrl_info.pause_flag = 0;
@@ -413,7 +414,10 @@ int check_flag(play_para_t *p_para)
             !p_para->playctrl_info.fast_forward &&
             !p_para->playctrl_info.fast_backward) {
 		set_black_policy(p_para->playctrl_info.black_out);
-             set_player_state(p_para, PLAYER_STOPED);
+		if(p_para->playctrl_info.request_end_flag)
+			set_player_state(p_para, PLAYER_STOPED);
+		else
+			set_player_state(p_para, PLAYER_PLAYEND); 	
         } else if (p_para->playctrl_info.search_flag) {
             set_black_policy(0);
         }
@@ -754,7 +758,10 @@ void *player_thread(play_para_t *player)
             if (flag == 1) {
                 break;
             } else if (player->playctrl_info.end_flag == 1 && (!player->playctrl_info.search_flag)) {
-                set_player_state(player, PLAYER_STOPED);
+            	  if(player->playctrl_info.request_end_flag)
+                	set_player_state(player, PLAYER_STOPED);
+	         else
+			set_player_state(player, PLAYER_PLAYEND); 	
                 update_playing_info(player);
                 update_player_states(player, 1);
                 goto release0;
@@ -1092,7 +1099,7 @@ release0:
     player_mate_release(player);	
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
     if (get_player_state(player) == PLAYER_ERROR) {
-		if(check_stop_cmd(player)==1){
+		if(player->playctrl_info.request_end_flag|| check_stop_cmd(player)==1){
 			/*we have a player end msg,ignore the error*/
 			set_player_state(player,PLAYER_STOPED);
 			set_player_error_no(player, 0);

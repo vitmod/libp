@@ -81,6 +81,7 @@ typedef  struct {
     unsigned int audio_end_flag;
     unsigned int audio_low_buffer;
     unsigned int end_flag;
+    unsigned int request_end_flag;//stop request by user.	
     unsigned int pts_valid;
     unsigned int sync_flag;
     unsigned int reset_flag;
