@@ -175,7 +175,7 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 //		printf("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
 		adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
 		//usleep(5);
-		return 0;
+		return -1;
 	}
 	if(wr_offset ==  iec958_buffer_size)
 		wr_offset = 0;	

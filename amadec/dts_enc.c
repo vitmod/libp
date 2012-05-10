@@ -34,14 +34,15 @@ static int get_dts_mode(void)
 {
     int fd;
     int val = 0;
-    char  bcmd[16];
+    char  bcmd[28];
     fd = open(DIGITAL_RAW_PATH, O_RDONLY);
     if (fd >= 0) {
-        read(fd, bcmd, sizeof(bcmd));
-        val = strtol(bcmd, NULL, 16);
+        read(fd, &bcmd, 28);
+        //val = strtol(bcmd, NULL, 1);
         close(fd);
     }
-    return val&0xf;
+    val=bcmd[21]&0xf;
+    return val;
     
 }
 
@@ -82,7 +83,7 @@ int dtsenc_init()
     if(!dtsenc_info.dts_flag)
         return -1;
     dtsenc_info.raw_mode=get_dts_mode();
-    dtsenc_info.raw_mode=1;//default open
+    //dtsenc_info.raw_mode=1;//default open
     if(!dtsenc_info.raw_mode)
         return -1;
    //adec_print("====dts_flag:%d raw_mode:%d \n",dtsenc_info.dts_flag,dtsenc_info.raw_mode);

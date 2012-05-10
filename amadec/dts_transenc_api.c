@@ -15,6 +15,7 @@ pcm51_encoded_info_t		dts_transenc_info;
 static int							dts_init_flag = 0;				
 char										*stream;						//input raw pcm
 unsigned char						*output;
+static int write_success_flag=1;
 unsigned int 						input_size;
 unsigned int 						output_size;
 static int nNumFrmCoded;
@@ -32,6 +33,7 @@ int dts_transenc_init()
 {
 	int 		rv;
 	dts_init_flag = 0;
+	write_success_flag=1;
 	rv = pcmenc_init();//xujian
 	if(rv==-1)
 	{
@@ -89,22 +91,36 @@ err4:
 int dts_transenc_process_frame()
 {
 	int				rv;
+	if(write_success_flag)
+	{
+        	rv=pcmenc_read_pcm(stream, input_size);//xujian
+               if(rv==0)
+               {
+                    //adec_print("=====read data failed :%d input_size:%d  \n",rv,input_size);
+                    usleep(1000);
+                    return -1;
+                }
+                #ifdef DUMP_FILE
+                FILE *fp1=fopen("/mnt/sda4/a.pcm","a+");
+                fwrite(stream,1,input_size,fp1);
+                fclose(fp1);
+                #endif
+                
+        	rv = enc_ops.enc_encode(dts_transenc_info, stream, output, &output_size);//encode frame
+        	#ifdef DUMP_FILE
+                FILE *fp2=fopen("/mnt/sda4/a.dts","a+");
+                fwrite(output,1,output_size,fp2);
+                fclose(fp2);
+                #endif
+        	rv = iec958_pack_frame(output, output_size);
+	}
+	rv = iec958_packed_frame_write_958buf(output, output_size);
+	if(rv==-1)
+	    write_success_flag=0;
+	else
+	    write_success_flag=1;
 	
-	rv=pcmenc_read_pcm(stream, input_size);//xujian
-       if(rv==0)
-       {
-            //adec_print("=====read data failed :%d input_size:%d  \n",rv,input_size);
-            usleep(1000);
-            return -1;
-        }
-	rv = enc_ops.enc_encode(dts_transenc_info, stream, output, &output_size);//encode frame
-	adec_print("===encode ret:%d \n output_size:%d ",rv,output_size);
-	//nNumFrmCoded++; 
-	
-	rv = iec958_pack_frame(output, output_size);//xujian
-	adec_print("===pack frame ret:%d  output_size:%d \n",rv,output_size);
-	rv = iec958_packed_frame_write_958buf(output, output_size);//xujian
-	adec_print("===pack frame write 958 ret:%d \n",rv);
+	//adec_print("===pack frame write 958 ret:%d size:%d  \n",rv,output_size);
 	return 1;
 }
 
