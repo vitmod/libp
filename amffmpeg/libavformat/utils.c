@@ -663,11 +663,13 @@ typedef struct auto_switch_protol{
 }auto_switch_protol_t;
 
 #include "hlsproto.h"
+#include "mmsh.h"
 auto_switch_protol_t switch_table[]=
 {
 	{"list:",url_is_file_list},
 /*	{"hls+",hlsproto_probe},*/
 	{"nsc:",is_nsc_file},
+	{"mmsh:",is_mmsh_file},
 	{NULL,NULL}
 };
 
