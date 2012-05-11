@@ -1342,6 +1342,7 @@ int write_av_packet(play_para_t *para)
 			                    	/* reset decoder */
 			                    	para->playctrl_info.check_lowlevel_eagain_cnt = 0;
 			                    	para->playctrl_info.reset_flag = 1;
+                                    set_black_policy(0);
 			                    	para->playctrl_info.end_flag = 1;
 			                    	if (para->state.start_time != -1) {
 			                        	para->playctrl_info.time_point = (para->state.pts_video - para->state.start_time)/ PTS_FREQ;
@@ -1430,6 +1431,7 @@ int write_av_packet(play_para_t *para)
 		                    /* reset decoder */
 		                    para->playctrl_info.check_lowlevel_eagain_cnt = 0;
 		                    para->playctrl_info.reset_flag = 1;
+                            set_black_policy(0);
 		                    para->playctrl_info.end_flag = 1;
 		                    if (para->state.start_time != -1) {
 		                        para->playctrl_info.time_point = (para->state.pts_video - para->state.start_time)/ PTS_FREQ;
