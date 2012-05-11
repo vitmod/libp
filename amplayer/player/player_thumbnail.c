@@ -61,9 +61,16 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
     AVStream *st = pFormatCtx->streams[video_index];
     int duration = pFormatCtx->duration/AV_TIME_BASE;
     int64_t init_seek_time = (duration>0) ? MIN(10, duration>>1) : 10;
+    int ret = 0;
+    
     init_seek_time = av_rescale_q(init_seek_time*AV_TIME_BASE, st->time_base, AV_TIME_BASE_Q);
     log_print("[find_thumbnail_frame]duration=%lld init_seek_time=%lld timebase=%d:%d\n",pFormatCtx->duration,init_seek_time,st->time_base.num,st->time_base.den);
-    av_seek_frame(pFormatCtx, video_index, init_seek_time, AVSEEK_FLAG_BACKWARD);
+    ret = av_seek_frame(pFormatCtx, video_index, init_seek_time, AVSEEK_FLAG_BACKWARD);
+    if (ret < 0) {
+        avio_seek(pFormatCtx->pb, 0, SEEK_SET);
+        log_error("[%s]seek error, reset offset to 0\n", __FUNCTION__);
+        return;
+    }
     find_best_keyframe(pFormatCtx, video_index, 5, &thumbTime, &thumbOffset);
     
     if(thumbTime != AV_NOPTS_VALUE)
@@ -216,13 +223,14 @@ err:
 
 int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 {
-    int frameFinished;
-    int count;
-    int i;
+    int frameFinished = 0;
+    int count = 0;
+    int i = 0;
     struct video_frame *frame = (struct video_frame *)handle;
     struct stream *stream = &frame->stream;
     AVFormatContext *pFormatCtx = stream->pFormatCtx;
     AVPacket        packet;
+    AVCodecContext *pCodecCtx = pFormatCtx->streams[stream->videoStream]->codec;
 
     if (time >= 0) {
         //thumbTime = av_rescale_q(time, AV_TIME_BASE_Q, stream->pFormatCtx->streams[stream->videoStream]->time_base);
@@ -250,23 +258,34 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
             }
 			
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
+            //log_print("[%s]decode a video frame, finish=%d key=%d count==%d\n", __FUNCTION__, frameFinished, stream->pFrameYUV->key_frame,count);
 	     if(frameFinished && stream->pFrameYUV->key_frame){
 		  count++;
-	         struct SwsContext *img_convert_ctx;
-		  img_convert_ctx = sws_getContext(stream->pCodecCtx->width, stream->pCodecCtx->height, 
-									stream->pCodecCtx->pix_fmt, 
-									frame->width, frame->height, DEST_FMT, SWS_BICUBIC,
-									NULL, NULL, NULL);
-		  if(img_convert_ctx == NULL) {
-		      log_print("can not initialize the coversion context!\n");
-		      av_free_packet(&packet);
-		      break;
-		  }
+                 //log_print("[%s]pCodecCtx->codec_id=%x count==%d\n", __FUNCTION__, pCodecCtx->codec_id,count);
+                 if ((pCodecCtx->codec_id == CODEC_ID_MPEG1VIDEO)
+                        || (pCodecCtx->codec_id == CODEC_ID_MPEG2VIDEO)
+                        || (pCodecCtx->codec_id == CODEC_ID_MPEG2VIDEO_XVMC)) {
+                        if(count < 6) {
+                        log_print("mpeg video: decoder %d keyframe\n", count);
+                        av_free_packet(&packet);
+                        continue;
+    		        }
+                    }	
+                    struct SwsContext *img_convert_ctx;
+                    img_convert_ctx = sws_getContext(stream->pCodecCtx->width, stream->pCodecCtx->height, 
+                    					stream->pCodecCtx->pix_fmt, 
+                    					frame->width, frame->height, DEST_FMT, SWS_BICUBIC,
+                    					NULL, NULL, NULL);
+                    if(img_convert_ctx == NULL) {
+                    log_print("can not initialize the coversion context!\n");
+                    av_free_packet(&packet);
+                    break;
+                    }
 
-		  sws_scale(img_convert_ctx, stream->pFrameYUV->data, stream->pFrameYUV->linesize, 0, 
-		  	            frame->height, stream->pFrameRGB->data, stream->pFrameRGB->linesize);
-		  av_free_packet(&packet);
-		  goto ret;
+                    sws_scale(img_convert_ctx, stream->pFrameYUV->data, stream->pFrameYUV->linesize, 0, 
+                            frame->height, stream->pFrameRGB->data, stream->pFrameRGB->linesize);
+                    av_free_packet(&packet);
+                    goto ret;
             }
         }
 
