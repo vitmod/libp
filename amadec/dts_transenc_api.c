@@ -41,9 +41,9 @@ int dts_transenc_init()
 	    goto err1;
 	}
 	rv = iec958_init();//xujian
-	if(rv==-1)
+	if(rv!=0)
 	{
-	    adec_print("==iec958_init failed \n");
+	    adec_print("==iec958_init failed ret:%d\n",rv);
 	    goto err2;
 	}
 	rv = pcmenc_get_pcm_info(&dts_transenc_info);//xujian

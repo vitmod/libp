@@ -56,7 +56,7 @@ int iec958_init()
 	ioctl(dev_fd, AUDIO_SPDIF_SET_958_INIT_PREPARE, 1); 
 	/* get 958 dma buffer size */
 	ioctl(dev_fd, AUDIO_SPDIF_GET_958_BUF_SIZE, &iec958_buffer_size); 
-	printf("iec958 buffer size %x\n",iec958_buffer_size);
+	//adec_print("iec958 buffer size %x\n",iec958_buffer_size);
 
 	/* mapping the kernel 958 dma buffer to user space to acess */    
 	map_buf= mmap(0,iec958_buffer_size, PROT_READ|PROT_WRITE,MAP_SHARED/*MAP_PRIVATE*/, dev_fd, 0);
@@ -66,7 +66,7 @@ int iec958_init()
 		goto exit1;
 	}
 	/* enable 958 outout */
-	ioctl(dev_fd, AUDIO_SPDIF_SET_958_ENABLE,1); 
+//	ioctl(dev_fd, AUDIO_SPDIF_SET_958_ENABLE,1); 
 	return 0;	
 exit3:
      if((unsigned)map_buf != 0xffffffff)
@@ -173,7 +173,7 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 	int ret;
 	while(iec958_buf_space_size(dev_fd) < frame_size){
 //		printf("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
-		adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
+		//adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
 		//usleep(5);
 		return -1;
 	}
