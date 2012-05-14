@@ -349,6 +349,8 @@ int set_ps_subtitle_info(play_para_t *p_para, subtitle_info_t *sub_info, int sub
 	if (sub_num > 0) {
 		info->has_sub = 1;
 		info->total_sub_num = sub_num;
+        p_para->sstream_info.has_sub = 1;
+        p_para->sstream_num = sub_num;
 	}
 	return PLAYER_SUCCESS;
 }
