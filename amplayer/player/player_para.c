@@ -171,6 +171,12 @@ static void get_av_codec_type(play_para_t *p_para)
                 log_print("[%s:%d]mpeg4 partitioned frame, not supported\n", __FUNCTION__, __LINE__);
                 p_para->vstream_info.has_video = 0;
             }
+            if (VIDEO_DEC_FORMAT_MPEG4_3 == p_para->vstream_info.video_codec_type) {
+                if (pCodecCtx->height > 720) {
+                    log_print("[%s:%d]DIVX3 can not support upper 720p\n", __FUNCTION__, __LINE__);
+                    p_para->vstream_info.has_video = 0;
+                }
+            }
         }
 		
         if (p_para->vstream_info.has_video) {
