@@ -1006,7 +1006,20 @@ static int  update_buffering_states(play_para_t *p_para,
     if (p_para->vstream_info.has_video && 0)
         log_print("update_buffering_states,vlevel=%d,vsize=%d,level=%f,status=%d\n",
                   vbuf->data_len, vbuf->size, vlevel, get_player_state(p_para));
+	if(p_para->buffering_force_delay_s>0){	
+		if(p_para->buffering_check_point ==0){
+			p_para->buffering_check_point = p_para->state.current_time;
+			return 0;
+		}
 
+		long long cur_time_s = p_para->state.current_time;
+		//log_print("buffering second check point:%lld,delay:%lld\n",cur_time_s,cur_time_s-p_para->buffering_check_point);
+		if((cur_time_s-p_para->buffering_check_point)<(int)p_para->buffering_force_delay_s){			
+			//log_print("just drop buffering policy for buffering delay:%f\n",p_para->buffering_force_delay_s);
+			return 0;
+		}
+
+	}
 	//if (!p_para->playctrl_info.read_end_flag){
 	    if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
 	        if (p_para->astream_info.has_audio && p_para->vstream_info.has_video) {

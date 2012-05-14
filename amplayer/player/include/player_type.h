@@ -264,7 +264,8 @@ typedef struct
 	int is_playlist;						 //no use
 	int is_type_parser;						 //is try to get file type 
 	int buffing_starttime_s;			//for rest buffing_middle,buffering seconds data to start.
-	int reserved [64];					//reserved  for furthur used,some one add more ,can del reserved num
+	int buffing_force_delay_s;
+	int reserved [56];					//reserved  for furthur used,some one add more ,can del reserved num
  }play_control_t; 
 
 #endif
