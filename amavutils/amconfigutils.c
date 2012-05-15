@@ -75,10 +75,11 @@ int am_config_init(void)
 }
 int am_getconfig(const char * path, char *val, const char * def)
 {
-    int i;
+    int i,ret;
     if (!amconfig_inited) {
         am_config_init();
     }
+    val[0]="\0";	
     lp_lock(&config_lock);
     i = get_matched_index(path);
     if (i >= 0) {
@@ -90,10 +91,12 @@ int am_getconfig(const char * path, char *val, const char * def)
 #ifdef ANDROID
 	if(i<0){
 		/*get failed,get from android prop settings*/
-	 	i=property_get(path, val, def);	
+	 	ret=property_get(path, val, def);	
+		if(ret>0)
+			i=1;
 	}
 #endif
-    return i >= 0 ? 0 : i;
+    return strlen(val) ;
 }
 
 
@@ -178,10 +181,10 @@ int am_getconfig_float(const char * path, float *value)
 {
     char buf[CONFIG_VALUE_MAX];
     int ret = -1;
-
+      
     *value = -1.0;
-    ret = am_getconfig(path, buf, "-1");
-    if (ret == 0) {
+    ret = am_getconfig(path, buf,NULL);
+    if (ret > 0) {
         ret = sscanf(buf, "%f", value);
     }
     return ret > 0 ? 0 : -2;
@@ -192,8 +195,8 @@ int am_getconfig_bool(const char * path)
     char buf[CONFIG_VALUE_MAX];
     int ret = -1;
 
-    ret = am_getconfig(path, buf, "false");
-    if (ret == 0) {
+    ret = am_getconfig(path, buf,NULL);
+    if (ret > 0) {
 	if(strcasecmp(buf,"true")==0 || strcmp(buf,"1")==0)
 		return 1;
     }

@@ -959,12 +959,12 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
     float value;
     if((h->flags & URL_MINI_BUFFER)){
 		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemin",&value);
-		if(ret==0 && value>=1024){
+		if(ret>0 && value>=1024){
 			lpbuffer_size=(int)value;
 		}	
     }else{
     		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemax",&value);
-		if(ret==0 && value>=1024*10){
+		if(ret>0 && value>=1024*10){
 			lpbuffer_size=(int)value;
 		}	
     }
