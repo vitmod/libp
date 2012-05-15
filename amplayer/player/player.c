@@ -203,6 +203,8 @@ static int check_subtitle_info(play_para_t *player)
 			if (sub_info[1].id != -1 && sub_info[1].id != player->codec->sub_pid) {
 				player->codec->sub_pid = sub_info[1].id;
 				player->codec->sub_type = 0x17000;
+                player->sstream_info.sub_pid = player->codec->sub_pid;
+                player->sstream_info.sub_type = player->codec->sub_type;
 				log_print("[%s]defatult:sub_info[1] id=0x%x\n", __FUNCTION__, sub_info[1].id);			
 				
 				if (player->astream_info.start_time > 0) {
