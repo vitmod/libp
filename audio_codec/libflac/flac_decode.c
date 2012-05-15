@@ -240,6 +240,9 @@ void ff_flac_parse_streaminfo(AVCodecContext *avctx, struct FLACStreaminfo *s,
     s->channels = get_bits(&gb, 3) + 1;
     s->bps = get_bits(&gb, 5) + 1;
 
+	audio_codec_print("## METADATA sp=%d, ch=%d, bps=%d,-------------\n",
+		s->samplerate, s->channels, s->bps);
+	
     avctx->channels = s->channels;
     avctx->sample_rate = s->samplerate;
     avctx->bits_per_raw_sample = s->bps;
@@ -511,7 +514,12 @@ static int decode_frame_header(GetBitContext *gb, FLACFrameInfo *fi)
     int bs_code, sr_code, bps_code;
 
     /* frame sync code */
-    skip_bits(gb, 16);
+    //skip_bits(gb, 16);
+    if ((get_bits(gb, 15) & 0x7FFF) != 0x7FFC) {
+        audio_codec_print("invalid sync code-----------------------\n");
+        return -1;
+    }
+	skip_bits(gb, 1);
 
     /* block size and sample rate codes */
     bs_code = get_bits(gb, 4);
@@ -656,20 +664,32 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
 	unsigned char *buf;
 	unsigned buf_size;
 
-	if (inlen < 10000) {
-		//audio_codec_print("not enough data. max framesize=%d,--------------------------------\n",s->max_framesize);
+	if (inlen < s->max_framesize) {
+		audio_codec_print("not enough data. max framesize=%d,para=%x, --------------------------------\n",s->max_framesize, inbuf[2]);
 		int  inbufindex = 0;
 		char *pinbufptr = inbuf;
+		char para = *(pinbufptr+2);
 
 		inbufindex += 11;
 		pinbufptr += 11;
 		while (inbufindex < inlen-1)
 		{
-			if ((AV_RB16(pinbufptr) & 0xFFFF) != 0xFFF8) {
+			if ((AV_RB16(pinbufptr) & 0xFFFF) != 0xFFF8 || AV_RB8(pinbufptr+2) != para) {
 				pinbufptr++;
 				inbufindex++;
 			} else {
 				//audio_codec_print("## next frame found, inbufindex=%d,-------\n", inbufindex);
+#if 0
+				int k=0;
+				for (k=0; k<16; k+=4) {
+					audio_codec_print("##in header[%d],%x,%x,%x,%x,\n",k,
+						inbuf[k], inbuf[k+1], inbuf[k+2], inbuf[k+3]);
+				}
+				for (k=0; k<16; k+=4) {
+					audio_codec_print("##in header[%d],%x,%x,%x,%x,\n",k,
+						inbuf[inbufindex+k], inbuf[inbufindex+k+1], inbuf[inbufindex+k+2], inbuf[inbufindex+k+3]);
+				}		
+#endif
 				goto decodecontinue;
 			}
 		}
@@ -1013,12 +1033,10 @@ int audio_dec_release(audio_decoder_operations_t *adec_ops)
     audio_codec_print("audio_dec_release.--------------------------------\n");
 
 	if(outbuffer.outb == NULL) {
-    	audio_codec_print("audio_dec_release. 1--------------------------------\n");
 		av_freep(&outbuffer.outb);
 	}
 	
 	for (i = 0; i < flactext.channels; i++) {
-    	audio_codec_print("audio_dec_release. 2--------------------------------\n");
     	av_freep(&flactext.decoded[i]);
 	}
 //	av_free(flactext.bitstream);
