@@ -122,8 +122,10 @@ int url_lpopen(URLContext *s,int size)
 		lp->buffer=av_malloc(failedsize);	
 		while(!lp->buffer){
 			failedsize=failedsize/2;
-			if(failedsize<16*1024)/*do't malloc too small size failed size*/
+			if(failedsize<16*1024){/*do't malloc too small size failed size*/
+				av_free(lp);
 				return AVERROR(ENOMEM);
+			}
 			lp->buffer=av_malloc(failedsize);
 		}
 		bufsize=failedsize;
