@@ -559,7 +559,7 @@ retry_probe:
         buf = av_realloc(buf, probe_size + AVPROBE_PADDING_SIZE);
         if ((ret = avio_read(pb, buf + buf_offset, probe_size - buf_offset)) < 0) {
             /* fail if error was not end of file, otherwise, lower score */
-            if (ret != AVERROR_EOF &&ret != AVERROR(EAGAIN)) {
+            if (ret != AVERROR(EAGAIN)) {
                 av_free(buf);
                 return ret;
             }
