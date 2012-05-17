@@ -75,7 +75,7 @@ int amsysfs_set_sysfs_int16(const char *path, int val)
     char  bcmd[16];
     fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (fd >= 0) {
-        sprintf(bcmd, "%d", val);
+        sprintf(bcmd, "0x%x", val);
         bytes = write(fd, bcmd, strlen(bcmd));
         close(fd);
         return 0;
