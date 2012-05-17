@@ -93,12 +93,18 @@ int dts_transenc_process_frame()
 	int				rv;
 	if(write_success_flag)
 	{
-        	rv=pcmenc_read_pcm(stream, input_size);//xujian
-               if(rv==0)
+        	   rv=pcmenc_read_pcm(stream, input_size);//xujian
+               if(rv==0)/* no enough pcm data in the buffer */
                {
                     //adec_print("=====read data failed :%d input_size:%d  \n",rv,input_size);
-                    usleep(1000);
-                    return -1;
+                    if(iec958_check_958buf_level() == 0){
+						adec_print("transenc:insert zero pcm data \n"); 
+						memset(stream,0,input_size);//insert zero pcm data when 958 hw buffer underrun
+                    }
+					else{
+                    	usleep(1000);
+                    	return -1;
+					}	
                 }
                 #ifdef DUMP_FILE
                 FILE *fp1=fopen("/mnt/sda4/a.pcm","a+");

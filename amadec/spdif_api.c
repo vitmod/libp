@@ -171,6 +171,19 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 {
 	int tail = 0;
 	int ret;
+	/* check if i2s enable but 958 not enable */
+	int status_958 = 0;
+	int status_i2s = 0;
+	ioctl(dev_fd, AUDIO_SPDIF_GET_958_ENABLE_STATUS, &status_958); 
+	if(status_958 == 0){
+		ioctl(dev_fd, AUDIO_SPDIF_GET_I2S_ENABLE_STATUS, &status_i2s); 
+		if(status_i2s){
+			status_958 = 1;
+			ioctl(dev_fd, AUDIO_SPDIF_SET_958_ENABLE, status_958); 
+		}
+		else
+			return -1;//output are not enable yet,just return and wait 
+	}
 	while(iec958_buf_space_size(dev_fd) < frame_size){
 //		printf("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
 		//adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
@@ -223,6 +236,25 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 
 	}		
 	return 0;
+}
+/*
+	@return 0:means 958 hw buffer maybe underrun,may need fill zero data 
+	@return 1:means 958 hw buffer level is fine 
+*/
+#define IEC958_LEVEL_THREAD  1/2
+int iec958_check_958buf_level()
+{
+	int status_958 = 0;
+	int hw_958_level = 0;
+	ioctl(dev_fd, AUDIO_SPDIF_GET_958_ENABLE_STATUS, &status_958); 	
+	if(status_958){
+		hw_958_level = iec958_buffer_size - iec958_buf_space_size(dev_fd);
+		if(hw_958_level < iec958_buffer_size*IEC958_LEVEL_THREAD)
+		{
+			return 0;
+		}
+	}
+	return 1;
 }
 int iec958_deinit()
 {
