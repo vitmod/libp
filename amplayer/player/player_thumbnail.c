@@ -225,6 +225,7 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 {
     int frameFinished = 0;
     int count = 0;
+    int tryNum = 0;
     int i = 0;
     struct video_frame *frame = (struct video_frame *)handle;
     struct stream *stream = &frame->stream;
@@ -251,13 +252,14 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 	
     while(av_read_frame(pFormatCtx, &packet) >= 0) {
         if(packet.stream_index==stream->videoStream){
-            if(count >= 10){
+            if(tryNum > 30){
                 log_print("exceed count, cann't get frame!\n");
 		  av_free_packet(&packet);
 		  break;
             }
 			
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
+	     tryNum++;
             //log_print("[%s]decode a video frame, finish=%d key=%d count==%d\n", __FUNCTION__, frameFinished, stream->pFrameYUV->key_frame,count);
 	     if(frameFinished && stream->pFrameYUV->key_frame){
 		  count++;
