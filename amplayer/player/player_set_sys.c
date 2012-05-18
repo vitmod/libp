@@ -876,6 +876,15 @@ int disable_freescale_MBX()
     //write(fd_ppmgr_rect, "0 0 0 0 1", strlen("0 0 0 0 1"));
 	write(freeScaleOsd0File, "0", strlen("0"));
 	write(freeScaleOsd1File, "0", strlen("0"));
+	
+	if(freeScaleOsd0File >= 0)
+		close(freeScaleOsd0File);
+	if(freeScaleOsd1File >= 0)
+		close(freeScaleOsd1File);
+	if(fd_ppmgr >= 0)
+		close(fd_ppmgr);
+	if(fd_ppmgr_rect >= 0)
+		close(fd_ppmgr_rect);
 	return 0;
 }
 
@@ -926,6 +935,16 @@ int enable_freescale_MBX()
 		disp_mode = display_mode_convert(mode);
 		if (disp_mode < DISP_MODE_480I || disp_mode > DISP_MODE_1080P) {
 		  log_print("display mode fail: %d", disp_mode);
+		  if(freeScaleOsd0File >= 0)
+			  close(freeScaleOsd0File);
+		  if(freeScaleOsd1File >= 0)
+			  close(freeScaleOsd1File);
+		  if(videoAxisFile >= 0)
+			  close(videoAxisFile);
+		  if(fd_ppmgr >= 0)
+			  close(fd_ppmgr);
+		  if(fd_ppmgr_rect >= 0)
+			  close(fd_ppmgr_rect);
 			return 0;
 		}
 	}
@@ -994,6 +1013,17 @@ int enable_freescale_MBX()
   if (fd_ppmgr >= 0) 	write(fd_ppmgr, "1", strlen("1"));
 	write(freeScaleOsd0File, "1", strlen("1"));
 	write(freeScaleOsd1File, "1", strlen("1"));
+
+	if(freeScaleOsd0File >= 0)
+		close(freeScaleOsd0File);
+	if(freeScaleOsd1File >= 0)
+		close(freeScaleOsd1File);
+	if(videoAxisFile >= 0)
+		close(videoAxisFile);
+	if(fd_ppmgr >= 0)
+		close(fd_ppmgr);
+	if(fd_ppmgr_rect >= 0)
+		close(fd_ppmgr_rect);
 	return 0;
 }
 
@@ -1024,6 +1054,11 @@ int disable_2X_2XYscale()
 	
 	write(scaleFile, "0", strlen("0"));
 	write(scaleOsd1File, "0", strlen("0"));
+	
+	if(scaleFile >= 0)
+		close(scaleFile);
+	if(scaleOsd1File >= 0)
+		close(scaleOsd1File);
 	return 0;
 }
 
@@ -1065,6 +1100,11 @@ int enable_2Xscale()
 	sprintf(saxis_str, "0 0 %d %d", vinfo.xres/2-1, vinfo.yres-1);
 	write(scaleaxisFile, saxis_str, strlen(saxis_str));
 	write(scaleFile, "0x10000", strlen("0x10000"));
+
+	if(scaleFile >= 0)
+		close(scaleFile);
+	if(scaleaxisFile >= 0)
+		close(scaleaxisFile);
 	return 0;
 }
 
@@ -1103,6 +1143,15 @@ int enable_2XYscale()
 	write(scaleaxisOsd1File, "1280 720 1920 1080", strlen("1280 720 1920 1080"));
 	write(scaleFile, "0x10001", strlen("0x10001"));
 	write(scaleOsd1File, "0x10001", strlen("0x10001"));
+
+	if(scaleFile >= 0)
+		close(scaleFile);
+	if(scaleaxisFile >= 0)
+		close(scaleaxisFile);
+	if(scaleOsd1File >= 0)
+		close(scaleOsd1File);
+	if(scaleaxisOsd1File >= 0)
+		close(scaleaxisOsd1File);
 	return 0;
 }
 
@@ -1172,6 +1221,17 @@ int GL_2X_scale(int mSwitch)
 			write(scaleOsd1File, "0x10001", strlen("0x10001"));
 		}
 	}
+
+	if(request2XScaleFile >= 0)
+		close(request2XScaleFile);
+	if(scaleOsd1File >= 0)
+		close(scaleOsd1File);
+	if(scaleaxisOsd1File >= 0)
+		close(scaleaxisOsd1File);
+	if(Fb0Blank >= 0)
+		close(Fb0Blank);
+	if(Fb1Blank >= 0)
+		close(Fb1Blank);
 	return 0;
 }
 
@@ -1291,6 +1351,7 @@ int get_stb_source(char *strval, int size)
     fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (fd >= 0) {
         get_sysfs_str(path, strval, size);
+		close(fd);
         return 1;
     }
     return 0;
@@ -1318,6 +1379,7 @@ int get_stb_demux_source(char *strval, int size)
     fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (fd >= 0) {
         get_sysfs_str(path, strval, size);
+		close(fd);
         return 1;
     }
     return 0;
