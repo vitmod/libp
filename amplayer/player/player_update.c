@@ -682,7 +682,7 @@ static void update_current_time(play_para_t *p_para)
 	    if (p_para->playctrl_info.f_step > 0) {
 	        time = (unsigned int)p_para->playctrl_info.time_point;
 	        p_para->state.current_time = time;
-	        p_para->state.current_ms = time * 1000;
+	        p_para->state.current_ms = (unsigned int)(p_para->playctrl_info.time_point * 1000);
 	        log_print("[update_current_time]ff/fb:time=%d\n", time);
 #ifdef DEBUG_VARIABLE_DUR
 	        if (p_para->playctrl_info.info_variable) {
@@ -765,7 +765,7 @@ static void update_current_time(play_para_t *p_para)
 
 	    if (p_para->state.current_time == 0 && p_para->playctrl_info.time_point > 0) {
 	        p_para->state.current_time = p_para->playctrl_info.time_point;
-	        p_para->state.current_ms = p_para->state.current_time * 1000;
+	        p_para->state.current_ms = p_para->playctrl_info.time_point * 1000;
 	        log_print("[update_current_time:%d]curtime: 0->%d\n", __LINE__, p_para->playctrl_info.time_point);
 	    }
 	    if ((p_para->state.current_time > p_para->state.full_time) && (p_para->state.full_time > 0)) {
