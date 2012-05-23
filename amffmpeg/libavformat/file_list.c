@@ -213,12 +213,12 @@ reload:
 			if(mgt->ctype ==HIGH_BANDWIDTH){
 				struct variant *v =mgt->variants[mgt->n_variants-1];
 				url = v->url;
-				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",mgt->filename);
+				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
 				goto reload;
 			}else if(mgt->ctype ==LOW_BANDWIDTH){
 				struct variant *v =mgt->variants[0];
 				url = v->url;
-				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",mgt->filename);
+				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
 				goto reload;
 			}else if(mgt->ctype ==MIDDLE_BANDWIDTH){
 				struct variant *v = NULL;
@@ -228,7 +228,7 @@ reload:
 					v =mgt->variants[mgt->n_variants-1];
 				}
 				url = v->url;
-				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",mgt->filename);
+				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
 				goto reload;
 			}
 		}

@@ -155,13 +155,12 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 	int enditem=0;
 	const char* ptr = NULL;		
 	while(*p==' ' && p!='\0' && p-line<1024) p++;
-	if(*p!='#' && strlen(p)>0)
-	{
-
+	if(*p!='#' && strlen(p)>0&&mgt->is_variant==0)
+	{		
 		item->file=p; 
 		enditem=1;
 	}else if(is_TAG(p,EXT_X_ENDLIST)){
-		item->flags=ENDLIST_FLAG;
+		item->flags=ENDLIST_FLAG;		
 		enditem=1;
 	}else if(is_TAG(p,EXTINF)){
 		int duration=0;
@@ -263,9 +262,17 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 	else{
 
 		if(mgt->is_variant>0){
-			if (!new_variant(mgt, mgt->bandwidth, p, mgt->prefix)) {	
-				free_variant_list(mgt);
-			 	return -1;
+			if(av_strstart(p,"http",&ptr)){
+				if (!new_variant(mgt, mgt->bandwidth, p, NULL)) {	
+					free_variant_list(mgt);
+				 	return -1;
+				}
+
+			}else{
+				if (!new_variant(mgt, mgt->bandwidth, p, mgt->prefix)) {	
+					free_variant_list(mgt);
+				 	return -1;
+				}
 			}
 			mgt->is_variant = 0;
 			mgt->bandwidth  = 0;	
@@ -337,7 +344,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	{
 		ret = m3u_parser_line(mgt,line,&tmpitem);
 		if(ret>0)
-		{
+		{		
 			struct list_item*item;
 			int need_prefix=0;
 			int size_file=tmpitem.file?(strlen(tmpitem.file)+32):4;
