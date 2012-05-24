@@ -613,7 +613,7 @@ retry_probe:
     /* rewind. reuse probe buffer to avoid seeking */
     if ((ret = ffio_rewind_with_probe_data(pb, buf, pd.buf_size)) < 0)
         av_free(buf);
-
+    memcpy(pb->proppads,pd.pads,sizeof(pd.pads));
     return ret;
 }
 
