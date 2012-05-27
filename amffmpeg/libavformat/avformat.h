@@ -229,7 +229,6 @@ typedef struct AVProbeData {
     const char *filename;
     unsigned char *buf; /**< Buffer must have AVPROBE_PADDING_SIZE of extra allocated bytes filled with zero. */
     int buf_size;       /**< Size of buf except extra allocated bytes */
-    unsigned long pads[8];
 } AVProbeData;
 
 #define AVPROBE_SCORE_MAX 100               ///< maximum score, half of that is used for file-extension-based detection
@@ -913,7 +912,6 @@ typedef struct AVFormatContext {
 
     /* added by Z.C for DRM content */
     int drmcontent;
-
 } AVFormatContext;
 
 typedef struct AVPacketList {
