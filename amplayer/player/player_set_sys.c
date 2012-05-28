@@ -713,7 +713,7 @@ int EnableFreeScale(display_mode mode) {
 			if (fd_video >= 0) 	write(fd_video, "1", strlen("1"));
 			if(fd_ppmgr_rect >= 0){
 				write(fd_ppmgr_rect, "20 10 700 470 0", strlen("20 10 700 470 0"));
-				if(fd_vaxis>=0) write(fd_vaxis, "0 0 0 0", strlen("0 0 0 0"));				
+				//if(fd_vaxis>=0) write(fd_vaxis, "0 0 0 0", strlen("0 0 0 0"));				
 			}else if(fd_vaxis >= 0){
 				write(fd_vaxis, "20 10 700 470", strlen("20 10 700 470"));
 			}
@@ -734,7 +734,7 @@ int EnableFreeScale(display_mode mode) {
 			if (fd_video >= 0) 	write(fd_video, "1", strlen("1"));
 			if(fd_ppmgr_rect >= 0){
 				write(fd_ppmgr_rect, "40 15 1240 705 0", strlen("40 15 1240 705 0"));
-				if(fd_vaxis>=0) write(fd_vaxis, "0 0 0 0", strlen("0 0 0 0"));				
+				//if(fd_vaxis>=0) write(fd_vaxis, "0 0 0 0", strlen("0 0 0 0"));				
 			}else if(fd_vaxis >= 0){
 				write(fd_vaxis, "40 15 1240 705", strlen("40 15 1240 705"));
 			}
@@ -756,7 +756,7 @@ int EnableFreeScale(display_mode mode) {
 			if (fd_video >= 0) 	write(fd_video, "1", strlen("1"));
 			if(fd_ppmgr_rect >= 0){
 				write(fd_ppmgr_rect, "40 20 1880 1060 0", strlen("40 20 1880 1060 0"));
-				if(fd_vaxis>=0) write(fd_vaxis, "0 0 0 0", strlen("0 0 0 0"));				
+				//if(fd_vaxis>=0) write(fd_vaxis, "0 0 0 0", strlen("0 0 0 0"));				
 			}else if(fd_vaxis >= 0){
 				write(fd_vaxis, "40 20 1880 1060", strlen("40 20 1880 1060"));
 			}
