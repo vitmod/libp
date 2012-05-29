@@ -121,8 +121,10 @@ int dts_transenc_process_frame()
         	rv = iec958_pack_frame(output, output_size);
 	}
 	rv = iec958_packed_frame_write_958buf(output, output_size);
-	if(rv==-1)
+	if(rv==-1){
 	    write_success_flag=0;
+	    usleep(1000);
+	}	
 	else
 	    write_success_flag=1;
 	

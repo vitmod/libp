@@ -181,12 +181,14 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 			status_958 = 1;
 			ioctl(dev_fd, AUDIO_SPDIF_SET_958_ENABLE, status_958); 
 		}
-		else
-			return -1;//output are not enable yet,just return and wait 
+		else{
+			adec_print("discard data and wait i2s enable\n");
+			return 0;//output are not enable yet,just return and wait 
+		}	
 	}
 	while(iec958_buf_space_size(dev_fd) < frame_size){
 //		printf("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
-		//adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
+		adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
 		//usleep(5);
 		return -1;
 	}
