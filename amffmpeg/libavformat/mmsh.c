@@ -372,7 +372,12 @@ int is_mmsh_file(AVIOContext *pb,const char *name)
 	do
 	{	
 		ret=ff_get_assic_line(pb,line,1024);		
-		if(ret<10) continue;		
+		if(ret==0){
+			if(url_feof(pb) || url_ferror(pb))
+				return 0;
+			}else if(ret<0)
+				break;
+		if(ret<5) continue;      	
 		if(!strncmp(line,"[Reference]",strlen("[Reference]"))){
 			score+=50;
 			continue;
