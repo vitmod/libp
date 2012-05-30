@@ -653,11 +653,18 @@ static int check_stop_cmd(play_para_t *player)
 static void player_para_init(play_para_t *para)
 {
     para->state.start_time = -1;
-    para->vstream_info.video_index = -1;
-    para->vstream_info.start_time = -1;
-    para->astream_info.audio_index = -1;
-    para->astream_info.start_time = -1;
-    para->sstream_info.sub_index = -1;
+    if(para->vstream_info.video_index <0){	
+	 para->vstream_info.video_index = -1;
+    }
+    para->vstream_info.start_time = -1;	
+    para->astream_info.start_time = -1;	
+    if(para->astream_info.audio_index <0){
+        para->astream_info.audio_index = -1;
+    }    
+    
+    if(para->sstream_info.sub_index<0){
+        para->sstream_info.sub_index = -1;
+    }
     para->discontinue_point = 0;
     para->discontinue_flag = 0;
     para->first_index = -1;
