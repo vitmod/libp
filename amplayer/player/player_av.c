@@ -59,6 +59,7 @@ static const media_type media_array[] = {
     {"rtsp", STREAM_FILE, STREAM_ES},
     {"ape", APE_FILE, STREAM_ES},
     {"hls,applehttp", MP4_FILE, STREAM_ES},
+    {"DRMdemux", MP4_FILE, STREAM_ES},
 };
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
