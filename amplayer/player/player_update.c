@@ -635,7 +635,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 		log_info("vpts discontinue, vpts=0x%x scr=0x%x apts=0x%x\n", get_pts_video(p_para),get_pts_pcrscr(p_para),get_pts_audio(p_para));
     }
 
-	if (audio_pts_discontinue)
+	if (audio_pts_discontinue > 0)
 	{
 		log_info("audio pts discontinue, curtime=%d lasttime=%d\n",p_para->state.current_time,p_para->state.last_time);
 		if(!set_discontinue && is_chapter_discontinue(p_para) &&  
