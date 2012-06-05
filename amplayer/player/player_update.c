@@ -614,11 +614,20 @@ static unsigned int get_current_time(play_para_t *p_para)
     unsigned int ctime = 0;
 	int set_discontinue = 0;
 	int audio_pts_discontinue = 0, video_pts_discontinue = 0;
+	codec_para_t *codec = NULL;
 
-	if(p_para->codec)
+	if(p_para->vstream_info.has_video) {
+        	if(p_para->vcodec){
+        	    codec = p_para->vcodec;
+        	   }
+        	else if(p_para->codec){
+        	     codec = p_para->codec;
+        	     }
+	}
+	if(codec)
 	{
-		audio_pts_discontinue = codec_get_sync_audio_discont(p_para->codec);
-		video_pts_discontinue = codec_get_sync_video_discont(p_para->codec);
+		audio_pts_discontinue = codec_get_sync_audio_discont(codec);
+		video_pts_discontinue = codec_get_sync_video_discont(codec);
 	}
 
     if (video_pts_discontinue > 0)
