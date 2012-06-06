@@ -213,6 +213,8 @@ int amvideo_utils_get_position(int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 
     ioctl(video_fd, AMSTREAM_IOC_GET_VIDEO_AXIS, &axis[0]);
 
+    close(video_fd);
+
     *x = axis[0];
     *y = axis[1];
     *w = axis[2] - axis[0] + 1;
@@ -220,3 +222,42 @@ int amvideo_utils_get_position(int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 
     return 0;
 }
+
+int amvideo_utils_get_screen_mode(int *mode)
+{
+    LOG_FUNCTION_NAME
+    int video_fd;
+    int screen_mode = 0;
+
+    video_fd = open(VIDEO_PATH, O_RDWR);
+    if (video_fd < 0) {
+        return -1;
+    }
+
+    ioctl(video_fd, AMSTREAM_IOC_GET_SCREEN_MODE, &screen_mode);
+
+    close(video_fd);
+
+    *mode = screen_mode;
+
+    return 0;
+}
+
+int amvideo_utils_set_screen_mode(int mode)
+{
+    LOG_FUNCTION_NAME
+    int screen_mode = mode;
+    int video_fd;
+
+    video_fd = open(VIDEO_PATH, O_RDWR);
+    if (video_fd < 0) {
+        return -1;
+    }
+
+    ioctl(video_fd, AMSTREAM_IOC_SET_SCREEN_MODE, &screen_mode);
+
+    close(video_fd);
+
+    return 0;
+}
+
