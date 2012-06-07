@@ -59,12 +59,50 @@ int pcmenc_init()
     }
 	return 0;	
 }
+static unsigned pcm_read_num = 0;
+static int pcmenc_skip_pcm(int size)
+{
+    int ring_buf_content = 0;
+    int len = 0;
+    int tail = 0;	
+    ioctl(dev_fd, AUDIODSP_PCMENC_GET_RING_BUF_CONTENT, &ring_buf_content); 
+    if(ring_buf_content > size){
+    	if(read_offset+size > buffer_size){
+    		//tail = size - read_offset;
+    		tail = buffer_size - read_offset;
+   // 		memcpy(inputbuf,map_buf+read_offset,tail);
+    		read_offset = 0;
+    //		memcpy(inputbuf+tail,map_buf+read_offset,size-tail);
+    		read_offset = size-tail;
+    	}
+    	else{
+   // 		memcpy(inputbuf,map_buf+read_offset,size);
+    		read_offset += size;
+    		
+    	}
+		pcm_read_num += size;
+		ioctl(dev_fd, AUDIODSP_PCMENC_SET_RING_BUF_RPTR,read_offset);	
+		return size;
+	} 
+	else
+		return 0;
+
+}
 int pcmenc_read_pcm(char *inputbuf,int size)
 {
     int ring_buf_content = 0;
     int len = 0;
     int tail = 0;	
     ioctl(dev_fd, AUDIODSP_PCMENC_GET_RING_BUF_CONTENT, &ring_buf_content); 
+	if(ring_buf_content > buffer_size*4/5){
+		pcmenc_skip_pcm(size*4);
+		memset(inputbuf,0,size);
+		adec_print("pcmenc buffer full,skip %d bytes \n",4*size);
+		return size;
+		
+		//ioctl(dev_fd, AUDIODSP_PCMENC_GET_RING_BUF_CONTENT, &ring_buf_content); 
+	}
+	//adec_print("read num %d,countent %d,total %d\n",pcm_read_num,ring_buf_content,pcm_read_num+ring_buf_content);
     if(ring_buf_content > size){
     	if(read_offset+size > buffer_size){
     		//tail = size - read_offset;
@@ -79,6 +117,7 @@ int pcmenc_read_pcm(char *inputbuf,int size)
     		read_offset += size;
     		
     	}
+		pcm_read_num += size;
 		ioctl(dev_fd, AUDIODSP_PCMENC_SET_RING_BUF_RPTR,read_offset);	
 		return size;
 	} 
@@ -96,6 +135,8 @@ int  pcmenc_get_pcm_info(pcm51_encoded_info_t *info)
 }
 int pcmenc_deinit()
 {
+	pcm_read_num = 0;
+
 	if((unsigned)map_buf != 0xffffffff)
 		munmap(map_buf,buffer_size);
 	if(dev_fd >= 0)

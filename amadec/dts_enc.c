@@ -159,7 +159,7 @@ static void *dts_enc_loop()
         switch(dtsenc_info.state)
         {
             case INITTED:
-               usleep(100000);
+               usleep(10000);
                continue;
             case ACTIVE:
                 break;

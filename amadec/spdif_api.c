@@ -40,12 +40,15 @@ static int use_kernel_wr = 0x1;
 static unsigned stream_type = STREAM_DTS;
 static short iec958_buf[6144/2];
 static char *map_buf = 0xffffffff;
+static unsigned first_write = 1;
+#define IEC958_LANTENCY  20
 int iec958_init()
 {
 	int ret = 0;
 	iec958_buffer_size = 0;
 	hw_rd_offset = 0;
 	wr_offset = 0;
+	first_write = 1;
 	dev_fd = open(AUDIO_SPDIF_DEV_NAME, /*O_RDONLY|O_WRONLY*/O_RDWR);
 	if(dev_fd < 0){
 		printf("can not open %s\n", AUDIO_SPDIF_DEV_NAME);
@@ -57,7 +60,10 @@ int iec958_init()
 	/* get 958 dma buffer size */
 	ioctl(dev_fd, AUDIO_SPDIF_GET_958_BUF_SIZE, &iec958_buffer_size); 
 	//adec_print("iec958 buffer size %x\n",iec958_buffer_size);
-
+	wr_offset = hw_rd_offset + 4*48000*IEC958_LANTENCY/1000; //delay 
+	if(wr_offset >= iec958_buffer_size)
+		wr_offset = iec958_buffer_size;		
+	ioctl(dev_fd,AUDIO_SPDIF_SET_958_WR_OFFSET,&wr_offset);		
 	/* mapping the kernel 958 dma buffer to user space to acess */    
 	map_buf= mmap(0,iec958_buffer_size, PROT_READ|PROT_WRITE,MAP_SHARED/*MAP_PRIVATE*/, dev_fd, 0);
 	if((unsigned)map_buf == 0xffffffff){
@@ -160,6 +166,15 @@ static int iec958_buf_space_size(int dev_fd)
 {
 	int  space = 0;
 	ioctl(dev_fd, AUDIO_SPDIF_GET_958_BUF_RD_OFFSET, &hw_rd_offset); 
+	if(first_write == 1){
+		if(hw_rd_offset >= wr_offset || (wr_offset-hw_rd_offset) < (4*48000*IEC958_LANTENCY/1000)){
+			adec_print("reset iec958 hw wr ptr\n");
+			wr_offset = hw_rd_offset + 4*48000*IEC958_LANTENCY/1000; //delay 
+			if(wr_offset >= iec958_buffer_size)
+				wr_offset = wr_offset - iec958_buffer_size;	
+		}
+		first_write = 0;
+	}
 	if(wr_offset > hw_rd_offset)	{
 		space = iec958_buffer_size+hw_rd_offset - wr_offset;
 	}
@@ -180,6 +195,7 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 		if(status_i2s){
 			status_958 = 1;
 			ioctl(dev_fd, AUDIO_SPDIF_SET_958_ENABLE, status_958); 
+			adec_print("spdif api:enable 958 output\n");
 		}
 		else{
 			adec_print("discard data and wait i2s enable\n");
@@ -188,7 +204,7 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 	}
 	while(iec958_buf_space_size(dev_fd) < frame_size){
 //		printf("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
-		adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
+		//adec_print("iec958 buffer full,space size %d,write size %d\n",iec958_buf_space_size(dev_fd),frame_size);
 		//usleep(5);
 		return -1;
 	}
@@ -243,7 +259,7 @@ int iec958_packed_frame_write_958buf(char *buf,int frame_size)
 	@return 0:means 958 hw buffer maybe underrun,may need fill zero data 
 	@return 1:means 958 hw buffer level is fine 
 */
-#define IEC958_LEVEL_THREAD  1/2
+#define IEC958_LEVEL_THREAD  4096*2
 int iec958_check_958buf_level()
 {
 	int status_958 = 0;
@@ -251,7 +267,7 @@ int iec958_check_958buf_level()
 	ioctl(dev_fd, AUDIO_SPDIF_GET_958_ENABLE_STATUS, &status_958); 	
 	if(status_958){
 		hw_958_level = iec958_buffer_size - iec958_buf_space_size(dev_fd);
-		if(hw_958_level < iec958_buffer_size*IEC958_LEVEL_THREAD)
+		if(hw_958_level < IEC958_LEVEL_THREAD)
 		{
 			return 0;
 		}
