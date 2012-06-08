@@ -107,6 +107,7 @@ typedef struct
 
 typedef struct
 {    
+    int index;
     int id;
     int channel;
     int sample_rate;
@@ -118,6 +119,7 @@ typedef struct
 
 typedef struct
 {
+    int index;
     char id;
     char internal_external; //0:internal_sub 1:external_sub       
     unsigned short width;

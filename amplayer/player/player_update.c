@@ -87,7 +87,7 @@ static int set_vstream_info(play_para_t *p_para)
             if (pStream->codec->codec_type == CODEC_TYPE_VIDEO) {
                 vinfo = MALLOC(sizeof(mvideo_info_t));
                 MEMSET(vinfo, 0, sizeof(mvideo_info_t));
-				vinfo->index 	   = i;
+		   vinfo->index 	   = i;
                 vinfo->id          = pStream->id;
                 vinfo->width       = pStream->codec->width;
                 vinfo->height      = pStream->codec->height;
@@ -224,6 +224,7 @@ static int set_astream_info(play_para_t *p_para)
 				
                 ainfo = MALLOC(sizeof(maudio_info_t));
                 MEMSET(ainfo, 0, sizeof(maudio_info_t));
+		   ainfo->index     = i;
                 ainfo->id           = pStream->id;
                 ainfo->channel      = pStream->codec->channels;
                 ainfo->sample_rate  = pStream->codec->sample_rate;
@@ -272,6 +273,7 @@ static int set_sstream_info(play_para_t *p_para)
                 AVMetadataTag *lang = av_metadata_get(pStream->metadata, "language", NULL, 0);
                 sinfo = MALLOC(sizeof(msub_info_t));
                 MEMSET(sinfo, 0, sizeof(msub_info_t));
+		   sinfo->index = i;
                 sinfo->id       = pStream->id;
                 sinfo->internal_external = 0;
                 sinfo->width    = pStream->codec->width;
