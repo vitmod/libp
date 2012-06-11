@@ -210,7 +210,7 @@ int audiodsp_start(aml_audio_dec_t *audec)
     }
 
     m_fmt = switch_audiodsp(audec->format);
-    adec_print("[%s:%d]audio_fmt=%d\n", __FUNCTION__, __LINE__, m_fmt);
+    adec_print("[%s:%d]  audio_fmt=%d\n", __FUNCTION__, __LINE__, m_fmt);
 
     if (find_firmware_by_fmt(m_fmt) == NULL) {
         return -2;
@@ -231,8 +231,10 @@ int audiodsp_start(aml_audio_dec_t *audec)
 	    if(ret!=0 && !audec->need_stop){
                 err_count++;			
                 usleep(1000*20);
-                if (err_count > PARSER_WAIT_MAX) // dead loop ? never 
-                    return -4;					
+                if (err_count > PARSER_WAIT_MAX){ 
+	             adec_print("[%s:%d] audio dsp not ready for decode PCM in 2s\n", __FUNCTION__, __LINE__);
+                    return -4;	
+                    }				
 	    }
         }while(!audec->need_stop && (ret!=0));
     }
