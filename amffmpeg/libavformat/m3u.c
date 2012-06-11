@@ -194,7 +194,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		}
 	}
 	
-	else if(is_TAG(p,EXT_X_STREAM_INF)){
+	else if(av_strstart(p,"#EXT-X-STREAM-INF:",&ptr)){
 		struct variant_info info = {{0}};           
 		ff_parse_key_value(p, (ff_parse_key_val_cb) handle_variant_args,
 		           &info);

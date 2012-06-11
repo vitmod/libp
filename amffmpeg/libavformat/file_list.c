@@ -194,6 +194,9 @@ reload:
 			return AVERROR(EIO); 
 		}
 	mgt->location=bio->reallocation;
+	if(NULL == mgt->location&&mgt->n_variants>1){//set location for multibandwidth streaming,such youtube,etc.
+		mgt->location = url;
+	}
 	demux=probe_demux(bio,url);
 	if(!demux)
 	{
@@ -262,11 +265,14 @@ static int list_open(URLContext *h, const char *filename, int flags)
 		return ret;
 	}
 	lp_lock_init(&mgt->mutex,NULL);
-	if(!mgt->have_list_end && (!mgt->have_sub_list) && mgt->item_list->prev != NULL)
-		mgt->current_item=mgt->item_list->prev;//if a live stream,we play the end item to low latency.
-	else
+	if(!mgt->have_list_end && (!mgt->have_sub_list)){
+		struct list_item *item=mgt->item_list;
+		int itemindex=mgt->item_num/2+1;/*for live streaming ,choose the middle item.*/
+		while(itemindex-->0 && item!=NULL)
+			item=item->next;
+		mgt->current_item=item;
+	}else
 		mgt->current_item=mgt->item_list;	
-
 	mgt->cur_uio=NULL;
  	h->is_streamed=1;
 	h->is_slowmedia=1;
