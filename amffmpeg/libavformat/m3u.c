@@ -337,9 +337,11 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	memset(&tmpitem,0,sizeof(tmpitem));
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefixex=%s\n",prefixex);
+	#if 0
 	if(mgt->n_variants>0){
 		free_variant_list(mgt);
 	}
+	#endif
 	while(m3u_format_get_line(s,line,1024)>=0)
 	{
 		ret = m3u_parser_line(mgt,line,&tmpitem);
@@ -399,7 +401,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				item->ktype = mgt->key_tmp->key_type;
 
 			}
-			if(mgt->flags&REAL_STREAMING_FLAG){
+			if(mgt->flags&REAL_STREAMING_FLAG){			
 				ret =list_test_and_add_item(mgt,item);
 			}else{
 				ret = list_add_item(mgt,item);
@@ -457,8 +459,8 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		av_free(mgt->key_tmp);
 		mgt->key_tmp = NULL;
 	}
-	if(mgt->n_variants>1){//just choose  middle definition;
-		mgt->ctype = MIDDLE_BANDWIDTH;
+	if(mgt->n_variants>0){//just choose  middle definition;
+		mgt->ctype =MIDDLE_BANDWIDTH;
 	}
 	mgt->file_size=AVERROR_STREAM_SIZE_NOTVALID;
 	mgt->full_time=start_time;

@@ -35,6 +35,10 @@
 static struct list_demux *list_demux_list=NULL;
 #define unused(x)	(x=x)
 
+#define LIVE_LIST_MAX 30 
+#define SHRINK_LIVE_LIST_THRESHOLD (LIVE_LIST_MAX/2)
+static int list_shrink_live_list(struct list_mgt *mgt);
+
 int register_list_demux(struct list_demux *demux)
 {
 	list_demux_t **list=&list_demux_list;
@@ -83,8 +87,13 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item)
 	item->prev=prev;
        item->next = NULL;
 	mgt->item_num++;
+
+	if(!mgt->have_list_end &&mgt->item_num>LIVE_LIST_MAX){
+		list_shrink_live_list(mgt);
+	}
 	return 0;
 }
+
 
 int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 {
@@ -114,8 +123,15 @@ int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 	item->prev=prev;
 	item->next = NULL;
 	mgt->item_num++;
+
+	if(!mgt->have_list_end &&mgt->item_num>LIVE_LIST_MAX){
+		list_shrink_live_list(mgt);
+	}
+	
 	return 0;
 }
+
+
 static int list_del_item(struct list_mgt *mgt,struct list_item*item)
 {
 	struct list_item*tmp;
@@ -147,6 +163,20 @@ static int list_del_item(struct list_mgt *mgt,struct list_item*item)
 	return 0;		
 }
 
+static int list_shrink_live_list(struct list_mgt *mgt){
+	struct list_item **tmp = NULL;
+	if(NULL ==mgt){
+		return -1;
+	}
+	tmp = &mgt->item_list;
+	if(!mgt->have_list_end){//not have list end,just refer to live streaming
+		while(mgt->item_num>SHRINK_LIVE_LIST_THRESHOLD&&*tmp!=mgt->current_item){
+			list_del_item(mgt,*tmp);
+			tmp = &mgt->item_list;	
+		}
+	}
+	return 0;
+}
 
 
 /*=======================================================================================*/
@@ -209,18 +239,20 @@ reload:
 		ret=-1;
 		goto error;
 	}else{
-		if(mgt->item_num ==0&&mgt->n_variants>1){//simplely choose server,mabye need sort variants when got it from server.
+		if(mgt->item_num ==0&&mgt->n_variants>0){//simplely choose server,mabye need sort variants when got it from server.
 			if(bio){
 				url_fclose(bio);					
 			}
 			if(mgt->ctype ==HIGH_BANDWIDTH){
 				struct variant *v =mgt->variants[mgt->n_variants-1];
 				url = v->url;
+				mgt->playing_variant = v;
 				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
 				goto reload;
 			}else if(mgt->ctype ==LOW_BANDWIDTH){
 				struct variant *v =mgt->variants[0];
 				url = v->url;
+				mgt->playing_variant = v;
 				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
 				goto reload;
 			}else if(mgt->ctype ==MIDDLE_BANDWIDTH){
@@ -229,9 +261,10 @@ reload:
 					v =mgt->variants[mgt->n_variants/2 -1];
 				}else{
 					v =mgt->variants[mgt->n_variants-1];
-				}
+				}				
 				url = v->url;
-				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
+				mgt->playing_variant = v;
+				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s,bandwidth:%d\n",url,mgt->playing_variant->bandwidth);
 				goto reload;
 			}
 		}
@@ -296,7 +329,15 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 			ByteIOContext *bio;
 			
 			int ret;
-			if((ret=list_open_internet(&bio,mgt,mgt->filename,mgt->flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
+			char* url = NULL;
+			if(mgt->n_variants>0&&NULL!=mgt->playing_variant){
+				url = mgt->playing_variant->url;
+				av_log(NULL, AV_LOG_INFO,"list open variant url:%s,bandwidth:%d\n",url,mgt->playing_variant->bandwidth);
+			}else{				
+				url = mgt->filename;
+				av_log(NULL, AV_LOG_INFO,"list open url:%s\n",url);
+			}
+			if((ret=list_open_internet(&bio,mgt,url,mgt->flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 			{
 				goto switchnext;
 			}
@@ -311,10 +352,12 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 						break;
 					}
 				}
+				#if 0
 				while(current!=mgt->item_list){
 					/*del the old item,lest current,and then play current->next*/
 					list_del_item(mgt,mgt->item_list);
 				}
+				#endif
 				mgt->current_item=current;/*switch to new current;*/
 			}
 	}
@@ -514,9 +557,11 @@ readagain:
 			goto retry;
 		}
 	}
+	#if 0
 	if(mgt->flags&REAL_STREAMING_FLAG&&mgt->item_num<4){ //force refresh items
 		fresh_item_list(mgt);	
 	}
+	#endif
 
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
     return len;
