@@ -160,7 +160,7 @@ int url_is_file_list(ByteIOContext *s,const char *filename)
 		return 0;/*if used m3u demux,always failed;*/
 	if(!lio)
 	{
-		ret=url_fopen(&lio,filename,AVIO_FLAG_READ);
+		ret=url_fopen(&lio,filename,AVIO_FLAG_READ | URL_MINI_BUFFER);
 		if(ret!=0)
 		{ 
 		return AVERROR(EIO); 

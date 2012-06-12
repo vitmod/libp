@@ -30,7 +30,7 @@
 #include "amconfigutils.h"
 
 #define IO_BUFFER_SIZE 32768
-
+#define IO_BUFFER_MIN_SIZE 1024
 /**
  * Do seeks within this distance ahead of the current buffer by skipping
  * data instead of calling the protocol seek function, for seekable
@@ -970,7 +970,9 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
     }
    av_log(NULL, AV_LOG_INFO, "getloopbuf size=%x\n",lpbuffer_size);
     max_packet_size = h->max_packet_size;
-    if (max_packet_size) {
+    if(h->flags & URL_MINI_BUFFER){
+	 buffer_size = IO_BUFFER_MIN_SIZE;
+    }else if (max_packet_size) {
         buffer_size = max_packet_size; /* no need to bufferize more than one packet */
     } else {
         buffer_size = IO_BUFFER_SIZE;
