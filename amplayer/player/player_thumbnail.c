@@ -360,7 +360,7 @@ int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
     if( !stream->pFormatCtx->metadata)
         return 0;
 
-    tag = av_dict_get(stream->pFormatCtx->metadata, key, tag, AV_METADATA_MATCH_CASE);
+    tag = av_dict_get(stream->pFormatCtx->metadata, key, tag, 0);
     if(tag) {
         *value = tag->value;
         return 1;
