@@ -578,6 +578,12 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
             p_para->buffering_threshhold_middle = c_para->buffing_middle;
             p_para->buffering_threshhold_max = c_para->buffing_max;
 	     p_para->buffering_start_time_s	=  c_para->buffing_starttime_s;	
+	     if(c_para->buffing_force_delay_s>0){	  
+	     	 p_para->buffering_force_delay_s = c_para->buffing_force_delay_s;
+	        log_print("delay %d s to do buffering\n",c_para->buffing_force_delay_s);	 
+	    }else{
+		 p_para->buffering_force_delay_s  = 0;
+	    }
         } else {
             log_print("not a valid threadhold settings for buffering(must min=%f<middle=%f<max=%f)\n",
                       c_para->buffing_min,
