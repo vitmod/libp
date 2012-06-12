@@ -553,7 +553,7 @@ int url_lp_intelligent_buffering(URLContext *s,int size)
 	int forward_data,back_data;
 	int datalen;
 	url_lpbuf_t *lp;
-	int ret=0;
+	int ret=-1;
 	
 	if(!s || !s->lpbuf)
 		return AVERROR(EINVAL);
