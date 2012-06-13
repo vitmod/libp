@@ -35,7 +35,6 @@ void audio_start(void **priv, arm_audio_info *a_ainfo)
 {
 
     audio_decode_init(priv, a_ainfo);
-    audio_decode_start(*priv);
 }
 
 /* --------------------------------------------------------------------------*/

@@ -312,7 +312,6 @@ static void *adec_message_loop(void *args)
 
     while (!audec->need_stop) {
         audec->state = INITING;
-
         ret = feeder_init(audec);
         if (ret == 0) {
             ret = aout_ops->init(audec);
@@ -322,14 +321,16 @@ static void *adec_message_loop(void *args)
                 continue;
             }
             audec->state = INITTED;
+            adec_print("Audio out device init ok!");
+            audio_decode_start(audec);
             break;
         }
 
 	if(!audec->need_stop){
             usleep(100000);
-	}
-    }
-
+	    }
+       }
+            
     do {
         //if(message_pool_empty(audec))
         //{
