@@ -224,7 +224,7 @@ reload:
 			return AVERROR(EIO); 
 		}
 	mgt->location=bio->reallocation;
-	if(NULL == mgt->location&&mgt->n_variants>1){//set location for multibandwidth streaming,such youtube,etc.
+	if(NULL == mgt->location&&mgt->n_variants>0){//set location for multibandwidth streaming,such youtube,etc.
 		mgt->location = url;
 	}
 	demux=probe_demux(bio,url);

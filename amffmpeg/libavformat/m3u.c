@@ -121,22 +121,20 @@ static void handle_key_args(struct key_info *info, const char *key,
     }
 }
 
-static struct variant *new_variant(struct list_mgt *mgt, int bandwidth,
-                                   const char *url, const char *base)
+static struct variant *new_variant(struct list_mgt *mgt, int bandwidth, const char *url, const char *base)
 {
-	struct variant *var = av_mallocz(sizeof(struct variant));
-	if (!var)
-		return NULL;
-
-	var->bandwidth = bandwidth;
-  
-	if(base){
-		av_strlcpy(var->url, base, sizeof(var->url));
-	}
-	av_strlcat(var->url, url, sizeof(var->url));	
-	dynarray_add(&mgt->variants, &mgt->n_variants, var);
-	return var;
+    struct variant *var = av_mallocz(sizeof(struct variant));
+    if (!var)
+        return NULL;
+    
+    var->bandwidth = bandwidth;
+    ff_make_absolute_url(var->url, sizeof(var->url), base, url);
+    //av_log(NULL,AV_LOG_INFO,"returl=%s\nbase=%s\nurl=%s\n",var->url,base,url);
+    dynarray_add(&mgt->variants, &mgt->n_variants, var);
+    return var;
 }
+
+
 static void free_variant_list(struct list_mgt *mgt)
 {
     int i;
@@ -299,8 +297,14 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	int prefix_len=0,prefixex_len=0;
 	int start_time=mgt->full_time;
 	char *oprefix=mgt->location!=NULL?mgt->location:mgt->filename;
+	if(NULL!=mgt->prefix){
+		av_free(mgt->prefix);
+		mgt->prefix = NULL;
+	}	
 	
 	if(oprefix){
+		mgt->prefix = strdup(oprefix);
+		
 		char *tail,*tailex,*extoptions;
 		extoptions=strchr(oprefix,'?');/*ext options is start with ? ,we don't need in nested*/
 		if(is_NET_URL(oprefix)){
@@ -326,12 +330,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		if(tailex!=NULL){
 			prefixex_len=tailex-oprefix+1;/*left '/'..*/
 			memcpy(prefixex,oprefix,prefixex_len);
-			prefixex[prefixex_len]='\0';
-			if(NULL!=mgt->prefix){
-				av_free(mgt->prefix);
-				mgt->prefix = NULL;
-			}
-			mgt->prefix = strdup(prefixex);
+			prefixex[prefixex_len]='\0';	
 		}
 	}
 	memset(&tmpitem,0,sizeof(tmpitem));
