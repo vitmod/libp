@@ -4528,16 +4528,18 @@ void ff_make_absolute_url(char *buf, int size, const char *base,
         av_strlcat(buf, rel, size);
         return;
     }
+     //av_log(NULL, AV_LOG_DEBUG,"[%s:%d],buf:%s\r\n,base:%s\r\n,rel:%s\n",__FUNCTION__,__LINE__,buf,base,rel);	
     protol_prefix=strstr(rel, "://");
     option_start=strstr(rel, "?");
     /* If rel actually is an absolute url, just copy it */
-    if (!base  || rel[0] == '/' || (option_start==NULL  && protol_prefix) || (option_start  && protol_prefix<option_start) ) {
+    if (!base  || rel[0] == '/' || (option_start==NULL  && protol_prefix) || (option_start  && protol_prefix!=NULL&&protol_prefix<option_start) ) {
 	  /* refurl  have  http://,ftp://,and don't have "?"
 	  	refurl  have  http://,ftp://,and  have "?", so we must ensure it is not a option, link  refurl=filename?authurl=http://xxxxxx
 	  */
         av_strlcpy(buf, rel, size);
         return;
     }
+	//av_log(NULL, AV_LOG_DEBUG,"[%s:%d],buf:%s\r\n,base:%s\r\n,rel:%s\n",__FUNCTION__,__LINE__,buf,base,rel);	
     if (base != buf)
         av_strlcpy(buf, base, size);
     /* Remove the file name from the base url */
@@ -4569,4 +4571,5 @@ void ff_make_absolute_url(char *buf, int size, const char *base,
         rel += 3;
     }
     av_strlcat(buf, rel, size);
+	//av_log(NULL, AV_LOG_DEBUG,"[%s:%d],buf:%s\r\n,base:%s\r\n,rel:%s\n",__FUNCTION__,__LINE__,buf,base,rel);	
 }
