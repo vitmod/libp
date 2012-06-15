@@ -638,12 +638,13 @@ static unsigned int get_current_time(play_para_t *p_para)
 		log_info("video pts discontinue!!!\n");		
 		if(!set_discontinue && is_chapter_discontinue(p_para))
 		{
-			p_para->discontinue_last_point = p_para->discontinue_point;
-        	p_para->discontinue_point = p_para->state.current_time;        	
-			set_discontinue = 1;
-        	log_info("vpts discontinue, point=%d ldpoint=%d\n", p_para->discontinue_point,p_para->discontinue_last_point);
+		    p_para->discontinue_last_point = p_para->discontinue_point;
+        	    p_para->discontinue_point = p_para->state.current_time;        	
+		    set_discontinue = 1;
+        	    log_info("vpts discontinue, point=%d ldpoint=%d\n", p_para->discontinue_point,p_para->discontinue_last_point);
 		}
-		codec_set_sync_video_discont(p_para->codec, 0);	
+		if(codec)
+		    codec_set_sync_video_discont(codec, 0);	
 		log_info("vpts discontinue, vpts=0x%x scr=0x%x apts=0x%x\n", get_pts_video(p_para),get_pts_pcrscr(p_para),get_pts_audio(p_para));
     }
 
@@ -653,12 +654,13 @@ static unsigned int get_current_time(play_para_t *p_para)
 		if(!set_discontinue && is_chapter_discontinue(p_para) &&  
 			(p_para->state.current_time < p_para->state.last_time))
 		{
-			p_para->discontinue_last_point = p_para->discontinue_point;
-        	p_para->discontinue_point = p_para->state.current_time;   
-			set_discontinue = 1;
-        	log_info("apts discontinue, point=%d ldpoint=%d\n", p_para->discontinue_point,p_para->discontinue_last_point);			
+		    p_para->discontinue_last_point = p_para->discontinue_point;
+        	    p_para->discontinue_point = p_para->state.current_time;   
+		    set_discontinue = 1;
+        	    log_info("apts discontinue, point=%d ldpoint=%d\n", p_para->discontinue_point,p_para->discontinue_last_point);			
 		}
-		codec_set_sync_audio_discont(p_para->codec, 0);		
+		if(codec)
+		    codec_set_sync_audio_discont(codec, 0);		
 		log_info("apts discontinue, vpts=0x%x scr=0x%x apts=0x%x\n", get_pts_video(p_para),get_pts_pcrscr(p_para),get_pts_audio(p_para));
 	}
 
