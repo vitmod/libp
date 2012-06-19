@@ -28,7 +28,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../amplayer/player/include \
     $(LOCAL_PATH)/../amffmpeg \
     $(JNI_H_INCLUDE) 
 
-LOCAL_STATIC_LIBRARIES := libamplayer libamplayer libamcodec libavformat libavcodec libavutil libamadec libamavutils
-LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils librtmp libssl libcrypto
+LOCAL_STATIC_LIBRARIES := libamplayer libamplayer libamcodec libavformat librtmp libavcodec libavutil libamadec libamavutils
+LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils libssl libcrypto
 
 include $(BUILD_EXECUTABLE)
