@@ -462,7 +462,7 @@ int check_flag(play_para_t *p_para)
         }
         return CONTINUE_FLAG;
     } else {
-        if (get_player_state(p_para) == PLAYER_PAUSE) {
+        if ((get_player_state(p_para) == PLAYER_PAUSE) || (get_player_state(p_para) == PLAYER_SEARCHOK)) {
             ret = codec_resume(p_para->codec);
             if (ret != 0) {
                 log_error("[%s:%d]resume failed!ret=%d\n", __FUNCTION__, __LINE__, ret);

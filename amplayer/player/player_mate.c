@@ -163,7 +163,7 @@ static int player_mate_thread_cmd_proxy(play_para_t *player,struct player_mate *
 	}else if((cmd->ctrl_cmd & CMD_RESUME) || (cmd->ctrl_cmd &CMD_START))
 	{
 		mate_print("[MATE]Get resume cmd\n");
-		 if (get_player_state(player) == PLAYER_PAUSE) {
+		 if ((get_player_state(player) == PLAYER_PAUSE) || (get_player_state(player) == PLAYER_SEARCHOK)) {
             ret = codec_resume(player->codec);
             if (ret != 0) {
                 log_error("[%s:%d]resume failed!ret=%d\n", __FUNCTION__, __LINE__, ret);

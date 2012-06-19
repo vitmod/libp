@@ -322,7 +322,7 @@ static void *adec_message_loop(void *args)
             }
             audec->state = INITTED;
             adec_print("Audio out device init ok!");
-            audio_decode_start(audec);
+            start_adec(audec);
             break;
         }
 
