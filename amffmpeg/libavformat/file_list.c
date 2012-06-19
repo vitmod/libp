@@ -35,8 +35,8 @@
 static struct list_demux *list_demux_list=NULL;
 #define unused(x)	(x=x)
 
-#define LIVE_LIST_MAX 30 
-#define SHRINK_LIVE_LIST_THRESHOLD (LIVE_LIST_MAX/2)
+#define LIVE_LIST_MAX 120 
+#define SHRINK_LIVE_LIST_THRESHOLD (LIVE_LIST_MAX/3)
 static int list_shrink_live_list(struct list_mgt *mgt);
 
 int register_list_demux(struct list_demux *demux)
