@@ -177,10 +177,11 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		if(seq>0){
 			if(seq>mgt->seq){
 				mgt->seq = seq;
-			mgt->flags |=REAL_STREAMING_FLAG;
-			av_log(NULL, AV_LOG_INFO, "get new sequence number:%ld\n",seq);
+				mgt->flags |=REAL_STREAMING_FLAG;
+				av_log(NULL, AV_LOG_INFO, "get new sequence number:%ld\n",seq);
 			}else{
 				//av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
+				mgt->is_same_seq = 1;
 				return 0;
 
 			}
@@ -208,12 +209,16 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		uint8_t iv[16] = "";
 		ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_key_args,
 		                   &info);
+		#if 0
 		av_log(NULL,AV_LOG_INFO,"==========start dump a aes key===========\n");
 		av_log(NULL,AV_LOG_INFO,"==========key location : %s\n",info.uri);
 		av_log(NULL,AV_LOG_INFO,"==========key iv : %s\n",info.iv);
 		av_log(NULL,AV_LOG_INFO,"==========key method : %s\n",info.method);
 		av_log(NULL,AV_LOG_INFO,"==========end dump a aes key===========\n");
+		
+		#endif
 		struct encrypt_key_priv_t* key_priv_info = av_mallocz(sizeof(struct encrypt_key_priv_t));
+		
 		if(NULL == key_priv_info){
 			av_log(NULL,AV_LOG_ERROR,"no memory for key_info\n");
 			return -1;
@@ -350,7 +355,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			int need_prefix=0;
 			int size_file=tmpitem.file?(strlen(tmpitem.file)+32):4;
 			tmpitem.start_time=start_time;
-			start_time+=tmpitem.duration;
+			
 			if(tmpitem.file && 
 				(is_NET_URL(prefix)) && /*net protocal*/
 				!(is_NET_URL(tmpitem.file)))/*if item is not net protocal*/
@@ -402,8 +407,13 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			}
 			if(mgt->flags&REAL_STREAMING_FLAG){			
 				ret =list_test_and_add_item(mgt,item);
+				if(ret==0){
+					start_time+=item->duration;
+				}
+				
 			}else{
 				ret = list_add_item(mgt,item);
+				start_time+=item->duration;
 
 			}
 			if(item->flags &ENDLIST_FLAG)
@@ -451,6 +461,11 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		else{
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
+			if(mgt->is_same_seq>0){
+				mgt->is_same_seq = 0;
+				av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",mgt->seq);
+				break;
+			}
 		}
 		
 	}

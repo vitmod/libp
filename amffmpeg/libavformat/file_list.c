@@ -87,10 +87,7 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item)
 	item->prev=prev;
        item->next = NULL;
 	mgt->item_num++;
-
-	if(!mgt->have_list_end &&mgt->item_num>LIVE_LIST_MAX){
-		list_shrink_live_list(mgt);
-	}
+	
 	return 0;
 }
 
@@ -123,10 +120,6 @@ int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 	item->prev=prev;
 	item->next = NULL;
 	mgt->item_num++;
-
-	if(!mgt->have_list_end &&mgt->item_num>LIVE_LIST_MAX){
-		list_shrink_live_list(mgt);
-	}
 	
 	return 0;
 }
@@ -175,6 +168,7 @@ static int list_shrink_live_list(struct list_mgt *mgt){
 			tmp = &mgt->item_list;	
 		}
 	}
+	av_log(NULL, AV_LOG_INFO, "shrink live item from list,total:%d\n",mgt->item_num);
 	return 0;
 }
 
@@ -337,6 +331,10 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 				url = mgt->filename;
 				av_log(NULL, AV_LOG_INFO,"list open url:%s\n",url);
 			}
+			
+			if(!mgt->have_list_end &&mgt->item_num>LIVE_LIST_MAX){
+				list_shrink_live_list(mgt);
+			}
 			if((ret=list_open_internet(&bio,mgt,url,mgt->flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 			{
 				goto switchnext;
@@ -358,6 +356,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 					list_del_item(mgt,mgt->item_list);
 				}
 				#endif
+
 				mgt->current_item=current;/*switch to new current;*/
 			}
 	}
@@ -629,15 +628,21 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	
 	if(whence == AVSEEK_TO_TIME)
 	{
-		av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x\n",pos,whence);
+		av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x,have sublist:%d\n",pos,whence,mgt->have_sub_list);
 		if (!mgt->have_sub_list) {
 			if(pos>=0 && pos<mgt->full_time) {
+
 				for(item=mgt->item_list;item;item=item->next)
 				{
+					
 					if(item->start_time<=pos && pos <item->start_time+item->duration)
 					{	
-						if(mgt->cur_uio)
+						if(mgt->cur_uio){
+							
 							url_fclose(mgt->cur_uio);
+
+						}
+						
 						mgt->cur_uio=NULL;
 						mgt->current_item=item;
 						av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
