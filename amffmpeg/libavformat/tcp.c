@@ -74,7 +74,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
                hostname, gai_strerror(ret));
         return AVERROR(EIO);
     }
-
+    av_log(h, AV_LOG_INFO,"resolved %s's  ipaddress \n",hostname);
     cur_ai = ai;
 
  restart:
@@ -139,6 +139,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
             goto fail;
         }
     }
+    av_log(h, AV_LOG_INFO,"tcp  connect %s ok!\n",hostname);	
     s = av_malloc(sizeof(TCPContext));
     if (!s) {
         freeaddrinfo(ai);
