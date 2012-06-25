@@ -63,7 +63,10 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
         }
     }
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
+    if(am_getconfig_bool("media.libplayer.ipv4only"))	
+    		hints.ai_family = AF_INET;
+    else
+		hints.ai_family = AF_UNSPEC;	
     hints.ai_socktype = SOCK_STREAM;
     snprintf(portstr, sizeof(portstr), "%d", port);
 	av_log(h, AV_LOG_INFO,"TCP connect to %s port %d \n",hostname,port);

@@ -41,7 +41,7 @@
 #include <stdarg.h>
 #include "file_list.h"
 #include "nsc.h"
-#include "amconfigutils.h"
+
 #if CONFIG_NETWORK
 #include "network.h"
 #endif
