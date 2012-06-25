@@ -41,7 +41,7 @@
 #include <stdarg.h>
 #include "file_list.h"
 #include "nsc.h"
-
+#include "amconfigutils.h"
 #if CONFIG_NETWORK
 #include "network.h"
 #endif
@@ -2628,6 +2628,7 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 static int has_codec_parameters(AVCodecContext *enc)
 {
     int val;
+#if 0	/*hw decodev*/
     switch(enc->codec_type) {
     case AVMEDIA_TYPE_AUDIO:
         val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
@@ -2648,8 +2649,64 @@ static int has_codec_parameters(AVCodecContext *enc)
         val = 1;
         break;
     }
+#else
+    switch(enc->codec_type) {
+    case AVMEDIA_TYPE_AUDIO:
+       //val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
+	val = enc->sample_rate && enc->channels;
+        break;
+    case AVMEDIA_TYPE_VIDEO:
+        val = enc->width;
+        break;
+    default:
+        val = 1;
+        break;
+    }
+	
+#endif
     return enc->codec_id != CODEC_ID_NONE && val != 0;
 }
+static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
+{
+    int val;
+	if(!fastmode){
+		switch(enc->codec_type) {
+		case AVMEDIA_TYPE_AUDIO:
+		    val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
+		    if(!enc->frame_size &&
+		       (enc->codec_id == CODEC_ID_VORBIS ||
+		        enc->codec_id == CODEC_ID_AAC ||
+		        enc->codec_id == CODEC_ID_MP1 ||
+		        enc->codec_id == CODEC_ID_MP2 ||
+		        enc->codec_id == CODEC_ID_MP3 ||
+		        enc->codec_id == CODEC_ID_SPEEX ||
+		        enc->codec_id == CODEC_ID_CELT))
+		        return 0;
+		    break;
+		case AVMEDIA_TYPE_VIDEO:
+		    val = enc->width && enc->pix_fmt != PIX_FMT_NONE;
+		    break;
+		default:
+		    val = 1;
+		    break;
+		}
+	}else{
+		switch(enc->codec_type) {
+		case AVMEDIA_TYPE_AUDIO:
+		   //val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
+		val = enc->sample_rate && enc->channels;
+		    break;
+		case AVMEDIA_TYPE_VIDEO:
+		    val = enc->width;
+		    break;
+		default:
+		    val = 1;
+		    break;
+		}
+    }
+    return enc->codec_id != CODEC_ID_NONE && val != 0;
+}
+
 
 static int has_decode_delay_been_guessed(AVStream *st)
 {
@@ -2794,12 +2851,19 @@ int av_find_stream_info(AVFormatContext *ic)
     AVStream *st;
     AVPacket pkt1, *pkt;
     int64_t old_offset = avio_tell(ic->pb);
+    int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
+	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {
         av_log(NULL, AV_LOG_INFO, "]av_find_stream_info]DRMdemux, do not check stream info ,return directly\n");
         return 0;
     }
     TRACE();
-    for(i=0;i<ic->nb_streams;i++) {
+    if(fast_switch){	
+	    for (i=0; i<ic->nb_streams; i++) {
+		ic->streams[i]->need_parsing = AVSTREAM_PARSE_NONE;
+	    }	
+    }
+    for(i=0;i<ic->nb_streams;i++) {	
         AVCodec *codec;
         st = ic->streams[i];
         if (st->codec->codec_id == CODEC_ID_AAC) {
@@ -2833,13 +2897,15 @@ int av_find_stream_info(AVFormatContext *ic)
             st->codec->channels = 0;
         /* Ensure that subtitle_header is properly set. */
         if (st->codec->codec_type == AVMEDIA_TYPE_SUBTITLE
-            && codec && !st->codec->codec)
-            avcodec_open(st->codec, codec);		
+            && codec && !st->codec->codec){	
+            avcodec_open(st->codec, codec);
+        	}
 
         //try to just open decoders, in case this is enough to get parameters
-        if(!has_codec_parameters(st->codec)){
-            if (codec && !st->codec->codec)
+        if(!has_codec_parameters_ex(st->codec,fast_switch)){
+            if (codec && !st->codec->codec){
                 avcodec_open(st->codec, codec);
+            	}
         }
     }
 
@@ -2859,9 +2925,8 @@ int av_find_stream_info(AVFormatContext *ic)
         /* check if one codec still needs to be handled */
         for(i=0;i<ic->nb_streams;i++) {
             int fps_analyze_framecount = 20;
-
             st = ic->streams[i];
-            if (!has_codec_parameters(st->codec))
+            if (!has_codec_parameters_ex(st->codec,fast_switch))
                 break;
             /* if the timebase is coarse (like the usual millisecond precision
                of mkv), we need to analyze more frames to reliably arrive at
@@ -2871,13 +2936,14 @@ int av_find_stream_info(AVFormatContext *ic)
             if (ic->fps_probe_size >= 0)
                 fps_analyze_framecount = ic->fps_probe_size;
             /* variable fps and no guess at the real fps */
-            if(   tb_unreliable(st->codec) && !(st->r_frame_rate.num && st->avg_frame_rate.num)
+				
+            if(!fast_switch && tb_unreliable(st->codec) && !(st->r_frame_rate.num && st->avg_frame_rate.num)
                && st->info->duration_count < fps_analyze_framecount
                && st->codec->codec_type == AVMEDIA_TYPE_VIDEO)
                 break;
             if(st->parser && st->parser->parser->split && !st->codec->extradata)
                 break;
-            if(st->first_dts == AV_NOPTS_VALUE)
+            if(!fast_switch &&  st->first_dts == AV_NOPTS_VALUE)
                 break;
         }
         if (i == ic->nb_streams) {
@@ -2897,16 +2963,15 @@ int av_find_stream_info(AVFormatContext *ic)
             av_log(ic, AV_LOG_DEBUG, "Probe buffer size limit %d reached\n", ic->probesize);
             break;
         }	
-
         /* NOTE: a new stream can be added there if no header in file
            (AVFMTCTX_NOHEADER) */
-        ret = av_read_frame_internal(ic, &pkt1);
+        ret = av_read_frame_internal(ic, &pkt1);	
         if (ret < 0 && ret != AVERROR(EAGAIN)) {
             /* EOF or error */
             ret = -1; /* we could not have all the codec parameters before EOF */
             for(i=0;i<ic->nb_streams;i++) {
                 st = ic->streams[i];
-                if (!has_codec_parameters(st->codec)){
+                if (!has_codec_parameters_ex(st->codec,fast_switch)){
                     char buf[256];
                     avcodec_string(buf, sizeof(buf), st->codec, 0);
                     av_log(ic, AV_LOG_WARNING, "Could not find codec parameters (%s)\n", buf);
@@ -2916,7 +2981,6 @@ int av_find_stream_info(AVFormatContext *ic)
             }
             break;
         }
-
         if (ret == AVERROR(EAGAIN))
             continue;
 
@@ -2970,13 +3034,13 @@ int av_find_stream_info(AVFormatContext *ic)
                 memset(st->codec->extradata + i, 0, FF_INPUT_BUFFER_PADDING_SIZE);
             }
         }
-
         /* if still no information, we try to open the codec and to
            decompress the frame. We try to avoid that in most cases as
            it takes longer and uses more memory. For MPEG-4, we need to
            decompress for QuickTime. */
-        if (!has_codec_parameters(st->codec) || !has_decode_delay_been_guessed(st))
-            try_decode_frame(st, pkt);
+        if (!has_codec_parameters_ex(st->codec,fast_switch) ||( !fast_switch && !has_decode_delay_been_guessed(st))){
+            try_decode_frame(st, pkt);	
+        }
 		
         st->codec_info_nb_frames++;
         count++;
@@ -3059,9 +3123,7 @@ int av_find_stream_info(AVFormatContext *ic)
     ret = av_estimate_timings(ic, old_offset);
 	if (ret < 0) 
 		goto find_stream_info_err;
-
     compute_chapters_end(ic);
-
 #if 0
     /* correct DTS for B-frame streams with no timestamps */
     for(i=0;i<ic->nb_streams;i++) {
