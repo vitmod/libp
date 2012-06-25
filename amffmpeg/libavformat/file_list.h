@@ -116,6 +116,8 @@ typedef struct list_mgt
 	int 	have_list_end;
 	int  seq;  
 	int is_same_seq;//just drop this m3u
+	int target_duration;
+	int64_t last_load_time;
 	//added for Playlist file with encrypted media segments
 	ClarityType ctype; //default is HIGH_BANDWIDTH
 	int n_variants;

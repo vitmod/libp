@@ -168,6 +168,9 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 			item->duration=duration;
 			
 		}
+	} else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {            	
+		mgt->target_duration = atoi(ptr);
+		av_log(NULL, AV_LOG_INFO, "get target duration:%ld\n",mgt->target_duration);
 	}else if(is_TAG(p,EXT_X_ALLOW_CACHE)){
 		item->flags|=ALLOW_CACHE_FLAG;
 	}else if(is_TAG(p,EXT_X_MEDIA_SEQUENCE)){
@@ -478,6 +481,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	}
 	mgt->file_size=AVERROR_STREAM_SIZE_NOTVALID;
 	mgt->full_time=start_time;
+	mgt->last_load_time = av_gettime();
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%d\n",getnum,start_time);
 	return getnum;
 }

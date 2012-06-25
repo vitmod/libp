@@ -318,6 +318,11 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 	struct list_item *current = NULL;
 	if(!mgt)
 		return NULL;
+	
+	int64_t reload_interval = mgt->item_num> 0&&mgt->current_item!=NULL?
+		mgt->current_item->duration :
+		mgt->target_duration;	
+	int isNeedFetch = 1;	
 	if(mgt->current_item==NULL || mgt->current_item->next==NULL){
 			/*new refresh this mgtlist now*/
 			ByteIOContext *bio;
@@ -332,10 +337,13 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 				av_log(NULL, AV_LOG_INFO,"list open url:%s\n",url);
 			}
 			
-			if(!mgt->have_list_end &&mgt->item_num>LIVE_LIST_MAX){
-				list_shrink_live_list(mgt);
+
+			reload_interval *= 500000;
+			if(!mgt->have_list_end&&(av_gettime() - mgt->last_load_time < reload_interval)){
+				av_log(NULL, AV_LOG_INFO,"drop fetch playlist from server\n");
+				isNeedFetch = 0;
 			}
-			if((ret=list_open_internet(&bio,mgt,url,mgt->flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
+			if(isNeedFetch ==0||(ret=list_open_internet(&bio,mgt,url,mgt->flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 			{
 				goto switchnext;
 			}
@@ -358,6 +366,9 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 				#endif
 
 				mgt->current_item=current;/*switch to new current;*/
+				if(!mgt->have_list_end &&mgt->item_num>LIVE_LIST_MAX){
+					list_shrink_live_list(mgt);
+				}				
 			}
 	}
 switchnext:
@@ -375,14 +386,18 @@ switchnext:
 
 static void fresh_item_list(struct list_mgt *mgt){	
 	int retries = 5;
+	int reload_interval = mgt->target_duration * 500000;
 	do{	
-		if((switchto_next_item(mgt))!=NULL)
-		{
+		if((switchto_next_item(mgt))!=NULL){
 			av_log(NULL, AV_LOG_INFO, "refresh the Playlist,item num:%d,filename:%s\n",mgt->item_num,mgt->filename);		
 			break;
 		}	
-		else{			
-			usleep(50000); //50ms
+		else{	
+			if (url_interrupt_cb()){     
+				av_log(NULL, AV_LOG_ERROR," url_interrupt_cb\n");	
+				break;
+			}
+			usleep(reload_interval); //50ms
 			av_log(NULL, AV_LOG_INFO, "no new item,wait next refresh,current item num:%d\n",mgt->item_num);	
 		}
 
@@ -522,9 +537,12 @@ readagain:
 		if(item && (item->flags & ENDLIST_FLAG)){
 		    if(mgt->cur_uio)
 			    url_fclose(mgt->cur_uio);
-    		av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
+    			av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
 			return 0;
 		}
+
+		
+		
 		item=switchto_next_item(mgt);
 		if(!item){
 			if(mgt->flags&REAL_STREAMING_FLAG){
@@ -542,6 +560,7 @@ readagain:
 			url_fclose(mgt->cur_uio);
 		mgt->cur_uio=NULL;
 		mgt->current_item=item;
+		
 		if(item->flags & ENDLIST_FLAG){
 			av_log(NULL, AV_LOG_INFO, "reach list end now!,item=%x\n",item);
 			return 0;/*endof file*/
@@ -555,6 +574,7 @@ readagain:
 			av_log(NULL, AV_LOG_INFO, "[%s]item->flags=%x \n", __FUNCTION__, item->flags);
 			goto retry;
 		}
+		
 	}
 	#if 0
 	if(mgt->flags&REAL_STREAMING_FLAG&&mgt->item_num<4){ //force refresh items
