@@ -501,7 +501,7 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
                           const char *filename, void *logctx,
                           unsigned int offset, unsigned int max_probe_size)
 {
-    AVProbeData pd = { filename ? filename : "", NULL, -offset };
+    AVProbeData pd = { filename ? filename : "", NULL, -offset,pb,0,0,0 };
     unsigned char *buf = NULL;
     int ret = 0, probe_size;
 	int data_offset = 0;
@@ -704,7 +704,7 @@ static auto_switch_protol_t *try_get_mached_new_prot(ByteIOContext *pb,const cha
 static int init_input(AVFormatContext *s, const char *filename,const char * headers)
 {
     int ret;
-    AVProbeData pd = {filename, NULL, 0};
+    AVProbeData pd = {filename, NULL, 0,NULL};
     auto_switch_protol_t* newp=NULL;
     if (s->pb) {
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
