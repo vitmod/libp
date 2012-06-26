@@ -46,7 +46,7 @@
 #define EXT_X_DISCONTINUITY		"#EXT-X-DISCONTINUITY"
 
 #define is_TAG(l,tag)	(!strncmp(l,tag,strlen(tag)))
-#define is_NET_URL(url)		(!strncmp(url,"http://",7) || !strncmp(url,"shttp://",8))
+#define is_NET_URL(url)		(!strncmp(url,"http://",7) || !strncmp(url,"shttp://",8)||!strncmp(url,"shttps://",9))
 
 struct m3u_info{
 	int duration;
@@ -316,17 +316,17 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		char *tail,*tailex,*extoptions;
 		extoptions=strchr(oprefix,'?');/*ext options is start with ? ,we don't need in nested*/
 		if(is_NET_URL(oprefix)){
-			tail=strchr(oprefix+9,'/');/*skip Http:// and shttp:,and to first '/'*/
+			tail=strchr(oprefix+10,'/');/*skip Http:// and shttp:,and to first '/'*/
 			if(!extoptions)// no ?
-				tailex=strrchr(oprefix+9,'/');/*skip Http:// and shttp:,start to  last '/'*/
+				tailex=strrchr(oprefix+10,'/');/*skip Http:// and shttp:,start to  last '/'*/
 			else
-				tailex=memrchr(oprefix+9,'/',extoptions-oprefix-9);/*skip Http:// and shttp:,start to  last '/',between http-->? */
+				tailex=memrchr(oprefix+10,'/',extoptions-oprefix-10);/*skip Http:// and shttp:,start to  last '/',between http-->? */
 		}else{
 			tail=strchr(oprefix,'/'); /*first '/'*/
 			if(!extoptions)//no ?
 				tailex=strrchr(oprefix,'/'); /*to last '/' */
 			else
-				tailex=memrchr(oprefix+9,'/',extoptions-oprefix-9);/*skip Http:// and shttp:,start to  last '/',between http-->? */
+				tailex=memrchr(oprefix+10,'/',extoptions-oprefix-10);/*skip Http:// and shttp:,start to  last '/',between http-->? */
 		}
 		
 		if(tail!=NULL){
@@ -379,8 +379,15 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 						strcpy(item->file,prefix);
 						strcpy(item->file+prefix_len,tmpitem.file+1);/*don't copy two '/',we have left before*/
 					}else{/*no '/', some I save the full path frefix*/
-						strcpy(item->file,prefixex);
-						strcpy(item->file+prefixex_len,tmpitem.file);
+						if(!strncmp(prefixex,"shttps://",9)){
+							strcpy(item->file,"http");
+							strcpy(item->file+4,prefixex+6);
+							strcpy(item->file+4+prefixex_len -6,tmpitem.file);
+						}else{
+							strcpy(item->file,prefixex);
+							strcpy(item->file+prefixex_len,tmpitem.file);	
+						}
+						
 					}
 				}
 				else{
