@@ -15,6 +15,7 @@
 #include "player_update.h"
 #include "player_ffmpeg_ctrl.h"
 #include "system/systemsetting.h"
+#include <cutils/properties.h>
 
 DECLARE_ALIGNED(16, uint8_t, dec_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
 
@@ -545,6 +546,9 @@ static int set_decode_para(play_para_t*am_p)
 	int filter_vfmt = 0, filter_afmt = 0;
     unsigned char* buf;
     ByteIOContext *pb = am_p->pFormatCtx->pb;
+	int prop = -1;
+	char dts_value[PROPERTY_VALUE_MAX];
+	char ac3_value[PROPERTY_VALUE_MAX];
 
     get_stream_info(am_p);
     log_print("[%s:%d]has_video=%d vformat=%d has_audio=%d aformat=%d", __FUNCTION__, __LINE__, \
@@ -603,8 +607,13 @@ static int set_decode_para(play_para_t*am_p)
         }
     }
 
-    if (am_p->playctrl_info.no_audio_flag) {
-        set_player_error_no(am_p, PLAYER_SET_NOAUDIO);
+	
+	property_get("media.audio.disable.dts",dts_value,NULL);
+	property_get("media.audio.disable.ac3",ac3_value,NULL);
+    if ((am_p->playctrl_info.no_audio_flag)||
+		((!strcmp(dts_value, "true"))&&(am_p->astream_info.audio_format == AFORMAT_DTS )) ||
+		((!strcmp(ac3_value, "true"))&&(am_p->astream_info.audio_format == AFORMAT_AC3 ))){			
+		set_player_error_no(am_p, PLAYER_SET_NOAUDIO);
         update_player_states(am_p, 1);
     } else if (!am_p->astream_info.has_audio) {
         if (am_p->vstream_info.has_video) {
@@ -628,7 +637,9 @@ static int set_decode_para(play_para_t*am_p)
         return PLAYER_UNSUPPORT;
 	}	
 	
-    if (am_p->playctrl_info.no_audio_flag) {
+    if ((am_p->playctrl_info.no_audio_flag)||
+		((!strcmp(dts_value, "true"))&&(am_p->astream_info.audio_format == AFORMAT_DTS )) ||
+		((!strcmp(ac3_value, "true"))&&(am_p->astream_info.audio_format == AFORMAT_AC3 ))){		
         am_p->astream_info.has_audio = 0;
     }
 
