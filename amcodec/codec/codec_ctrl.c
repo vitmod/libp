@@ -1280,15 +1280,15 @@ int codec_init_cntl(codec_para_t *pcodec)
 {
     CODEC_HANDLE cntl;
 
-    if (pcodec->has_video) {
-        cntl = codec_h_open(CODEC_CNTL_DEVICE, O_RDWR);
-        if (cntl < 0) {
-            CODEC_PRINT("get %s failed\n", CODEC_CNTL_DEVICE);
-            return system_error_to_codec_error(cntl);
-        }
 
-        pcodec->cntl_handle = cntl;
+    cntl = codec_h_open(CODEC_CNTL_DEVICE, O_RDWR);
+    if (cntl < 0) {
+        CODEC_PRINT("get %s failed\n", CODEC_CNTL_DEVICE);
+        return system_error_to_codec_error(cntl);
     }
+
+    pcodec->cntl_handle = cntl;
+    
     return CODEC_ERROR_NONE;
 }
 
