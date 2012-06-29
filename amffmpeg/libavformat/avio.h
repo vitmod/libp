@@ -153,6 +153,13 @@ typedef struct URLProtocol {
     const AVClass *priv_data_class;
     int flags;
     int (*url_check)(URLContext *h, int mask);
+
+#define AVCMD_SLICE_START_OFFSET		(1000+1)
+#define AVCMD_SLICE_SIZE				(1000+2)
+#define AVCMD_SLICE_DURATION			(1000+3)
+#define AVCMD_SLICE_INFO				(1000+4)
+#define AVCMD_SLICE_NUM				(1000+5)
+    int (*url_getinfo)(URLContext *h, int cmd,int flag,void*info);
 } URLProtocol;
 
 typedef struct URLPollEntry {
@@ -463,6 +470,8 @@ int avio_put_str16le(AVIOContext *s, const char *str);
 #define AVSEEK_TO_TIME 			0x30000
 #define AVSEEK_BUFFERED_TIME 	0x40000
 #define AVSEEK_FULLTIME 		0x50000
+
+#define AVSEEK_SLICE_INDEX		0x80000	
 
 
 int64_t avio_seek(AVIOContext *s, int64_t offset, int whence);
