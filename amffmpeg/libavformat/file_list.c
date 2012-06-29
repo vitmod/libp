@@ -292,7 +292,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
 		return ret;
 	}
 	lp_lock_init(&mgt->mutex,NULL);
-	if(!mgt->have_list_end && (!mgt->have_sub_list)){
+	if(!mgt->have_list_end && (!mgt->have_sub_list)&&(mgt->target_duration<5)){
 		struct list_item *item=mgt->item_list;
 		int itemindex=mgt->item_num/2+1;/*for live streaming ,choose the middle item.*/
 		while(itemindex-->0 && item!=NULL)
