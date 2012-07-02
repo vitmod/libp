@@ -653,7 +653,7 @@ static int set_decode_para(play_para_t*am_p)
     if (am_p->astream_info.has_audio) {
 
         if (!am_p->playctrl_info.raw_mode &&
-            am_p->astream_info.audio_format == AFORMAT_AAC) {
+            (am_p->astream_info.audio_format == AFORMAT_AAC||am_p->astream_info.audio_format == AFORMAT_AAC_LATM)) {
             adts_header_t *adts_hdr;
             adts_hdr = MALLOC(sizeof(adts_header_t));
             if (adts_hdr == NULL) {
