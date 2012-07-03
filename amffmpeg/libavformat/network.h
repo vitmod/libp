@@ -83,7 +83,7 @@ static inline int ff_network_wait_fd(int fd, int write)
     int ret=0;
 	int retry=10; ///10*100ms=1S;
 	do{
-		if(url_interrupt_cb())
+		if(retry<5  && url_interrupt_cb()) /*at lest try 5 times, for some teardown command*/
 			return AVERROR_EXIT;
     	ret = poll(&p, 1, 100);/*100ms*/
 		if(ret!=0)

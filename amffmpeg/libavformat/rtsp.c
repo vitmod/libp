@@ -1044,12 +1044,18 @@ retry:
     cur_auth_type = rt->auth_state.auth_type;
     if ((ret = ff_rtsp_send_cmd_with_content_async(s, method, url, header,
                                                    send_content,
-                                                   send_content_length)))
+                                                   send_content_length))){
+        av_log(s, AV_LOG_INFO, "ff_rtsp_send_cmd_with_content_async error %d \n", ret);                                           
         return ret;
+    	}
 
-    if ((ret = ff_rtsp_read_reply(s, reply, content_ptr, 0, method) ) < 0)
+    if ((ret = ff_rtsp_read_reply(s, reply, content_ptr, 0, method) ) < 0){
+		 av_log(s, AV_LOG_INFO, "ff_rtsp_read_reply  %s error  status_code: %d\n", method,
+               reply->status_code);
         return ret;
-
+    	}
+    av_log(s, AV_LOG_INFO, "method %s status_code: %d\n", method,
+               reply->status_code);
     if (reply->status_code == 401 && cur_auth_type == HTTP_AUTH_NONE &&
         rt->auth_state.auth_type != HTTP_AUTH_NONE)
         goto retry;
