@@ -47,6 +47,7 @@ static const media_type media_array[] = {
     {"aac", AAC_FILE, STREAM_AUDIO},
     {"ac3", AC3_FILE, STREAM_AUDIO},
     {"mp3", MP3_FILE, STREAM_AUDIO},
+    {"mp2", MP3_FILE, STREAM_AUDIO},
     {"wav", WAV_FILE, STREAM_AUDIO},
     {"dts", DTS_FILE, STREAM_AUDIO},
     {"flac", FLAC_FILE, STREAM_AUDIO},
