@@ -1098,7 +1098,7 @@ int time_search(play_para_t *am_p)
     unsigned int temp = 0;
     int stream_index = -1;
     int64_t ret;
-    int seek_flags = AVSEEK_FLAG_BACKWARD;
+    int seek_flags =am_getconfig_bool("media.libplayer.seek.fwdsearch")?0: AVSEEK_FLAG_BACKWARD;
 	int sample_size;
     /* If swith audio, then use audio stream index */
     if (am_p->playctrl_info.seek_base_audio) {       
