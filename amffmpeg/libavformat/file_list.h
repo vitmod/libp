@@ -115,7 +115,8 @@ typedef struct list_mgt
 	int 	full_time;
 	int 	have_list_end;
 	int  seq;  
-	int is_same_seq;//just drop this m3u
+	int cur_seq_no;	
+	int jump_item_num;
 	int target_duration;
 	int64_t last_load_time;
 	//added for Playlist file with encrypted media segments

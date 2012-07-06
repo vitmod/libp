@@ -99,6 +99,11 @@ int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 	list=&mgt->item_list;
 	prev=NULL;
 	//test
+	if(mgt->jump_item_num>0){
+		av_log(NULL, AV_LOG_INFO, "jump item num:%d\n",mgt->jump_item_num);
+		mgt->jump_item_num--;
+		return -1;
+	}
 	if(item->file!=NULL){
 		while (*list != NULL) 
 		{	
@@ -119,6 +124,11 @@ int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 	*list = item;
 	item->prev=prev;
 	item->next = NULL;
+	if(mgt->seq>0){
+		
+		mgt->cur_seq_no = mgt->cur_seq_no>0?(mgt->cur_seq_no+1):mgt->seq;
+		av_log(NULL, AV_LOG_INFO, "current seq num:%d,start seq num:%d\n",mgt->cur_seq_no,mgt->seq);
+	}
 	mgt->item_num++;
 	
 	return 0;
@@ -284,8 +294,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	memset(mgt,0,sizeof(struct list_mgt));
 	mgt->key_tmp = NULL;
 	mgt->seq = -1;
+	mgt->cur_seq_no = -1;
 	mgt->filename=filename+5;
 	mgt->flags=flags;
+	mgt->jump_item_num = 0;
 	if((ret=list_open_internet(&bio,mgt,mgt->filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 	{
 		av_free(mgt);

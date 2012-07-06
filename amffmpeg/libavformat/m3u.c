@@ -147,6 +147,9 @@ static void free_variant_list(struct list_mgt *mgt)
 }
 
 #define TRICK_LOGIC_BASE 200
+#ifndef INT_MAX
+#define INT_MAX   2147483647
+#endif
 static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_item*item)
 {
 	unsigned char *p=line; 
@@ -181,10 +184,14 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 			if(seq>mgt->seq){
 				mgt->seq = seq;
 				mgt->flags |=REAL_STREAMING_FLAG;
+				if(mgt->cur_seq_no>=mgt->seq){
+					mgt->jump_item_num = mgt->cur_seq_no - mgt->seq+1;
+					av_log(NULL,AV_LOG_INFO,"need jump item num:%d\n",mgt->jump_item_num);
+				}
 				av_log(NULL, AV_LOG_INFO, "get new sequence number:%ld\n",seq);
 			}else{
-				//av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
-				mgt->is_same_seq = 1;
+				av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
+				mgt->jump_item_num = INT_MAX;
 				return 0;
 
 			}
@@ -471,8 +478,8 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		else{
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
-			if(mgt->is_same_seq>0){
-				mgt->is_same_seq = 0;
+			if(mgt->flags&REAL_STREAMING_FLAG&&mgt->jump_item_num==INT_MAX){
+				mgt->jump_item_num = 0;
 				av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",mgt->seq);
 				break;
 			}
