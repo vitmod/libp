@@ -196,8 +196,8 @@ static int check_subtitle_info(play_para_t *player)
 				//set_subtitle_curr(0);
 				set_subtitle_enable(1);	
 				set_player_state(player, PLAYER_FOUND_SUB);
-                update_playing_info(player);
-                update_player_states(player, 1);
+		             update_playing_info(player);
+		             update_player_states(player, 1);
 			}
 			
 			if (sub_info[1].id != -1 && sub_info[1].id != player->codec->sub_pid) {
@@ -1139,6 +1139,8 @@ release0:
 		}else{
         	set_player_error_no(player, ret);
 		}
+		log_print("player error,force video blackout\n");
+		set_black_policy(1);
     }
     update_playing_info(player);
     update_player_states(player, 1);
