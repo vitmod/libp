@@ -1001,6 +1001,7 @@ int player_dec_init(play_para_t *p_para)
     int full_time = 0;
     int full_time_ms = 0;
     int i;
+    int wvenable= 0;
     AVStream *st;
 
     ret = ffmpeg_parse_file(p_para);
@@ -1009,19 +1010,19 @@ int player_dec_init(play_para_t *p_para)
         return ret;
     }
     dump_format(p_para->pFormatCtx, 0, p_para->file_name, 0);
-
-    for(i = 0; i<p_para->pFormatCtx->nb_streams; i ++) {
-        st = p_para->pFormatCtx->streams[i];
-        if(st->codec->profile == FF_PROFILE_H264_CONSTRAINED_BASELINE){
-            log_print("codec_id=%x*****profile=%d\n",st->codec->codec_id, st->codec->profile);
-            set_player_state(p_para, PLAYER_HTTP_WV);
-            update_playing_info(p_para);
-            update_player_states(p_para, 1);     
-             log_print("[player_dec_init]0000000000000\n");             
-            ret = PLAYER_FAILED;
-            log_print("[player_dec_init]http wmv, set failed\n");
-            goto init_fail;
-            //break;
+    
+    if(am_getconfig_bool("media.amplayer.widevineenable")){
+        for(i = 0; i<p_para->pFormatCtx->nb_streams; i ++) {
+            st = p_para->pFormatCtx->streams[i];
+            if(st->codec->profile == FF_PROFILE_H264_CONSTRAINED_BASELINE){
+                log_print("codec_id=%x*****profile=%d\n",st->codec->codec_id, st->codec->profile);
+                set_player_state(p_para, PLAYER_HTTP_WV);
+                update_playing_info(p_para);
+                update_player_states(p_para, 1);                            
+                ret = PLAYER_FAILED;
+                log_print("[player_dec_init]http wmv, set failed\n");
+                goto init_fail;         
+            }
         }
     }
    
