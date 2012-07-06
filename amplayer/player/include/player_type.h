@@ -26,7 +26,7 @@ typedef enum
 	PLAYER_INITING  	= 0x10001,
 	PLAYER_TYPE_REDY  = 0x10002,
 	PLAYER_INITOK   	= 0x10003,	
-
+        
 	/******************************
 	* 0x2000x: 
 	* playback status
@@ -44,7 +44,7 @@ typedef enum
 
 	PLAYER_PLAY_NEXT	= 0x20009,	
 	PLAYER_BUFFER_OK	= 0x2000a,	
-	PLAYER_FOUND_SUB	= 0x2000b,
+	PLAYER_FOUND_SUB	= 0x2000b,	
 
 	/******************************
 	* 0x3000x: 
@@ -65,7 +65,7 @@ typedef enum
     PLAYER_DIVX_RENTAL_EXPIRED  =   0x40002,
     PLAYER_DIVX_RENTAL_VIEW =   0x40003,
 
-	
+    PLAYER_HTTP_WV     = 0x40010,	
 }player_status;
 
 
