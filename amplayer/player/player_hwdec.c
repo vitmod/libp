@@ -128,7 +128,7 @@ int extract_adts_header_info(play_para_t *para)
             if (pCodecCtx->sample_rate == sample_rates[i])
                 hdr.sample_freq_idx = i;
         }
-        log_print("aac insert adts header:profile %d,sr_index %d,ch_config %d\n", __LINE__, hdr.profile,hdr.sample_freq_idx,hdr.channel_configuration);
+        log_print("aac insert adts header:profile %d,sr_index %d,ch_config %d\n", hdr.profile,hdr.sample_freq_idx,hdr.channel_configuration);
      }   
      
     hdr.syncword = 0xfff;
