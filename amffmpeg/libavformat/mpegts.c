@@ -77,6 +77,7 @@ struct MpegTSFilter {
         MpegTSPESFilter pes_filter;
         MpegTSSectionFilter section_filter;
     } u;
+    int encrypt;
 };
 
 #define MAX_PIDS_PER_PROGRAM 64
@@ -1290,6 +1291,10 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
         return 0;
 
     /* continuity check (currently not used) */
+    if(packet[3] & 0xC0){		
+	     tss->encrypt=1;
+	     av_log(NULL, AV_LOG_WARNING, "encrypt pid=0x%x\n",tss->pid);
+    }
     cc = (packet[3] & 0xf);
     cc_ok = (tss->last_cc < 0) || ((((tss->last_cc + 1) & 0x0f) == cc));
     tss->last_cc = cc;
@@ -1703,7 +1708,7 @@ static int mpegts_read_packet(AVFormatContext *s,
                               AVPacket *pkt)
 {
     MpegTSContext *ts = s->priv_data;
-    int ret, i;
+    int ret, i,j;
 
     if (avio_tell(s->pb) != ts->last_pos) {
         /* seek detected, flush pes buffer */
@@ -1721,7 +1726,13 @@ static int mpegts_read_packet(AVFormatContext *s,
     ret = handle_packets(ts, 0);
     if (ret < 0) {
         /* flush pes data left */
-        for (i = 0; i < NB_PID_MAX; i++) {
+        for (i = 0; i < NB_PID_MAX; i++) {		
+	    for (j=0;j<s->nb_streams;j++){
+	 	 if(ts->pids[i] &&s->streams[j]->id==ts->pids[i]->pid&&ts->pids[i]->encrypt==1){
+		      s->streams[j]->encrypt=1;
+		      av_log(NULL, AV_LOG_ERROR, "mpegts find encrypt stream pid %d\n",s->streams[j]->id);
+		  }
+	     }
             if (ts->pids[i] && ts->pids[i]->type == MPEGTS_PES) {
                 PESContext *pes = ts->pids[i]->u.pes_filter.opaque;
                 if (pes->state == MPEGTS_PAYLOAD && pes->data_index > 0) {

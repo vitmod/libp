@@ -380,8 +380,12 @@ static void get_stream_info(play_para_t *p_para)
                 }
             } else {
                 if (temp_vidx == -1) {
-                    temp_vidx = i;
-                }
+                    if(strcmp(pFormat->iformat->name,"mpegts")==0&&pStream->encrypt){
+			  //mpegts ¼ÓÃÜ
+                      log_print("pid=%d crytion\n",pStream->id);		
+                    }
+                    else temp_vidx = i;
+                 }
             }
         } else if (pCodec->codec_type == CODEC_TYPE_AUDIO) {
             p_para->astream_num ++;
@@ -393,7 +397,11 @@ static void get_stream_info(play_para_t *p_para)
                     temp_aidx = i;
                 }
             } else if (temp_aidx == -1 && audio_format != AFORMAT_UNSUPPORT) {
-	        	temp_aidx = i;	               
+                     if(strcmp(pFormat->iformat->name,"mpegts")==0&&pStream->encrypt){
+                      //mpegts ¼ÓÃÜ
+			       log_print("pid=%d crytion\n",pStream->id);		
+                      }
+                     else temp_aidx = i;	
             }
              /* find chinese language audio track */
 			if (t = av_dict_get(pStream->metadata, "language", NULL, 0)){			    
