@@ -750,6 +750,15 @@ static int non_raw_read(play_para_t *para)
         }
 
         if (ret == 0) {
+	    //discard the first package when resume from pause state for ape
+            if(para->astream_info.audio_format==AFORMAT_APE&&pkt->type == CODEC_AUDIO) 
+	    {
+                 if(para->state.current_time>0&&pkt->avpkt->pts==0)
+                 {
+                     av_free_packet(pkt->avpkt);
+                     continue;
+                 }
+             }
             pkt->data = pkt->avpkt->data;
             pkt->data_size = pkt->avpkt->size;
 #if DUMP_READ

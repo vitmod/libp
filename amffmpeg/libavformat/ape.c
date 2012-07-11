@@ -359,12 +359,17 @@ static int ape_read_packet(AVFormatContext * s, AVPacket * pkt)
     {
         if(ape->frames[ape->currentframe].pos==s->pb->pos)
             break;
-        if(ape->currentframe==0)
+        if(ape->currentframe==0&&ape->frames[ape->currentframe].pos>s->pb->pos)
             break;
         if(ape->currentframe==ape->totalframes-1)
             break;
         if(ape->frames[ape->currentframe].pos<s->pb->pos&&ape->frames[ape->currentframe+1].pos>s->pb->pos)
+	{
+	    int len=ape->frames[ape->currentframe+1].pos-ape->frames[ape->currentframe].pos;
+            if(s->pb->pos>ape->frames[ape->currentframe].pos+len/2)
+                ape->currentframe+=1;
             break;
+	}
         else if(ape->frames[ape->currentframe+1].pos<s->pb->pos)
             ape->currentframe+=1;
         else
