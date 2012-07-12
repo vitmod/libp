@@ -307,7 +307,8 @@ static int wav_read_header(AVFormatContext *s,
     WAVContext *wav = s->priv_data;
     int ret, got_fmt = 0;
     int64_t next_tag_ofs, data_ofs = -1;
-
+    int min_samples_est0=0;
+	int min_samples_est1=0;
     /* check RIFF header */
     tag = avio_rl32(pb);
 
@@ -401,9 +402,14 @@ break_loop:
 
     if (!sample_count && st->codec->channels && av_get_bits_per_sample(st->codec->codec_id))
         sample_count = (data_size<<3) / (st->codec->channels * (uint64_t)av_get_bits_per_sample(st->codec->codec_id));
-    if (sample_count)
-        st->duration = sample_count;
-
+	min_samples_est0 = (size<<3) / (st->codec->channels * (uint64_t)av_get_bits_per_sample(st->codec->codec_id));
+    min_samples_est1 = (size<<3) / st->codec->bit_rate * st->codec->sample_rate;
+	if (sample_count){
+      if(sample_count <= min_samples_est0)//:indecate that sample_count is unvalid
+            st->duration = min_samples_est1;
+		else
+			st->duration = (min_samples_est1 > sample_count? min_samples_est1:sample_count);
+    }
     ff_metadata_conv_ctx(s, NULL, wav_metadata_conv);
 
     return 0;
