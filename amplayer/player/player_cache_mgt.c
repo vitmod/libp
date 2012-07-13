@@ -89,10 +89,14 @@ static unsigned long cache_client_open(const char *url, int64_t filesize)
 {
     if (cache_setting.cache_enable) {
         int max_retry = 0;
-		struct cache_file *cache;
+	struct cache_file *cache;
         if (filesize >= cache_setting.max_cache_size || filesize < cache_setting.file_block_size) {
             log_print("filesize is out of support range=%d\n", filesize);
-            return 0;/*don't cache too big and too small file now.*/
+	     if(filesize >= cache_setting.max_cache_size || filesize<=0)
+		 	filesize= cache_setting.max_cache_size*80/100;
+	     else
+		  	filesize= cache_setting.file_block_size;	
+	     log_print("filesize is changed to suitable size=%lld\n", filesize); 
         }
 		if(!cachefile_has_cached_currentfile(cache_setting.cache_dir,url,filesize)){
 	        while (cache_file_size_add(0) + filesize > cache_setting.max_cache_size && max_retry++ < 100) {
@@ -115,17 +119,26 @@ static unsigned long cache_client_open(const char *url, int64_t filesize)
 
 static int cache_client_read(unsigned long id, int64_t off, char *buf, int size)
 {
-    return cachefile_read((struct cache_file *)id, off, buf, size);
+    struct cache_file *cache=(struct cache_file *)id;
+    if(off>cache->file_size)
+		return 0;
+    return cachefile_read(cache, off, buf, size);
 }
 
 static int cache_next_valid_bytes(unsigned long id, int64_t off, int size)
 {
+    struct cache_file *cache=(struct cache_file *)id;
+    if(off>cache->file_size)
+		return 0;
     return cachefile_searce_valid_bytes((struct cache_file *)id, off, size);
 }
 
 
 static int cache_client_write(unsigned long id, int64_t off, char *buf, int size)
 {
+    struct cache_file *cache=(struct cache_file *)id;
+    if(off+size>cache->file_size)
+		return 0;
     return cachefile_write((struct cache_file *)id, off, buf, size);
 }
 
