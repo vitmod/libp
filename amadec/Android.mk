@@ -8,8 +8,12 @@ LOCAL_CFLAGS := \
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
 
-ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
-    LOCAL_CFLAGS += -D_VERSION_ICS
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
+    LOCAL_CFLAGS += -D_VERSION_JB
+else
+    ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
+        LOCAL_CFLAGS += -D_VERSION_ICS
+    endif
 endif
 
 LOCAL_SRC_FILES := \
@@ -33,8 +37,12 @@ LOCAL_CFLAGS := \
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
 
-ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
-    LOCAL_CFLAGS += -D_VERSION_ICS
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
+    LOCAL_CFLAGS += -D_VERSION_JB
+else
+    ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
+        LOCAL_CFLAGS += -D_VERSION_ICS
+    endif
 endif
 
 LOCAL_SRC_FILES := \

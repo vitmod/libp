@@ -27,6 +27,14 @@ static int rotation = 0;
 static int disp_width = 1920;
 static int disp_height = 1080;
 
+#ifndef LOGD
+    #define LOGV ALOGV
+    #define LOGD ALOGD
+    #define LOGI ALOGI
+    #define LOGW ALOGW
+    #define LOGE ALOGE
+#endif
+
 //#define LOG_FUNCTION_NAME LOGI("%s-%d\n",__FUNCTION__,__LINE__);
 #define LOG_FUNCTION_NAME
 

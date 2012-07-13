@@ -10,7 +10,6 @@
 #include <android_runtime/AndroidRuntime.h>
 
 #include <utils/Log.h>
-#include <utils/ResourceTypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -20,6 +19,13 @@
 
 #include <dlfcn.h>
 
+#ifndef LOGI
+    #define LOGV ALOGV
+    #define LOGD ALOGD
+    #define LOGI ALOGI
+    #define LOGW ALOGW
+    #define LOGE ALOGE
+#endif
 
 #define TRACE() LOGI("[%s::%d]\n",__FUNCTION__,__LINE__)
 using namespace android;

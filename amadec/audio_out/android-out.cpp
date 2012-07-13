@@ -82,7 +82,20 @@ extern "C" int android_init(struct aml_audio_dec* audec)
         return -1;
     }
 
-#ifdef _VERSION_ICS
+#if defined(_VERSION_JB)
+    status = track->set(AUDIO_STREAM_MUSIC,
+                        audec->samplerate,
+                        AUDIO_FORMAT_PCM_16_BIT,
+                        (audec->channels == 1) ? AUDIO_CHANNEL_OUT_MONO : AUDIO_CHANNEL_OUT_STEREO,
+                        0,       // frameCount
+                        AUDIO_OUTPUT_FLAG_NONE, // flags
+                        audioCallback,
+                        audec,    // user when callback
+                        0,       // notificationFrames
+                        0,       // shared buffer
+                        false,   // threadCanCallJava
+                        0);      // sessionId
+#elif defined(_VERSION_ICS)
     status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
                         AUDIO_FORMAT_PCM_16_BIT,
@@ -93,8 +106,8 @@ extern "C" int android_init(struct aml_audio_dec* audec)
                         audec,    // user when callback
                         0,       // notificationFrames
                         0,       // shared buffer
-                        0);
-#else
+                        0);      // sessionId
+#else   // GB or lower:
     status = track->set(AudioSystem::MUSIC,
                         audec->samplerate,
                         AudioSystem::PCM_16_BIT,
