@@ -1024,9 +1024,7 @@ int player_dec_init(play_para_t *p_para)
             st = p_para->pFormatCtx->streams[i];
             if(st->codec->profile == FF_PROFILE_H264_CONSTRAINED_BASELINE){
                 log_print("codec_id=%x*****profile=%d\n",st->codec->codec_id, st->codec->profile);
-                set_player_state(p_para, PLAYER_HTTP_WV);
-                update_playing_info(p_para);
-                update_player_states(p_para, 1);                            
+                send_event(p_para, PLAYER_EVENTS_HTTP_WV,0, 0);                          
                 ret = PLAYER_FAILED;
                 log_print("[player_dec_init]http wmv, set failed\n");
                 goto init_fail;         
