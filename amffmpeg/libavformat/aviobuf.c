@@ -328,13 +328,6 @@ int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags)
 			s->buf_ptr = s->buffer;
 			s->pos = 0;/*I think it is the first,pos now*/
 			s->eof_reached=0;/*clear eof error*/
-			url_lpbuf_t *lp = ((URLContext *)s->opaque)->lpbuf;	
-			lp_lock(&lp->mutex);
-			lp->rp=lp->buffer;
-			lp->wp=lp->buffer;
-			lp->valid_data_size=0;
-			lp->pos=0;
-			lp_unlock(&lp->mutex);
 			return offset1;
 		}
 	}
