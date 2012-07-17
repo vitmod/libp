@@ -81,7 +81,7 @@ typedef enum {
 
 #define IS_AUDIO_NOT_SUPPORT_EXCEED_2CH(afmt) ((afmt == AFORMAT_RAAC) \
 										||(afmt == AFORMAT_COOK) \
-										||(afmt == AFORMAT_FLAC))
+										/*||(afmt == AFORMAT_FLAC)*/)
 
 #define IS_AUIDO_NEED_PREFEED_HEADER(afmt) ((afmt == AFORMAT_VORBIS) )
 
