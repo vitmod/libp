@@ -351,9 +351,11 @@ static int ape_read_packet(AVFormatContext * s, AVPacket * pkt)
     uint32_t extra_size = 8;
 
     if (url_feof(s->pb))
-        return AVERROR(EIO);
+	return AVERROR_EOF;
+        //return AVERROR(EIO);
     if (ape->currentframe > ape->totalframes)
-        return AVERROR(EIO);
+	return AVERROR_EOF;
+        //return AVERROR(EIO);
     //find the correct currentframe when seeking
     while(1)
     {
