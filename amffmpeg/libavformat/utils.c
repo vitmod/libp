@@ -2850,10 +2850,24 @@ int av_find_stream_info(AVFormatContext *ic)
     int i, count, ret, read_size, j;
     AVStream *st;
     AVPacket pkt1, *pkt;
+    int64_t file_size = 0;
+    int bit_rate = 0;
     int64_t old_offset = avio_tell(ic->pb);
     int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
 	
-    if(!strcmp(ic->iformat->name, "DRMdemux")) {
+    if(!strcmp(ic->iformat->name, "DRMdemux")) {       
+        for(i = 0;i < ic->nb_streams; i++) {
+            st = ic->streams[i];
+            if (st->codec->bit_rate > 0){
+                bit_rate += st->codec->bit_rate;
+                if (st->duration != AV_NOPTS_VALUE)
+                    file_size += (st->duration/AV_TIME_BASE* st->codec->bit_rate) >> 3;   
+            }
+         }
+         if(file_size > 0)
+            ic->file_size = file_size;
+         if(bit_rate > 0)
+            ic->bit_rate = bit_rate;
         av_log(NULL, AV_LOG_INFO, "]av_find_stream_info]DRMdemux, do not check stream info ,return directly\n");
         return 0;
     }
