@@ -2628,7 +2628,6 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 static int has_codec_parameters(AVCodecContext *enc)
 {
     int val;
-#if 0	/*hw decodev*/
     switch(enc->codec_type) {
     case AVMEDIA_TYPE_AUDIO:
         val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
@@ -2649,21 +2648,7 @@ static int has_codec_parameters(AVCodecContext *enc)
         val = 1;
         break;
     }
-#else
-    switch(enc->codec_type) {
-    case AVMEDIA_TYPE_AUDIO:
-       //val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
-	val = enc->sample_rate && enc->channels;
-        break;
-    case AVMEDIA_TYPE_VIDEO:
-        val = enc->width;
-        break;
-    default:
-        val = 1;
-        break;
-    }
-	
-#endif
+
     return enc->codec_id != CODEC_ID_NONE && val != 0;
 }
 static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
