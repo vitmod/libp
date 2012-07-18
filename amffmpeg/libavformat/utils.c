@@ -31,6 +31,7 @@
 #include "libavutil/pixdesc.h"
 #include "metadata.h"
 #include "id3v2.h"
+#include "id3v1.h"
 #include "libavutil/avstring.h"
 #include "riff.h"
 #include "audiointerleave.h"
@@ -790,8 +791,15 @@ int avformat_open_input_header(AVFormatContext **ps, const char *filename, AVInp
     }
 
     /* e.g. AVFMT_NOFILE formats will not have a AVIOContext */
-    if (s->pb)
-        ff_id3v2_read(s, ID3v2_DEFAULT_MAGIC);
+    if (s->pb){
+        ff_id3v2_read(s, ID3v2_DEFAULT_MAGIC); 
+	 if(!av_dict_get(s->metadata, "title"  , NULL, 0)||!av_dict_get(s->metadata, "artist" , NULL, 0)||
+	  !av_dict_get(s->metadata, "album"  , NULL, 0)||!av_dict_get(s->metadata, "date"  , NULL, 0)||
+	  !av_dict_get(s->metadata, "comment" , NULL, 0)||!av_dict_get(s->metadata, "track"  , NULL, 0)||
+	  !av_dict_get(s->metadata, "genre"  , NULL, 0)){
+	         ff_id3v1_read(s);	
+	 }
+    }
 
     if (!(s->flags&AVFMT_FLAG_PRIV_OPT) && s->iformat->read_header)
         if ((ret = s->iformat->read_header(s, &ap)) < 0)
