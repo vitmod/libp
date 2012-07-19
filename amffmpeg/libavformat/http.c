@@ -60,7 +60,7 @@ typedef struct {
     int http_code;
     int64_t chunksize;      /**< Used if "Transfer-Encoding: chunked" otherwise -1. */
     int64_t off, filesize;
-    int do_readseek_size;
+    int64_t do_readseek_size;
     char location[MAX_URL_SIZE];
     HTTPAuthState auth_state;
     unsigned char headers[BUFFER_SIZE];
@@ -516,10 +516,11 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     }
 
 
-    if(off>s->off && (off-s->off)<1024*1024){/*if seek failed & the gap  is not too big(1M),we can do read seek*/
+    if(s->off>=0 && off>s->off){/*if seek failed,we try do read seek*/
 		/*server can't support seek,the off is ignored.we do read seek later;*/
 		s->do_readseek_size=off-s->off;
 		s->off=off;
+		av_log(h, AV_LOG_INFO, "Server Can't support SEEK,we try do read seek to resume playing readseek size=%lld\n",s->do_readseek_size);
      }
 	return (off == s->off) ? 0 : -1;
 }
@@ -620,7 +621,7 @@ errors:
 		http_reopen_cnx(h,-1);
 		goto retry;
 	}
-	if(s->do_readseek_size>0){
+	if(s->do_readseek_size>0 && len >0){
 		/*we have do seek failed,the offset is not  same as uper level need drop data here now.*/
 		if(len>s->do_readseek_size){
 			len=len-s->do_readseek_size;
