@@ -586,7 +586,8 @@ retry:
 		//av_log(h, AV_LOG_ERROR, "ffurl_read %d\n",len);
     }
     if (len > 0) {
-        s->off += len;
+	 if(s->do_readseek_size<=0)
+        	s->off += len;
         if (s->chunksize > 0)
             s->chunksize -= len;
     }
