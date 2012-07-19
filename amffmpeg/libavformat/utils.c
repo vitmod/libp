@@ -310,15 +310,15 @@ int av_filename_number_test(const char *filename)
 
 AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score_ret)
 {
-   // AVProbeData lpd = *pd;
+    AVProbeData lpd = *pd;
     AVInputFormat *fmt1 = NULL, *fmt;
     int score, score_max=0;
 
-    if (pd->buf_size > 10 && ff_id3v2_match(pd->buf, ID3v2_DEFAULT_MAGIC)) {
-        int id3len = ff_id3v2_tag_len(pd->buf);
-        if (pd->buf_size > id3len + 16) {
-            pd->buf += id3len;
-            pd->buf_size -= id3len;
+    if (lpd.buf_size > 10 && ff_id3v2_match(lpd.buf, ID3v2_DEFAULT_MAGIC)) {
+        int id3len = ff_id3v2_tag_len(lpd.buf);
+        if (lpd.buf_size > id3len + 16) {
+            lpd.buf += id3len;
+            lpd.buf_size -= id3len;
         }
     }
 
@@ -328,11 +328,11 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
             continue;
         score = 0;
         if (fmt1->read_probe) {
-            score = fmt1->read_probe(pd);
-            if(!score && fmt1->extensions && av_match_ext(pd->filename, fmt1->extensions))
+            score = fmt1->read_probe(&lpd);
+            if(!score && fmt1->extensions && av_match_ext(lpd.filename, fmt1->extensions))
                 score = 1;
         } else if (fmt1->extensions) {
-            if (av_match_ext(pd->filename, fmt1->extensions)) {
+            if (av_match_ext(lpd.filename, fmt1->extensions)) {
                 score = 50;
             }
         }
