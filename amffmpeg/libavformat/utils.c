@@ -343,6 +343,8 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
             fmt = NULL;
     }
     *score_ret= score_max;
+     if(lpd.pads[0] != 0) {
+        memcpy(pd->pads, lpd.pads, sizeof(lpd.pads));
     return fmt;
 }
 
