@@ -17,6 +17,7 @@
 #include "h263vld.h"
 #include "thread_mgt.h"
 #include "player_update.h"
+#include <cutils/properties.h>
 
 #define DUMP_WRITE_VIDEO  (0)
 #define DUMP_WRITE_AUDIO  (0)
