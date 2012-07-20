@@ -2481,6 +2481,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     int64_t end_time;
     int64_t valid_offset, offset, duration;
     int retry=0;
+    int first_dts=0;
 
     ic->cur_st = NULL;
 
@@ -2489,6 +2490,9 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 
     for (i=0; i<ic->nb_streams; i++) {
         st = ic->streams[i];
+	if (st->first_dts != AV_NOPTS_VALUE) {
+	    first_dts = st->first_dts;
+	}
         if (st->start_time == AV_NOPTS_VALUE && st->first_dts == AV_NOPTS_VALUE)
             av_log(st->codec, AV_LOG_WARNING, "stream[%d] start time is not set in av_estimate_timings_from_pts\n", i);
 
@@ -2497,6 +2501,13 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
             st->parser= NULL;
             av_free_packet(&st->cur_pkt);
         }
+    }
+
+    for (i=0; i<ic->nb_streams; i++) {
+	st = ic->streams[i];
+	if (st->first_dts == AV_NOPTS_VALUE) {
+	    st->first_dts = first_dts;
+	}
     }
 
     /* estimate the end time (duration) */
