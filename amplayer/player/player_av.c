@@ -2418,7 +2418,21 @@ void player_switch_audio(play_para_t *para)
 
     /* unmute*/
     codec_audio_automute(pcodec->adec_priv, 0);
-
+    //for ts case, when switch aid , reset audio&video decoder
+    //controled by property "media.ts.switchaid.policy"
+    if (para->stream_type == STREAM_TS && para->vstream_info.has_video) {
+        int ret;
+        char value[PROPERTY_VALUE_MAX];
+        ret = property_get("media.ts.switchaid.policy",value,NULL);
+        if (ret>0 && match_types("reset",value))
+        {	
+            log_print("media.ts.switchaid.policy = %s\n", value);
+            set_player_state(para, PLAYER_INITING);
+            para->playctrl_info.time_point = para->state.current_time;
+            player_dec_reset(para);
+            set_player_state(para, PLAYER_RUNNING);
+        } 
+    }
     return;
 }
 void player_switch_sub(play_para_t *para)
