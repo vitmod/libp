@@ -1253,3 +1253,38 @@ int check_audio_ready_time(int *first_time)
     return 0;
 }
 
+
+int player_hwbuflevel_update(play_para_t *player)
+{
+	struct buf_status vbuf, abuf;
+	struct vdec_status vdec;
+	struct adec_status adec;
+	player_status sta;
+	int ret;
+	hwbufstats_t hwbufs;
+	
+
+	sta = get_player_state(player);	
+	if(sta < PLAYER_INITOK || sta == PLAYER_SEARCHING || sta >= PLAYER_ERROR)
+		return 0;
+	MEMSET(&vbuf, 0, sizeof(struct buf_status));
+	MEMSET(&abuf, 0, sizeof(struct buf_status));
+	ret = update_codec_info(player, &vbuf, &abuf, &vdec, &adec);
+	if(ret==0){
+		hwbufs.vbufused=player->media_info.stream_info.has_video;
+		hwbufs.abufused=player->media_info.stream_info.has_audio;
+		hwbufs.sbufused=0;
+		if(hwbufs.vbufused){
+			hwbufs.vbufsize=vbuf.size;
+			hwbufs.vdatasize=vbuf.data_len;
+		}
+		if(hwbufs.abufused){
+			hwbufs.abufsize=abuf.size;
+			hwbufs.adatasize=abuf.data_len;
+		}
+		if(hwbufs.vbufused || hwbufs.abufused)
+			send_event(player,PLAYER_EVENTS_HWBUF_DATA_SIZE_CHANGED,&hwbufs,0);
+	}
+	return 0;
+}
+
