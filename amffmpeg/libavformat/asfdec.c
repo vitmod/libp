@@ -97,7 +97,7 @@ static uint64_t avg_frame_time[128];
 #ifdef DEBUG
 #define PRINT_IF_GUID(g,cmp) \
 if (!ff_guidcmp(g, &cmp)) \
-    av_dlog(NULL, "(GUID: %s) ", #cmp)
+    av_log(NULL, AV_LOG_DEBUG, "(GUID: %s) ", #cmp)
 
 static void print_guid(const ff_asf_guid *g)
 {
@@ -218,19 +218,25 @@ static int asf_read_file_properties(AVFormatContext *s, int64_t size)
     AVIOContext *pb = s->pb;
 
     ff_get_guid(pb, &asf->hdr.guid);
-    asf->hdr.file_size          = avio_rl64(pb);
+    asf->hdr.file_size          = avio_rl64(pb);  
     asf->hdr.create_time        = avio_rl64(pb);
     avio_rl64(pb);                               /* number of packets */
-    asf->hdr.play_time          = avio_rl64(pb);
+    /*Specifies the time needed to play the file in 100-nanosecond units*/	
+    asf->hdr.play_time          = avio_rl64(pb);   //
     asf->hdr.send_time          = avio_rl64(pb);
-    asf->hdr.preroll            = avio_rl32(pb);
+    asf->hdr.preroll            = avio_rl32(pb);  		
     asf->hdr.ignore             = avio_rl32(pb);
     asf->hdr.flags              = avio_rl32(pb);
     asf->hdr.min_pktsize        = avio_rl32(pb);
     asf->hdr.max_pktsize        = avio_rl32(pb);
     asf->hdr.max_bitrate        = avio_rl32(pb);
     s->packet_size = asf->hdr.max_pktsize;
-
+    if( asf->hdr.file_size>0){	
+    	s->file_size =  asf->hdr.file_size;
+    }
+    if( asf->hdr.play_time>0){       
+    	s->duration = FFMAX(0,(asf->hdr.play_time/10000 -asf->hdr.preroll)/1000)*AV_TIME_BASE;
+    }
     return 0;
 }
 
@@ -663,6 +669,7 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
         print_guid(&g);
         av_dlog(s, "  size=0x%"PRIx64"\n", gsize);
         if (!ff_guidcmp(&g, &ff_asf_data_header)) {
+	    		
             asf->data_object_offset = avio_tell(pb);
             // if not streaming, gsize is not unlimited (how?), and there is enough space in the file..
             if (!(asf->hdr.flags & 0x01) && gsize >= 100) {
@@ -674,7 +681,7 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
         }
         if (gsize < 24)
             return -1;
-        if (!ff_guidcmp(&g, &ff_asf_file_header)) {
+        if (!ff_guidcmp(&g, &ff_asf_file_header)) {	    
             asf_read_file_properties(s, gsize);
         } else if (!ff_guidcmp(&g, &ff_asf_stream_header)) {
             asf_read_stream_properties(s, gsize);
