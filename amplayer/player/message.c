@@ -63,8 +63,8 @@ int send_message(play_para_t *para, player_cmd_t *cmd)
         wakeup_player_thread(para);
         ret = 0;
     }
-    pthread_mutex_unlock(&pool->msg_mutex);
     log_debug1("[send_message:%d]num=%d in_idx=%d out_idx=%d cmd=%x mode=%d\n", __LINE__, pool->message_num, pool->message_in_index, pool->message_out_index, cmd->ctrl_cmd, cmd->set_mode);
+    pthread_mutex_unlock(&pool->msg_mutex);
     return ret;
 
 }
