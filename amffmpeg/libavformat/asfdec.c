@@ -1340,8 +1340,6 @@ static int asf_read_seek(AVFormatContext *s, int stream_index, int64_t pts, int 
 {
     ASFContext *asf = s->priv_data;
     AVStream *st = s->streams[stream_index];
-    int64_t pos;
-    int index;
 
     if (s->packet_size <= 0)
         return -1;
@@ -1358,15 +1356,16 @@ static int asf_read_seek(AVFormatContext *s, int stream_index, int64_t pts, int 
     if (!asf->index_read)
         asf_build_simple_index(s, stream_index);
 
-    if((asf->index_read && st->index_entries)){
-        index= av_index_search_timestamp(st, pts, flags);
+    if((asf->index_read > 0 && st->index_entries)){
+        int index= av_index_search_timestamp(st, pts, flags);
         if(index >= 0) {
             /* find the position */
-            pos = st->index_entries[index].pos;
+            uint64_t pos = st->index_entries[index].pos;
 
             /* do the seek */
             av_log(s, AV_LOG_DEBUG, "SEEKTO: %"PRId64"\n", pos);
-            avio_seek(s->pb, pos, SEEK_SET);
+            if(avio_seek(s->pb, pos, SEEK_SET) < 0)
+                return -1;
             asf_reset_header(s);
             return 0;
         }
