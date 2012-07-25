@@ -2032,7 +2032,8 @@ static int matroska_read_seek(AVFormatContext *s, int stream_index,
             index_sub = av_index_search_timestamp(tracks[i].stream, st->index_entries[index].timestamp, AVSEEK_FLAG_BACKWARD);
             if (index_sub >= 0
                 && st->index_entries[index_sub].pos < st->index_entries[index_min].pos
-                && st->index_entries[index].timestamp - st->index_entries[index_sub].timestamp < 30000000000/matroska->time_scale)
+                && st->index_entries[index].timestamp - st->index_entries[index_sub].timestamp < 10000000000/matroska->time_scale
+                && st->index_entries[index_min].pos-st->index_entries[index_sub].pos <0x100000)
                 index_min = index_sub;
         }
     }
