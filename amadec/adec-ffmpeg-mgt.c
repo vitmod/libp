@@ -25,6 +25,8 @@ static int fd_uio=-1;
 static AudioInfo g_AudioInfo;
 static int sn_threadid=-1;
 static int aout_stop_mutex=0;//aout stop mutex flag
+static int last_valid_pts=0;
+static int out_len_after_last_valid_pts=0;
 
 void *audio_decode_loop(void *args);
 static int set_sysfs_int(const char *path, int val);
@@ -191,6 +193,7 @@ audio_decoder_operations_t AudioFFmpegDecoder=
 #if 1//now in use but need to replace
 int armdec_stream_read(dsp_operations_t *dsp_ops, char *buffer, int size)
 {
+    out_len_after_last_valid_pts+=size;
      return read_pcm_buffer(buffer,g_bst, size);
 }
 
@@ -199,6 +202,8 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     unsigned long val,offset;
     unsigned long pts;
     int data_width,channels,samplerate;
+    unsigned long long frame_nums ;
+    unsigned long delay_pts;
     switch(g_bst->data_width)
     {
         case AV_SAMPLE_FMT_U8:
@@ -223,17 +228,27 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     pts=offset;
    
     if(pts==0)
-        return -1; 
+    {
+        if (last_valid_pts)
+        pts = last_valid_pts;
+        frame_nums = (out_len_after_last_valid_pts * 8 / (data_width * channels));
+        pts+= (frame_nums*90000/samplerate);
+        adec_print("==decode_offset:%d offset:%d \n",decode_offset,pts);
+        return pts; 
+        //return -1; 
+    }
 
     int len = g_bst->buf_level;
-    unsigned long long frame_nums = (len * 8 / (data_width * channels));
-    unsigned long delay_pts = (frame_nums*90000/samplerate);
+    frame_nums = (len * 8 / (data_width * channels));
+    delay_pts = (frame_nums*90000/samplerate);
     if (pts > delay_pts) {
         pts -= delay_pts;
     } else {
         pts = 0;
     }
     val=pts;
+    last_valid_pts=pts;
+    out_len_after_last_valid_pts=0;
     adec_print("====get pts:%ld offset:%ld frame_num:%lld delay:%ld \n",val,decode_offset,frame_nums,delay_pts);
     return val;
 }
@@ -366,7 +381,8 @@ static int audio_codec_init(aml_audio_dec_t *audec)
         g_bst=NULL;
         fd_uio=-1;
         aout_stop_mutex=0;
-
+        last_valid_pts=0;
+        out_len_after_last_valid_pts=0;
         while(0!=set_sysfs_int(DECODE_ERR_PATH,DECODE_NONE_ERR))
         {
             adec_print("====set codec fatal   failed ! \n");
@@ -901,7 +917,8 @@ exit_decode_loop:
     				  decode_offset+=dlen;
     				  if(g_bst)
     				  {
-            				while(g_bst->buf_level>=g_bst->buf_length*0.8)
+            				//while(g_bst->buf_level>=g_bst->buf_length*0.8)
+            				while(g_bst->buf_length-g_bst->buf_level<outlen)
             				{
             				    if(exit_decode_thread)
             				    {
@@ -911,7 +928,12 @@ exit_decode_loop:
             				    }
             				    usleep(100000);
             				}
-            				write_pcm_buffer(outbuf, g_bst,outlen);   
+            				int wlen=0;
+            				while(wlen<outlen)
+            				{
+            				    wlen+=write_pcm_buffer(outbuf, g_bst,outlen); 
+            				    outlen-=wlen;
+            				}
     				  }
     				//write end
     			  }
@@ -952,6 +974,8 @@ void *adec_armdec_loop(void *args)
                 continue;
             }
             audec->state = INITTED;
+            start_decode_thread(audec);
+            start_adec(audec);
             break;
         }
 
