@@ -231,10 +231,13 @@ static int asf_read_file_properties(AVFormatContext *s, int64_t size)
     asf->hdr.max_pktsize        = avio_rl32(pb);
     asf->hdr.max_bitrate        = avio_rl32(pb);
     s->packet_size = asf->hdr.max_pktsize;
-    if( asf->hdr.file_size>0){	
+    if( asf->hdr.file_size>0&&(asf->hdr.flags&0x01==0)){	
+       //av_log(NULL,AV_LOG_DEBUG,"====ddd=====flag:%d:seekable%d,broadcast:%d\n",asf->hdr.flags,asf->hdr.flags&0x02,asf->hdr.flags&0x01);		
     	s->file_size =  asf->hdr.file_size;
     }
-    if( asf->hdr.play_time>0){       
+    	
+    if( asf->hdr.play_time>0&&(asf->hdr.flags&0x02>0)&&(asf->hdr.flags&0x01==0)){       
+	//av_log(NULL,AV_LOG_DEBUG,"=========flag:%d:seekable%d,broadcast:%d\n",asf->hdr.flags,asf->hdr.flags&0x02,asf->hdr.flags&0x01);	
     	s->duration = FFMAX(0,(asf->hdr.play_time/10000 -asf->hdr.preroll)/1000)*AV_TIME_BASE;
     }
     return 0;

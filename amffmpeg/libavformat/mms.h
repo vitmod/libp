@@ -56,6 +56,7 @@ typedef struct {
     int stream_num;                      ///< stream numbers.
     unsigned int nb_streams_allocated;   ///< allocated size of streams
     uint64_t file_size;         /**< in bytes**/
+    int flags; /*asf file properties object,flags*/	
 	
 } MMSContext;
 
