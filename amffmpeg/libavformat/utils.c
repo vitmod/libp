@@ -2606,7 +2606,7 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 
     if ((!strcmp(ic->iformat->name, "mpeg") ||
          !strcmp(ic->iformat->name, "mpegts")) &&
-        file_size && ic->pb->seekable) {
+        file_size>0 && ic->pb->seekable && !ic->pb->is_slowmedia && !ic->pb->is_streamed) {
         /* get accurate estimate from the PTSes */
         av_estimate_timeings_chapters(ic, old_offset);
     } else if (av_has_duration(ic)) {
@@ -2941,6 +2941,8 @@ int av_find_stream_info(AVFormatContext *ic)
             st = ic->streams[i];
             if (!has_codec_parameters_ex(st->codec,fast_switch))
                 break;
+	     if(ic->pb &&ic->pb->fastdetectedinfo)	
+		continue;
             /* if the timebase is coarse (like the usual millisecond precision
                of mkv), we need to analyze more frames to reliably arrive at
                the correct fps */
