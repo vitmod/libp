@@ -212,7 +212,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     unsigned long systime;
     unsigned long last_pts = audec->adsp_ops.last_audio_pts;
     unsigned long last_kernel_pts = audec->adsp_ops.kernel_audio_pts;
-    int fd;
+    int fd = -1;
     char buf[64];
 
     if (audec->auto_mute == 1) {
@@ -229,18 +229,21 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     }
 
     read(fd, buf, sizeof(buf));
-    close(fd);
+    if(fd>=0){
+        close(fd);
+        fd = -1;
+    }
 
     if (sscanf(buf, "0x%lx", &systime) < 1) {
         adec_print("unable to getsystime %s", buf);
-        close(fd);
+        //close(fd);
         return -1;
     }
 
     /* get audio time stamp */
     pts = adec_calc_pts(audec);
     if (pts == -1 || last_pts == pts) {
-        close(fd);
+        //close(fd);
         //if (pts == -1) {
         return -1;
         //}
@@ -263,7 +266,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         sprintf(buf, "AUDIO_TSTAMP_DISCONTINUITY:0x%lx", pts);
         write(fd, buf, strlen(buf));
         close(fd);
-
+	 fd = -1;
         audec->adsp_ops.last_audio_pts = pts;
         audec->adsp_ops.last_pts_valid = 1;
         audec->auto_mute = 1;
@@ -294,7 +297,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     sprintf(buf, "0x%lx", pts);
     write(fd, buf, strlen(buf));
     close(fd);
-
+    fd = -1;
     return 0;
 }
 
