@@ -491,16 +491,16 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		mgt->key_tmp = NULL;
 	}
 	if(mgt->n_variants>0){//just choose  middle definition;
- 		float value;
+ 		float value = 0.0;
 		ret=am_getconfig_float("libplayer.hls.level",&value);
-		if(ret==0&&value<1){
+		if(ret<0){
+			mgt->ctype =MIDDLE_BANDWIDTH;
+		}else if(value<2){
 			mgt->ctype =LOW_BANDWIDTH;
-		}else if(ret==0&&value>0&&value<2){
+		}else if(value<3){
 			mgt->ctype =MIDDLE_BANDWIDTH;
-		}else if(ret==0&&value>1){
+		}else if(value<4){
 			mgt->ctype =HIGH_BANDWIDTH;
-		}else{
-			mgt->ctype =MIDDLE_BANDWIDTH;
 		}
 	}
 	mgt->file_size=AVERROR_STREAM_SIZE_NOTVALID;
