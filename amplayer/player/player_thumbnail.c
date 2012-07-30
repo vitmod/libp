@@ -261,7 +261,7 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
 	     tryNum++;
             //log_print("[%s]decode a video frame, finish=%d key=%d count==%d\n", __FUNCTION__, frameFinished, stream->pFrameYUV->key_frame,count);
-	     if(frameFinished && stream->pFrameYUV->key_frame){
+	     if(frameFinished && stream->pFrameYUV->key_frame && (stream->pFrameYUV->pict_type == AV_PICTURE_TYPE_I)){
 		  count++;
                  //log_print("[%s]pCodecCtx->codec_id=%x count==%d\n", __FUNCTION__, pCodecCtx->codec_id,count);
                  if ((pCodecCtx->codec_id == CODEC_ID_MPEG1VIDEO)
