@@ -1143,7 +1143,8 @@ int time_search(play_para_t *am_p)
             am_p->file_type == FLV_FILE ||
             am_p->file_type == MOV_FILE ||
             am_p->file_type == P2P_FILE ||
-            am_p->file_type == ASF_FILE) {
+            am_p->file_type == ASF_FILE || 
+            am_p->file_type == STREAM_FILE) {
             if (am_p->file_type == AVI_FILE && !s->seekable) {
                 time_point = am_p->state.current_time;
             }
