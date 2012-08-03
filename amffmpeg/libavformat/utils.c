@@ -2029,6 +2029,7 @@ static void av_update_stream_timings(AVFormatContext *ic)
     int64_t duration, duration1;
     int i;
     AVStream *st;
+    int bit_rate = 0;
 
     start_time = INT64_MAX;
     start_time_text = INT64_MAX;
@@ -2036,6 +2037,8 @@ static void av_update_stream_timings(AVFormatContext *ic)
     duration = INT64_MIN;
     for(i = 0;i < ic->nb_streams; i++) {
         st = ic->streams[i];
+
+        bit_rate += st->codec->bit_rate;
         
         /* added by Z.C. to set start time */
         if (st->start_time == 0) {
@@ -2083,6 +2086,9 @@ static void av_update_stream_timings(AVFormatContext *ic)
             /* compute the bitrate */
             ic->bit_rate = (double)ic->file_size * 8.0 * AV_TIME_BASE /
                 (double)ic->duration;
+            if (bit_rate > ic->bit_rate || (ic->bit_rate - bit_rate) > 1000000000) {
+                ic->bit_rate = bit_rate ;
+            }
         }
     }
 }
