@@ -23,32 +23,65 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
     int maxFrameSize = 0;
     int64_t thumbTime = 0;
     int64_t thumbOffset = 0;
+    int64_t index_offset;
     AVPacket packet;
     int r = 0;
-
-    r = av_read_frame(pFormatCtx, &packet);
-    while((i < count) && (r >= 0) && (j < count*10)){
-        //log_print("[%s]j=%d i=%d r=%d pktidx=%d[%d] flags=%x\n", __FUNCTION__,j, i,r,packet.stream_index,video_index, packet.flags);
-        if(packet.stream_index == video_index) {    //find 100 video packets
-            j ++;
-            if(packet.flags & AV_PKT_FLAG_KEY){ // find key frame
-                ++i;
-                //log_print("[%s]packet.size=%d maxFrameSize=%d\n", __FUNCTION__,packet.size, maxFrameSize);
-
-                if(packet.size > maxFrameSize){
+    int find_ok = 0;
+   AVStream *pStream;   
+   
+   pStream =pFormatCtx->streams[video_index];	      
+          
+    index_offset = avio_tell(pFormatCtx->pb);
+    log_print("[find_best_keyframe]current offset =%llx, count=%d\n", index_offset, count);
+    for(i = 0; i<pStream->nb_index_entries; i++){
+        //log_print("[find_best_keyframe]index[%d].pos=%llx\n", i, pStream->index_entries[i].pos);
+        if (index_offset <pStream->index_entries[0].pos)
+            index_offset = pStream->index_entries[0].pos;
+        if(index_offset <= pStream->index_entries[i].pos){
+            for(j = 0; j < count ; j++){
+               avio_seek(pFormatCtx->pb, index_offset, SEEK_SET);
+                r = av_read_frame(pFormatCtx, &packet);
+                log_print("[find_best_keyframe]read frame from offset =%llx packet.size=%d\n", index_offset,packet.size);
+                if(r>=0 && packet.size > maxFrameSize){
                     maxFrameSize = packet.size;
                     thumbTime = packet.pts;                
                     thumbOffset = avio_tell(pFormatCtx->pb);  
-                    //log_print("[%s]maxFrameSize=%d thumbTime=%lld thumbOffset=%lld\n", __FUNCTION__,maxFrameSize, thumbTime, thumbOffset);
+                    find_ok = 1;
+                    log_print("[%s]maxFrameSize=%d thumbTime=%lld thumbOffset=%lld\n", __FUNCTION__,maxFrameSize, thumbTime, thumbOffset);
                 }
-                av_free_packet(&packet);           
+                av_free_packet(&packet);    
+                index_offset = pStream->index_entries[j+i].pos;               
             }
-        }
-        r = av_read_frame(pFormatCtx, &packet);        
+        }     
+        if (find_ok)
+            break;
     }
-    //log_print("[%s]j=%d i=%d r=%d\n", __FUNCTION__,j, i,r);
-    if (i == count)
-        av_free_packet(&packet);
+   
+    if(find_ok == 0){
+        i = 0;
+        r = av_read_frame(pFormatCtx, &packet);
+        while((i < count) && (r >= 0) && (j < count*10)){
+            //log_print("[%s]j=%d i=%d r=%d pktidx=%d[%d] flags=%x\n", __FUNCTION__,j, i,r,packet.stream_index,video_index, packet.flags);
+            if(packet.stream_index == video_index) {    //find count*10 video packets
+                j ++;
+                if(packet.flags & AV_PKT_FLAG_KEY){ // find key frame
+                    ++i;
+                    log_print("[%s]packet.size=%d maxFrameSize=%d\n", __FUNCTION__,packet.size, maxFrameSize);
+                    if(packet.size > maxFrameSize){
+                        maxFrameSize = packet.size;
+                        thumbTime = packet.pts;                
+                        thumbOffset = avio_tell(pFormatCtx->pb);  
+                        //log_print("[%s]maxFrameSize=%d thumbTime=%lld thumbOffset=%lld\n", __FUNCTION__,maxFrameSize, thumbTime, thumbOffset);
+                    }
+                    av_free_packet(&packet);           
+                }
+            }
+            r = av_read_frame(pFormatCtx, &packet);        
+        }
+        //log_print("[%s]j=%d i=%d r=%d\n", __FUNCTION__,j, i,r);
+        if (i == count)
+            av_free_packet(&packet);
+    }
     *time = thumbTime;
     *offset = thumbOffset;    
 }
@@ -62,15 +95,17 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
     int duration = pFormatCtx->duration/AV_TIME_BASE;
     int64_t init_seek_time = (duration>0) ? MIN(10, duration>>1) : 10;
     int ret = 0;
-    
-    init_seek_time = av_rescale_q(init_seek_time*AV_TIME_BASE, st->time_base, AV_TIME_BASE_Q);
-    log_print("[find_thumbnail_frame]duration=%lld init_seek_time=%lld timebase=%d:%d\n",pFormatCtx->duration,init_seek_time,st->time_base.num,st->time_base.den);
-    ret = av_seek_frame(pFormatCtx, video_index, init_seek_time, AVSEEK_FLAG_BACKWARD);
+    log_print("[find_thumbnail_frame]duration=%lld init_seek_time=%lld\n",pFormatCtx->duration,init_seek_time);
+    //init_seek_time = av_rescale_q(init_seek_time, st->time_base, AV_TIME_BASE_Q);
+    //log_print("[find_thumbnail_frame]init_seek_time=%lld timebase=%d:%d video_index=%d\n",init_seek_time,st->time_base.num,st->time_base.den, video_index);
+    ret = av_seek_frame(pFormatCtx, video_index, init_seek_time*AV_TIME_BASE, AVSEEK_FLAG_BACKWARD);
     if (ret < 0) {
         avio_seek(pFormatCtx->pb, 0, SEEK_SET);
         log_error("[%s]seek error, reset offset to 0\n", __FUNCTION__);
         return;
     }
+    log_print("[find_thumbnail_frame]offset=%lld \n",avio_tell(pFormatCtx->pb));
+
     find_best_keyframe(pFormatCtx, video_index, 5, &thumbTime, &thumbOffset);
     
     if(thumbTime != AV_NOPTS_VALUE)
@@ -94,6 +129,7 @@ void * thumbnail_res_alloc(void)
     return (void *)frame;
 }
 
+//#define DUMP_INDEX
 int thumbnail_find_stream_info(void *handle, const char* filename)
 {
     struct video_frame *frame = (struct video_frame *)handle;
@@ -108,6 +144,20 @@ int thumbnail_find_stream_info(void *handle, const char* filename)
         log_print("Coundn't find stream information !\n");
         goto err1;
     }
+#ifdef DUMP_INDEX
+	int i,j;
+	AVStream *pStream;
+	log_print("*********************************************\n");
+	for(i = 0; i<stream->pFormatCtx->nb_streams; i ++) {
+		pStream = stream->pFormatCtx->streams[i];	
+		if(pStream) {
+        		for(j = 0; j<pStream->nb_index_entries; j++){
+        			log_print("stream[%d]:idx[%d] pos:%llx time:%llx\n",i, j, pStream->index_entries[j].pos, pStream->index_entries[j].timestamp);
+        		}
+		}
+	}
+	log_print("*********************************************\n");
+#endif
 
     return 0;
 
@@ -261,7 +311,7 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
 	     tryNum++;
             //log_print("[%s]decode a video frame, finish=%d key=%d count==%d\n", __FUNCTION__, frameFinished, stream->pFrameYUV->key_frame,count);
-	     if(frameFinished && stream->pFrameYUV->key_frame){
+	     if(frameFinished && stream->pFrameYUV->key_frame && (stream->pFrameYUV->pict_type == AV_PICTURE_TYPE_I)){
 		  count++;
                  //log_print("[%s]pCodecCtx->codec_id=%x count==%d\n", __FUNCTION__, pCodecCtx->codec_id,count);
                  if ((pCodecCtx->codec_id == CODEC_ID_MPEG1VIDEO)
