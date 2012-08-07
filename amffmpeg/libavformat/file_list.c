@@ -31,6 +31,7 @@
 #include "os_support.h"
 #include "file_list.h"
 #include "amconfigutils.h"
+#include "bandwidth_measure.h" 
 
 static struct list_demux *list_demux_list=NULL;
 #define unused(x)	(x=x)
@@ -318,7 +319,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	if(mgt->full_time>0 && mgt->have_list_end)
 		h->support_time_seek=1;
 	h->priv_data = mgt;
-	
+	mgt->bandwidth_measure=bandwidth_measure_alloc(100,0);
 	url_fclose(bio);
 	return 0;
 }
@@ -424,7 +425,7 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
     int len=AVERROR(EIO);
 	struct list_item *item=mgt->current_item;
 	int retries = 10;
-	
+	bandwidth_measure_start_read(mgt->bandwidth_measure);
 retry:	
 	if (url_interrupt_cb()){     
 		av_log(NULL, AV_LOG_ERROR," url_interrupt_cb\n");	
@@ -593,7 +594,11 @@ readagain:
 		fresh_item_list(mgt);	
 	}
 	#endif
-
+	bandwidth_measure_finish_read(mgt->bandwidth_measure,len);
+	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
+	int m,f,a;
+	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);
+	av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
     return len;
 }
@@ -738,6 +743,7 @@ static int list_close(URLContext *h)
 	}
 	av_free(mgt);
 	unused(h);
+	bandwidth_measure_free(mgt->bandwidth_measure);
 	return 0;
 }
 static int list_get_handle(URLContext *h)	
