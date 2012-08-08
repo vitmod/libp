@@ -84,6 +84,9 @@ typedef struct list_item
 	int 	   flags;	  
 	int 		start_time;
 	int 		duration;
+	int 	bandwidth;
+	int 	seq;
+	int    index;
 	enum KeyType ktype;
 	struct AES128KeyContext* key_ctx; //just store key info.
 	struct AESCryptoContext* crypto;
@@ -110,13 +113,13 @@ typedef struct list_mgt
 	lock_t mutex;
 	struct list_item *item_list;	
 	int item_num;
+	int next_index;
 	struct list_item *current_item;
 	int64_t file_size;
 	int 	full_time;
 	int 	have_list_end;
-	int  seq;  
-	int cur_seq_no;	
-	int jump_item_num;
+	int  start_seq;  
+	int  next_seq;
 	int target_duration;
 	int64_t last_load_time;
 	//added for Playlist file with encrypted media segments
