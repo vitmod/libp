@@ -31,6 +31,7 @@
 #include "os_support.h"
 #include "file_list.h"
 #include "amconfigutils.h"
+#include "bandwidth_measure.h" 
 
 static struct list_demux *list_demux_list=NULL;
 #define unused(x)	(x=x)
@@ -87,50 +88,38 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item)
 	item->prev=prev;
        item->next = NULL;
 	mgt->item_num++;
-	
+	item->index=mgt->next_index;
+	mgt->next_index++;
+	av_log(NULL, AV_LOG_INFO, "list_add_item:seq=%d,index=%d\n",item->seq,item->index);
 	return 0;
 }
-
-
-int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
+static struct list_item* list_test_find_samefile_item(struct list_mgt *mgt,struct list_item *item)
 {
-	struct list_item**list;
-	struct list_item*prev;
+	struct list_item **list;
+
 	list=&mgt->item_list;
-	prev=NULL;
-	//test
-	if(mgt->jump_item_num>0){
-		av_log(NULL, AV_LOG_INFO, "jump item num:%d\n",mgt->jump_item_num);
-		mgt->jump_item_num--;
-		return -1;
-	}
 	if(item->file!=NULL){
 		while (*list != NULL) 
 		{	
-			if(strcmp((*list)->file,item->file)==0){//found the same item,drop it.
-				av_log(NULL, AV_LOG_INFO, "hit the same item,drop it\n");
-				return -1;
+			if((item->seq>=0  && (item->seq==(*list)->seq))|| (item->seq<0&& strcmp((*list)->file,item->file)==0) )
+			{/*same seq or same file name*/
+				return *list;
 			}
 			list = &(*list)->next;
 		}
+	}
+	return NULL;
+}
 
+int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
+{
+	struct list_item *sameitem;
+	sameitem=list_test_find_samefile_item(mgt,item);
+	if(sameitem){
+		av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]",sameitem->file,sameitem->seq,item->file,item->seq);
+		return -1;/*found same item,drop it */
 	}
-
-	while (*list != NULL) 
-	{
-		prev=*list;
-		list = &(*list)->next;
-	}
-	*list = item;
-	item->prev=prev;
-	item->next = NULL;
-	if(mgt->seq>0){
-		
-		mgt->cur_seq_no = mgt->cur_seq_no>0?(mgt->cur_seq_no+1):mgt->seq;
-		av_log(NULL, AV_LOG_INFO, "current seq num:%d,start seq num:%d\n",mgt->cur_seq_no,mgt->seq);
-	}
-	mgt->item_num++;
-	
+	list_add_item(mgt,item);
 	return 0;
 }
 
@@ -293,11 +282,11 @@ static int list_open(URLContext *h, const char *filename, int flags)
 		return AVERROR(ENOMEM);
 	memset(mgt,0,sizeof(struct list_mgt));
 	mgt->key_tmp = NULL;
-	mgt->seq = -1;
-	mgt->cur_seq_no = -1;
+	mgt->start_seq= -1;
+	mgt->next_seq= -1;
 	mgt->filename=filename+5;
 	mgt->flags=flags;
-	mgt->jump_item_num = 0;
+	mgt->next_index=0;
 	if((ret=list_open_internet(&bio,mgt,mgt->filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 	{
 		av_free(mgt);
@@ -318,7 +307,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	if(mgt->full_time>0 && mgt->have_list_end)
 		h->support_time_seek=1;
 	h->priv_data = mgt;
-	
+	mgt->bandwidth_measure=bandwidth_measure_alloc(100,0);
 	url_fclose(bio);
 	return 0;
 }
@@ -424,7 +413,7 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
     int len=AVERROR(EIO);
 	struct list_item *item=mgt->current_item;
 	int retries = 10;
-	
+	bandwidth_measure_start_read(mgt->bandwidth_measure);
 retry:	
 	if (url_interrupt_cb()){     
 		av_log(NULL, AV_LOG_ERROR," url_interrupt_cb\n");	
@@ -440,11 +429,12 @@ retry:
 			av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s\n",item->file);
 			len=url_fopen(&bio,item->file,AVIO_FLAG_READ | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 			if(len!=0)
-			{
+			{	/*open error force to next*/
 				av_log(NULL, AV_LOG_ERROR, "list url_fopen failed =%d\n",len);
-				return len;
-			}			
-			if(url_is_file_list(bio,item->file))
+				//return len;
+				bio=NULL;
+				len=-1;//force it switch to  next file,
+			}else if(url_is_file_list(bio,item->file))
 			{
 				mgt->have_sub_list = 1;
 				/*have 32 bytes space at the end..*/
@@ -593,7 +583,11 @@ readagain:
 		fresh_item_list(mgt);	
 	}
 	#endif
-
+	bandwidth_measure_finish_read(mgt->bandwidth_measure,len);
+	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
+	int m,f,a;
+	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);
+	av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
     return len;
 }
@@ -738,6 +732,7 @@ static int list_close(URLContext *h)
 	}
 	av_free(mgt);
 	unused(h);
+	bandwidth_measure_free(mgt->bandwidth_measure);
 	return 0;
 }
 static int list_get_handle(URLContext *h)	

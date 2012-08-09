@@ -232,12 +232,16 @@ int url_lpfillbuffer(URLContext *s,int size)
 		if(lp->file_size>0 && lp->pos>=lp->file_size){
 			rlen=0;/*file read end*/
 			goto release;
-		}else if(lp->cache_enable && s->prot->url_seek(s,0,SEEK_CUR)!=lp->pos){/*maybe do read from cache file before,so seek it now*/
-			int ret=s->prot->url_seek(s,lp->pos,SEEK_SET);
-			if(ret!=lp->pos){
-				rlen=-1;/*error*/
-				goto release;
-			}	
+		}else if(lp->cache_enable ){
+                       /*maybe do read from cache file before,so seek it now*/
+                       int64_t lowlevelpos=s->prot->url_seek(s,0,SEEK_CUR);
+                       if(lowlevelpos>0 && lowlevelpos!=lp->pos){
+                               int ret=s->prot->url_seek(s,lp->pos,SEEK_SET);
+                               if(ret!=lp->pos){
+                                       rlen=-1;/*error*/
+                                       goto release;
+                               }
+                       }
 		}
 		tmprp=lp->pos;
 		lp_unlock(&lp->mutex);/*release lock for long time read*/

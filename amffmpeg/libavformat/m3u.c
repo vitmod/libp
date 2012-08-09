@@ -178,28 +178,17 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		item->flags|=ALLOW_CACHE_FLAG;
 	}else if(is_TAG(p,EXT_X_MEDIA_SEQUENCE)){
 		int seq = -1;
+		int ret=0;
 		int slen = strlen("#EXT-X-MEDIA-SEQUENCE:");
-		sscanf(p+slen,"%d",&seq); //skip strlen("#EXT-X-MEDIA-SEQUENCE:");	
-		if(seq>0){
-			if(seq>mgt->seq){
-				mgt->seq = seq;
+		ret=sscanf(p+slen,"%d",&seq); //skip strlen("#EXT-X-MEDIA-SEQUENCE:");	
+		if(ret>0&&seq>=0){
+			if(mgt->start_seq<0){
+				mgt->start_seq=seq;	
 				mgt->flags |=REAL_STREAMING_FLAG;
-				if(mgt->cur_seq_no>=mgt->seq){
-					mgt->jump_item_num = mgt->cur_seq_no - mgt->seq+1;
-					av_log(NULL,AV_LOG_INFO,"need jump item num:%d\n",mgt->jump_item_num);
-				}
-				av_log(NULL, AV_LOG_INFO, "get new sequence number:%ld\n",seq);
-			}else{
-				av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",seq);
-				mgt->jump_item_num = INT_MAX;
-				return 0;
-
 			}
+			item->seq=seq;
+			mgt->next_seq=seq+1;
 			
-		}else{
-			mgt->seq = seq;
-			av_log(NULL, AV_LOG_INFO, "get a invalid sequence number:%d\n",seq);
-
 		}
 	}
 	
@@ -349,6 +338,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		}
 	}
 	memset(&tmpitem,0,sizeof(tmpitem));
+	tmpitem.seq=-1;
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
 	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefixex=%s\n",prefixex);
 	#if 0
@@ -412,40 +402,41 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				if(mgt->has_iv>0){
 					memcpy(item->key_ctx->iv,mgt->key_tmp->iv,sizeof(item->key_ctx->iv));				
 				}else{//from applehttp.c
-					
-					int seq = mgt->seq+mgt->item_num;
-					av_log(NULL,AV_LOG_INFO,"Current item seq number:%d\n",seq);		
-					AV_WB32(item->key_ctx->iv + 12, seq);
+					av_log(NULL,AV_LOG_INFO,"Current item seq number:%d\n",item->seq);		
+					AV_WB32(item->key_ctx->iv + 12, item->seq);
 				}
 
 				
 				item->ktype = mgt->key_tmp->key_type;
 
 			}
-			if(mgt->flags&REAL_STREAMING_FLAG){			
-				ret =list_test_and_add_item(mgt,item);
-				if(ret==0){
-					start_time+=item->duration;
-				}
-				
-			}else{
-				ret = list_add_item(mgt,item);
-				start_time+=item->duration;
-
+			if(mgt->next_seq>=0 && item->seq<0){
+					item->seq=mgt->next_seq;
+					mgt->next_seq++;
 			}
+			
 			if(item->flags &ENDLIST_FLAG)
 			{
 				mgt->have_list_end=1;
 				break;
 			}
-			else
-			{
-				memset(&tmpitem,0,sizeof(tmpitem));
-				if(ret == 0){
+			if(mgt->flags&REAL_STREAMING_FLAG){
+				
+				ret =list_test_and_add_item(mgt,item);
+				if(ret==0){
 					getnum++;
-
+					start_time+=item->duration;
+				}else{
+					av_free(item);
 				}
-			}
+				
+			}else{
+				ret = list_add_item(mgt,item);
+				start_time+=item->duration;
+				getnum++;
+			}
+			memset(&tmpitem,0,sizeof(tmpitem));
+			tmpitem.seq=-1;
 		}
 		else if(ret <0){
 			if(ret ==-(TRICK_LOGIC_BASE+0)&&(mgt->flags&KEY_FLAG)&&NULL!= mgt->key_tmp&&0==mgt->key_tmp->is_have_key_file){//get key from server
@@ -478,11 +469,6 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		else{
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
-			if(mgt->flags&REAL_STREAMING_FLAG&&mgt->jump_item_num==INT_MAX){
-				mgt->jump_item_num = 0;
-				av_log(NULL, AV_LOG_INFO, "drop this list,sequence number:%ld\n",mgt->seq);
-				break;
-			}
 		}
 		
 	}

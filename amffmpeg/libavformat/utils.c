@@ -2614,7 +2614,7 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
          !strcmp(ic->iformat->name, "mpegts")) &&
         file_size>0 && ic->pb->seekable && !ic->pb->is_slowmedia && !ic->pb->is_streamed) {
         /* get accurate estimate from the PTSes */
-        av_estimate_timeings_chapters(ic, old_offset);
+        av_estimate_timings_from_pts(ic, old_offset);
     } else if (av_has_duration(ic)) {
         /* at least one component has timings - we use them for all
            the components */

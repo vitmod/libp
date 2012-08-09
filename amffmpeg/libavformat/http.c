@@ -226,15 +226,18 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
     if (http_open_cnx(h) < 0) {
 		if(s->max_connects>1 && old_hd){
 		 	s->chunksize=old_chunksize;
-	        s->hd = old_hd;
-	        s->off = old_off;
+	        	s->hd = old_hd;
+	        	s->off = old_off;
 			memcpy(s->buffer, old_buf, old_buf_size);
 			s->buf_end = s->buffer + old_buf_size;
+			s->buf_ptr = s->buffer;
 			s->max_connects=1;/*do two open seek failed,
 							we think the server have link limited*/
 	        return -1;
-		}else{	
-			s->chunksize=-1;
+		}else{
+		s->buf_ptr = s->buffer;/*bufptr may changed on process line*/
+    		s->buf_end = s->buffer;
+		s->chunksize=-1;
 	        s->hd = 0;
 	        s->off = 0;
 	        return -1;
