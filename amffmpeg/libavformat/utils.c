@@ -2072,7 +2072,7 @@ static void av_update_stream_timings(AVFormatContext *ic)
     }
     if (start_time == INT64_MAX || (start_time > start_time_text && start_time - start_time_text < AV_TIME_BASE))
         start_time = start_time_text;
-    if (start_time != INT64_MAX) {
+    if (start_time != INT64_MAX && duration == INT64_MIN) {
         ic->start_time = start_time;
         if (end_time != INT64_MIN) {
             if (end_time - start_time > duration)
