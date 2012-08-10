@@ -571,6 +571,8 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     p_para->byteiobufsize = c_para->byteiobufsize;
     p_para->loopbufsize = c_para->loopbufsize;
     p_para->enable_rw_on_pause = c_para->enable_rw_on_pause;
+    p_para->playctrl_info.lowbuffermode_flag = c_para->lowbuffermode_flag;
+  
     if (p_para->buffering_enable) {
         /*check threshhold is valid*/
 	if(c_para->buffing_starttime_s>0 && c_para->buffing_middle<=0)
