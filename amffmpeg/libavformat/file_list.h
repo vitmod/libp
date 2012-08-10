@@ -82,7 +82,7 @@ typedef struct list_item
 {
 	const char *file;
 	int 	   flags;	  
-	int 		start_time;
+	float 	start_time;
 	int 		duration;
 	int 	bandwidth;
 	int 	seq;
@@ -98,13 +98,6 @@ struct variant{
 	int bandwidth;
 };
 
-typedef enum _ClarityType{
-	LOW_BANDWIDTH,
-	MIDDLE_BANDWIDTH,//default
-	HIGH_BANDWIDTH,
-	
-}ClarityType;
-
 typedef struct list_mgt
 {
 	char *filename;
@@ -115,6 +108,8 @@ typedef struct list_mgt
 	int item_num;
 	int next_index;
 	struct list_item *current_item;
+	int playing_item_index;
+	int playing_item_seq;
 	int64_t file_size;
 	int 	full_time;
 	int 	have_list_end;
@@ -122,8 +117,7 @@ typedef struct list_mgt
 	int  next_seq;
 	int target_duration;
 	int64_t last_load_time;
-	//added for Playlist file with encrypted media segments
-	ClarityType ctype; //default is HIGH_BANDWIDTH
+	//added for Playlist file with encrypted media segments	
 	int n_variants;
 	struct variant ** variants;	
 	int is_variant;
@@ -136,7 +130,7 @@ typedef struct list_mgt
 	ByteIOContext	*cur_uio;
 	struct list_demux *demux;
 	int 	have_sub_list;
-	void *bandwidth_measure;
+	void *bandwidth_measure;		
 }list_mgt_t;
 
 typedef struct list_demux

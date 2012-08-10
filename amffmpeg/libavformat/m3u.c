@@ -184,7 +184,10 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		if(ret>0&&seq>=0){
 			if(mgt->start_seq<0){
 				mgt->start_seq=seq;	
-				mgt->flags |=REAL_STREAMING_FLAG;
+				if(seq>0){
+					mgt->flags |=REAL_STREAMING_FLAG;
+
+				}
 			}
 			item->seq=seq;
 			mgt->next_seq=seq+1;
@@ -348,6 +351,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	#endif
 	while(m3u_format_get_line(s,line,1024)>=0)
 	{
+		tmpitem.ktype = KEY_NONE;
 		ret = m3u_parser_line(mgt,line,&tmpitem);
 		if(ret>0)
 		{		
@@ -476,19 +480,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		av_free(mgt->key_tmp);
 		mgt->key_tmp = NULL;
 	}
-	if(mgt->n_variants>0){//just choose  middle definition;
- 		float value = 0.0;
-		ret=am_getconfig_float("libplayer.hls.level",&value);
-		if(ret<0){
-			mgt->ctype =MIDDLE_BANDWIDTH;
-		}else if(value<2){
-			mgt->ctype =LOW_BANDWIDTH;
-		}else if(value<3){
-			mgt->ctype =MIDDLE_BANDWIDTH;
-		}else if(value<4){
-			mgt->ctype =HIGH_BANDWIDTH;
-		}
-	}
+	
 	mgt->file_size=AVERROR_STREAM_SIZE_NOTVALID;
 	mgt->full_time=start_time;
 	mgt->last_load_time = av_gettime();

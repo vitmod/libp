@@ -111,6 +111,40 @@ static struct list_item* list_test_find_samefile_item(struct list_mgt *mgt,struc
 	return NULL;
 }
 
+static struct list_item* list_find_item_by_index(struct list_mgt *mgt,int index){
+	struct list_item **list;
+
+	list=&mgt->item_list;
+	if(index>=0){
+		while (*list != NULL) 
+		{	
+			if((*list)->index == index)
+			{/*same index*/
+				av_log(NULL,AV_LOG_INFO,"find item,index:%d\n",index);
+				return *list;
+			}
+			list = &(*list)->next;
+		}
+	}
+	return NULL;
+}
+static struct list_item* list_find_item_by_seq(struct list_mgt *mgt,int seq){
+	struct list_item **list;
+
+	list=&mgt->item_list;
+	if(seq>=0){
+		while (*list != NULL) 
+		{	
+			if((*list)->seq== seq)
+			{/*same seq*/
+				av_log(NULL,AV_LOG_INFO,"find item,seq:%d\n",seq);
+				return *list;
+			}
+			list = &(*list)->next;
+		}
+	}
+	return NULL;
+}
 int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 {
 	struct list_item *sameitem;
@@ -150,6 +184,7 @@ static int list_del_item(struct list_mgt *mgt,struct list_item*item)
 		}
 		av_free(item->key_ctx);
 	}
+	
 	av_free(item);
 	item = NULL;
 	return 0;		
@@ -171,6 +206,39 @@ static int list_shrink_live_list(struct list_mgt *mgt){
 	return 0;
 }
 
+static int list_delall_item(struct list_mgt *mgt){
+	struct list_item *p = NULL;
+	struct list_item *t = NULL;
+	if(NULL ==mgt){
+		return -1;
+	}
+	
+	p = mgt->item_list;
+	
+	while(p!=NULL){
+		t = p->next;
+		mgt->item_num--;	
+		if(p->ktype == KEY_AES_128){			
+			if(p->crypto){
+				if(p->crypto->aes)
+					av_free(p->crypto->aes);
+				av_free(p->crypto);
+
+			}
+			av_free(p->key_ctx);
+		}		
+
+		av_free(p);
+		
+		p = NULL;
+		
+		p = t;
+	}
+	mgt->item_list = NULL;
+	av_log(NULL, AV_LOG_INFO, "delete all items from list,total:%d\n",mgt->item_num);
+	return 0;
+		
+}
 
 /*=======================================================================================*/
 int url_is_file_list(ByteIOContext *s,const char *filename)
@@ -236,30 +304,26 @@ reload:
 			if(bio){
 				url_fclose(bio);					
 			}
-			if(mgt->ctype ==HIGH_BANDWIDTH){
-				struct variant *v =mgt->variants[mgt->n_variants-1];
-				url = v->url;
-				mgt->playing_variant = v;
-				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
-				goto reload;
-			}else if(mgt->ctype ==LOW_BANDWIDTH){
+
+			
+	 		float value = 0.0;
+			ret=am_getconfig_float("libplayer.hls.level",&value);
+			if(ret<0||value<=0){
 				struct variant *v =mgt->variants[0];
 				url = v->url;
 				mgt->playing_variant = v;
-				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s\n",url);
+				av_log(NULL, AV_LOG_INFO, "[%d]reload playlist,url:%s\n",__LINE__,url);	
 				goto reload;
-			}else if(mgt->ctype ==MIDDLE_BANDWIDTH){
-				struct variant *v = NULL;
-				if(mgt->n_variants>4){
-					v =mgt->variants[mgt->n_variants/2 -1];
-				}else{
-					v =mgt->variants[mgt->n_variants-1];
-				}				
+			}else if(value<mgt->n_variants){
+				int iValue = (int)(value+0.5);
+				struct variant *v =mgt->variants[iValue];
 				url = v->url;
 				mgt->playing_variant = v;
-				av_log(NULL, AV_LOG_INFO, "reload playlist,url:%s,bandwidth:%d\n",url,mgt->playing_variant->bandwidth);
-				goto reload;
+				av_log(NULL, AV_LOG_INFO, "[%d]reload playlist,url:%s,%d\n",__LINE__,url,iValue);
+				goto reload;				
+				
 			}
+			
 		}
 
 	}
@@ -312,7 +376,36 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	return 0;
 }
 
-
+static int select_best_variant(struct list_mgt *c)
+{
+	int i;
+	int best_index=-1,best_band=-1;
+	int min_index=0,min_band=-1;
+	int max_index=0,max_band=-1;
+	int m,f,a;
+	// Consider only 80% of the available bandwidth usable.	
+	bandwidth_measure_get_bandwidth(c->bandwidth_measure,&f,&m,&a);
+	int bandwidthBps = (f * 8) / 10;
+	for (i = 0; i < c->n_variants; i++) {
+		struct variant *v = c->variants[i];
+		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>48000){
+			best_band=v->bandwidth;
+			best_index=i;
+		}	
+		if(v->bandwidth>48000&&(v->bandwidth<min_band || min_band<0)){
+			min_band=v->bandwidth;
+			min_index=i;
+		}	
+		if(v->bandwidth>max_band || max_band<0){
+			max_band=v->bandwidth;
+			max_index=i;
+		}	
+	}	
+	if(best_index<0)/*no low rate streaming found,used the lowlest*/
+		best_index=min_index;
+	av_log(NULL, AV_LOG_INFO,"select best bandwidth,index:%d,bandwidth:%d\n",best_index,c->variants[best_index]->bandwidth);
+	return best_index;
+}
 static struct list_item * switchto_next_item(struct list_mgt *mgt)
 {
 	struct list_item *next=NULL;
@@ -324,12 +417,15 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 		mgt->current_item->duration :
 		mgt->target_duration;	
 	int isNeedFetch = 1;	
+
+	
 	if(mgt->current_item==NULL || mgt->current_item->next==NULL){
 			/*new refresh this mgtlist now*/
 			ByteIOContext *bio;
 			
 			int ret;
-			char* url = NULL;
+			char* url = NULL;	
+			
 			if(mgt->n_variants>0&&NULL!=mgt->playing_variant){
 				url = mgt->playing_variant->url;
 				av_log(NULL, AV_LOG_INFO,"list open variant url:%s,bandwidth:%d\n",url,mgt->playing_variant->bandwidth);
@@ -373,10 +469,25 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 			}
 	}
 switchnext:
-	if(mgt->current_item)
+	if(mgt->current_item){
 		next=mgt->current_item->next;
-	else
-		next=mgt->item_list;
+
+	}else{
+		if(mgt->n_variants<1||!mgt->have_list_end){
+			if(!mgt->have_list_end&&mgt->playing_item_seq>0){
+				next = list_find_item_by_seq(mgt,mgt->playing_item_seq+1);
+				if(next==NULL){
+					av_log(NULL,AV_LOG_WARNING,"can't find same seq item,just featch first node\n");
+					next=mgt->item_list;
+				}
+			}else{
+				next=mgt->item_list;
+			}
+		}else{
+			next = list_find_item_by_index(mgt,mgt->playing_item_index+1);
+		}
+
+	}
 	if(next)
 		av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d,start=%d,duration=%d\n",
 			next->file,mgt->item_num,next->start_time,next->duration);
@@ -410,8 +521,9 @@ static void fresh_item_list(struct list_mgt *mgt){
 static int list_read(URLContext *h, unsigned char *buf, int size)
 {   
 	struct list_mgt *mgt = h->priv_data;
-    int len=AVERROR(EIO);
+       int len=AVERROR(EIO);
 	struct list_item *item=mgt->current_item;
+	
 	int retries = 10;
 	bandwidth_measure_start_read(mgt->bandwidth_measure);
 retry:	
@@ -541,13 +653,31 @@ readagain:
 			    url_fclose(mgt->cur_uio);
     			av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
 			return 0;
-		}
+		}		
 
-		
+		if(mgt->n_variants>0){//vod,have mulit-bandwidth streams
+			mgt->playing_item_index = mgt->current_item->index;
+			mgt->playing_item_seq = mgt->current_item->seq;
+			av_log(NULL,AV_LOG_INFO,"current playing item index: %d,current playing seq:%d\n",mgt->playing_item_index,mgt->playing_item_seq);
+			int estimate_index = select_best_variant(mgt);		
+			if(mgt->playing_variant->bandwidth!=mgt->variants[estimate_index]->bandwidth){//will remove this tricks.
+				
+				list_delall_item(mgt);
+				
+				mgt->current_item = mgt->current_item->next = NULL;				
+				mgt->start_seq= -1;
+				mgt->next_seq= -1;				
+				mgt->next_index=0;
+				mgt->playing_variant =mgt->variants[estimate_index];				
+			}
+
+			av_log(NULL,AV_LOG_INFO,"select best variant,bandwidth: %d\n",mgt->playing_variant->bandwidth);
+			
+		}
 		
 		item=switchto_next_item(mgt);
 		if(!item){
-			if(mgt->flags&REAL_STREAMING_FLAG){
+			if(!mgt->have_list_end){
 				fresh_item_list(mgt);	
 				if(retries>0){
 					retries --;
@@ -586,7 +716,7 @@ readagain:
 	bandwidth_measure_finish_read(mgt->bandwidth_measure,len);
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
 	int m,f,a;
-	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);
+	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);	
 	av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
     return len;
@@ -637,7 +767,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	}
 	
 	if (whence == AVSEEK_SIZE)
-        return mgt->file_size;
+		return mgt->file_size;
 	av_log(NULL, AV_LOG_INFO, "list_seek pos=%lld,whence=%x\n",pos,whence);
 	if (whence == AVSEEK_FULLTIME)
 	{
@@ -671,6 +801,8 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 						
 						mgt->cur_uio=NULL;
 						mgt->current_item=item;
+						mgt->playing_item_index = item->index;
+						mgt->playing_item_seq = item->seq;
 						av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
 						return item->start_time;/*pos=0;*/
 					}
@@ -695,30 +827,13 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 static int list_close(URLContext *h)
 {
 	struct list_mgt *mgt = h->priv_data;
-	struct list_item *item,*item1;
+
 	if(!mgt)return 0;
-	item=mgt->item_list;
-	if(mgt->cur_uio!=NULL)
+	if(mgt->cur_uio!=NULL){
 		url_fclose(mgt->cur_uio);
-	while(item!=NULL)
-		{
-		item1=item;
-		item=item->next;
-	if(item->ktype == KEY_AES_128){	
-		if(item->key_ctx){
-			av_free(item->key_ctx);
-		}
-		if(item->crypto){
-			if(item->crypto->aes)
-				av_free(item->crypto->aes);
-			av_free(item->crypto->aes);
-		}
-		
 
 	}
-		av_free(item1);
-	
-		}
+	list_delall_item(mgt);		
 	int i;
 	for (i = 0; i < mgt->n_variants; i++) {
 	    struct variant *var = mgt->variants[i];        
