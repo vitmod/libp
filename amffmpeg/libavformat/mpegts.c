@@ -1772,7 +1772,7 @@ static int64_t mpegts_get_pcr(AVFormatContext *s, int stream_index,
                               int64_t *ppos, int64_t pos_limit)
 {
     MpegTSContext *ts = s->priv_data;
-    int64_t pos, timestamp;
+    int64_t pos, timestamp, t_pos = 0;
     uint8_t buf[TS_PACKET_SIZE];
     int pcr_l, pcr_pid = ((PESContext*)s->streams[stream_index]->priv_data)->pcr_pid;
     const int find_next= 1;
@@ -1786,9 +1786,10 @@ static int64_t mpegts_get_pcr(AVFormatContext *s, int stream_index,
                 parse_pcr(&timestamp, &pcr_l, buf) == 0) {
                 break;
             }
-            if(pos > GET_PCR_POS)
+            if(t_pos > GET_PCR_POS)
 			return AV_NOPTS_VALUE;
             pos += ts->raw_packet_size;
+            t_pos += ts->raw_packet_size;
         }
     } else {
         for(;;) {
