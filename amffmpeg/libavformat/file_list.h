@@ -110,6 +110,8 @@ typedef struct list_mgt
 	struct list_item *current_item;
 	int playing_item_index;
 	int playing_item_seq;
+	int strategy_up_counts;
+	int strategy_down_counts;
 	int64_t file_size;
 	int 	full_time;
 	int 	have_list_end;

@@ -351,6 +351,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	mgt->filename=filename+5;
 	mgt->flags=flags;
 	mgt->next_index=0;
+	mgt->playing_item_index = 0;
+	mgt->playing_item_seq = 0;
+	mgt->strategy_up_counts = 0;
+	mgt->strategy_down_counts = 0;
 	if((ret=list_open_internet(&bio,mgt,mgt->filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 	{
 		av_free(mgt);
@@ -385,7 +389,7 @@ static int select_best_variant(struct list_mgt *c)
 	int m,f,a;
 	// Consider only 80% of the available bandwidth usable.	
 	bandwidth_measure_get_bandwidth(c->bandwidth_measure,&f,&m,&a);
-	int bandwidthBps = (f * 8) / 10;
+	int bandwidthBps = (a * 8) / 10;
 	for (i = 0; i < c->n_variants; i++) {
 		struct variant *v = c->variants[i];
 		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>48000){
@@ -403,6 +407,27 @@ static int select_best_variant(struct list_mgt *c)
 	}	
 	if(best_index<0)/*no low rate streaming found,used the lowlest*/
 		best_index=min_index;
+
+	if(c->playing_variant->bandwidth>c->variants[best_index]->bandwidth){
+		return best_index;
+		
+	}else if(c->playing_variant->bandwidth<c->variants[best_index]->bandwidth){
+		c->strategy_up_counts++;
+		if(c->strategy_up_counts==3){
+			c->strategy_up_counts = 0;
+			return best_index;
+		}else{
+			int playing_index = -1;
+			for (i = 0; i < c->n_variants; i++) {
+				struct variant *v = c->variants[i];
+				if(v->bandwidth==c->playing_variant->bandwidth){
+					playing_index = i;
+					break;
+				}
+			}
+			return playing_index;
+		}
+	}
 	av_log(NULL, AV_LOG_INFO,"select best bandwidth,index:%d,bandwidth:%d\n",best_index,c->variants[best_index]->bandwidth);
 	return best_index;
 }
@@ -661,13 +686,17 @@ readagain:
 			av_log(NULL,AV_LOG_INFO,"current playing item index: %d,current playing seq:%d\n",mgt->playing_item_index,mgt->playing_item_seq);
 			int estimate_index = select_best_variant(mgt);		
 			if(mgt->playing_variant->bandwidth!=mgt->variants[estimate_index]->bandwidth){//will remove this tricks.
-				
-				list_delall_item(mgt);
+
+				if(mgt->item_num>0){
+					list_delall_item(mgt);
+				}
 				
 				mgt->current_item = mgt->current_item->next = NULL;				
 				mgt->start_seq= -1;
 				mgt->next_seq= -1;				
 				mgt->next_index=0;
+				mgt->item_num = 0;
+				mgt->full_time = 0;
 				mgt->playing_variant =mgt->variants[estimate_index];				
 			}
 
@@ -715,9 +744,9 @@ readagain:
 	#endif
 	bandwidth_measure_finish_read(mgt->bandwidth_measure,len);
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
-	int m,f,a;
-	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);	
-	av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
+	//int m,f,a;
+	//bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);	
+	//av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
     return len;
 }
@@ -787,7 +816,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 		av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x,have sublist:%d\n",pos,whence,mgt->have_sub_list);
 		if (!mgt->have_sub_list) {
 			if(pos>=0 && pos<mgt->full_time) {
-
+				
 				for(item=mgt->item_list;item;item=item->next)
 				{
 					
@@ -801,8 +830,8 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 						
 						mgt->cur_uio=NULL;
 						mgt->current_item=item;
-						mgt->playing_item_index = item->index;
-						mgt->playing_item_seq = item->seq;
+						mgt->playing_item_index = item->index-1;
+						mgt->playing_item_seq = item->seq -1;
 						av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
 						return item->start_time;/*pos=0;*/
 					}
