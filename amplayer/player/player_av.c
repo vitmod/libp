@@ -490,7 +490,8 @@ static int raw_read(play_para_t *para)
 #endif
 
     if (pkt->data_size > 0) {
-        player_thread_wait(para, RW_WAIT_TIME);
+	  if(!para->enable_rw_on_pause)
+        	player_thread_wait(para, RW_WAIT_TIME);
         return PLAYER_SUCCESS;
     }
 
@@ -595,7 +596,8 @@ static int non_raw_read(play_para_t *para)
     int has_sub = para->sstream_info.has_sub;
 
     if (pkt->data_size > 0) {
-        player_thread_wait(para, RW_WAIT_TIME);
+	 if(!para->enable_rw_on_pause)
+        	player_thread_wait(para, RW_WAIT_TIME);
         //log_print("[%s:%d]wait---data_size=%d!\n",__FUNCTION__, __LINE__,pkt->data_size);
         return PLAYER_SUCCESS;
     }
@@ -1311,7 +1313,8 @@ int write_av_packet(play_para_t *para)
                 log_error("[%s]write header failed!\n", __FUNCTION__);
                 return PLAYER_WR_FAILED;
             } else if (ret == PLAYER_WR_AGAIN){
-                player_thread_wait(para, RW_WAIT_TIME);
+              if(!para->enable_rw_on_pause)
+                	player_thread_wait(para, RW_WAIT_TIME);
             	return PLAYER_SUCCESS;
             }
         } else {
@@ -1374,7 +1377,8 @@ int write_av_packet(play_para_t *para)
 			                }				
 			                pkt->data += len;
 			                pkt->data_size -= len;
-			                player_thread_wait(para, RW_WAIT_TIME);
+					  if(!para->enable_rw_on_pause)		
+			                	player_thread_wait(para, RW_WAIT_TIME);
 					if(para->playctrl_info.check_lowlevel_eagain_cnt > 0){
 			                		log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
 											__FUNCTION__, nCurrentWriteCount, pkt->type, para->read_size.total_bytes, \
@@ -1465,7 +1469,8 @@ int write_av_packet(play_para_t *para)
 		                }				
 		                pkt->data += len;
 		                pkt->data_size -= len;
-		                player_thread_wait(para, RW_WAIT_TIME);
+				  if(!para->enable_rw_on_pause)		
+		                	player_thread_wait(para, RW_WAIT_TIME);
 						if(para->playctrl_info.check_lowlevel_eagain_cnt > 0){
 		                	log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
 										__FUNCTION__, pkt->data_size, pkt->type, para->read_size.total_bytes, \
