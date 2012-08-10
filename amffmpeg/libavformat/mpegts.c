@@ -1766,6 +1766,8 @@ static int mpegts_read_close(AVFormatContext *s)
     return 0;
 }
 
+#define GET_PCR_POS 1*1024*1024
+
 static int64_t mpegts_get_pcr(AVFormatContext *s, int stream_index,
                               int64_t *ppos, int64_t pos_limit)
 {
@@ -1784,6 +1786,8 @@ static int64_t mpegts_get_pcr(AVFormatContext *s, int stream_index,
                 parse_pcr(&timestamp, &pcr_l, buf) == 0) {
                 break;
             }
+            if(pos > GET_PCR_POS)
+			return AV_NOPTS_VALUE;
             pos += ts->raw_packet_size;
         }
     } else {
