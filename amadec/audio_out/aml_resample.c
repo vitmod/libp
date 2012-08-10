@@ -285,6 +285,6 @@ void  af_resample_stop_process(af_resampe_ctl_t *paf_resampe_ctl)
     // paf_resampe_ctl->ResevedSampsValid=0;
      //paf_resampe_ctl->OutSampReserveLen=0;
      paf_resampe_ctl->InitFlag=0;
-     adec_print("resample stop INIT_FLAG=%d\n",paf_resampe_ctl->InitFlag);
+    // adec_print("resample stop INIT_FLAG=%d\n",paf_resampe_ctl->InitFlag);
 }
 

@@ -91,9 +91,9 @@ void audioCallback(int event, void* user, void *info)
         data_out=buffer->i16;
 		NumSamp_out = buffer->size/sizeof(short);
 		NumSampRequir=NumSamp_out;
-		adec_print("resample_enable = %d\n",resample_enable);
-		adec_print("REQURE_NUM-----------------------------%d\n",NumSamp_out);
-		adec_print("PCM_IN_OUTSAMPBUF:%d\n",paf_resampe_ctl->OutSampReserveLen);
+		//adec_print("resample_enable = %d\n",resample_enable);
+		//adec_print("REQURE_NUM-----------------------------%d\n",NumSamp_out);
+		//adec_print("PCM_IN_OUTSAMPBUF:%d\n",paf_resampe_ctl->OutSampReserveLen);
         if(resample_enable){    
 			   int pcm_cnt=0;
 			   if (!paf_resampe_ctl->InitFlag)
@@ -161,7 +161,7 @@ void audioCallback(int event, void* user, void *info)
 	resample_out:
 		
 	    buffer->size=outbuf_offset*sizeof(short);
-		adec_print("RETURN_NUM-----------------------------%d\n\n\n",outbuf_offset);
+		//adec_print("RETURN_NUM-----------------------------%d\n\n\n",outbuf_offset);
 		//---------------------------------------------
     } else {
         adec_print("audioCallback: dsp not work!\n");
