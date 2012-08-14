@@ -2099,7 +2099,7 @@ static void fill_all_stream_timings(AVFormatContext *ic)
     AVStream *st;
 
     av_update_stream_timings(ic);
-	av_log(NULL, AV_LOG_INFO, "[%s:%d] ic->start_time=0x%llx ic->duration=%llx\n",__FUNCTION__, __LINE__,ic->start_time,ic->duration);
+    av_log(NULL, AV_LOG_INFO, "[%s:%d] ic->start_time=0x%llx ic->duration=%llx\n",__FUNCTION__, __LINE__,ic->start_time,ic->duration);
 
     for(i = 0;i < ic->nb_streams; i++) {
         st = ic->streams[i];
@@ -2145,7 +2145,7 @@ static void av_estimate_timings_from_bit_rate(AVFormatContext *ic)
     }
 }
 
-#define DURATION_MAX_READ_SIZE 250000
+#define DURATION_MAX_READ_SIZE 150000
 #define DURATION_MAX_RETRY 3
 #define CHECK_FULL_ZERO_SIZE DURATION_MAX_READ_SIZE		
 static int64_t seek_last_valid_pkt(AVFormatContext *ic)
@@ -2502,12 +2502,12 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
         }
     }
 
-    for (i=0; i<ic->nb_streams; i++) {
+   /* for (i=0; i<ic->nb_streams; i++) {
 	st = ic->streams[i];
 	if (st->first_dts == AV_NOPTS_VALUE) {
 	    st->first_dts = first_dts;
 	}
-    }
+    }*/
 
     /* estimate the end time (duration) */
     /* XXX: may need to support wrapping */
@@ -2515,46 +2515,51 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 
     end_time = AV_NOPTS_VALUE;
     do{
-	    offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
-    if (offset < 0)
-        offset = 0;
-	//av_log(NULL,AV_LOG_INFO, "[%s:%d]offset=%llx valid_offset=%llx \n", __FUNCTION__, __LINE__, offset, valid_offset);
+	offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
+        if (offset < 0)
+            offset = 0;
+        //av_log(NULL,AV_LOG_INFO, "[%s:%d]offset=%llx valid_offset=%llx \n", __FUNCTION__, __LINE__, offset, valid_offset);
 
-    avio_seek(ic->pb, offset, SEEK_SET);
-    read_size = 0;
-    for(;;) {
-        if (read_size >= DURATION_MAX_READ_SIZE<<(FFMAX(retry-1,0)))
-            break;
-        do{
-            ret = av_read_packet(ic, pkt);
-        }while(ret == AVERROR(EAGAIN));
-        if (ret != 0)
-            break;
-		//av_log(NULL, AV_LOG_INFO, "[%s:%d] read a [%d]packet, pkt->pts=0x%llx\n",__FUNCTION__, __LINE__,pkt->stream_index,pkt->pts);
+        avio_seek(ic->pb, offset, SEEK_SET);
+        read_size = 0;
+        for(;;) {
+            if (read_size >= DURATION_MAX_READ_SIZE<<(FFMAX(retry-1,0)))
+                break;
+            do{
+                ret = av_read_packet(ic, pkt);
+            }while(ret == AVERROR(EAGAIN));
+            if (ret != 0)
+                break;
 
-        read_size += pkt->size;
-        st = ic->streams[pkt->stream_index];
-        if (pkt->pts != AV_NOPTS_VALUE &&
-            (st->start_time != AV_NOPTS_VALUE ||
-             st->first_dts  != AV_NOPTS_VALUE)) {
-            duration = end_time = pkt->pts;
-            if (st->start_time != AV_NOPTS_VALUE)  duration -= st->start_time;
-            else                                   duration -= st->first_dts;
-			//av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx\n",__FUNCTION__, __LINE__,duration);
+    	//av_log(NULL, AV_LOG_INFO, "[%s:%d] read a [%d]packet, pkt->pts=0x%llx\n",__FUNCTION__, __LINE__,pkt->stream_index,pkt->pts);
 
-            if (duration < 0)
-                duration += 1LL<<st->pts_wrap_bits;
-            if (duration > 0) {
-                if (st->duration == AV_NOPTS_VALUE ||
-                    st->duration < duration)
-                    st->duration = duration;
+            read_size += pkt->size;
+            st = ic->streams[pkt->stream_index];
+            if (pkt->pts != AV_NOPTS_VALUE &&
+                (st->start_time != AV_NOPTS_VALUE ||
+                 st->first_dts  != AV_NOPTS_VALUE)) {
+                duration = end_time = pkt->pts;
+               // av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx start_time=%llx first_dts=%llx\n",__FUNCTION__, __LINE__,duration, st->start_time, st->first_dts);
+
+                if (st->start_time != AV_NOPTS_VALUE)  duration -= st->start_time;
+                else                                   duration -= st->first_dts;
+    	      //  av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx\n",__FUNCTION__, __LINE__,duration);
+
+                if (duration < 0)
+                    duration += 1LL<<st->pts_wrap_bits;
+                if (duration > 0) {
+                    if (st->duration == AV_NOPTS_VALUE ||
+                        st->duration < duration)
+                        st->duration = duration;                      
+                }
             }
+            av_free_packet(pkt);
         }
-        av_free_packet(pkt);
-    }
+       // av_log(NULL, AV_LOG_INFO, "[%s:%d] endtime=0x%llx retry=%d\n",__FUNCTION__, __LINE__,end_time , retry);
     }while(   end_time==AV_NOPTS_VALUE
            && valid_offset > (DURATION_MAX_READ_SIZE<<retry)
            && ++retry <= DURATION_MAX_RETRY);
+   av_log(NULL, AV_LOG_INFO, "[%s:%d] ic->duration=0x%llx\n",__FUNCTION__, __LINE__, ic->duration);
 
     fill_all_stream_timings(ic);
 
@@ -2612,7 +2617,7 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 
     if ((!strcmp(ic->iformat->name, "mpeg") ||
          !strcmp(ic->iformat->name, "mpegts")) &&
-        file_size>0 && ic->pb->seekable && !ic->pb->is_slowmedia && !ic->pb->is_streamed) {
+        file_size>0 && ic->pb->seekable /*&& !ic->pb->is_slowmedia*/ && !ic->pb->is_streamed) {
         /* get accurate estimate from the PTSes */
         av_estimate_timings_from_pts(ic, old_offset);
     } else if (av_has_duration(ic)) {
