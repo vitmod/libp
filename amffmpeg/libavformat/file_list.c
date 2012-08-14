@@ -563,7 +563,7 @@ retry:
 		if(item && item->file)
 		{
 			ByteIOContext *bio;
-			av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s\n",item->file);
+			av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s,seq:%d\n",item->file,item->seq);
 			len=url_fopen(&bio,item->file,AVIO_FLAG_READ | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 			if(len!=0)
 			{	/*open error force to next*/

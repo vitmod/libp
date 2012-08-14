@@ -43,6 +43,7 @@
 #define READ_END_FLAG				(1<<6)
 #define ALLOW_CACHE_FLAG			(1<<7)
 #define REAL_STREAMING_FLAG		(1<<8)
+#define INVALID_ITEM_FLAG			(1<<10)
 
 
 struct list_mgt;

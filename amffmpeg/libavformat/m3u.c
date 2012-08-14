@@ -181,7 +181,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		int ret=0;
 		int slen = strlen("#EXT-X-MEDIA-SEQUENCE:");
 		ret=sscanf(p+slen,"%d",&seq); //skip strlen("#EXT-X-MEDIA-SEQUENCE:");	
-		if(ret>0&&seq>=0){
+		if(ret>0&&seq>=0&&seq>=mgt->next_seq){
 			if(mgt->start_seq<0){
 				mgt->start_seq=seq;	
 				if(seq>0){
@@ -192,6 +192,9 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 			item->seq=seq;
 			mgt->next_seq=seq+1;
 			
+		}else{
+			item->seq = seq;
+			item->flags|=INVALID_ITEM_FLAG;
 		}
 	}
 	
@@ -473,6 +476,10 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		else{
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
+			if(tmpitem.flags&INVALID_ITEM_FLAG){
+				av_log(NULL,AV_LOG_INFO,"just a trick,drop this list,seq number:%d\n",tmpitem.seq);
+				break;
+			}
 		}
 		
 	}
