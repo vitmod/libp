@@ -1533,6 +1533,11 @@ int write_av_packet(play_para_t *para)
 
 	
     if (check_write_finish(para) == PLAYER_WR_FINISH) {
+        if (((para->stream_type == STREAM_ES) || (para->stream_type == STREAM_VIDEO))
+            && (para->vstream_info.video_format == VFORMAT_H264)) {
+            h264_write_end_header(para);
+        }
+
 #if DUMP_WRITE
         if (fdw > 0) {
             close(fdw);
