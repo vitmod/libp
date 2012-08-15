@@ -2881,7 +2881,7 @@ int av_find_stream_info(AVFormatContext *ic)
         av_log(NULL, AV_LOG_INFO, "]av_find_stream_info]DRMdemux, do not check stream info ,return directly\n");
         return 0;
     }
-    TRACE();
+    av_log(NULL, AV_LOG_INFO, "[%s:%d]fast_switch=%d\n", __FUNCTION__, __LINE__, fast_switch);
     if(fast_switch){	
 	    for (i=0; i<ic->nb_streams; i++) {
 		ic->streams[i]->need_parsing = AVSTREAM_PARSE_NONE;
@@ -2976,7 +2976,7 @@ int av_find_stream_info(AVFormatContext *ic)
             /* NOTE: if the format has no header, then we need to read
                some packets to get most of the streams, so we cannot
                stop here */
-            if (!(ic->ctx_flags & AVFMTCTX_NOHEADER)) {
+            if (!(ic->ctx_flags & AVFMTCTX_NOHEADER) ||fast_switch) {
                 /* if we found the info for all the codecs, we can stop */
                 ret = count;
                 av_log(ic, AV_LOG_DEBUG, "All info found\n");
