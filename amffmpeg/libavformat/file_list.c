@@ -115,12 +115,19 @@ static struct list_item* list_find_item_by_index(struct list_mgt *mgt,int index)
 	struct list_item **list;
 
 	list=&mgt->item_list;
+	int next_index  =0;
+	if(index <mgt->item_num){
+		next_index = index+1;
+	}else{
+		av_log(NULL,AV_LOG_INFO,"just return last item,index:%d\n",index);
+		next_index = index;
+	}
 	if(index>=0){
 		while (*list != NULL) 
 		{	
-			if((*list)->index == index)
+			if((*list)->index == next_index)
 			{/*same index*/
-				av_log(NULL,AV_LOG_INFO,"find item,index:%d\n",index);
+				av_log(NULL,AV_LOG_INFO,"find next item,index:%d\n",index);
 				return *list;
 			}
 			list = &(*list)->next;
@@ -510,7 +517,7 @@ switchnext:
 				next=mgt->item_list;
 			}
 		}else{
-			next = list_find_item_by_index(mgt,mgt->playing_item_index+1);
+			next = list_find_item_by_index(mgt,mgt->playing_item_index);
 		}
 
 	}
@@ -556,7 +563,7 @@ retry:
 		if(item && item->file)
 		{
 			ByteIOContext *bio;
-			av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s,seq:%d\n",item->file,item->seq);
+			av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s,flag:%d,seq:%d,index:%d\n",item->file,item->flags,item->seq,item->index);
 			len=url_fopen(&bio,item->file,AVIO_FLAG_READ | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 			if(len!=0)
 			{	/*open error force to next*/
@@ -660,16 +667,19 @@ readagain:
 		}
 		//av_log(NULL, AV_LOG_INFO, "list_read get_buffer=%d\n",len);
 	}
-	if(len==AVERROR(EAGAIN))
-		 return AVERROR(EAGAIN);/*not end,bug need to*/
+	if(len==AVERROR(EAGAIN)){
+		av_log(NULL,AV_LOG_INFO,"retry for getting more data");
+		return AVERROR(EAGAIN);/*not end,bug need to*/
+
+	}
 	else if((len<=0)&& mgt->current_item!=NULL)
 	{/*end of the file*/
 		av_log(NULL, AV_LOG_INFO, "try switchto_next_item buf=%x,size=%d,len=%d\n",buf,size,len);
 
 		if(item && (item->flags & ENDLIST_FLAG)){
-		    if(mgt->cur_uio)
-			    url_fclose(mgt->cur_uio);
-    			av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
+			if(mgt->cur_uio)
+				url_fclose(mgt->cur_uio);
+			av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
 			return 0;
 		}		
 
@@ -698,13 +708,19 @@ readagain:
 		}
 		
 		item=switchto_next_item(mgt);
-		if(!item){			
+		if(!item){	
+			if(mgt->cur_uio){
+				url_fclose(mgt->cur_uio);
+				mgt->cur_uio=NULL;
+			}
 			av_log(NULL, AV_LOG_INFO, "Need more retry by player logic\n");
 			return AVERROR(EAGAIN);/*not end,but need to refresh the list later*/
 		}
-		if(mgt->cur_uio)
+		if(mgt->cur_uio){
 			url_fclose(mgt->cur_uio);
-		mgt->cur_uio=NULL;
+			mgt->cur_uio=NULL;
+		}
+		
 		mgt->current_item=item;
 		
 		if(item->flags & ENDLIST_FLAG){
@@ -729,11 +745,13 @@ readagain:
 	#endif
 	bandwidth_measure_finish_read(mgt->bandwidth_measure,len);
 	av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
+	#if 0
 	int m,f,a;
 	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);	
 	av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
+	#endif
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
-    return len;
+       return len;
 }
 
 static int list_write(URLContext *h, unsigned char *buf, int size)
@@ -810,15 +828,17 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 						if(mgt->cur_uio){
 							
 							url_fclose(mgt->cur_uio);
+							mgt->cur_uio=NULL;
 
-						}
+						}						
 						
-						mgt->cur_uio=NULL;
 						mgt->current_item=item;
 						mgt->playing_item_index = item->index-1;
-						mgt->playing_item_seq = item->seq -1;
+						if(!mgt->have_list_end){
+							mgt->playing_item_seq = item->seq -1;
+						}
 						av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
-						return item->start_time;/*pos=0;*/
+						return (int)(item->start_time);/*pos=0;*/
 					}
 				}
 			}

@@ -161,7 +161,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		item->file=p; 
 		enditem=1;
 	}else if(is_TAG(p,EXT_X_ENDLIST)){
-		item->flags=ENDLIST_FLAG;		
+		item->flags|=ENDLIST_FLAG;		
 		enditem=1;
 	}else if(is_TAG(p,EXTINF)){
 		int duration=0;
@@ -421,12 +421,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 					item->seq=mgt->next_seq;
 					mgt->next_seq++;
 			}
-			
-			if(item->flags &ENDLIST_FLAG)
-			{
-				mgt->have_list_end=1;
-				break;
-			}
+
 			if(mgt->flags&REAL_STREAMING_FLAG){
 				
 				ret =list_test_and_add_item(mgt,item);
@@ -441,6 +436,12 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				ret = list_add_item(mgt,item);
 				start_time+=item->duration;
 				getnum++;
+			}
+						
+			if(item->flags &ENDLIST_FLAG)
+			{
+				mgt->have_list_end=1;
+				break;
 			}
 			memset(&tmpitem,0,sizeof(tmpitem));
 			tmpitem.seq=-1;
