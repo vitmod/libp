@@ -130,12 +130,12 @@ static struct list_item* list_find_item_by_index(struct list_mgt *mgt,int index)
 }
 static struct list_item* list_find_item_by_seq(struct list_mgt *mgt,int seq){
 	struct list_item **list;
-
+	int next_seq = seq+1;
 	list=&mgt->item_list;
-	if(seq>=0){
+	if(next_seq>=0){
 		while (*list != NULL) 
 		{	
-			if((*list)->seq== seq)
+			if((*list)->seq== next_seq||(*list)->seq== (next_seq+1)||(*list)->seq== (next_seq+2)||(*list)->seq== (next_seq+3))
 			{/*same seq*/
 				av_log(NULL,AV_LOG_INFO,"find item,seq:%d\n",seq);
 				return *list;
@@ -441,9 +441,10 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 	int64_t reload_interval = mgt->item_num> 0&&mgt->current_item!=NULL?
 		mgt->current_item->duration :
 		mgt->target_duration;	
+	reload_interval *= 1000000;	
 	int isNeedFetch = 1;	
-
 	
+reload:	
 	if(mgt->current_item==NULL || mgt->current_item->next==NULL){
 			/*new refresh this mgtlist now*/
 			ByteIOContext *bio;
@@ -460,7 +461,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 			}
 			
 
-			reload_interval *= 500000;
+			
 			if(!mgt->have_list_end&&(av_gettime() - mgt->last_load_time < reload_interval)){
 				av_log(NULL, AV_LOG_INFO,"drop fetch playlist from server\n");
 				isNeedFetch = 0;
@@ -500,7 +501,7 @@ switchnext:
 	}else{
 		if(mgt->n_variants<1||!mgt->have_list_end){
 			if(!mgt->have_list_end&&mgt->playing_item_seq>0){
-				next = list_find_item_by_seq(mgt,mgt->playing_item_seq+1);
+				next = list_find_item_by_seq(mgt,mgt->playing_item_seq);
 				if(next==NULL){
 					av_log(NULL,AV_LOG_WARNING,"can't find same seq item,just featch first node\n");
 					next=mgt->item_list;
@@ -516,31 +517,23 @@ switchnext:
 	if(next)
 		av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d,start=%d,duration=%d\n",
 			next->file,mgt->item_num,next->start_time,next->duration);
-	else
+	else{
 		av_log(NULL, AV_LOG_INFO, "switch to new file=NULL,total=%d\n",mgt->item_num);
+		if(!mgt->have_list_end){
+			
+			
+			 if (url_interrupt_cb())
+	                    return AVERROR_EXIT;			 
+			usleep(100*1000);	  
+			reload_interval = mgt->target_duration * 500000;
+			isNeedFetch = 1;
+			goto reload;
+		}
+	}
 	return next;
 }
 
-static void fresh_item_list(struct list_mgt *mgt){	
-	int retries = 5;
-	int reload_interval = mgt->target_duration * 500000;
-	do{	
-		if((switchto_next_item(mgt))!=NULL){
-			av_log(NULL, AV_LOG_INFO, "refresh the Playlist,item num:%d,filename:%s\n",mgt->item_num,mgt->filename);		
-			break;
-		}	
-		else{	
-			if (url_interrupt_cb()){     
-				av_log(NULL, AV_LOG_ERROR," url_interrupt_cb\n");	
-				break;
-			}
-			usleep(reload_interval); //50ms
-			av_log(NULL, AV_LOG_INFO, "no new item,wait next refresh,current item num:%d\n",mgt->item_num);	
-		}
 
-	}while(retries-->0);//50ms*5
-
-}
 
 #include "libavutil/aes.h"
 static int list_read(URLContext *h, unsigned char *buf, int size)
@@ -705,15 +698,7 @@ readagain:
 		}
 		
 		item=switchto_next_item(mgt);
-		if(!item){
-			if(!mgt->have_list_end){
-				fresh_item_list(mgt);	
-				if(retries>0){
-					retries --;
-					goto retry;
-				}
-			}
-
+		if(!item){			
 			av_log(NULL, AV_LOG_INFO, "Need more retry by player logic\n");
 			return AVERROR(EAGAIN);/*not end,but need to refresh the list later*/
 		}
@@ -743,10 +728,10 @@ readagain:
 	}
 	#endif
 	bandwidth_measure_finish_read(mgt->bandwidth_measure,len);
-	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
-	//int m,f,a;
-	//bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);	
-	//av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
+	av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
+	int m,f,a;
+	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);	
+	av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
 	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
     return len;
 }
