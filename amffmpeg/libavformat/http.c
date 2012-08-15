@@ -36,7 +36,7 @@
    only a subset of it. */
 
 
-#define IPAD_IDENT	"AppleCoreMedia/1.0.0.8C148 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh_cn)"
+#define IPAD_IDENT	"AppleCoreMedia/1.0.0.9A405 (iPad; U; CPU OS 5_0_1 like Mac OS X; zh_cn)"
 
 /* used for protocol handling */
 #define BUFFER_SIZE (1024*4)
