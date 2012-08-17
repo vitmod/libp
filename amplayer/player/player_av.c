@@ -1206,19 +1206,19 @@ int time_search(play_para_t *am_p)
                 am_p->playctrl_info.last_seek_time_point = time_point;
             }
         } else {  
-        	if (am_p->file_type == MPEG_FILE && time_point > 0 
-				&& !am_p->playctrl_info.seek_frame_fail) {
-				timestamp = (int64_t)(time_point * AV_TIME_BASE);	           
-	            if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
-	                timestamp += s->start_time;
-	            }
-				ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
+            if (am_p->file_type == MPEG_FILE && time_point > 0 
+                && !am_p->playctrl_info.seek_frame_fail
+                && (s->pb && !s->pb->is_slowmedia)) {
+                timestamp = (int64_t)(time_point * AV_TIME_BASE);	           
+                if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
+                    timestamp += s->start_time;
+                }
+                ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
                 if (ret >= 0) 
-					return PLAYER_SUCCESS;    
-				else
-					am_p->playctrl_info.seek_frame_fail = 1;
-			}
-				
+                	return PLAYER_SUCCESS;    
+                else
+                	am_p->playctrl_info.seek_frame_fail = 1;
+            }				
             offset = ((int64_t)(time_point * (s->bit_rate >> 3)));
             log_info("time_point = %f  bit_rate=%x offset=0x%llx\n", time_point, s->bit_rate, offset);
 
