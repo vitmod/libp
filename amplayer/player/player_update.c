@@ -1206,9 +1206,27 @@ int update_playing_info(play_para_t *p_para)
 
     if (p_para->playctrl_info.read_end_flag && (get_player_state(p_para) != PLAYER_PAUSE)){
 		
-        check_avbuf_end(p_para, &vbuf, &abuf);       
-		
-        check_force_end(p_para, &vbuf, &abuf);       
+      if(!get_decend_flag())
+      {
+            check_avbuf_end(p_para, &vbuf, &abuf);
+            check_force_end(p_para, &vbuf, &abuf);       
+       }else if(get_pcmend_flag())
+       {
+            p_para->playctrl_info.end_flag = 1;
+            p_para->playctrl_info.search_flag = 0;
+            if ((p_para->state.full_time - p_para->state.current_time) < 20) {
+                p_para->state.current_time = p_para->state.full_time;
+            }
+            if (!p_para->playctrl_info.loop_flag) {
+                set_player_state(p_para, PLAYER_PLAYEND);
+			//update_playing_info(p_para);
+        		update_player_states(p_para, 1);
+                p_para->state.status = get_player_state(p_para);
+                player_clear_ctrl_flags(&p_para->playctrl_info);
+                set_black_policy(p_para->playctrl_info.black_out);
+                log_print("[%s]force end, black=%d\n", __FUNCTION__, p_para->playctrl_info.black_out);
+            }
+       }
     }    	
 	
     return PLAYER_SUCCESS;

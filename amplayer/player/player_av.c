@@ -546,6 +546,41 @@ static int raw_read(play_para_t *para)
 #endif
 
         } else if ((rev_byte == AVERROR_EOF) || (cur_offset > para->pFormatCtx->valid_offset) ){ //if(rev_byte != AVERROR(EAGAIN))
+			static int reach_end=0;
+			if(para->stream_type == STREAM_AUDIO)
+			{
+				
+				if(reach_end<5) 
+				{
+				       reach_end++;
+				       if(!get_readend_set_flag())
+                                        set_readend_flag(1);
+                                    memset(pbuf,0,tryread_size);
+				       strncpy(pbuf,"FREND",5);
+                    			pkt->data_size = tryread_size;
+                                    pkt->avpkt_newflag = 0;
+                                    pkt->avpkt_isvalid = 1;
+                        	       pkt->pts_checkin_ok = 0;
+                		}
+                		else
+                		{
+                		    reach_end=0;
+                		    para->playctrl_info.read_end_flag = 1;
+                		 }
+			}
+			else
+			{
+			    reach_end=0;
+			    /*if the return is EAGAIN,we need to try more times*/
+                        para->playctrl_info.read_end_flag = 1;
+                        log_print("raw read: read end!,%d,%lld,%lld\n",rev_byte ,cur_offset,para->pFormatCtx->valid_offset);
+#if DUMP_READ_AVDATA
+                        if (fdr > 0) {
+                            close(fdr);
+                        }
+#endif
+			}
+#if 0 //old
             /*if the return is EAGAIN,we need to try more times*/
             para->playctrl_info.read_end_flag = 1;
             log_print("raw read: read end!,%d,%lld,%lld\n",rev_byte ,cur_offset,para->pFormatCtx->valid_offset);
@@ -553,6 +588,7 @@ static int raw_read(play_para_t *para)
             if (fdr > 0) {
                 close(fdr);
             }
+#endif
 #endif
         } else {
             if (rev_byte != AVERROR(EAGAIN)) {
@@ -640,15 +676,20 @@ static int non_raw_read(play_para_t *para)
 			/*reach end add 6k audio data*/
 			static int reach_end=0;
 			AVStream *st;
-			if(reach_end<3)
+			if(reach_end<10)
 			{
 				reach_end++;
 				if(audio_idx>=0) 
 				{
                     			st = para->pFormatCtx->streams[audio_idx];
-                    if (st->codec->codec_type==CODEC_TYPE_AUDIO&&(st->codec->codec_id==CODEC_ID_APE||st->codec->codec_id==CODEC_ID_AAC||st->codec->codec_id==CODEC_ID_AMR_NB ||st->codec->codec_id==CODEC_ID_MP3)) {
-						pkt->avpkt->data=av_mallocz(2048);
-						pkt->avpkt->size=2048;	
+                    //if (st->codec->codec_type==CODEC_TYPE_AUDIO&&(st->codec->codec_id==CODEC_ID_APE||st->codec->codec_id==CODEC_ID_AAC||st->codec->codec_id==CODEC_ID_AMR_NB ||st->codec->codec_id==CODEC_ID_MP3)) {
+                                    if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
+                                           //set attr
+                                           if(!get_readend_set_flag())
+                                                set_readend_flag(1);
+						pkt->avpkt->data=av_mallocz(4096);
+						strncpy(pkt->avpkt->data,"FREND",5);
+						pkt->avpkt->size=4096;	
                     				pkt->avpkt->stream_index = st->index;
 						ret=0;
                     			}

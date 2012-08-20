@@ -82,7 +82,7 @@ int  get_sysfs_str(const char *path, char *valstr, int size)
         sprintf(valstr, "%s", "fail");
         return -1;
     };
-    log_print("get_sysfs_str=%s\n", valstr);
+    //log_print("get_sysfs_str=%s\n", valstr);
     return 0;
 }
 
@@ -1443,3 +1443,40 @@ int get_amutils_cmd(char* cmd){
     return 0;
 }
 
+int get_readend_set_flag()
+{
+    char str[100];
+    get_sysfs_str("/sys/class/audiodsp/fread_end_flag",str,7);
+    return (strcmp(str,"F_NEND")); // 1 read end have been set 0 have not been set
+}
+
+int set_readend_flag(int is_read_end)
+{
+    return set_sysfs_int("/sys/class/audiodsp/fread_end_flag",is_read_end);// 0 success -1 failed
+}
+int get_decend_flag()
+{
+    char str[100];
+    get_sysfs_str("/sys/class/audiodsp/fread_end_flag",str,8);
+    return (!strcmp(str,"DSP_END")); // 1 decode end 0 not decode end
+}
+
+int get_pcmend_flag()
+{
+    //int num=get_sysfs_int("/sys/class/audiodsp/pcm_left_len");
+    char *path="/sys/class/audiodsp/pcm_left_len";
+    int fd;
+    int val = 0;
+    char  bcmd[16];
+    fd = open(path, O_RDONLY);
+    if (fd >= 0) {
+        read(fd, bcmd, sizeof(bcmd));
+        val = strtol(bcmd, NULL, 10);
+        close(fd);
+    }
+    else
+        return 0;
+    //return val;
+    log_print("get_pcmnum=%d %s \n", val,bcmd);
+    return (val>1024)?0:1; // 1 pcm end 0 pcm not end
+}
