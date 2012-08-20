@@ -405,13 +405,18 @@ static void get_stream_info(play_para_t *p_para)
                      else temp_aidx = i;	
             }
              /* find chinese language audio track */
-			if (t = av_dict_get(pStream->metadata, "language", NULL, 0)){			    
-			    if(!strncmp(t->value, "chi",3)) {
-			        temp_aidx = i;
-			        log_print("[%s]key=%s value=%s audio track, %d\n", __FUNCTION__, t->key, t->value, i);
+            if (t = av_dict_get(pStream->metadata, "language", NULL, 0)){			    
+                if(audio_format != AFORMAT_UNSUPPORT&&!strncmp(t->value, "chi",3)) {
+		      if(t =av_dict_get(pFormat->streams[temp_aidx]->metadata, "language", NULL, 0)){
+			    if(!strncmp(t->value, "chi",3))
+				log_print("[%s:%d]already find chinese language track, not change :key=%s value=%s audio track, %d\n", __FUNCTION__,  __LINE__, t->key, t->value, temp_aidx);
+			    else{    
+				temp_aidx = i;
+			        log_print("[%s:%d]find chinese language track,change to:key=%s value=%s audio track, %d temp_aidx%d\n", __FUNCTION__,  __LINE__, t->key, t->value, i,temp_aidx);
 			    }
-			}
-              
+		       }	       
+                }
+            }
         } else if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
             p_para->sstream_num ++;
             if (temp_sidx == -1) {
