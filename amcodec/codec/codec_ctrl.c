@@ -1806,3 +1806,23 @@ int codec_get_sub_info(codec_para_t *pcodec, subtitle_info_t *sub_info)
     return ret;     
 }
 
+/********************************************************************************
+*
+*the interface for av sync threshold setting
+*
+*********************************************************************************/
+int codec_set_av_threshold(codec_para_t *pcodec, int threshold)
+{
+    int ret = 0;
+    if (pcodec->has_audio)
+    {
+        audio_set_av_sync_threshold(pcodec->adec_priv, threshold);
+    }
+    else
+    {
+        CODEC_PRINT("[codec_set_av_threshold] error, no audio!\n");
+        ret = -1;
+    }
+    
+    return ret;
+}
