@@ -362,7 +362,10 @@ int track_switch_pts(aml_audio_dec_t *audec)
         adec_print("unable to get apts");
         return 1;
     }
-
+    
+    if((apts > pcr) && (apts - pcr > 0x100000))
+        return 0;
+		
     if (abs(apts - pcr) < audec->avsync_threshold || (apts <= pcr)) {
         return 0;
     } else {
