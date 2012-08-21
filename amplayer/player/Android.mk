@@ -27,6 +27,7 @@ LOCAL_CFLAGS+=-DLIBPLAYER_GIT_UNCOMMIT_FILE_NUM=${LIBPLAYER_GIT_UNCOMMIT_FILE_NU
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
 	$(LOCAL_PATH)/../../amcodec/include \
+	$(LOCAL_PATH)/../common\
 	$(LOCAL_PATH)/../../amadec/include \
 	$(LOCAL_PATH)/../../amffmpeg
 
@@ -49,6 +50,7 @@ LOCAL_SRC_FILES +=system/android.c system/systemsetting.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
         $(LOCAL_PATH)/../../amcodec/include \
         $(LOCAL_PATH)/../../amadec/include \
+	$(LOCAL_PATH)/../common\
         $(LOCAL_PATH)/../../amffmpeg
 
 LOCAL_CFLAGS+=-DHAVE_VERSION_INFO
