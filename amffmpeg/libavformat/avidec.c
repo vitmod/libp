@@ -587,11 +587,11 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             switch(tag1) {
             case MKTAG('v', 'i', 'd', 's'):
                 codec_type = AVMEDIA_TYPE_VIDEO;
-
                 ast->sample_size = 0;
                 break;
             case MKTAG('a', 'u', 'd', 's'):
                 codec_type = AVMEDIA_TYPE_AUDIO;
+                ast->sample_size = 0;
                 break;
             case MKTAG('t', 'x', 't', 's'):
                 codec_type = AVMEDIA_TYPE_SUBTITLE;
