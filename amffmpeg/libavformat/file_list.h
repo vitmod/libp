@@ -55,11 +55,11 @@ enum KeyType {
 };
 
 struct encrypt_key_priv_t{
-	enum KeyType key_type;
-	char key_from[MAX_URL_SIZE];
-	uint8_t key[16];
-	uint8_t iv[16];
-	int is_have_key_file; //just get file from server 
+    enum KeyType key_type;
+    char key_from[MAX_URL_SIZE];
+    uint8_t key[16];
+    uint8_t iv[16];
+    int is_have_key_file; //just get file from server 
 };
 
 #define MAX_BUFFER_BLOCKS 150
@@ -71,77 +71,81 @@ struct AES128KeyContext{
 };
 
 struct AESCryptoContext{
-	uint8_t inbuffer [BLOCKSIZE*MAX_BUFFER_BLOCKS],
-		outbuffer[BLOCKSIZE*MAX_BUFFER_BLOCKS];
-	uint8_t *outptr;
-	int indata, indata_used, outdata;
-	int eof;	
-	struct AVAES *aes;
-	int have_init;
+    uint8_t inbuffer [BLOCKSIZE*MAX_BUFFER_BLOCKS],
+    	outbuffer[BLOCKSIZE*MAX_BUFFER_BLOCKS];
+    uint8_t *outptr;
+    int indata, indata_used, outdata;
+    int eof;	
+    struct AVAES *aes;
+    int have_init;
 };
 typedef struct list_item
 {
-	const char *file;
-	int 	   flags;	  
-	float 	start_time;
-	int 		duration;
-	int 	bandwidth;
-	int 	seq;
-	int    index;
-	enum KeyType ktype;
-	struct AES128KeyContext* key_ctx; //just store key info.
-	struct AESCryptoContext* crypto;
-	struct list_item * prev;
-	struct list_item * next;	
+    const char *file;
+    int 	   flags;	  
+    float 	start_time;
+    int 		duration;
+    int 	bandwidth;
+    int 	seq;
+    int    index;
+    enum KeyType ktype;
+    struct AES128KeyContext* key_ctx; //just store key info.
+    struct AESCryptoContext* crypto;
+    struct list_item * prev;
+    struct list_item * next;	
 }list_item_t;
 struct variant{
-	char url[MAX_URL_SIZE];
-	int bandwidth;
+    char url[MAX_URL_SIZE];
+    int bandwidth;
 };
 
 typedef struct list_mgt
 {
-	char *filename;
-	char *location;	
-	int flags;
-	lock_t mutex;
-	struct list_item *item_list;	
-	int item_num;
-	int next_index;
-	struct list_item *current_item;
-	int playing_item_index;
-	int playing_item_seq;
-	int strategy_up_counts;
-	int strategy_down_counts;
-	int64_t file_size;
-	int 	full_time;
-	int 	have_list_end;
-	int  start_seq;  
-	int  next_seq;
-	int target_duration;
-	int64_t last_load_time;
-	//added for Playlist file with encrypted media segments	
-	int n_variants;
-	struct variant ** variants;	
-	int is_variant;
-	int has_iv;
-	int bandwidth;
-	char* prefix; //	
-	struct variant* playing_variant;
-	struct encrypt_key_priv_t* key_tmp; //just for parsing using,if ended parsing,just free this pointer.
-	//end.
-	ByteIOContext	*cur_uio;
-	struct list_demux *demux;
-	int 	have_sub_list;
-	void *bandwidth_measure;		
+    char *filename;
+    char *location;	
+    int flags;
+    lock_t mutex;
+    struct list_item *item_list;	
+    pthread_mutex_t list_lock;
+    int item_num;
+    int next_index;
+    struct list_item *current_item;
+    int playing_item_index;
+    int playing_item_seq;
+    int strategy_up_counts;
+    int strategy_down_counts;
+    int64_t file_size;
+    int 	full_time;
+    int 	have_list_end;
+    int  start_seq;  
+    int  next_seq;
+    int target_duration;
+    int64_t last_load_time;
+    //added for Playlist file with encrypted media segments	
+    int n_variants;
+    struct variant ** variants;	
+    int is_variant;
+    int has_iv;
+    int bandwidth;
+    char* prefix; //	
+    struct variant* playing_variant;
+    struct encrypt_key_priv_t* key_tmp; //just for parsing using,if ended parsing,just free this pointer.
+    //end.
+    ByteIOContext	*cur_uio;
+    struct list_demux *demux;
+    int 	have_sub_list;
+    void *bandwidth_measure;	
+    void *cache_http_handle;
+
+    
 }list_mgt_t;
 
 typedef struct list_demux
 {
-	const char * name;
-	int (*probe)(ByteIOContext *s,const char *file);
-	int (*parser)(struct list_mgt *mgt,ByteIOContext *s);
-	struct list_demux *next;
+    const char * name;
+    int (*probe)(ByteIOContext *s,const char *file);
+    int (*parser)(struct list_mgt *mgt,ByteIOContext *s);
+    struct list_demux *next;
 }list_demux_t;
 URLProtocol *get_file_list_protocol(void);
 int register_list_demux_all(void);
@@ -150,6 +154,7 @@ struct list_demux * probe_demux(ByteIOContext  *s,const char *filename);
 int list_add_item(struct list_mgt *mgt,struct list_item*item);
 int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item);
 int url_is_file_list(ByteIOContext *s,const char *filename);
+
 
 
 #endif /* AVFORMAT_FILE_LIST_H */
