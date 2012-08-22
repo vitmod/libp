@@ -705,8 +705,7 @@ static int list_close(URLContext *h)
 	if(NULL!=mgt->prefix){
 		av_free(mgt->prefix);
 		mgt->prefix = NULL;
-	}
-       av_log(NULL, AV_LOG_INFO, "========%s:%d===========\n",__FUNCTION__,__LINE__);
+	}       
        CacheHttp_Close(mgt->cache_http_handle);
 	av_free(mgt);
 	unused(h);	
@@ -719,12 +718,12 @@ static int list_get_handle(URLContext *h)
 }
 
 URLProtocol file_list_protocol = {
-    "list",
-    list_open,
-    list_read,
-    list_write,
-    list_seek,
-    list_close,
+    .name = "list",
+    .url_open = list_open,
+    .url_read  = list_read,
+    .url_write = list_write,
+    .url_seek   = list_seek,
+    .url_close = list_close,
     .url_exseek=list_seek,/*same as seek is ok*/ 
     .url_get_file_handle = list_get_handle,
 };
@@ -749,7 +748,12 @@ const char* getCurrentSegmentUrl(void* hSession){
     return url;
 }
 
-
+long long getTotalDuration(void* hSession){
+    if(gListMgt==NULL){
+        return NULL;
+    } 
+    return gListMgt->full_time;
+}
 URLProtocol *get_file_list_protocol(void)
 {
 	return &file_list_protocol;

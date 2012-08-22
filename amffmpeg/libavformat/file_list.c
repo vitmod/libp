@@ -890,12 +890,12 @@ return (intptr_t) h->priv_data;
 }
 
 URLProtocol file_list_protocol = {
-    "list",
-    list_open,
-    list_read,
-    list_write,
-    list_seek,
-    list_close,
+    .name = "list",
+    .url_open = list_open,
+    .url_read  = list_read,
+    .url_write = list_write,
+    .url_seek   = list_seek,
+    .url_close = list_close,
     .url_exseek=list_seek,/*same as seek is ok*/ 
     .url_get_file_handle = list_get_handle,
 };
