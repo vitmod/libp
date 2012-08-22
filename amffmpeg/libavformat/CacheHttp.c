@@ -46,6 +46,7 @@ typedef struct {
     int EXITED;
     int circular_buffer_error;
     int64_t item_pos;
+    int64_t item_size;
     AVFifoBuffer * fifo;
     list_item_t * cur_item;
     void * bandwidth_measure;
@@ -199,10 +200,11 @@ int CacheHttp_GetBuffedTime(void * handle)
 
     CacheHttpContext * s = (CacheHttpContext *)handle; 
     int64_t buffed_time=0;
-    if(s->cur_item && s->hd) {
-        int64_t size = CacheHttp_ffurl_seek(s->hd, 0, AVSEEK_SIZE);
-        if(s->cur_item->duration >= 0 && size > 0) {
-            buffed_time = s->cur_item->start_time+s->item_pos*s->cur_item->duration/size;
+    pthread_mutex_lock(&s->item_mutex);
+    if(s->cur_item) {
+        av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  s->item_size=%lld", s->item_size);
+        if(s->cur_item->duration >= 0 && s->item_size > 0) {
+            buffed_time = s->cur_item->start_time+s->item_pos*s->cur_item->duration/s->item_size;
            av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  buffed_time=%lld", buffed_time);
         } else {
             buffed_time = s->cur_item->start_time;
@@ -212,6 +214,7 @@ int CacheHttp_GetBuffedTime(void * handle)
             }
         }
     }
+    pthread_mutex_unlock(&s->item_mutex);
 
     return buffed_time;
 }
@@ -259,6 +262,7 @@ static void *circular_buffer_task( void *_handle)
         
         s->hd = h;
         s->item_pos = 0;
+        s->item_size = CacheHttp_ffurl_seek(s->hd, 0, AVSEEK_SIZE);
         
         while(!s->EXIT) {
 
