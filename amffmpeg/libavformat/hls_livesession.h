@@ -9,6 +9,7 @@ extern "C" {
 //hSesssion just set NULL,2012,0821
 list_item_t* getCurrentSegment(void* hSession);
 const char* getCurrentSegmentUrl(void* hSession);
+long long getTotalDuration(void* hSession);
 
 
 #ifdef __cplusplus
