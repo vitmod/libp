@@ -141,7 +141,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     return 0;
 }
 
-int CacheHttp_reset(void * handle)
+int CacheHttp_Reset(void * handle)
 {
     if(!handle)
         return AVERROR(EIO);
@@ -192,7 +192,7 @@ int CacheHttp_GetSpeed(void * _handle, int * arg1, int * arg2, int * arg3)
     return ret;
 }
 
-int CacheHttp_GetBufferedTime(void * handle)
+int CacheHttp_GetBuffedTime(void * handle)
 {
     if(!handle)
         return AVERROR(EIO);
@@ -206,8 +206,10 @@ int CacheHttp_GetBufferedTime(void * handle)
            av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  buffed_time=%lld", buffed_time);
         } else {
             buffed_time = s->cur_item->start_time;
-           // if(s->cur_item && s->cur_item->flags & ENDLIST_FLAG)
-            //    buffed_time = s->full_time;
+            if(s->cur_item && s->cur_item->flags & ENDLIST_FLAG) {
+                int64_t full_time = getTotalDuration(NULL);
+                buffed_time = full_time;
+            }
         }
     }
 

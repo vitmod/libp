@@ -28,7 +28,7 @@
  int CacheHttp_Read(void * handle, uint8_t * cache, int size);
  int CacheHttp_Close(void * handle);
  int CacheHttp_GetSpeed(void * handle, int * arg1, int * arg2, int * arg3);
- int CacheHttp_reset(void * handle);
- int CacheHttp_GetBufferedTime(void *handle);
+ int CacheHttp_Reset(void * handle);
+ int CacheHttp_GetBuffedTime(void *handle);
  
  #endif
