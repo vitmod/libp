@@ -271,7 +271,7 @@ static void *circular_buffer_task( void *_handle)
                 av_free(filename);
             }
 	      av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
-             goto FAIL;
+             break;
         }
         
         s->hd = h;
