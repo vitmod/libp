@@ -39,16 +39,19 @@
 #define WAIT_TIME (10*1000)
 
 typedef struct {
-    URLContext *hd;
+    URLContext * hd;
     unsigned char headers[BUFFER_SIZE];
 
     int EXIT;
     int EXITED;
     int circular_buffer_error;
-    AVFifoBuffer *fifo;
-    void* bandwidth_measure;
+    int64_t item_pos;
+    AVFifoBuffer * fifo;
+    list_item_t * cur_item;
+    void * bandwidth_measure;
     pthread_t circular_buffer_thread;
     pthread_mutex_t  read_mutex;
+    pthread_mutex_t  item_mutex;
 
 } CacheHttpContext;
 
@@ -67,6 +70,11 @@ static int CacheHttp_ffurl_close(URLContext * h)
     return ffurl_close(h);
 }
 
+static int CacheHttp_ffurl_seek(URLContext *h, int64_t pos, int whence)
+{
+    return ffurl_seek(h, pos, whence);
+}
+
 static void *circular_buffer_task( void *_handle);
 
 int CacheHttp_Open(void ** handle)
@@ -79,10 +87,12 @@ int CacheHttp_Open(void ** handle)
 
     *handle = (void *)s;
     s->hd  = NULL;
+    s->cur_item = NULL;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);      
-    pthread_mutex_init(&s->read_mutex,NULL);     	
+    pthread_mutex_init(&s->read_mutex,NULL);
+    pthread_mutex_init(&s->item_mutex,NULL);
     s->EXIT = 0;
     s->EXITED = 0;
 /*       if(header) {
@@ -131,6 +141,26 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     return 0;
 }
 
+int CacheHttp_reset(void * handle)
+{
+    if(!handle)
+        return AVERROR(EIO);
+
+    CacheHttpContext * s = (CacheHttpContext *)handle;
+    s->EXIT = 1;
+    pthread_join(s->circular_buffer_thread, NULL);
+    if(s->fifo)
+        av_fifo_reset(s->fifo);
+    s->hd  = NULL;
+    s->cur_item = NULL;
+    s->EXIT = 0;
+    s->EXITED = 0;
+    int ret = pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
+    av_log(NULL, AV_LOG_INFO, "-----------CacheHttp_reset : pthread_create ret=%d",ret);
+    
+    return ret;
+}
+
 int CacheHttp_Close(void * handle)
 {
     if(!handle)
@@ -146,19 +176,44 @@ int CacheHttp_Close(void * handle)
     	av_fifo_free(s->fifo);
     }
     pthread_mutex_destroy(&s->read_mutex);
+    pthread_mutex_destroy(&s->item_mutex);
     bandwidth_measure_free(s->bandwidth_measure);
     return 0;
 }
-int CacheHttp_GetSpeed(void * _handle, int * arg1, int * arg2, int * arg3){
-    
-    if(_handle==NULL){
-        return -1;
-    }    
+
+int CacheHttp_GetSpeed(void * _handle, int * arg1, int * arg2, int * arg3)
+{ 
+    if(!_handle)
+        return AVERROR(EIO);
+  
     CacheHttpContext * s = (CacheHttpContext *)_handle; 
     int ret = bandwidth_measure_get_bandwidth(s->bandwidth_measure,arg1,arg2,arg3);	
     av_log(NULL, AV_LOG_ERROR, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",*arg1/1000,*arg1%1000,*arg2/1000,*arg2%1000,*arg3/1000,*arg3%1000);
     return ret;
 }
+
+int CacheHttp_GetBufferedTime(void * handle)
+{
+    if(!handle)
+        return AVERROR(EIO);
+
+    CacheHttpContext * s = (CacheHttpContext *)handle; 
+    int64_t buffed_time=0;
+    if(s->cur_item && s->hd) {
+        int64_t size = CacheHttp_ffurl_seek(s->hd, 0, AVSEEK_SIZE);
+        if(s->cur_item->duration >= 0 && size > 0) {
+            buffed_time = s->cur_item->start_time+s->item_pos*s->cur_item->duration/size;
+           av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  buffed_time=%lld", buffed_time);
+        } else {
+            buffed_time = s->cur_item->start_time;
+           // if(s->cur_item && s->cur_item->flags & ENDLIST_FLAG)
+            //    buffed_time = s->full_time;
+        }
+    }
+
+    return buffed_time;
+}
+
 static void *circular_buffer_task( void *_handle)
 {
     CacheHttpContext * s = (CacheHttpContext *)_handle; 
@@ -171,12 +226,18 @@ static void *circular_buffer_task( void *_handle)
 		 s->circular_buffer_error = EINTR;
                goto FAIL;
 	}
-    
+
+        pthread_mutex_lock(&s->item_mutex);
+        if(h)
+            CacheHttp_ffurl_close(h);
         list_item_t * item = getCurrentSegment(NULL);
         if(!item) {
+            pthread_mutex_unlock(&s->item_mutex);
             usleep(WAIT_TIME);
             continue;
         }
+        s->cur_item = item;
+        pthread_mutex_unlock(&s->item_mutex);
 
         if(item->flags & ENDLIST_FLAG){      
             av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
@@ -189,9 +250,10 @@ static void *circular_buffer_task( void *_handle)
 	      av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
              goto FAIL;
         }
-
+        
         s->hd = h;
-
+        s->item_pos = 0;
+        
         while(!s->EXIT) {
 
 	    int left;
@@ -199,7 +261,7 @@ static void *circular_buffer_task( void *_handle)
 	
 	    if (url_interrupt_cb()) {
 		 s->circular_buffer_error = EINTR;
-               goto FAIL;
+               break;
 	    }
 
 	    pthread_mutex_lock(&s->read_mutex);
@@ -214,6 +276,7 @@ static void *circular_buffer_task( void *_handle)
 
            if(s->hd) {
                 if(s->EXIT){
+                    pthread_mutex_unlock(&s->read_mutex);
                     break;
                 }
                 bandwidth_measure_start_read(s->bandwidth_measure);
@@ -221,14 +284,15 @@ static void *circular_buffer_task( void *_handle)
                 bandwidth_measure_finish_read(s->bandwidth_measure,len);
            } else {
                 pthread_mutex_unlock(&s->read_mutex);
-                goto FAIL;
+                break;
            }
            
            if (len > 0) {
         	  s->fifo->wptr += len;
                 if (s->fifo->wptr >= s->fifo->end)
                     s->fifo->wptr = s->fifo->buffer;
-                s->fifo->wndx += len;               
+                s->fifo->wndx += len;
+                s->item_pos += len;
            } else {
                 pthread_mutex_unlock(&s->read_mutex);
                 av_log(h, AV_LOG_ERROR, "---------- circular_buffer_task read ret <= 0");
@@ -238,12 +302,7 @@ static void *circular_buffer_task( void *_handle)
 
 	    //usleep(WAIT_TIME);
 
-        }
-
-        if(h)
-            CacheHttp_ffurl_close(h);
-        s->hd = NULL;
-        h = NULL;
+        }     
      
     }
     

@@ -32,7 +32,8 @@
 #include "file_list.h"
 #include "amconfigutils.h"
 #include "bandwidth_measure.h" 
-
+#include "hls_livesession.h"
+#include "CacheHttp.h"
 static struct list_demux *list_demux_list=NULL;
 #define unused(x)	(x=x)
 
@@ -77,6 +78,7 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item)
 {
 	struct list_item**list;
 	struct list_item*prev;
+       pthread_mutex_lock(&mgt->list_lock);
 	list=&mgt->item_list;
 	prev=NULL;
 	 while (*list != NULL) 
@@ -90,30 +92,33 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item)
 	mgt->item_num++;
 	item->index=mgt->next_index;
 	mgt->next_index++;
+       pthread_mutex_unlock(&mgt->list_lock);
 	av_log(NULL, AV_LOG_INFO, "list_add_item:seq=%d,index=%d\n",item->seq,item->index);
 	return 0;
 }
 static struct list_item* list_test_find_samefile_item(struct list_mgt *mgt,struct list_item *item)
 {
-	struct list_item **list;
-
-	list=&mgt->item_list;
-	if(item->file!=NULL){
-		while (*list != NULL) 
-		{	
-			if((item->seq>=0  && (item->seq==(*list)->seq))|| (item->seq<0&& strcmp((*list)->file,item->file)==0) )
-			{/*same seq or same file name*/
-				return *list;
-			}
-			list = &(*list)->next;
-		}
-	}
-	return NULL;
+    struct list_item **list;
+    pthread_mutex_lock(&mgt->list_lock);
+    list=&mgt->item_list;
+    if(item->file!=NULL){
+        while (*list != NULL) 
+        {	
+            if((item->seq>=0  && (item->seq==(*list)->seq))|| (item->seq<0&& strcmp((*list)->file,item->file)==0) )
+            {/*same seq or same file name*/
+                pthread_mutex_unlock(&mgt->list_lock);
+                return *list;
+            }
+            list = &(*list)->next;
+        }
+    }
+    pthread_mutex_unlock(&mgt->list_lock);
+    return NULL;
 }
 
 static struct list_item* list_find_item_by_index(struct list_mgt *mgt,int index){
 	struct list_item **list;
-
+       pthread_mutex_lock(&mgt->list_lock);
 	list=&mgt->item_list;
 	int next_index  =0;
 	if(index <mgt->item_num){
@@ -127,123 +132,140 @@ static struct list_item* list_find_item_by_index(struct list_mgt *mgt,int index)
 		{	
 			if((*list)->index == next_index)
 			{/*same index*/
+			       pthread_mutex_unlock(&mgt->list_lock);
 				av_log(NULL,AV_LOG_INFO,"find next item,index:%d\n",index);
 				return *list;
 			}
 			list = &(*list)->next;
 		}
 	}
+       pthread_mutex_unlock(&mgt->list_lock);
 	return NULL;
 }
 static struct list_item* list_find_item_by_seq(struct list_mgt *mgt,int seq){
-	struct list_item **list;
-	int next_seq = seq+1;
-	list=&mgt->item_list;
-	if(next_seq>=0){
-		while (*list != NULL) 
-		{	
-			if((*list)->seq== next_seq||(*list)->seq== (next_seq+1)||(*list)->seq== (next_seq+2)||(*list)->seq== (next_seq+3))
-			{/*same seq*/
-				av_log(NULL,AV_LOG_INFO,"find item,seq:%d\n",seq);
-				return *list;
-			}
-			list = &(*list)->next;
-		}
-	}
-	return NULL;
+    struct list_item **list;
+    int next_seq = seq+1;
+    pthread_mutex_lock(&mgt->list_lock);
+    list=&mgt->item_list;
+    if(next_seq>=0){
+        while (*list != NULL) 
+        {	
+            if((*list)->seq== next_seq||(*list)->seq== (next_seq+1)||(*list)->seq== (next_seq+2)||(*list)->seq== (next_seq+3))
+            {/*same seq*/
+                pthread_mutex_unlock(&mgt->list_lock);
+                av_log(NULL,AV_LOG_INFO,"find item,seq:%d\n",seq);
+                return *list;
+            }
+            list = &(*list)->next;
+        }
+    }
+    pthread_mutex_unlock(&mgt->list_lock);
+    return NULL;
 }
 int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 {
-	struct list_item *sameitem;
-	sameitem=list_test_find_samefile_item(mgt,item);
-	if(sameitem){
-		av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]",sameitem->file,sameitem->seq,item->file,item->seq);
-		return -1;/*found same item,drop it */
-	}
-	list_add_item(mgt,item);
-	return 0;
+    struct list_item *sameitem;
+    pthread_mutex_lock(&mgt->list_lock);
+    sameitem=list_test_find_samefile_item(mgt,item);
+    if(sameitem){
+        pthread_mutex_unlock(&mgt->list_lock);
+        av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]",sameitem->file,sameitem->seq,item->file,item->seq);
+        return -1;/*found same item,drop it */
+    }
+    pthread_mutex_unlock(&mgt->list_lock);
+    list_add_item(mgt,item);
+    return 0;
 }
 
 
 static int list_del_item(struct list_mgt *mgt,struct list_item*item)
 {
-	struct list_item*tmp;
-	if(!item || !mgt)
-		return -1;
-	if(mgt->item_list==item){
-		mgt->item_list=item->next;
-		if(mgt->item_list)
-			mgt->item_list->prev=NULL;
-	}
-	else {
-		tmp=item->prev;
-		tmp->next=item->next;
-		if(item->next) 
-			item->next->prev=tmp;
-	}
-	mgt->item_num--;
-	if(item->ktype == KEY_AES_128){
-		if(item->crypto){
-			if(item->crypto->aes)
-				av_free(item->crypto->aes);
-			av_free(item->crypto);
 
-		}
-		av_free(item->key_ctx);
-	}
-	
-	av_free(item);
-	item = NULL;
-	return 0;		
+    struct list_item*tmp;
+    if(!item || !mgt)
+        return -1;
+    pthread_mutex_lock(&mgt->list_lock);
+    if(mgt->item_list==item){
+        mgt->item_list=item->next;
+        if(mgt->item_list)
+        	mgt->item_list->prev=NULL;
+    }
+    else {
+        tmp=item->prev;
+        tmp->next=item->next;
+        if(item->next) 
+            item->next->prev=tmp;
+    }
+    mgt->item_num--;
+    if(item->ktype == KEY_AES_128){
+        if(item->crypto){
+            if(item->crypto->aes){
+                av_free(item->crypto->aes);
+
+            }
+            av_free(item->crypto);
+
+        }
+        av_free(item->key_ctx);
+    }
+
+    av_free(item);
+    item = NULL;
+    pthread_mutex_unlock(&mgt->list_lock);
+    return 0;		
 }
 
 static int list_shrink_live_list(struct list_mgt *mgt){
-	struct list_item **tmp = NULL;
-	if(NULL ==mgt){
-		return -1;
-	}
-	tmp = &mgt->item_list;
-	if(!mgt->have_list_end){//not have list end,just refer to live streaming
-		while(mgt->item_num>SHRINK_LIVE_LIST_THRESHOLD&&*tmp!=mgt->current_item){
-			list_del_item(mgt,*tmp);
-			tmp = &mgt->item_list;	
-		}
-	}
-	av_log(NULL, AV_LOG_INFO, "shrink live item from list,total:%d\n",mgt->item_num);
-	return 0;
+    struct list_item **tmp = NULL;
+    if(NULL ==mgt){
+    	return -1;
+    }
+    pthread_mutex_lock(&mgt->list_lock);   
+    tmp = &mgt->item_list;
+    if(!mgt->have_list_end){//not have list end,just refer to live streaming
+    	while(mgt->item_num>SHRINK_LIVE_LIST_THRESHOLD&&*tmp!=mgt->current_item){
+    		list_del_item(mgt,*tmp);
+    		tmp = &mgt->item_list;	
+    	}
+    }
+    pthread_mutex_unlock(&mgt->list_lock);
+    av_log(NULL, AV_LOG_INFO, "shrink live item from list,total:%d\n",mgt->item_num);
+    return 0;
 }
 
 static int list_delall_item(struct list_mgt *mgt){
-	struct list_item *p = NULL;
-	struct list_item *t = NULL;
-	if(NULL ==mgt){
-		return -1;
-	}
+    struct list_item *p = NULL;
+    struct list_item *t = NULL;
+    if(NULL ==mgt){
+        return -1;
+    }
+    pthread_mutex_lock(&mgt->list_lock);
+    p = mgt->item_list;
 	
-	p = mgt->item_list;
-	
-	while(p!=NULL){
-		t = p->next;
-		mgt->item_num--;	
-		if(p->ktype == KEY_AES_128){			
-			if(p->crypto){
-				if(p->crypto->aes)
-					av_free(p->crypto->aes);
-				av_free(p->crypto);
+    while(p!=NULL){
+        t = p->next;
+        mgt->item_num--;	
+        if(p->ktype == KEY_AES_128){			
+            if(p->crypto){
+                if(p->crypto->aes){
+                    av_free(p->crypto->aes);
+                }
+                av_free(p->crypto);
 
-			}
-			av_free(p->key_ctx);
-		}		
+            }
+            av_free(p->key_ctx);
+        }		
 
-		av_free(p);
-		
-		p = NULL;
-		
-		p = t;
-	}
-	mgt->item_list = NULL;
-	av_log(NULL, AV_LOG_INFO, "delete all items from list,total:%d\n",mgt->item_num);
-	return 0;
+        av_free(p);
+
+        p = NULL;
+
+        p = t;
+    }
+    mgt->item_list = NULL;
+    pthread_mutex_unlock(&mgt->list_lock);
+    av_log(NULL, AV_LOG_INFO, "delete all items from list,total:%d\n",mgt->item_num);
+    return 0;
 		
 }
 
@@ -343,6 +365,7 @@ error:
 	return ret;
 }
 
+static struct list_mgt* gListMgt = NULL;
 static int list_open(URLContext *h, const char *filename, int flags)
 {
 	struct list_mgt *mgt;
@@ -361,7 +384,9 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	mgt->playing_item_index = 0;
 	mgt->playing_item_seq = 0;
 	mgt->strategy_up_counts = 0;
-	mgt->strategy_down_counts = 0;
+	mgt->strategy_down_counts = 0;       
+       pthread_mutex_init(&mgt->list_lock,NULL);
+       gListMgt = mgt;
 	if((ret=list_open_internet(&bio,mgt,mgt->filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 	{
 		av_free(mgt);
@@ -382,9 +407,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	if(mgt->full_time>0 && mgt->have_list_end)
 		h->support_time_seek=1;
 	h->priv_data = mgt;
-	mgt->bandwidth_measure=bandwidth_measure_alloc(100,0);
+       ret = CacheHttp_Open(&mgt->cache_http_handle);
+	//mgt->bandwidth_measure=bandwidth_measure_alloc(100,0);
 	url_fclose(bio);
-	return 0;
+	return ret;
 }
 
 static int select_best_variant(struct list_mgt *c)
@@ -393,9 +419,9 @@ static int select_best_variant(struct list_mgt *c)
 	int best_index=-1,best_band=-1;
 	int min_index=0,min_band=-1;
 	int max_index=0,max_band=-1;
-	int m,f,a;
+	int m,f,a=0;
 	// Consider only 80% of the available bandwidth usable.	
-	bandwidth_measure_get_bandwidth(c->bandwidth_measure,&f,&m,&a);
+	//bandwidth_measure_get_bandwidth(c->bandwidth_measure,&f,&m,&a);
 	int bandwidthBps = (a * 8) / 10;
 	for (i = 0; i < c->n_variants; i++) {
 		struct variant *v = c->variants[i];
@@ -542,216 +568,26 @@ switchnext:
 
 
 
-#include "libavutil/aes.h"
 static int list_read(URLContext *h, unsigned char *buf, int size)
-{   
-	struct list_mgt *mgt = h->priv_data;
-       int len=AVERROR(EIO);
-	struct list_item *item=mgt->current_item;
-	
-	int retries = 10;
-	bandwidth_measure_start_read(mgt->bandwidth_measure);
-retry:	
-	if (url_interrupt_cb()){     
-		av_log(NULL, AV_LOG_ERROR," url_interrupt_cb\n");	
-            	return AVERROR(EINTR);
-
-	}
-	//av_log(NULL, AV_LOG_INFO, "list_read start buf=%x,size=%d\n",buf,size);
-	if(!mgt->cur_uio )
-	{
-		if(item && item->file)
-		{
-			ByteIOContext *bio;
-			av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s,flag:%d,seq:%d,index:%d\n",item->file,item->flags,item->seq,item->index);
-			len=url_fopen(&bio,item->file,AVIO_FLAG_READ | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
-			if(len!=0)
-			{	/*open error force to next*/
-				av_log(NULL, AV_LOG_ERROR, "list url_fopen failed =%d\n",len);
-				//return len;
-				bio=NULL;
-				len=-1;//force it switch to  next file,
-			}else if(url_is_file_list(bio,item->file))
-			{
-				mgt->have_sub_list = 1;
-				/*have 32 bytes space at the end..*/
-				memmove(item->file+5,item->file,strlen(item->file)+1);
-				memcpy(item->file,"list:",5);
-				url_fclose(bio);
-				len=url_fopen(&bio,item->file,mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
-				if(len!=0)
-				{
-					av_log(NULL, AV_LOG_INFO, "file list url_fopen failed =%d\n",len);
-					return len;
-				}
-			}else{
-				if(item->ktype == KEY_AES_128){	
-					if(item->key_ctx&&!item->crypto){
-						item->crypto = av_mallocz(sizeof(struct AESCryptoContext));
-						if(!item->crypto){							
-							len = AVERROR(ENOMEM);
-							return len;
-						}
-						item->crypto->aes =  av_mallocz(av_aes_size);		
-						if(!item->crypto->aes){
-							len = AVERROR(ENOMEM);
-							return len;
-						}
-						
-						av_aes_init(item->crypto->aes,item->key_ctx->key, 128, 1);
-						item->crypto->have_init = 1;
-						
-					}
-					bio->is_encrypted_media =1;
-				}				
-			}
-			mgt->cur_uio=bio;
-		}
-	}
-	if(mgt->cur_uio){
-		if(size>0&&mgt->cur_uio->is_encrypted_media>0&&mgt->current_item->key_ctx&&mgt->current_item->crypto){//codes from crypto.c			
-			int blocks;
-			struct AESCryptoContext* c = mgt->current_item->crypto;
-readagain:			
-			len = 0;
-			if (c->outdata > 0) {
-				size = FFMIN(size, c->outdata);
-				memcpy(buf, c->outptr, size);
-				c->outptr  += size;
-				c->outdata -= size;
-				len =size;				
-			}
-			// We avoid using the last block until we've found EOF,
-			// since we'll remove PKCS7 padding at the end. So make
-			// sure we've got at least 2 blocks, so we can decrypt
-			// at least one.
-			while (c->indata - c->indata_used < 2*BLOCKSIZE) {
-				int n = get_buffer(mgt->cur_uio,c->inbuffer + c->indata,
-				                   sizeof(c->inbuffer) - c->indata);
-				if (n <= 0) {
-				    c->eof = 1;
-				    break;
-				}
-				c->indata += n;				
-			}
-			blocks = (c->indata - c->indata_used) / BLOCKSIZE;
-			if (blocks!=0){
-				if (!c->eof)
-					blocks--;
-				av_aes_crypt(c->aes, c->outbuffer, c->inbuffer + c->indata_used, blocks,mgt->current_item->key_ctx->iv, 1);
-				c->outdata      = BLOCKSIZE * blocks;
-				c->outptr       = c->outbuffer;
-				c->indata_used += BLOCKSIZE * blocks;
-				if (c->indata_used >= sizeof(c->inbuffer)/2) {
-					memmove(c->inbuffer, c->inbuffer + c->indata_used,
-						c->indata - c->indata_used);
-					c->indata     -= c->indata_used;
-					c->indata_used = 0;
-				}
-				if (c->eof) {
-					// Remove PKCS7 padding at the end
-					int padding = c->outbuffer[c->outdata - 1];
-					c->outdata -= padding;
-				}
-
-				if(len==0){
-					goto readagain;
-				}
-			}else{
-				len  =0;
-			}				
-			
-			
-		}else{
-			len=get_buffer(mgt->cur_uio,buf,size);
-		}
-		//av_log(NULL, AV_LOG_INFO, "list_read get_buffer=%d\n",len);
-	}
-	if(len==AVERROR(EAGAIN)){
-		av_log(NULL,AV_LOG_INFO,"retry for getting more data");
-		return AVERROR(EAGAIN);/*not end,bug need to*/
-
-	}
-	else if((len<=0)&& mgt->current_item!=NULL)
-	{/*end of the file*/
-		av_log(NULL, AV_LOG_INFO, "try switchto_next_item buf=%x,size=%d,len=%d\n",buf,size,len);
-
-		if(item && (item->flags & ENDLIST_FLAG)){
-			if(mgt->cur_uio)
-				url_fclose(mgt->cur_uio);
-			av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
-			return 0;
-		}		
-
-		if(mgt->n_variants>0){//vod,have mulit-bandwidth streams
-			mgt->playing_item_index = mgt->current_item->index;
-			mgt->playing_item_seq = mgt->current_item->seq;
-			av_log(NULL,AV_LOG_INFO,"current playing item index: %d,current playing seq:%d\n",mgt->playing_item_index,mgt->playing_item_seq);
-			int estimate_index = select_best_variant(mgt);		
-			if(mgt->playing_variant->bandwidth!=mgt->variants[estimate_index]->bandwidth){//will remove this tricks.
-
-				if(mgt->item_num>0){
-					list_delall_item(mgt);
-				}
-				
-				mgt->current_item = mgt->current_item->next = NULL;				
-				mgt->start_seq= -1;
-				mgt->next_seq= -1;				
-				mgt->next_index=0;
-				mgt->item_num = 0;
-				mgt->full_time = 0;
-				mgt->playing_variant =mgt->variants[estimate_index];				
-			}
-
-			av_log(NULL,AV_LOG_INFO,"select best variant,bandwidth: %d\n",mgt->playing_variant->bandwidth);
-			
-		}
-		
-		item=switchto_next_item(mgt);
-		if(!item){	
-			if(mgt->cur_uio){
-				url_fclose(mgt->cur_uio);
-				mgt->cur_uio=NULL;
-			}
-			av_log(NULL, AV_LOG_INFO, "Need more retry by player logic\n");
-			return AVERROR(EAGAIN);/*not end,but need to refresh the list later*/
-		}
-		if(mgt->cur_uio){
-			url_fclose(mgt->cur_uio);
-			mgt->cur_uio=NULL;
-		}
-		
-		mgt->current_item=item;
-		
-		if(item->flags & ENDLIST_FLAG){
-			av_log(NULL, AV_LOG_INFO, "reach list end now!,item=%x\n",item);
-			return 0;/*endof file*/
-		}
-		else if(item->flags & DISCONTINUE_FLAG){
-			av_log(NULL, AV_LOG_INFO, "Discontiue item \n");
-			//1 TODO:need to notify uper level stream is changed
-			goto retry;
-		}
-		else{	
-			av_log(NULL, AV_LOG_INFO, "[%s]item->flags=%x \n", __FUNCTION__, item->flags);
-			goto retry;
-		}
-		
-	}
-	#if 0
-	if(mgt->flags&REAL_STREAMING_FLAG&&mgt->item_num<4){ //force refresh items
-		fresh_item_list(mgt);	
-	}
-	#endif
-	bandwidth_measure_finish_read(mgt->bandwidth_measure,len);
-	av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
-	#if 0
-	int m,f,a;
-	bandwidth_measure_get_bandwidth(mgt->bandwidth_measure,&f,&m,&a);	
-	av_log(NULL, AV_LOG_INFO, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",f/1000,f%1000,m/1000,m%1000,a/1000,a%1000);
-	#endif
-	//av_log(NULL, AV_LOG_INFO, "list_read end buf=%x,size=%d return len=%x\n",buf,size,len);
-       return len;
+{     
+    struct list_mgt *mgt = h->priv_data;
+    int len=AVERROR(EIO);
+    int counts = 10;  
+    do{	
+        if (url_interrupt_cb()){     
+        	av_log(NULL, AV_LOG_ERROR," url_interrupt_cb\n");	
+              len =AVERROR(EINTR);
+              break;
+        }
+        len = CacheHttp_Read(mgt->cache_http_handle,buf,size);
+        if(len==AVERROR(EAGAIN)){
+            break;
+        }            
+        if(len<=0){
+            usleep(1000*200);          
+        }
+    }while(len>0&&counts-->0);
+    return len;	
 }
 
 static int list_write(URLContext *h, unsigned char *buf, int size)
@@ -782,18 +618,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	if (whence == AVSEEK_BUFFERED_TIME)
 	{
 		int64_t buffed_time=0;
-		if(mgt->current_item ){
-			//av_log(NULL, AV_LOG_INFO, "list_seek uui=%ld,size=%lld\n",mgt->cur_uio,url_fsize(mgt->cur_uio));
-			if(mgt->cur_uio && url_fsize(mgt->cur_uio)>0 && mgt->current_item->duration>=0){
-				//av_log(NULL, AV_LOG_INFO, "list_seek start_time=%ld,pos=%lld\n",mgt->current_item->start_time,url_buffed_pos(mgt->cur_uio));
-				buffed_time=mgt->current_item->start_time+url_buffed_pos(mgt->cur_uio)*mgt->current_item->duration/url_fsize(mgt->cur_uio);
-			}
-			else{
-				buffed_time=mgt->current_item->start_time;
-				if(mgt->current_item && (mgt->current_item->flags & ENDLIST_FLAG))
-					buffed_time=mgt->full_time;/*read to end list, show full bufferd*/
-			}
-		}
+		
 		//av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
 		return buffed_time;
 	}
@@ -806,10 +631,6 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 		if(mgt->have_list_end){
 			av_log(NULL, AV_LOG_INFO, "return mgt->full_timet=%d\n",mgt->full_time);
 			return mgt->full_time;
-		}else if(mgt->have_sub_list && mgt->cur_uio){
-				subh = mgt->cur_uio->opaque;
-				av_log(NULL, AV_LOG_INFO, "seek sub file for fulltime\n");
-				return list_seek(subh,pos, whence);
 		}else
 			return -1;
 	}
@@ -824,36 +645,18 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 				{
 					
 					if(item->start_time<=pos && pos <item->start_time+item->duration)
-					{	
-						if(mgt->cur_uio){
-							
-							url_fclose(mgt->cur_uio);
-							mgt->cur_uio=NULL;
-
-						}						
-						
+					{
 						mgt->current_item=item;
 						mgt->playing_item_index = item->index-1;
 						if(!mgt->have_list_end){
 							mgt->playing_item_seq = item->seq -1;
 						}
 						av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
-						return (int)(item->start_time);/*pos=0;*/
+						return (int64_t)(item->start_time);/*pos=0;*/
 					}
 				}
 			}
-		} else {
-		    if(!mgt->cur_uio){
-   				av_log(NULL, AV_LOG_ERROR, "byteio already close, seek failed!\n");
-		        return -1;
-		    }
-			subh = mgt->cur_uio->opaque;	
-			submgt = subh->priv_data;
-			if(subh && submgt) {
-				av_log(NULL, AV_LOG_INFO, "have sub list, go2 low level, location=%s\n",submgt->location);
-				return list_seek(subh, pos, whence);
-			}
-		}
+		} 
 	}
 	av_log(NULL, AV_LOG_INFO, "list_seek failed\n");
 	return -1;
@@ -879,14 +682,16 @@ static int list_close(URLContext *h)
 		av_free(mgt->prefix);
 		mgt->prefix = NULL;
 	}
+       CacheHttp_Close(mgt->cache_http_handle);
 	av_free(mgt);
 	unused(h);
 	bandwidth_measure_free(mgt->bandwidth_measure);
+       gListMgt = NULL;
 	return 0;
 }
 static int list_get_handle(URLContext *h)	
 {    
-return (intptr_t) h->priv_data;
+    return (intptr_t) h->priv_data;
 }
 
 URLProtocol file_list_protocol = {
@@ -899,6 +704,27 @@ URLProtocol file_list_protocol = {
     .url_exseek=list_seek,/*same as seek is ok*/ 
     .url_get_file_handle = list_get_handle,
 };
+list_item_t* getCurrentSegment(void* hSession){
+    struct list_item *item=gListMgt->current_item;
+    if(item==NULL){
+        return NULL;
+    }
+    
+    gListMgt->current_item = switchto_next_item(gListMgt);
+  
+    return item;
+
+}
+const char* getCurrentSegmentUrl(void* hSession){
+    if(gListMgt==NULL){
+        return NULL;
+    }
+    
+    const char* url = getCurrentSegment(gListMgt)->file; 
+    
+    return url;
+}
+
 
 URLProtocol *get_file_list_protocol(void)
 {
