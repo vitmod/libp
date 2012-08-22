@@ -424,7 +424,7 @@ static int select_best_variant(struct list_mgt *c)
 	int m,f,a;
 	// Consider only 80% of the available bandwidth usable.	
 	CacheHttp_GetSpeed(c->cache_http_handle,&f,&m,&a);
-	int bandwidthBps = (f * 8) / 10;
+	int bandwidthBps = (a * 8) / 10;
 	for (i = 0; i < c->n_variants; i++) {
 		struct variant *v = c->variants[i];
 		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>48000){
@@ -448,7 +448,7 @@ static int select_best_variant(struct list_mgt *c)
 		
 	}else if(c->playing_variant->bandwidth<c->variants[best_index]->bandwidth){
 		c->strategy_up_counts++;
-		if(c->strategy_up_counts==3){
+		if(c->strategy_up_counts==1){
 			c->strategy_up_counts = 0;
 			return best_index;
 		}else{

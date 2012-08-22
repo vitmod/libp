@@ -46,9 +46,12 @@ typedef struct {
     int EXITED;
     int circular_buffer_error;
     int64_t item_pos;
+    int item_duration;
+    int item_starttime;
+    int finish_flag;
     int64_t item_size;
     AVFifoBuffer * fifo;
-    list_item_t * cur_item;
+    
     void * bandwidth_measure;
     pthread_t circular_buffer_thread;
     pthread_mutex_t  read_mutex;
@@ -88,7 +91,10 @@ int CacheHttp_Open(void ** handle)
 
     *handle = (void *)s;
     s->hd  = NULL;
-    s->cur_item = NULL;
+    s->item_duration = 0;
+    s->item_pos = 0;
+    s->item_starttime = 0;
+    s->finish_flag = 0;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);      
@@ -153,7 +159,7 @@ int CacheHttp_Reset(void * handle)
     if(s->fifo)
         av_fifo_reset(s->fifo);
     s->hd  = NULL;
-    s->cur_item = NULL;
+    s->finish_flag = 0;
     s->EXIT = 0;
     s->EXITED = 0;
     int ret = pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
@@ -201,19 +207,19 @@ int CacheHttp_GetBuffedTime(void * handle)
     CacheHttpContext * s = (CacheHttpContext *)handle; 
     int64_t buffed_time=0;
     pthread_mutex_lock(&s->item_mutex);
-    if(s->cur_item) {
-        av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  s->item_size=%lld", s->item_size);
-        if(s->cur_item->duration >= 0 && s->item_size > 0) {
-            buffed_time = s->cur_item->start_time+s->item_pos*s->cur_item->duration/s->item_size;
-           av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  buffed_time=%lld", buffed_time);
-        } else {
-            buffed_time = s->cur_item->start_time;
-            if(s->cur_item && s->cur_item->flags & ENDLIST_FLAG) {
-                int64_t full_time = getTotalDuration(NULL);
-                buffed_time = full_time;
-            }
+
+    av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  s->item_size=%lld", s->item_size);
+    if(s->item_duration>= 0 && s->item_size > 0) {
+        buffed_time = s->item_starttime+s->item_pos*s->item_duration/s->item_size;
+       av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  buffed_time=%lld", buffed_time);
+    } else {
+        buffed_time = s->item_starttime;
+        if(s->finish_flag>0) {
+            int64_t full_time = getTotalDuration(NULL);
+            buffed_time = full_time;
         }
     }
+   
     pthread_mutex_unlock(&s->item_mutex);
 
     return buffed_time;
@@ -233,17 +239,24 @@ static void *circular_buffer_task( void *_handle)
 	}
 
         pthread_mutex_lock(&s->item_mutex);
-        if(h)
+        if(NULL!=h){
             CacheHttp_ffurl_close(h);
+            h = NULL;
+        }
         list_item_t * item = getCurrentSegment(NULL);
         if(!item) {
             pthread_mutex_unlock(&s->item_mutex);
             usleep(WAIT_TIME);
             continue;
         }
-        s->cur_item = item;
-        pthread_mutex_unlock(&s->item_mutex);
 
+        s->item_starttime = item->start_time;
+        s->item_duration = item->duration;
+        if(item&&item->flags&ENDLIST_FLAG){
+            s->finish_flag =1;
+        }
+        pthread_mutex_unlock(&s->item_mutex);
+        
         if(item->flags & ENDLIST_FLAG){      
             av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
             break;
@@ -251,6 +264,7 @@ static void *circular_buffer_task( void *_handle)
         
         int err;
         char* filename = strdup( item->file);
+        
         err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ, s->headers);
         if (err < 0) {
             if(filename){
