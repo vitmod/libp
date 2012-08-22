@@ -408,6 +408,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	if(mgt->full_time>0 && mgt->have_list_end)
 		h->support_time_seek=1;
 	h->priv_data = mgt;
+       mgt->cache_http_handle = NULL;
        ret = CacheHttp_Open(&mgt->cache_http_handle);
 	//mgt->bandwidth_measure=bandwidth_measure_alloc(100,0);
 	url_fclose(bio);
@@ -642,12 +643,20 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 			}
 		}		
 	}
+    
 	if (whence == AVSEEK_BUFFERED_TIME)
 	{
-		int64_t buffed_time=0;
-		
+	     int64_t buffed_time=0;
+        
+	     buffed_time =CacheHttp_GetBuffedTime(mgt->cache_http_handle);
 		//av_log(NULL, AV_LOG_INFO, "list current buffed_time=%lld\n",buffed_time);
-		return buffed_time;
+            if(buffed_time>=0){
+                return buffed_time;
+
+            }else{
+                av_log(NULL,AV_LOG_DEBUG,"Can't get buffer time: %lld\n",buffed_time);
+                return 0;
+            }
 	}
 	
 	if (whence == AVSEEK_SIZE)
@@ -665,25 +674,26 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	if(whence == AVSEEK_TO_TIME)
 	{
 		av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x,have sublist:%d\n",pos,whence,mgt->have_sub_list);
-		if (!mgt->have_sub_list) {
-			if(pos>=0 && pos<mgt->full_time) {
+		
+		if(pos>=0 && pos<mgt->full_time) {			
+			for(item=mgt->item_list;item;item=item->next)
+			{
 				
-				for(item=mgt->item_list;item;item=item->next)
+				if(item->start_time<=pos && pos <item->start_time+item->duration)
 				{
-					
-					if(item->start_time<=pos && pos <item->start_time+item->duration)
-					{
-						mgt->current_item=item;
-						mgt->playing_item_index = item->index-1;
-						if(!mgt->have_list_end){
-							mgt->playing_item_seq = item->seq -1;
-						}
-						av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
-						return (int64_t)(item->start_time);/*pos=0;*/
+					mgt->current_item=item;
+					mgt->playing_item_index = item->index-1;
+					if(!mgt->have_list_end){
+						mgt->playing_item_seq = item->seq -1;
 					}
-				}
-			}
-		} 
+					av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
+					return (int64_t)(item->start_time);/*pos=0;*/
+				}
+			}
+			CacheHttp_Reset(mgt->cache_http_handle);
+		}
+            
+		 
 	}
 	av_log(NULL, AV_LOG_INFO, "list_seek failed\n");
 	return -1;

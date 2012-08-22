@@ -247,8 +247,12 @@ static void *circular_buffer_task( void *_handle)
         }
         
         int err;
-        err = CacheHttp_ffurl_open_h(&h, item->file, AVIO_FLAG_READ, s->headers);
+        char* filename = strdup( item->file);
+        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ, s->headers);
         if (err < 0) {
+            if(filename){
+                av_free(filename);
+            }
 	      av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
              goto FAIL;
         }
@@ -305,7 +309,9 @@ static void *circular_buffer_task( void *_handle)
 	    //usleep(WAIT_TIME);
 
         }     
-     
+        if(filename){
+            av_free(filename);
+        }
     }
     
 FAIL:
