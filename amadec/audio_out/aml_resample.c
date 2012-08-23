@@ -36,7 +36,7 @@ static int get_sysfs_int(const char *path)
         
         close(fd);
     }else{
-        adec_print("open %s failed\n",path);
+        //adec_print("open %s failed\n",path);
     }
     return val;
 }

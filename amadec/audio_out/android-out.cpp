@@ -100,7 +100,7 @@ void audioCallback(int event, void* user, void *info)
                    af_resample_set_SampsNumRatio(paf_resampe_ctl);
 			   af_get_pcm_in_resampler(paf_resampe_ctl,data_out+outbuf_offset,&NumSampRequir);
 			   
-			   adec_print("RETURN_SIZE_1:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->OutSampReserveLen);
+			   //adec_print("RETURN_SIZE_1:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->OutSampReserveLen);
 
 			   outbuf_offset += NumSampRequir;
 			   NumSamp_out   -= NumSampRequir;
@@ -110,7 +110,7 @@ void audioCallback(int event, void* user, void *info)
 			       NumSamp_in =dsp_pcm_read(audec,(char*)data_in,delta_input_sampsnum*sizeof(short));	
 				   af_resample_process_linear_inner(paf_resampe_ctl,data_in, &NumSamp_in,data_out+outbuf_offset,&pcm_cnt,NumCh);
 
-				   adec_print("RETURN_SIZE_2:%d    OutSampReserve=%d \n",pcm_cnt,paf_resampe_ctl->OutSampReserveLen);
+				   //adec_print("RETURN_SIZE_2:%d    OutSampReserve=%d \n",pcm_cnt,paf_resampe_ctl->OutSampReserveLen);
 
 				   if(pcm_cnt==0)
 				   	  goto resample_out;
@@ -126,7 +126,7 @@ void audioCallback(int event, void* user, void *info)
                    if(pcm_cnt==0)
 				   	   goto resample_out;
 
-				   adec_print("RETURN_SIZE_3:%d    OutSampReserve=%d \n",NumSamp_out,pcm_cnt-NumSamp_out);
+				   //adec_print("RETURN_SIZE_3:%d    OutSampReserve=%d \n",NumSamp_out,pcm_cnt-NumSamp_out);
    
 				   memcpy(data_out+outbuf_offset,outbuftmp16,NumSamp_out*sizeof(short));
 				   outbuf_offset +=NumSamp_out;
@@ -137,7 +137,7 @@ void audioCallback(int event, void* user, void *info)
 		}else{
               if(paf_resampe_ctl->OutSampReserveLen > 0){
 			      af_get_pcm_in_resampler(paf_resampe_ctl,data_out+outbuf_offset,&NumSampRequir);
-				  adec_print("RETURN_SIZE_4:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->OutSampReserveLen);
+				  //adec_print("RETURN_SIZE_4:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->OutSampReserveLen);
 			      outbuf_offset += NumSampRequir;
 			      NumSamp_out   -= NumSampRequir;
 				  NumSampRequir  =  NumSamp_out;
@@ -145,7 +145,7 @@ void audioCallback(int event, void* user, void *info)
 
 			  if(paf_resampe_ctl->ResevedSampsValid > 0){
                   af_get_unpro_inputsampnum(paf_resampe_ctl,data_out+outbuf_offset,&NumSampRequir);
-				  adec_print("RETURN_SIZE_5:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->ResevedSampsValid);
+				  //adec_print("RETURN_SIZE_5:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->ResevedSampsValid);
 				  outbuf_offset += NumSampRequir;
 			      NumSamp_out   -= NumSampRequir;
 			  }
