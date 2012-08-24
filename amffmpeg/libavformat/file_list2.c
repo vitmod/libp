@@ -424,7 +424,8 @@ static int select_best_variant(struct list_mgt *c)
 	int m,f,a;
 	// Consider only 80% of the available bandwidth usable.	
 	CacheHttp_GetSpeed(c->cache_http_handle,&f,&m,&a);
-	int bandwidthBps = (a * 8) / 10;
+	//int bandwidthBps = (a * 8) / 10;
+       int bandwidthBps = m;
 	for (i = 0; i < c->n_variants; i++) {
 		struct variant *v = c->variants[i];
 		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>48000){
@@ -680,17 +681,20 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 			{
 				
 				if(item->start_time<=pos && pos <item->start_time+item->duration)
-				{
+				{           
+				       mgt->current_item = NULL;
+				       CacheHttp_Reset(mgt->cache_http_handle);
 					mgt->current_item=item;
 					mgt->playing_item_index = item->index-1;
 					if(!mgt->have_list_end){
 						mgt->playing_item_seq = item->seq -1;
 					}
 					av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
+                                
 					return (int64_t)(item->start_time);/*pos=0;*/
 				}
 			}
-			CacheHttp_Reset(mgt->cache_http_handle);
+			
 		}
             
 		 
