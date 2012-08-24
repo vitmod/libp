@@ -191,6 +191,8 @@ extern "C" int android_init(struct aml_audio_dec* audec)
         return -1;
     }
 
+	int sessionID = track->getSessionId();
+	
 #if defined(_VERSION_JB)
     status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
@@ -203,7 +205,8 @@ extern "C" int android_init(struct aml_audio_dec* audec)
                         0,       // notificationFrames
                         0,       // shared buffer
                         false,   // threadCanCallJava
-                        0);      // sessionId
+                        sessionID);      // sessionId
+                        
 #elif defined(_VERSION_ICS)
     status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
@@ -215,7 +218,8 @@ extern "C" int android_init(struct aml_audio_dec* audec)
                         audec,    // user when callback
                         0,       // notificationFrames
                         0,       // shared buffer
-                        0);      // sessionId
+                        false,	 // threadCanCallJava
+                        sessionID);      // sessionId
 #else   // GB or lower:
     status = track->set(AudioSystem::MUSIC,
                         audec->samplerate,
@@ -227,7 +231,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
                         audec,    // user when callback
                         0,       // notificationFrames
                         0,       // shared buffer
-                        0);
+                        sessionID);
 #endif
 
     if (status != NO_ERROR) {
