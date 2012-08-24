@@ -44,11 +44,13 @@ typedef struct {
 
     int EXIT;
     int EXITED;
-    int circular_buffer_error;
-    int64_t item_pos;
+    int RESET;
+    int reset_flag;
+    int circular_buffer_error; 
     int item_duration;
     int item_starttime;
     int finish_flag;
+    int64_t item_pos;
     int64_t item_size;
     AVFifoBuffer * fifo;
     
@@ -95,6 +97,7 @@ int CacheHttp_Open(void ** handle)
     s->item_pos = 0;
     s->item_starttime = 0;
     s->finish_flag = 0;
+    s->reset_flag = -1;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);      
@@ -102,6 +105,7 @@ int CacheHttp_Open(void ** handle)
     pthread_mutex_init(&s->item_mutex,NULL);
     s->EXIT = 0;
     s->EXITED = 0;
+    s->RESET = 0;
 /*       if(header) {
            int len = strlen(header);
            if (len && strcmp("\r\n", header + len - 2))
@@ -127,7 +131,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     if (s->fifo) {
     	int avail;
        avail = av_fifo_size(s->fifo);
-    	av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
+    	//av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
        if (avail) {
            // Maximum amount available
            size = FFMIN( avail, size);
@@ -150,22 +154,21 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
 
 int CacheHttp_Reset(void * handle)
 {
+av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset begin");
     if(!handle)
         return AVERROR(EIO);
 
     CacheHttpContext * s = (CacheHttpContext *)handle;
-    s->EXIT = 1;
-    pthread_join(s->circular_buffer_thread, NULL);
+    s->RESET = 1;
+    while(!s->EXITED && 0 == s->reset_flag) {
+        usleep(1000);
+    }
+    av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset suc !");
     if(s->fifo)
         av_fifo_reset(s->fifo);
-    s->hd  = NULL;
-    s->finish_flag = 0;
-    s->EXIT = 0;
-    s->EXITED = 0;
-    int ret = pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
-    av_log(NULL, AV_LOG_INFO, "-----------CacheHttp_reset : pthread_create ret=%d",ret);
-    
-    return ret;
+    s->RESET = 0;
+
+    return 0;
 }
 
 int CacheHttp_Close(void * handle)
@@ -208,10 +211,10 @@ int CacheHttp_GetBuffedTime(void * handle)
     int64_t buffed_time=0;
     pthread_mutex_lock(&s->item_mutex);
 
-    av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  s->item_size=%lld", s->item_size);
+    //av_log(NULL, AV_LOG_ERROR, "---------- 000 CacheHttp_GetBufferedTime  s->item_size=%lld", s->item_size);
     if(s->item_duration>= 0 && s->item_size > 0) {
         buffed_time = s->item_starttime+s->item_pos*s->item_duration/s->item_size;
-       av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  buffed_time=%lld", buffed_time);
+      // av_log(NULL, AV_LOG_ERROR, "----------CacheHttp_GetBufferedTime  buffed_time=%lld", buffed_time);
     } else {
         buffed_time = s->item_starttime;
         if(s->finish_flag>0) {
@@ -233,16 +236,18 @@ static void *circular_buffer_task( void *_handle)
     while(!s->EXIT) {
 
        av_log(h, AV_LOG_ERROR, "----------circular_buffer_task  item ");
+       s->reset_flag = 1;
 	if (url_interrupt_cb()) {
 		 s->circular_buffer_error = EINTR;
                goto FAIL;
 	}
-
-        pthread_mutex_lock(&s->item_mutex);
-        if(NULL!=h){
+       
+        if(h) {
             CacheHttp_ffurl_close(h);
             h = NULL;
         }
+        
+        pthread_mutex_lock(&s->item_mutex);
         list_item_t * item = getCurrentSegment(NULL);
         if(!item) {
             pthread_mutex_unlock(&s->item_mutex);
@@ -250,6 +255,7 @@ static void *circular_buffer_task( void *_handle)
             continue;
         }
 
+        s->reset_flag = 0;
         s->item_starttime = item->start_time;
         s->item_duration = item->duration;
         if(item&&item->flags&ENDLIST_FLAG){
@@ -257,7 +263,7 @@ static void *circular_buffer_task( void *_handle)
         }
         pthread_mutex_unlock(&s->item_mutex);
         
-        if(item->flags & ENDLIST_FLAG){      
+        if(s->finish_flag){      
             av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
             break;
         }
@@ -282,7 +288,10 @@ static void *circular_buffer_task( void *_handle)
 
 	    int left;
            int len;
-	
+
+           if(s->RESET)
+                break;
+            
 	    if (url_interrupt_cb()) {
 		 s->circular_buffer_error = EINTR;
                break;
