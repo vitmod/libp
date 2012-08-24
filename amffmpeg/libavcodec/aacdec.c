@@ -2239,8 +2239,8 @@ static int aac_decode_frame(AVCodecContext *avctx, void *data,
 	  tbuf[1]=buf[1];
 	  tbuf[2]=buf[2];
 	  tbuf[3]=buf[3];
-      av_log(NULL, AV_LOG_INFO,"step into aac_decode_frame() [%s_%d]\n",__FUNCTION__,__LINE__);
-	  av_log(NULL, AV_LOG_INFO,"first fout bytes:%s\n",tbuf);
+      //av_log(NULL, AV_LOG_INFO,"step into aac_decode_frame() [%s_%d]\n",__FUNCTION__,__LINE__);
+	  //av_log(NULL, AV_LOG_INFO,"first fout bytes:%s\n",tbuf);
 	  if(tbuf[0]=='A' && tbuf[1]=='D' && tbuf[2]=='I' && tbuf[2]=='F' ){
 	  	 adif_ftype_flag=1;
 	     return AVERROR_INVALIDDATA;
