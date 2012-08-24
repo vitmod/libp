@@ -547,7 +547,8 @@ static int raw_read(play_para_t *para)
 
         } else if ((rev_byte == AVERROR_EOF) || (cur_offset > para->pFormatCtx->valid_offset) ){ //if(rev_byte != AVERROR(EAGAIN))
 			static int reach_end=0;
-			if(para->stream_type == STREAM_AUDIO)
+			//if(para->stream_type == STREAM_AUDIO)
+			if(0)
 			{
 				
 				if(reach_end<5) 
