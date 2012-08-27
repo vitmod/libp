@@ -79,7 +79,6 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item)
 {
 	struct list_item**list;
 	struct list_item*prev;
-       pthread_mutex_lock(&mgt->list_lock);
 	list=&mgt->item_list;
 	prev=NULL;
 	 while (*list != NULL) 
@@ -93,33 +92,30 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item)
 	mgt->item_num++;
 	item->index=mgt->next_index;
 	mgt->next_index++;
-       pthread_mutex_unlock(&mgt->list_lock);
 	av_log(NULL, AV_LOG_INFO, "list_add_item:seq=%d,index=%d\n",item->seq,item->index);
 	return 0;
 }
 static struct list_item* list_test_find_samefile_item(struct list_mgt *mgt,struct list_item *item)
 {
     struct list_item **list;
-    pthread_mutex_lock(&mgt->list_lock);
+
     list=&mgt->item_list;
     if(item->file!=NULL){
         while (*list != NULL) 
         {	
             if((item->seq>=0  && (item->seq==(*list)->seq))|| (item->seq<0&& strcmp((*list)->file,item->file)==0) )
             {/*same seq or same file name*/
-                pthread_mutex_unlock(&mgt->list_lock);
                 return *list;
             }
             list = &(*list)->next;
         }
     }
-    pthread_mutex_unlock(&mgt->list_lock);
     return NULL;
 }
 
 static struct list_item* list_find_item_by_index(struct list_mgt *mgt,int index){
 	struct list_item **list;
-       pthread_mutex_lock(&mgt->list_lock);
+
 	list=&mgt->item_list;
 	int next_index  =0;
 	if(index <mgt->item_num){
@@ -133,47 +129,39 @@ static struct list_item* list_find_item_by_index(struct list_mgt *mgt,int index)
 		{	
 			if((*list)->index == next_index)
 			{/*same index*/
-			       pthread_mutex_unlock(&mgt->list_lock);
 				av_log(NULL,AV_LOG_INFO,"find next item,index:%d\n",index);
 				return *list;
 			}
 			list = &(*list)->next;
 		}
 	}
-       pthread_mutex_unlock(&mgt->list_lock);
 	return NULL;
 }
 static struct list_item* list_find_item_by_seq(struct list_mgt *mgt,int seq){
     struct list_item **list;
     int next_seq = seq+1;
-    pthread_mutex_lock(&mgt->list_lock);
     list=&mgt->item_list;
     if(next_seq>=0){
         while (*list != NULL) 
         {	
             if((*list)->seq== next_seq||(*list)->seq== (next_seq+1)||(*list)->seq== (next_seq+2)||(*list)->seq== (next_seq+3))
             {/*same seq*/
-                pthread_mutex_unlock(&mgt->list_lock);
                 av_log(NULL,AV_LOG_INFO,"find item,seq:%d\n",seq);
                 return *list;
             }
             list = &(*list)->next;
         }
     }
-    pthread_mutex_unlock(&mgt->list_lock);
     return NULL;
 }
 int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item)
 {
     struct list_item *sameitem;
-    pthread_mutex_lock(&mgt->list_lock);
     sameitem=list_test_find_samefile_item(mgt,item);
     if(sameitem){
-        pthread_mutex_unlock(&mgt->list_lock);
         av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]",sameitem->file,sameitem->seq,item->file,item->seq);
         return -1;/*found same item,drop it */
     }
-    pthread_mutex_unlock(&mgt->list_lock);
     list_add_item(mgt,item);
     return 0;
 }
@@ -185,7 +173,6 @@ static int list_del_item(struct list_mgt *mgt,struct list_item*item)
     struct list_item*tmp;
     if(!item || !mgt)
         return -1;
-    pthread_mutex_lock(&mgt->list_lock);
     if(mgt->item_list==item){
         mgt->item_list=item->next;
         if(mgt->item_list)
@@ -212,7 +199,6 @@ static int list_del_item(struct list_mgt *mgt,struct list_item*item)
 
     av_free(item);
     item = NULL;
-    pthread_mutex_unlock(&mgt->list_lock);
     return 0;		
 }
 
@@ -221,7 +207,6 @@ static int list_shrink_live_list(struct list_mgt *mgt){
     if(NULL ==mgt){
     	return -1;
     }
-    pthread_mutex_lock(&mgt->list_lock);   
     tmp = &mgt->item_list;
     if(!mgt->have_list_end){//not have list end,just refer to live streaming
     	while(mgt->item_num>SHRINK_LIVE_LIST_THRESHOLD&&*tmp!=mgt->current_item){
@@ -229,7 +214,6 @@ static int list_shrink_live_list(struct list_mgt *mgt){
     		tmp = &mgt->item_list;	
     	}
     }
-    pthread_mutex_unlock(&mgt->list_lock);
     av_log(NULL, AV_LOG_INFO, "shrink live item from list,total:%d\n",mgt->item_num);
     return 0;
 }
@@ -240,7 +224,7 @@ static int list_delall_item(struct list_mgt *mgt){
     if(NULL ==mgt){
         return -1;
     }
-    pthread_mutex_lock(&mgt->list_lock);
+	
     p = mgt->item_list;
 	
     while(p!=NULL){
@@ -264,7 +248,6 @@ static int list_delall_item(struct list_mgt *mgt){
         p = t;
     }
     mgt->item_list = NULL;
-    pthread_mutex_unlock(&mgt->list_lock);
     av_log(NULL, AV_LOG_INFO, "delete all items from list,total:%d\n",mgt->item_num);
     return 0;
 		
@@ -386,7 +369,6 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	mgt->playing_item_seq = 0;
 	mgt->strategy_up_counts = 0;
 	mgt->strategy_down_counts = 0;       
-       pthread_mutex_init(&mgt->list_lock,NULL);
        gListMgt = mgt;
 	if((ret=list_open_internet(&bio,mgt,mgt->filename,flags| URL_MINI_BUFFER | URL_NO_LP_BUFFER))!=0)
 	{
@@ -412,9 +394,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
        ret = CacheHttp_Open(&mgt->cache_http_handle);
 	//mgt->bandwidth_measure=bandwidth_measure_alloc(100,0);
 	url_fclose(bio);
-	return ret;
+	return 0;
 }
 
+#define AUDIO_BANDWIDTH_MAX 100000  //100k
 static int select_best_variant(struct list_mgt *c)
 {
 	int i;
@@ -425,14 +408,25 @@ static int select_best_variant(struct list_mgt *c)
 	// Consider only 80% of the available bandwidth usable.	
 	CacheHttp_GetSpeed(c->cache_http_handle,&f,&m,&a);
 	//int bandwidthBps = (a * 8) / 10;
+	if(m <1){
+		int org_playing_index = -1;
+		for (i = 0; i < c->n_variants; i++) {
+			struct variant *v = c->variants[i];
+			if(v->bandwidth==c->playing_variant->bandwidth){
+				org_playing_index = i;
+				break;
+			}
+		}
+		return org_playing_index;
+       }
        int bandwidthBps = m;
 	for (i = 0; i < c->n_variants; i++) {
 		struct variant *v = c->variants[i];
-		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>48000){
+		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>AUDIO_BANDWIDTH_MAX){
 			best_band=v->bandwidth;
 			best_index=i;
 		}	
-		if(v->bandwidth>48000&&(v->bandwidth<min_band || min_band<0)){
+		if(v->bandwidth>AUDIO_BANDWIDTH_MAX&&(v->bandwidth<min_band || min_band<0)){
 			min_band=v->bandwidth;
 			min_index=i;
 		}	
@@ -607,6 +601,7 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
         }
         len = CacheHttp_Read(mgt->cache_http_handle,buf,size);
         if(len==AVERROR(EAGAIN)){
+            usleep(1000*200);          
             break;
         }            
         if(len<=0){
@@ -707,7 +702,7 @@ static int list_close(URLContext *h)
 	struct list_mgt *mgt = h->priv_data;
 
 	if(!mgt)return 0;
-
+       CacheHttp_Close(mgt->cache_http_handle);
 	list_delall_item(mgt);		
 	int i;
 	for (i = 0; i < mgt->n_variants; i++) {
@@ -720,7 +715,7 @@ static int list_close(URLContext *h)
 		av_free(mgt->prefix);
 		mgt->prefix = NULL;
 	}       
-       CacheHttp_Close(mgt->cache_http_handle);
+       
 	av_free(mgt);
 	unused(h);	
        gListMgt = NULL;
@@ -743,8 +738,8 @@ URLProtocol file_list_protocol = {
 };
 list_item_t* getCurrentSegment(void* hSession){
     struct list_item *item=gListMgt->current_item;
-    if(item==NULL){
-        return NULL;
+    if(item!=NULL){
+        return item;
     }
     
     gListMgt->current_item = switchto_next_item(gListMgt);

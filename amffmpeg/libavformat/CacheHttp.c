@@ -36,12 +36,11 @@
 
 #define BUFFER_SIZE (1024*4)
 #define CIRCULAR_BUFFER_SIZE (20*188*4096)
-#define WAIT_TIME (10*1000)
+#define WAIT_TIME (100*1000)
 
 typedef struct {
     URLContext * hd;
-    unsigned char headers[BUFFER_SIZE];
-
+    unsigned char headers[BUFFER_SIZE];    
     int EXIT;
     int EXITED;
     int RESET;
@@ -52,12 +51,10 @@ typedef struct {
     int finish_flag;
     int64_t item_pos;
     int64_t item_size;
-    AVFifoBuffer * fifo;
-    
+    AVFifoBuffer * fifo;    
     void * bandwidth_measure;
     pthread_t circular_buffer_thread;
-    pthread_mutex_t  read_mutex;
-    pthread_mutex_t  item_mutex;
+    pthread_mutex_t  read_mutex;    
 
 } CacheHttpContext;
 
@@ -102,7 +99,7 @@ int CacheHttp_Open(void ** handle)
     s->fifo = NULL;
     s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);      
     pthread_mutex_init(&s->read_mutex,NULL);
-    pthread_mutex_init(&s->item_mutex,NULL);
+    
     s->EXIT = 0;
     s->EXITED = 0;
     s->RESET = 0;
@@ -114,9 +111,9 @@ int CacheHttp_Open(void ** handle)
            av_strlcpy(s->headers, header, sizeof(s->headers));
        }
 */
-    s->bandwidth_measure=bandwidth_measure_alloc(100,0);
+    s->bandwidth_measure=bandwidth_measure_alloc(100,0);        
     int ret = pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
-    av_log(NULL, AV_LOG_INFO, "----------- pthread_create ret=%d",ret);
+    av_log(NULL, AV_LOG_INFO, "----------- pthread_create ret=%d\n",ret);
 
     return ret;
 }
@@ -131,20 +128,17 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     if (s->fifo) {
     	int avail;
        avail = av_fifo_size(s->fifo);
-    	//av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
+    	av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
        if (avail) {
            // Maximum amount available
            size = FFMIN( avail, size);
            av_fifo_generic_read(s->fifo, cache, size, NULL);
     	    pthread_mutex_unlock(&s->read_mutex);
-           return size;
-       } else if (!s->EXITED) {
-    	    pthread_mutex_unlock(&s->read_mutex);
-           usleep(WAIT_TIME);
-           return AVERROR(EAGAIN);
+           return size;        
        } else {
-           pthread_mutex_unlock(&s->read_mutex);
-           return 0;
+           pthread_mutex_unlock(&s->read_mutex);          
+           //read just need retry
+           return AVERROR(EAGAIN);
        }
     }
     pthread_mutex_unlock(&s->read_mutex);
@@ -164,10 +158,11 @@ av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset begin");
         usleep(1000);
     }
     av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset suc !");
+    pthread_mutex_lock(&s->read_mutex);
     if(s->fifo)
         av_fifo_reset(s->fifo);
     s->RESET = 0;
-
+    pthread_mutex_unlock(&s->read_mutex);
     return 0;
 }
 
@@ -185,8 +180,7 @@ int CacheHttp_Close(void * handle)
     if(s->fifo) {
     	av_fifo_free(s->fifo);
     }
-    pthread_mutex_destroy(&s->read_mutex);
-    pthread_mutex_destroy(&s->item_mutex);
+    pthread_mutex_destroy(&s->read_mutex);    
     bandwidth_measure_free(s->bandwidth_measure);
     return 0;
 }
@@ -208,8 +202,7 @@ int CacheHttp_GetBuffedTime(void * handle)
         return AVERROR(EIO);
 
     CacheHttpContext * s = (CacheHttpContext *)handle; 
-    int64_t buffed_time=0;
-    pthread_mutex_lock(&s->item_mutex);
+    int64_t buffed_time=0;  
 
     //av_log(NULL, AV_LOG_ERROR, "---------- 000 CacheHttp_GetBufferedTime  s->item_size=%lld", s->item_size);
     if(s->item_duration>= 0 && s->item_size > 0) {
@@ -221,9 +214,7 @@ int CacheHttp_GetBuffedTime(void * handle)
             int64_t full_time = getTotalDuration(NULL);
             buffed_time = full_time;
         }
-    }
-   
-    pthread_mutex_unlock(&s->item_mutex);
+    }   
 
     return buffed_time;
 }
@@ -245,23 +236,20 @@ static void *circular_buffer_task( void *_handle)
         if(h) {
             CacheHttp_ffurl_close(h);
             h = NULL;
-        }
-        
-        pthread_mutex_lock(&s->item_mutex);
+        }        
+       
         list_item_t * item = getCurrentSegment(NULL);
-        if(!item) {
-            pthread_mutex_unlock(&s->item_mutex);
+        if(!item&&!item->file) {          
             usleep(WAIT_TIME);
             continue;
         }
-
+        
         s->reset_flag = 0;
         s->item_starttime = item->start_time;
         s->item_duration = item->duration;
         if(item&&item->flags&ENDLIST_FLAG){
             s->finish_flag =1;
-        }
-        pthread_mutex_unlock(&s->item_mutex);
+        }        
         
         if(s->finish_flag){      
             av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
@@ -269,7 +257,7 @@ static void *circular_buffer_task( void *_handle)
         }
         
         int err;
-        char* filename = strdup( item->file);
+        char* filename = av_strdup(item->file);
         
         err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ, s->headers);
         if (err < 0) {
@@ -312,7 +300,7 @@ static void *circular_buffer_task( void *_handle)
                     pthread_mutex_unlock(&s->read_mutex);
                     break;
                 }
-                bandwidth_measure_start_read(s->bandwidth_measure);
+                bandwidth_measure_start_read(s->bandwidth_measure);                 
                 len = CacheHttp_ffurl_read(s->hd, s->fifo->wptr, left);
                 bandwidth_measure_finish_read(s->bandwidth_measure,len);
            } else {
@@ -338,6 +326,7 @@ static void *circular_buffer_task( void *_handle)
         }     
         if(filename){
             av_free(filename);
+            filename = NULL;
         }
     }
     
