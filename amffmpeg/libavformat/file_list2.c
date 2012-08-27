@@ -498,7 +498,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 	int isNeedFetch = 1;	
 	
 reload:	
-	if(mgt->current_item==NULL || mgt->current_item->next==NULL){
+	if(mgt->current_item==NULL && mgt->current_item->next==NULL){
 			/*new refresh this mgtlist now*/
 			ByteIOContext *bio;
 			
@@ -677,15 +677,15 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 				
 				if(item->start_time<=pos && pos <item->start_time+item->duration)
 				{           
-				       mgt->current_item = NULL;
-				       CacheHttp_Reset(mgt->cache_http_handle);
+				      
+				      
 					mgt->current_item=item;
 					mgt->playing_item_index = item->index-1;
 					if(!mgt->have_list_end){
 						mgt->playing_item_seq = item->seq -1;
 					}
 					av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
-                                
+                                 CacheHttp_Reset(mgt->cache_http_handle);
 					return (int64_t)(item->start_time);/*pos=0;*/
 				}
 			}
@@ -737,13 +737,7 @@ URLProtocol file_list_protocol = {
     .url_get_file_handle = list_get_handle,
 };
 list_item_t* getCurrentSegment(void* hSession){
-    struct list_item *item=gListMgt->current_item;
-    if(item!=NULL){
-        return item;
-    }
-    
-    gListMgt->current_item = switchto_next_item(gListMgt);
-  
+    struct list_item *item=gListMgt->current_item;   
     return item;
 
 }
@@ -762,6 +756,11 @@ long long getTotalDuration(void* hSession){
         return NULL;
     } 
     return gListMgt->full_time;
+}
+
+int switchNextSegment(void* hSession){
+    gListMgt->current_item = switchto_next_item(gListMgt);
+    return 0;
 }
 URLProtocol *get_file_list_protocol(void)
 {

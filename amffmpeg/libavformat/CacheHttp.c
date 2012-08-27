@@ -250,7 +250,7 @@ static void *circular_buffer_task( void *_handle)
         if(item&&item->flags&ENDLIST_FLAG){
             s->finish_flag =1;
         }        
-        
+       
         if(s->finish_flag){      
             av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
             break;
@@ -328,6 +328,7 @@ static void *circular_buffer_task( void *_handle)
             av_free(filename);
             filename = NULL;
         }
+        switchNextSegment(NULL);
     }
     
 FAIL:
