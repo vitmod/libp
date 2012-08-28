@@ -29,7 +29,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
 	$(LOCAL_PATH)/../../amcodec/include \
 	$(LOCAL_PATH)/../common\
 	$(LOCAL_PATH)/../../amadec/include \
-	$(LOCAL_PATH)/../../amffmpeg
+	$(LOCAL_PATH)/../../amffmpeg\
+	$(LOCAL_PATH)/../../amavutils/include \
 
 LOCAL_MODULE := libamplayer
 
@@ -51,7 +52,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
         $(LOCAL_PATH)/../../amcodec/include \
         $(LOCAL_PATH)/../../amadec/include \
 	$(LOCAL_PATH)/../common\
-        $(LOCAL_PATH)/../../amffmpeg
+        $(LOCAL_PATH)/../../amffmpeg\
+        $(LOCAL_PATH)/../../amavutils/include \
 
 LOCAL_CFLAGS+=-DHAVE_VERSION_INFO
 LOCAL_CFLAGS+=-DLIBPLAYER_GIT_VERSION=\"${LIBPLAYER_GIT_VERSION}${LIBPLAYER_GIT_DIRTY}\"
@@ -61,7 +63,7 @@ LOCAL_CFLAGS+=-DLIBPLAYER_BUILD_NAME=\"${LIBPLAYER_BUILD_NAME}\"
 LOCAL_CFLAGS+=-DLIBPLAYER_GIT_UNCOMMIT_FILE_NUM=${LIBPLAYER_GIT_UNCOMMIT_FILE_NUM}
 
 LOCAL_STATIC_LIBRARIES := libamcodec libavformat librtmp libswscale libavcodec libavutil libamadec
-LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamavutils libssl libcrypto
+LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamavutils libssl libcrypto libamavutils
 
 LOCAL_MODULE := libamplayer
 LOCAL_MODULE_TAGS := optional

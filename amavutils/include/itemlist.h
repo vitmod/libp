@@ -1,7 +1,7 @@
 #ifndef _PLAYER_ITEMLIST_H_
 #define _PLAYER_ITEMLIST_H_
 
-#include "list.h"
+#include <list.h>
 #include <pthread.h>
 
 

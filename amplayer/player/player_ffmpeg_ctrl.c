@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include "player_priv.h"
 #include  <libavformat/avio.h>
-#include "player_itemlist.h"
+#include <itemlist.h>
 
 static struct itemlist kill_item_list;
 static char format_string[128] = {0};
