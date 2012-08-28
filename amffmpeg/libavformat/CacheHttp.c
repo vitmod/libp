@@ -46,8 +46,8 @@ typedef struct {
     int RESET;
     int reset_flag;
     int circular_buffer_error; 
-    int item_duration;
-    int item_starttime;
+    double item_duration;
+    double item_starttime;
     int finish_flag;
     int64_t item_pos;
     int64_t item_size;

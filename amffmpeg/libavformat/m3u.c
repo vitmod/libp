@@ -152,6 +152,19 @@ static void free_variant_list(struct list_mgt *mgt)
     mgt->n_variants = 0;
 }
 
+static int parseDouble(const char *s, double *x) {
+    char *end;
+    double dval = strtod(s, &end);
+
+    if (end == s || (*end != '\0' && *end != ',')) {
+        return -1;
+    }
+
+    *x = dval;
+
+    return 0;
+}
+
 #define TRICK_LOGIC_BASE 200
 #ifndef INT_MAX
 #define INT_MAX   2147483647
@@ -170,8 +183,10 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		item->flags|=ENDLIST_FLAG;		
 		enditem=1;
 	}else if(is_TAG(p,EXTINF)){
-		int duration=0;
-		sscanf(p+8,"%d",&duration);//skip strlen("#EXTINF:")
+		double duration=0.00;
+             parseDouble(p+8,&duration);
+             av_log(NULL,AV_LOG_INFO,"Get item duration:%.4lf\n",duration);
+		//sscanf(p+8,"%d",&duration);//skip strlen("#EXTINF:")
 		if(duration>0){
 			item->flags|=DURATION_FLAG;
 			item->duration=duration;
@@ -499,7 +514,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	mgt->file_size=AVERROR_STREAM_SIZE_NOTVALID;
 	mgt->full_time=start_time;
 	mgt->last_load_time = av_gettime();
-	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%d\n",getnum,start_time);
+	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%.4lf\n",getnum,start_time);
 	return getnum;
 }
 

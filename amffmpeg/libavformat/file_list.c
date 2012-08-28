@@ -387,6 +387,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
 	return 0;
 }
 
+#define AUDIO_BANDWIDTH_MAX 100000  //100k
 static int select_best_variant(struct list_mgt *c)
 {
 	int i;
@@ -396,14 +397,14 @@ static int select_best_variant(struct list_mgt *c)
 	int m,f,a;
 	// Consider only 80% of the available bandwidth usable.	
 	bandwidth_measure_get_bandwidth(c->bandwidth_measure,&f,&m,&a);
-	int bandwidthBps = (a * 8) / 10;
+	int bandwidthBps = (m * 8) / 10;
 	for (i = 0; i < c->n_variants; i++) {
 		struct variant *v = c->variants[i];
-		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>48000){
+		if(v->bandwidth<=bandwidthBps && v->bandwidth>best_band&&v->bandwidth>AUDIO_BANDWIDTH_MAX){
 			best_band=v->bandwidth;
 			best_index=i;
 		}	
-		if(v->bandwidth>48000&&(v->bandwidth<min_band || min_band<0)){
+		if(v->bandwidth>AUDIO_BANDWIDTH_MAX&&(v->bandwidth<min_band || min_band<0)){
 			min_band=v->bandwidth;
 			min_index=i;
 		}	
@@ -805,7 +806,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	{
 		if(mgt->have_list_end){
 			av_log(NULL, AV_LOG_INFO, "return mgt->full_timet=%d\n",mgt->full_time);
-			return mgt->full_time;
+			return (int64_t)mgt->full_time;
 		}else if(mgt->have_sub_list && mgt->cur_uio){
 				subh = mgt->cur_uio->opaque;
 				av_log(NULL, AV_LOG_INFO, "seek sub file for fulltime\n");
@@ -838,7 +839,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 							mgt->playing_item_seq = item->seq -1;
 						}
 						av_log(NULL, AV_LOG_INFO, "list_seek to item->file =%s\n",item->file);
-						return (int)(item->start_time);/*pos=0;*/
+						return (int64_t)(item->start_time);/*pos=0;*/
 					}
 				}
 			}

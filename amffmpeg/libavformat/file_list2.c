@@ -498,7 +498,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 	int isNeedFetch = 1;	
 	
 reload:	
-	if(mgt->current_item==NULL){
+	if(mgt->current_item==NULL||mgt->current_item->next ==NULL){
 			/*new refresh this mgtlist now*/
 			ByteIOContext *bio;
 			
@@ -662,7 +662,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 	{
 		if(mgt->have_list_end){
 			av_log(NULL, AV_LOG_INFO, "return mgt->full_timet=%d\n",mgt->full_time);
-			return mgt->full_time;
+			return (int64_t)mgt->full_time;
 		}else
 			return -1;
 	}

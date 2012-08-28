@@ -83,8 +83,8 @@ typedef struct list_item
 {
     const char *file;
     int 	   flags;	  
-    float 	start_time;
-    int 		duration;
+    double  	start_time;
+    double		duration;
     int 	bandwidth;
     int 	seq;
     int    index;
@@ -115,7 +115,7 @@ typedef struct list_mgt
     int strategy_up_counts;
     int strategy_down_counts;
     int64_t file_size;
-    int 	full_time;
+    int64_t full_time;
     int 	have_list_end;
     int  start_seq;  
     int  next_seq;
