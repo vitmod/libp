@@ -128,7 +128,13 @@ static struct variant *new_variant(struct list_mgt *mgt, int bandwidth, const ch
         return NULL;
     
     var->bandwidth = bandwidth;
-    ff_make_absolute_url(var->url, sizeof(var->url), base, url);
+    char* ptr = NULL;
+    if(!av_strstart(url,"https://",ptr)){
+        ff_make_absolute_url(var->url, sizeof(var->url), base, url);
+    }else{      
+        snprintf(var->url,1,"s");
+        ff_make_absolute_url(var->url+1, sizeof(var->url), base, url);
+    }
     //av_log(NULL,AV_LOG_INFO,"returl=%s\nbase=%s\nurl=%s\n",var->url,base,url);
     dynarray_add(&mgt->variants, &mgt->n_variants, var);
     return var;
@@ -171,6 +177,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 			item->duration=duration;
 			
 		}
+        
 	} else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {            	
 		mgt->target_duration = atoi(ptr);
 		av_log(NULL, AV_LOG_INFO, "get target duration:%ld\n",mgt->target_duration);
