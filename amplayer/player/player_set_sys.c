@@ -134,6 +134,10 @@ int check_audiodsp_fatal_err()
     }
     return fatal_err;
 }
+int check_audio_output()
+{
+    return get_sysfs_int("/sys/class/amaudio/output_enable") & 3;
+}
 
 int get_karaok_flag()
 {

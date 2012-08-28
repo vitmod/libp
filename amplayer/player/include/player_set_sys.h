@@ -70,6 +70,8 @@ int check_file_same(char *filename2);
 int set_amutils_enable(int isOn);
 int set_amutils_cmd(const char* cmd);
 int get_amutils_cmd(char* cmd);
+int check_audio_output();
+
 
 #ifdef  __cplusplus
 }
