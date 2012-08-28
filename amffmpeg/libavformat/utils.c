@@ -507,13 +507,17 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
     AVProbeData pd = { filename ? filename : "", NULL, -offset,pb,0,0,0 };
     unsigned char *buf = NULL;
     int ret = 0, probe_size;
-	int data_offset = 0;
-	int pre_data= 0;
-	int probe_flag = 0;
-	int64_t oldoffset;
-	int64_t old_dataoff;
-	AVFormatContext *s = logctx;
-	int maxretry=0;
+    int data_offset = 0;
+    int pre_data= 0;
+    int probe_flag = 0;
+    int64_t oldoffset;
+    int64_t old_dataoff;
+    AVFormatContext *s = logctx;
+    int maxretry=0;
+    int64_t filesize = avio_size(pb);
+    av_log(NULL, AV_LOG_INFO, "%s:size=%lld\n", pd.filename, filesize);
+    if (filesize <= 0)
+	return  AVERROR(EINVAL);
 	
     if (!max_probe_size) {
         max_probe_size = PROBE_BUF_MAX;
@@ -563,7 +567,7 @@ retry_probe:
         buf = av_realloc(buf, probe_size + AVPROBE_PADDING_SIZE);
         if ((ret = avio_read(pb, buf + buf_offset, probe_size - buf_offset)) < 0) {
             /* fail if error was not end of file, otherwise, lower score */
-            if (ret != AVERROR(EAGAIN)) {
+           if (ret != AVERROR_EOF &&ret != AVERROR(EAGAIN)) {
                 av_free(buf);
                 return ret;
             }
