@@ -498,7 +498,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt)
 	int isNeedFetch = 1;	
 	
 reload:	
-	if(mgt->current_item==NULL && mgt->current_item->next==NULL){
+	if(mgt->current_item==NULL){
 			/*new refresh this mgtlist now*/
 			ByteIOContext *bio;
 			
