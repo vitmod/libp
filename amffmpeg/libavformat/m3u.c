@@ -327,7 +327,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
  	char prefix[1024]="";
 	char prefixex[1024]="";
 	int prefix_len=0,prefixex_len=0;
-	int start_time=mgt->full_time;
+	double start_time=mgt->full_time;
 	char *oprefix=mgt->location!=NULL?mgt->location:mgt->filename;
 	if(NULL!=mgt->prefix){
 		av_free(mgt->prefix);
