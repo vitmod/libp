@@ -667,6 +667,7 @@ static int check_stop_cmd(play_para_t *player)
 static void player_para_init(play_para_t *para)
 {
     para->state.start_time = -1;
+    para->state.first_time = -1; // this is an invalid value, will be reseted later
     para->vstream_info.video_index = -1;
    
     para->vstream_info.start_time = -1;	
