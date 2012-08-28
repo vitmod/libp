@@ -516,7 +516,7 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
     int maxretry=0;
     int64_t filesize = avio_size(pb);
     av_log(NULL, AV_LOG_INFO, "%s:size=%lld\n", pd.filename, filesize);
-    if (filesize <= 0)
+    if (filesize <= 0&&!pb->is_streamed)
 	return  AVERROR(EINVAL);
 	
     if (!max_probe_size) {
