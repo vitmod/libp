@@ -66,6 +66,7 @@ struct aml_audio_dec {
     audio_decoder_operations_t *adec_ops;//non audiodsp decoder operations
     int extradata_size;      ///< extra data size
     char extradata[AUDIO_EXTRA_DATA_SIZE];
+	int SessionID;
 };
 
 //from amcodec
@@ -76,6 +77,7 @@ typedef struct {
     int handle;        ///< codec device handler
     int extradata_size;      ///< extra data size
     char extradata[AUDIO_EXTRA_DATA_SIZE];
+	int SessionID;
 } arm_audio_info;
 //status check
 struct adec_status {
