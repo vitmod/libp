@@ -902,9 +902,10 @@ APE_Decode_status_t ape_decode_frame(APE_Decoder_t * avctx,  \
         nblocks = s->samples = bytestream_get_be32(&s->ptr);//the current frame block num
         n =  bytestream_get_be32(&s->ptr);//skip
         if(n < 0 || n > 3){
-            printf( "Incorrect offset passed:%d\n",n);
+            audio_codec_print( "Incorrect offset passed:%d\n",n);
             printf("current block num this frame is %d\n",nblocks);
             s->data = NULL;
+			s->samples=0;
             return APE_DECODE_ERROR_ABORT;
         }
         s->ptr += n;// the begin of the data read loop
