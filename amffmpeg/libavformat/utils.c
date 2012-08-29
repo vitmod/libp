@@ -2799,12 +2799,15 @@ static int has_codec_parameters(AVCodecContext *enc)
 
     return enc->codec_id != CODEC_ID_NONE && val != 0;
 }
+
+//fastmode == 2,refer to ts streaming mode
 static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 {
     int val;
 	if(!fastmode){
 		switch(enc->codec_type) {
 		case AVMEDIA_TYPE_AUDIO:
+                 
 		    val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
 		    if(!enc->frame_size &&
 		       (enc->codec_id == CODEC_ID_VORBIS ||
@@ -2826,8 +2829,13 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 	}else{
 		switch(enc->codec_type) {
 		case AVMEDIA_TYPE_AUDIO:
-		   //val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
-		val = enc->sample_rate && enc->channels;
+		    //val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
+		    
+		    if(fastmode == 2){
+		       val =1;
+                 }else{
+                    val = enc->sample_rate && enc->channels;
+                 }
 		    break;
 		case AVMEDIA_TYPE_VIDEO:
 		    val = enc->width;
@@ -2978,6 +2986,7 @@ static int tb_unreliable(AVCodecContext *c){
 }
 
 #define TRACE() av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__)
+#define SPEED_PARSE_MODE 2
 int av_find_stream_info(AVFormatContext *ic)
 {
     int i, count, ret, read_size, j;
@@ -3062,19 +3071,31 @@ int av_find_stream_info(AVFormatContext *ic)
 
     count = 0;
     read_size = 0;
+    int stream_parser_count = 0;
     for(;;) {
         if(url_interrupt_cb()){
             ret= AVERROR_EXIT;
             av_log(ic, AV_LOG_DEBUG, "interrupted\n");
             break;
         }
-
+        if(ic->pb->is_streamed&&!strcmp(ic->iformat->name, "mpegts")&&stream_parser_count ==ic->nb_streams){
+            av_log(NULL,AV_LOG_WARNING,"Do fast parser.\n");
+            break;
+        }
         /* check if one codec still needs to be handled */
         for(i=0;i<ic->nb_streams;i++) {
             int fps_analyze_framecount = 20;
             st = ic->streams[i];
-            if (!has_codec_parameters_ex(st->codec,fast_switch))
+            int parse_mode = fast_switch;
+            if(ic->pb->is_streamed ==1){
+                parse_mode = SPEED_PARSE_MODE;
+            }
+            if (!has_codec_parameters_ex(st->codec,parse_mode)){
                 break;
+            }else{
+                stream_parser_count =i+1;
+            }
+            
 	     if(ic->pb &&ic->pb->fastdetectedinfo)	
 		continue;
             /* if the timebase is coarse (like the usual millisecond precision
