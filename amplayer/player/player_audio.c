@@ -48,8 +48,9 @@ static int stream_audio_init(play_para_t *p_para)
             memcpy((char*)codec->audio_info.extradata, p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->extradata, codec->audio_info.extradata_size);
         }
         codec->audio_info.valid = 1;
-        log_print("[%s:%d]block_align=%d,,sample_rate=%d,,channels=%d,,bitrate=%d,,codec_id=%d,extra size %d\n", __FUNCTION__, __LINE__, codec->audio_info.block_align,
-                  codec->audio_info.sample_rate, codec->audio_info.channels , codec->audio_info.extradata_size, codec->audio_info.codec_id,codec->audio_info.extradata_size);        
+		codec->SessionID = p_para->start_param->SessionID;
+        log_print("[%s:%d]block_align=%d,,sample_rate=%d,,channels=%d,,bitrate=%d,,codec_id=%d,extra size %d,SessionID=%d\n", __FUNCTION__, __LINE__, codec->audio_info.block_align,
+                  codec->audio_info.sample_rate, codec->audio_info.channels , codec->audio_info.extradata_size, codec->audio_info.codec_id,codec->audio_info.extradata_size,codec->SessionID);        
     }
     ret = codec_init(codec);
     if (ret != CODEC_ERROR_NONE) {
