@@ -45,6 +45,10 @@
 
 #define EXT_X_DISCONTINUITY		"#EXT-X-DISCONTINUITY"
 
+//some tags,not from apple itu draft.(version:"1.1.0-0.3.12")
+#define EXT_LETV_VER                          "#EXT-LETV-VER"
+
+
 #define is_TAG(l,tag)	(!strncmp(l,tag,strlen(tag)))
 #define is_NET_URL(url)		(!strncmp(url,"http://",7) || !strncmp(url,"shttp://",8)||!strncmp(url,"shttps://",9))
 
@@ -173,13 +177,17 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 {
 	unsigned char *p=line; 
 	int enditem=0;
-	const char* ptr = NULL;		
+	const char* ptr = NULL;
+       int isLetvFlag = 0;
 	while(*p==' ' && p!='\0' && p-line<1024) p++;
 	if(*p!='#' && strlen(p)>0&&mgt->is_variant==0)
 	{		
 		item->file=p; 
 		enditem=1;
-	}else if(is_TAG(p,EXT_X_ENDLIST)){
+	}else if(av_strstart(line,EXT_LETV_VER, &ptr)){
+	     av_log(NULL,AV_LOG_INFO,"Get letv version: %s\n",ptr+1);
+            mgt->flags|=IGNORE_SEQUENCE_FLAG;
+       }else if(is_TAG(p,EXT_X_ENDLIST)){
 		item->flags|=ENDLIST_FLAG;		
 		enditem=1;
 	}else if(is_TAG(p,EXTINF)){
@@ -189,16 +197,14 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		//sscanf(p+8,"%d",&duration);//skip strlen("#EXTINF:")
 		if(duration>0){
 			item->flags|=DURATION_FLAG;
-			item->duration=duration;
-			
-		}
-        
+			item->duration=duration;			
+		}        
 	} else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {            	
 		mgt->target_duration = atoi(ptr);
 		av_log(NULL, AV_LOG_INFO, "get target duration:%ld\n",mgt->target_duration);
 	}else if(is_TAG(p,EXT_X_ALLOW_CACHE)){
 		item->flags|=ALLOW_CACHE_FLAG;
-	}else if(is_TAG(p,EXT_X_MEDIA_SEQUENCE)){
+	}else if(is_TAG(p,EXT_X_MEDIA_SEQUENCE)&&!(mgt->flags&IGNORE_SEQUENCE_FLAG)){
 		int seq = -1;
 		int ret=0;
 		int slen = strlen("#EXT-X-MEDIA-SEQUENCE:");
@@ -332,8 +338,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	if(NULL!=mgt->prefix){
 		av_free(mgt->prefix);
 		mgt->prefix = NULL;
-	}	
-	
+	}		
 	if(oprefix){
 		mgt->prefix = strdup(oprefix);
 		

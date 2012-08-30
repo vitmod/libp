@@ -77,17 +77,6 @@ int adec_pts_start(aml_audio_dec_t *audec)
     adec_print("av sync threshold is %d \n", audec->avsync_threshold);
 
     dsp_ops->last_pts_valid = 0;
-    // before audio start or pts start
-    fd = open(TSYNC_EVENT, O_WRONLY);
-    if(fd < 0){
-      adec_print("unable open file %s, err: %s", TSYNC_EVENT, strerror(errno));
-      return -1;
-    }
-    sprintf(buf, "AUDIO_PRE_START", 0);
-    write(fd, buf, strlen(buf));
-    close(fd);
-
-    usleep(1000);
 
     pts = adec_calc_pts(audec);
     if (pts == -1) {

@@ -444,8 +444,7 @@ static unsigned int handle_current_time(play_para_t *para, unsigned int scr, uns
         return 0;
     }
     if (!para->playctrl_info.pts_valid) {
-	// The valid pts should be in range of total time duration
-        if (scr > 0 && abs(scr - pts) <= (para->state.full_time*PTS_FREQ)) { //in tsync_avevent, pts as u32
+        if (scr > 0 && abs(scr - pts) <= PTS_FREQ) { //in tsync_avevent, pts as u32
             para->playctrl_info.pts_valid = 1;
             log_print("[%s:%d]scr=0x%x pts=0x%x diff=0x%x \n", __FUNCTION__, __LINE__, scr, pts, (scr - pts));
         }
@@ -712,14 +711,9 @@ static void update_current_time(play_para_t *p_para)
 	                p_para->state.start_time = p_para->vstream_info.start_time;
 	            }
 	        }
-			// remove some error pts
-            if((time/PTS_FREQ) - p_para->state.last_time >= 2){
-              time = p_para->state.last_time * PTS_FREQ;
-            }
-
 
 	        log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d\n", time / PTS_FREQ, ((unsigned int)p_para->astream_info.start_time / PTS_FREQ), ((unsigned int)p_para->vstream_info.start_time / PTS_FREQ), p_para->state.last_time);
-			if (p_para->state.first_time == -1) {
+			if (p_para->state.first_time == 0) {
 				p_para->state.first_time = time;
 			}
 
