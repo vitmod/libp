@@ -925,6 +925,7 @@ int player_dec_reset(play_para_t *p_para)
         codec_audio_automute(p_para->acodec->adec_priv, p_para->playctrl_info.audio_mute);
     }
     p_para->state.last_time = p_para->playctrl_info.time_point;
+    p_para->state.current_time = p_para->playctrl_info.time_point;
     return ret;
 }
 static int check_ctx_bitrate(play_para_t *p_para)
