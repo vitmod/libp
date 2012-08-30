@@ -679,20 +679,20 @@ static int non_raw_read(play_para_t *para)
 			/*reach end add 6k audio data*/
 			static int reach_end=0;
 			AVStream *st;
-			if(reach_end<10)
+			if(reach_end<3)
 			{
 				reach_end++;
 				if(audio_idx>=0) 
 				{
                     			st = para->pFormatCtx->streams[audio_idx];
-                    //if (st->codec->codec_type==CODEC_TYPE_AUDIO&&(st->codec->codec_id==CODEC_ID_APE||st->codec->codec_id==CODEC_ID_AAC||st->codec->codec_id==CODEC_ID_AMR_NB ||st->codec->codec_id==CODEC_ID_MP3)) {
-                                    if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
+                    if (st->codec->codec_type==CODEC_TYPE_AUDIO&&(st->codec->codec_id==CODEC_ID_APE||st->codec->codec_id==CODEC_ID_AAC||st->codec->codec_id==CODEC_ID_AMR_NB ||st->codec->codec_id==CODEC_ID_MP3)) {
+                                    //if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
                                            //set attr
                                            if(!get_readend_set_flag())
                                                 set_readend_flag(1);
-						pkt->avpkt->data=av_mallocz(4096);
-						strncpy(pkt->avpkt->data,"FREND",5);
-						pkt->avpkt->size=4096;	
+						pkt->avpkt->data=av_mallocz(2048);
+						//strncpy(pkt->avpkt->data,"FREND",5);
+						pkt->avpkt->size=2048;	
                     				pkt->avpkt->stream_index = st->index;
 						ret=0;
                     			}
