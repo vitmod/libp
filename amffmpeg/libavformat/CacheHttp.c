@@ -239,7 +239,7 @@ static void *circular_buffer_task( void *_handle)
         }        
        
         list_item_t * item = getCurrentSegment(NULL);
-        if(!item&&!item->file) {          
+        if(!item||!item->file) {          
             usleep(WAIT_TIME);
             continue;
         }
@@ -328,7 +328,8 @@ static void *circular_buffer_task( void *_handle)
             av_free(filename);
             filename = NULL;
         }
-        switchNextSegment(NULL);
+	 if(!s->RESET)
+        	switchNextSegment(NULL);
     }
     
 FAIL:
