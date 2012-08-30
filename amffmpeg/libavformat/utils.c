@@ -3087,7 +3087,7 @@ int av_find_stream_info(AVFormatContext *ic)
             int fps_analyze_framecount = 20;
             st = ic->streams[i];
             int parse_mode = fast_switch;
-            if(ic->pb->is_streamed ==1){
+            if(ic->pb->is_streamed ==1&&!strcmp(ic->iformat->name, "mpegts")){
                 parse_mode = SPEED_PARSE_MODE;
             }
             if (!has_codec_parameters_ex(st->codec,parse_mode)){
