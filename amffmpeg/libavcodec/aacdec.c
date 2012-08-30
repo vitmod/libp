@@ -2242,11 +2242,14 @@ static int aac_decode_frame(AVCodecContext *avctx, void *data,
       //av_log(NULL, AV_LOG_INFO,"step into aac_decode_frame() [%s_%d]\n",__FUNCTION__,__LINE__);
 	  //av_log(NULL, AV_LOG_INFO,"first fout bytes:%s\n",tbuf);
 	  if(tbuf[0]=='A' && tbuf[1]=='D' && tbuf[2]=='I' && tbuf[2]=='F' ){
+	  	 av_log(NULL, AV_LOG_INFO,"the filetype is <ADIF> [%s_%d]\n",__FUNCTION__,__LINE__);
 	  	 adif_ftype_flag=1;
 	     return AVERROR_INVALIDDATA;
 	  }
-	  if(adif_ftype_flag==1);
+	  if(adif_ftype_flag==1)
+	  {
 	     return AVERROR_INVALIDDATA;
+	  }
 	}
 	//---------------------------
 
