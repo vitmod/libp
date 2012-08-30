@@ -44,7 +44,7 @@
 #define ALLOW_CACHE_FLAG			(1<<7)
 #define REAL_STREAMING_FLAG		(1<<8)
 #define INVALID_ITEM_FLAG			(1<<10)
-#define IGNORE_SEQUENCE_FLAG         (1<<11)
+
 
 struct list_mgt;
 struct list_demux;
