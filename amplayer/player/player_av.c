@@ -879,7 +879,7 @@ static int write_header(play_para_t *para)
     
     if (para->pFormatCtx->skip_extradata)
     {
-        log_print("skip header!\n");
+        //log_print("skip header!\n");
         return PLAYER_EMPTY_P;
     }
 	
