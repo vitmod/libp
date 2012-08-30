@@ -915,7 +915,7 @@ typedef struct AVFormatContext {
 
     /* added by Z.C for DRM content */
     int drmcontent;
-
+	int skip_extradata;
 } AVFormatContext;
 
 typedef struct AVPacketList {

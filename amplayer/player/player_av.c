@@ -876,6 +876,12 @@ static int write_header(play_para_t *para)
 {
     int write_bytes = 0, len = 0;
 	am_packet_t *pkt = para->p_pkt;
+    
+    if (para->pFormatCtx->skip_extradata)
+    {
+        log_print("skip header!\n");
+        return PLAYER_EMPTY_P;
+    }
 	
     if (pkt->hdr && pkt->hdr->size > 0) {
         if ((NULL == pkt->codec) || (NULL == pkt->hdr->data)) {
