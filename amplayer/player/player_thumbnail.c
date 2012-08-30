@@ -34,7 +34,7 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
     index_offset = avio_tell(pFormatCtx->pb);
     log_print("[find_best_keyframe]current offset =%llx, count=%d\n", index_offset, count);
     for(i = 0; i<pStream->nb_index_entries; i++){
-        //log_print("[find_best_keyframe]index[%d].pos=%llx\n", i, pStream->index_entries[i].pos);
+        log_print("[find_best_keyframe]index[%d].pos=%llx\n", i, pStream->index_entries[i].pos);
         if (index_offset <pStream->index_entries[0].pos)
             index_offset = pStream->index_entries[0].pos;
         if(index_offset <= pStream->index_entries[i].pos){
@@ -44,10 +44,10 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
                 log_print("[find_best_keyframe]read frame from offset =%llx packet.size=%d\n", index_offset,packet.size);
                 if(r>=0 && packet.size > maxFrameSize){
                     maxFrameSize = packet.size;
-                    thumbTime = packet.pts;                
-                    thumbOffset = avio_tell(pFormatCtx->pb);  
+                    thumbTime = pStream->index_entries[i].timestamp;                
+                    thumbOffset = pStream->index_entries[i].pos;  
                     find_ok = 1;
-                    log_print("[%s]maxFrameSize=%d thumbTime=%lld thumbOffset=%lld\n", __FUNCTION__,maxFrameSize, thumbTime, thumbOffset);
+                    log_print("[%s]maxFrameSize=%d thumbTime=%lld thumbOffset=%llx\n", __FUNCTION__,maxFrameSize, thumbTime, thumbOffset);
                 }
                 av_free_packet(&packet);    
                 index_offset = pStream->index_entries[j+i].pos;               
@@ -61,7 +61,7 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
         i = 0;
         r = av_read_frame(pFormatCtx, &packet);
         while((i < count) && (r >= 0) && (j < count*10)){
-            //log_print("[%s]j=%d i=%d r=%d pktidx=%d[%d] flags=%x\n", __FUNCTION__,j, i,r,packet.stream_index,video_index, packet.flags);
+            log_print("[%s]j=%d i=%d r=%d pktidx=%d[%d] flags=%x\n", __FUNCTION__,j, i,r,packet.stream_index,video_index, packet.flags);
             if(packet.stream_index == video_index) {    //find count*10 video packets
                 j ++;
                 if(packet.flags & AV_PKT_FLAG_KEY){ // find key frame
@@ -71,19 +71,20 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
                         maxFrameSize = packet.size;
                         thumbTime = packet.pts;                
                         thumbOffset = avio_tell(pFormatCtx->pb);  
-                        //log_print("[%s]maxFrameSize=%d thumbTime=%lld thumbOffset=%lld\n", __FUNCTION__,maxFrameSize, thumbTime, thumbOffset);
+                        log_print("[%s]maxFrameSize=%d thumbTime=%lld thumbOffset=%lld\n", __FUNCTION__,maxFrameSize, thumbTime, thumbOffset);
                     }
                     av_free_packet(&packet);           
                 }
             }
             r = av_read_frame(pFormatCtx, &packet);        
         }
-        //log_print("[%s]j=%d i=%d r=%d\n", __FUNCTION__,j, i,r);
+        log_print("[%s]j=%d i=%d r=%d\n", __FUNCTION__,j, i,r);
         if (i == count)
             av_free_packet(&packet);
     }
     *time = thumbTime;
     *offset = thumbOffset;    
+     log_print("[%s]return thumbTime=%lld thumbOffset=%llx\n", __FUNCTION__, thumbTime, thumbOffset);
 }
 
 static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, int64_t *thumb_time, int64_t *thumb_offset)
@@ -113,6 +114,7 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
     else
         *thumb_time = AV_NOPTS_VALUE;
     *thumb_offset = thumbOffset;
+     log_print("[find_thumbnail_frame]return thumb_time=%lld thumb_offset=%lld\n",thumb_time, thumb_offset);
 }
 
 void * thumbnail_res_alloc(void)
@@ -291,14 +293,16 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
     }
     
     if(frame->thumbNailTime != AV_NOPTS_VALUE) {
-        log_print("seek to thumbnail frame by timestamp(0x%llx)!\n", frame->thumbNailTime);
+        log_print("seek to thumbnail frame by timestamp(%lld)!\n", frame->thumbNailTime);
         av_seek_frame(pFormatCtx, stream->videoStream, frame->thumbNailTime, AVSEEK_FLAG_BACKWARD);
-	 }else{
-	     log_print("seek to thumbnail frame by offset(%lld)!\n", frame->thumbNailOffset);
-            avio_seek(pFormatCtx->pb, frame->thumbNailOffset, SEEK_SET);
+        log_print("after seek by time, offset=%llx!\n", avio_tell(pFormatCtx->pb));
+    }else{
+        log_print("seek to thumbnail frame by offset(%lld)!\n", frame->thumbNailOffset);
+        avio_seek(pFormatCtx->pb, frame->thumbNailOffset, SEEK_SET);
+        log_print("after seek by offset, offset=%llx!\n", avio_tell(pFormatCtx->pb));
     }	 	
     
-	avcodec_flush_buffers(stream->pCodecCtx);
+    avcodec_flush_buffers(stream->pCodecCtx);
 	
     while(av_read_frame(pFormatCtx, &packet) >= 0) {
         if(packet.stream_index==stream->videoStream){
@@ -310,34 +314,27 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 			
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
 	     tryNum++;
-            //log_print("[%s]decode a video frame, finish=%d key=%d count==%d\n", __FUNCTION__, frameFinished, stream->pFrameYUV->key_frame,count);
+            log_print("[%s]decode a video frame, finish=%d key=%d count=%d offset=%llx type=%d pCodecCtx->codec_id=%x\n", __FUNCTION__, 
+                frameFinished, stream->pFrameYUV->key_frame,count, avio_tell(pFormatCtx->pb),stream->pFrameYUV->pict_type,pCodecCtx->codec_id);
 	     if(frameFinished && stream->pFrameYUV->key_frame && (stream->pFrameYUV->pict_type == AV_PICTURE_TYPE_I)){
 		  count++;
-                 //log_print("[%s]pCodecCtx->codec_id=%x count==%d\n", __FUNCTION__, pCodecCtx->codec_id,count);
-                 if ((pCodecCtx->codec_id == CODEC_ID_MPEG1VIDEO)
-                        || (pCodecCtx->codec_id == CODEC_ID_MPEG2VIDEO)
-                        || (pCodecCtx->codec_id == CODEC_ID_MPEG2VIDEO_XVMC)) {
-                        if(count < 6) {
-                        log_print("mpeg video: decoder %d keyframe\n", count);
-                        av_free_packet(&packet);
-                        continue;
-    		        }
-                    }	
-                    struct SwsContext *img_convert_ctx;
-                    img_convert_ctx = sws_getContext(stream->pCodecCtx->width, stream->pCodecCtx->height, 
-                    					stream->pCodecCtx->pix_fmt, 
-                    					frame->width, frame->height, DEST_FMT, SWS_BICUBIC,
-                    					NULL, NULL, NULL);
-                    if(img_convert_ctx == NULL) {
+                 log_print("[%s]pCodecCtx->codec_id=%x count==%d\n", __FUNCTION__, pCodecCtx->codec_id,count);
+               
+                struct SwsContext *img_convert_ctx;
+                img_convert_ctx = sws_getContext(stream->pCodecCtx->width, stream->pCodecCtx->height, 
+                					stream->pCodecCtx->pix_fmt, 
+                					frame->width, frame->height, DEST_FMT, SWS_BICUBIC,
+                					NULL, NULL, NULL);
+                if(img_convert_ctx == NULL) {
                     log_print("can not initialize the coversion context!\n");
                     av_free_packet(&packet);
                     break;
-                    }
+                }
 
-                    sws_scale(img_convert_ctx, stream->pFrameYUV->data, stream->pFrameYUV->linesize, 0, 
-                            frame->height, stream->pFrameRGB->data, stream->pFrameRGB->linesize);
-                    av_free_packet(&packet);
-                    goto ret;
+                sws_scale(img_convert_ctx, stream->pFrameYUV->data, stream->pFrameYUV->linesize, 0, 
+                        frame->height, stream->pFrameRGB->data, stream->pFrameRGB->linesize);
+                av_free_packet(&packet);
+                goto ret;
             }
         }
 
