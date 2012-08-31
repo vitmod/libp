@@ -444,7 +444,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
        len += av_strlcatf(headers + len, sizeof(headers) - len,
                           "User-Agent: %s\r\n", IPAD_IDENT);
 
-	if (h->headers) {
+    if (h->headers) {
 		len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "%s", h->headers); /*the headers have \r\n*/
 
@@ -457,7 +457,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek))
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
-    if (!has_header(s->headers, "\r\nConnection: "))
+    if (!has_header(s->headers, "\r\nConnection: ")&&!has_header(headers, "\r\nConnection: "))
         len += av_strlcpy(headers + len, "Connection: close\r\n",
                           sizeof(headers)-len);
     if (!has_header(s->headers, "\r\nHost: "))

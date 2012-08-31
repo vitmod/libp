@@ -38,6 +38,8 @@
 #define CIRCULAR_BUFFER_SIZE (20*188*4096)
 #define WAIT_TIME (100*1000)
 
+#define PLAYBACK_SESSION_ID "X-Playback-Session-Id:" 
+
 typedef struct {
     URLContext * hd;
     unsigned char headers[BUFFER_SIZE];    
@@ -80,7 +82,7 @@ static int CacheHttp_ffurl_seek(URLContext *h, int64_t pos, int whence)
 
 static void *circular_buffer_task( void *_handle);
 
-int CacheHttp_Open(void ** handle)
+int CacheHttp_Open(void ** handle,const char* headers)
 {
     CacheHttpContext * s = (CacheHttpContext *)av_malloc(sizeof(CacheHttpContext));
     if(!s) {
@@ -103,14 +105,9 @@ int CacheHttp_Open(void ** handle)
     s->EXIT = 0;
     s->EXITED = 0;
     s->RESET = 0;
-/*       if(header) {
-           int len = strlen(header);
-           if (len && strcmp("\r\n", header + len - 2))
-                av_log(NULL, AV_LOG_ERROR, "No trailing CRLF found in HTTP header.\n");
-
-           av_strlcpy(s->headers, header, sizeof(s->headers));
-       }
-*/
+    if(headers){
+        av_strlcpy(s->headers,headers,BUFFER_SIZE);
+    }
     s->bandwidth_measure=bandwidth_measure_alloc(100,0);        
     int ret = pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
     av_log(NULL, AV_LOG_INFO, "----------- pthread_create ret=%d\n",ret);
@@ -148,7 +145,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
 
 int CacheHttp_Reset(void * handle)
 {
-av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset begin");
+    av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset begin");
     if(!handle)
         return AVERROR(EIO);
 
