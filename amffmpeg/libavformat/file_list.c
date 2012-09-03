@@ -388,7 +388,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     char sess_id[40];
     memset(headers, 0, sizeof(headers));
     memset(sess_id, 0, sizeof(sess_id));
-    generate_playback_session_id(sess_id, 36);
+    generate_playback_session_id(sess_id, 37);
     snprintf(headers, sizeof(headers),  
              "Connection: keep-alive\r\n"
               "X-Playback-Session-Id: %s\r\n", sess_id);
