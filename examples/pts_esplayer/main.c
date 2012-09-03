@@ -12,7 +12,7 @@
 
 #include "ESPlayer.h"
 
-#define PTS_FREQ    90000
+#define PTS_FREQ    90
 
 pthread_t	m_apthid;
 pthread_t	m_vpthid;
@@ -22,6 +22,11 @@ volatile int  m_VideoEnd = 0;
 
 static void* Inject_Audio(void *pParam)
 {
+    int ret;
+	unsigned pts = 0;
+	int buffer_size=0;
+	unsigned char temp[4];
+	int first_audio_pts = 1;
 
 	FILE* fp = fopen( "/mnt/sdcard/AAC.mp4", "rb" );
 
@@ -30,12 +35,6 @@ static void* Inject_Audio(void *pParam)
 		unsigned char*  buffer = (unsigned char*)malloc( sizeof( unsigned char) * 1024 * 1024);
 
 		while ( 1 ){
-			
-			int ret;
-			unsigned pts;
-			int64_t tmp_pts;
-			int buffer_size=0;
-			unsigned char temp[4];
 			
 			if( m_bStop == 1 )
 				break;
@@ -46,7 +45,7 @@ static void* Inject_Audio(void *pParam)
 			ES_PlayGetESBufferStatus( &audio_rate,  &vid_rate );
 			//printf( "%s audio_rate=%ld vid_rate=%ld\n", __FUNCTION__, audio_rate, vid_rate );
 
-			if( vid_rate >= 80 )
+			if( audio_rate > 80 )
 			{
 				usleep(1000);
 				continue;
@@ -67,9 +66,12 @@ static void* Inject_Audio(void *pParam)
 			/******************************************************************************** 
 			  pts base calculation according to 90khz clock, it is very important for av sync
 			*********************************************************************************/
-			tmp_pts = pts;
-			pts = tmp_pts * PTS_FREQ / 1000;
-			//printf( "%s audio pts=%lld \n", __FUNCTION__, pts);
+			pts = pts * PTS_FREQ;
+			if (first_audio_pts)
+			{
+			    printf( "audio pts=%d \n", pts);
+			    first_audio_pts = 0;
+		    }
 			
 			memset( buffer, 0, sizeof(buffer) );
 
@@ -89,13 +91,20 @@ static void* Inject_Audio(void *pParam)
 		
 		m_AudioEnd = 1;
 	}
+	
+	printf("audio exit, last pts=%d\n", pts);
 	pthread_exit(NULL);
-	printf("audio exit\n");
+	
 	return 0;
 }
 
 static void* Inject_Video(void *pParam)
 {
+    int ret;
+	unsigned pts = 0;
+	int buffer_size=0;
+	unsigned char temp[4];
+	int first_video_pts = 1;
 
 	FILE* fp = fopen( "/mnt/sdcard/H264.mp4", "rb" );
 
@@ -104,13 +113,7 @@ static void* Inject_Video(void *pParam)
 		unsigned char*  buffer = (unsigned char*)malloc( sizeof( unsigned char) * 1024 * 1024);
 
 		while ( 1 ){
-
-			int ret;
-			unsigned pts;
-			int64_t tmp_pts;
-			int buffer_size=0;
-			unsigned char temp[4];
-
+			
 			if( m_bStop == 1 )
 				break;
 			
@@ -119,7 +122,7 @@ static void* Inject_Video(void *pParam)
 
 			ES_PlayGetESBufferStatus( &audio_rate,  &vid_rate );
 			
-			if( vid_rate >= 80 )
+			if( vid_rate > 80 )
 			{
 				usleep(1000);
 				continue;
@@ -134,11 +137,17 @@ static void* Inject_Video(void *pParam)
 			/******************************************************************************** 
 			  pts base calculation according to 90khz clock, it is very important for av sync
 			*********************************************************************************/
-			tmp_pts = pts;
-			pts = tmp_pts * PTS_FREQ / 1000;
-			
-			//printf( "%s video pts=%lld \n", __FUNCTION__, pts);
-
+			if (pts != 0xffffffff)
+			{
+			    pts = pts * PTS_FREQ;
+			    
+			    if (first_video_pts)
+			    {
+			        printf( "video pts=%d \n", pts);
+			        first_video_pts = 0;
+			    }
+            }
+        
 			ret = fread( temp,sizeof(char), 4 , fp );
 			if( ret < 4 )
 				break;
@@ -163,8 +172,10 @@ static void* Inject_Video(void *pParam)
 		fclose( fp );
 		m_VideoEnd = 1;
 	}
+	
+	printf("video exit, last pts=%d\n", pts);
     pthread_exit(NULL);
-    printf("video exit\n");
+    
 	return 0;
 }
 

@@ -14,13 +14,16 @@
 
 #include "ESPlayer.h"
 
-
+/*******************************************************************************************************************************
 //其中视音频文件的格式为：PTS（4个字节，高位在前，单位：ms）+buffer size（4个字节，高位在前）+buffer数据，
 //请按此顺序依次读出，推入你们平台的ES解码器进行解码；
 
 //视频文件有点特殊，文件的前四个字节为0xffffffff（代表无效PTS），
 //接下来4个字节同样为buffer size，接下来的buffer是H264解码所需要的SPS+PPS，再接下来的格式就和上述格式一样了
-
+add English comment
+video/audio data format: PTS data (4 byts, MSB first, pts unit: ms), video data size (4 byts, MSB first, size for only payload), data
+video pts may be -1, which is not available pts, do NOT send it to decoder
+********************************************************************************************************************************/
 
 #define EXTERNAL_PTS    (1)
 #define SYNC_OUTSIDE    (2)
@@ -67,25 +70,31 @@ void ES_PlayInit()
 	apcodec->stream_type = STREAM_TYPE_ES_AUDIO;
 //	apcodec->audio_pid = 0x1023;
 	apcodec->has_audio = 1;
-	apcodec->audio_channels = 2;
-	apcodec->audio_samplerate = 48000;
 	apcodec->noblock = 0;
-	apcodec->audio_info.channels = 2;
-	apcodec->audio_info.sample_rate = 48000;
+	
+	//Do NOT set audio info if we do not know it
+	apcodec->audio_channels = 0;
+	apcodec->audio_samplerate = 0;
+	apcodec->audio_info.channels = 0;
+	apcodec->audio_info.sample_rate = 0;
+	//apcodec->audio_channels = 2;
+	//apcodec->audio_samplerate = 44100;
+	//apcodec->audio_info.channels = 2;
+	//apcodec->audio_info.sample_rate = 44100;
 
 	
 	ret = codec_init(vpcodec);
 	if(ret != CODEC_ERROR_NONE)
 	{
 		printf("v codec init failed, ret=-0x%x", -ret);
-		return -1;
+		return;
 	}
 
 	ret = codec_init(apcodec);
 	if(ret != CODEC_ERROR_NONE)
 	{
 		printf("a codec init failed, ret=-0x%x", -ret);
-		return -1;
+		return;
 	}
 	
 	//codec_set_av_threshold(apcodec, 180);
@@ -183,7 +192,7 @@ void ES_PlayInjectionMediaDatas ( MEDIA_CODEC_TYPE_E data_type, void *es_buffer,
 					break;
 				}
 
-				memmove( es_buffer, es_buffer+wcnt, len );
+				memmove( es_buffer, (unsigned char*)es_buffer+wcnt, len );
 			}
 			else
 			{
@@ -208,7 +217,7 @@ void ES_PlayInjectionMediaDatas ( MEDIA_CODEC_TYPE_E data_type, void *es_buffer,
 					break;
 				}
 
-				memmove( es_buffer, es_buffer+wcnt, len );
+				memmove( es_buffer, (unsigned char*)es_buffer+wcnt, len );
 			}
 			else
 			{
