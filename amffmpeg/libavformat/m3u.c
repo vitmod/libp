@@ -449,7 +449,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 					mgt->next_seq++;
 			}
 
-			if(mgt->flags&REAL_STREAMING_FLAG){
+			if(!(tmpitem.flags&INVALID_ITEM_FLAG)){
 				
 				ret =list_test_and_add_item(mgt,item);
 				if(ret==0){
@@ -459,10 +459,6 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 					av_free(item);
 				}
 				
-			}else{
-				ret = list_add_item(mgt,item);
-				start_time+=item->duration;
-				getnum++;
 			}
 						
 			if(item->flags &ENDLIST_FLAG)
@@ -505,8 +501,8 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
 			if(tmpitem.flags&INVALID_ITEM_FLAG){
-				av_log(NULL,AV_LOG_INFO,"just a trick,drop this list,seq number:%d\n",tmpitem.seq);
-				break;
+				av_log(NULL,AV_LOG_INFO,"just a trick,drop this item,seq number:%d\n",tmpitem.seq);
+				continue;
 			}
 		}
 		
