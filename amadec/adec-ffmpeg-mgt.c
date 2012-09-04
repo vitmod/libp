@@ -1258,6 +1258,8 @@ void *adec_armdec_loop(void *args)
                 continue;
             }
             audec->state = INITTED;
+            start_decode_thread(audec);
+            start_adec(audec);
             break;
         }
 
