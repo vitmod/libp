@@ -24,6 +24,7 @@ source_t *new_source(const char * url, const char *header, int flags)
     if (!as) {
         return NULL;
     }
+    memset(as, 0, sizeof(source_t));
     as->url = url;
     as->header = header;
     as->flags = flags;
@@ -86,7 +87,19 @@ int64_t source_seek(source_t *as, int64_t off, int whence)
     }
     return ret;
 }
-
+int64_t source_size(source_t *as)
+{
+    int64_t ret = -1;
+    if (as->options.filesize > 0) {
+        return as->options.filesize;
+    }
+    return ret;
+}
+int source_getoptions(source_t *as, struct source_options *op)
+{
+    *op = as->options;
+    return 0;
+}
 int release_source(source_t *as)
 {
     source_close(as);

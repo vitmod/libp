@@ -33,7 +33,7 @@ int streambuf_seek(streambufqueue_t *s, int off, int whereonce);
 int streambuf_reset(streambufqueue_t *s);
 int streambuf_buf_free(streambufqueue_t *s, bufheader_t *buf);
 int streambuf_dumpstates(streambufqueue_t *s);
-
+int64_t streambuf_bufpos(streambufqueue_t *s);
 #endif
 
 

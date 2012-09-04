@@ -14,6 +14,9 @@
 #include "source.h"
 #include "slog.h"
 #include <errno.h>
+int ffmpeg_interrupt_callback(void);
+#define ISTRYBECLOSED() (ffmpeg_interrupt_callback())
+
 int thread_read_thread_run(unsigned long arg);
 struct  thread_read *new_thread_read(const char *url, const char *headers, int flags) {
     pthread_t       tid;
@@ -44,6 +47,14 @@ struct  thread_read *new_thread_read(const char *url, const char *headers, int f
     thread->pthread_id = tid;
     return thread;
 }
+int thread_read_get_options(struct  thread_read *thread, struct  source_options*options)
+{
+    while (!thread->opened && !thread->error && !ISTRYBECLOSED()) {
+        thread_read_readwait(thread, 1000 * 1000);
+    }
+    *options = thread->options;
+    return 0;
+}
 int thread_read_stop(struct  thread_read *thread)
 {
     DTRACE();
@@ -70,14 +81,14 @@ int  thread_read_readwait(struct  thread_read *thread, int microseconds)
     return ret;
 }
 
-int thread_read_writedatafinish(struct  thread_read *thread)
+int thread_read_wakewait(struct  thread_read *thread)
 {
     int ret;
-
-    pthread_mutex_lock(&thread->pthread_mutex);
-    ret = pthread_cond_signal(&thread->pthread_cond);
-    pthread_mutex_unlock(&thread->pthread_mutex);
-
+    if (thread->onwaitingdata) {
+        pthread_mutex_lock(&thread->pthread_mutex);
+        ret = pthread_cond_signal(&thread->pthread_cond);
+        pthread_mutex_unlock(&thread->pthread_mutex);
+    }
     return ret;
 }
 
@@ -103,11 +114,11 @@ int thread_read_read(struct  thread_read *thread, char * buf, int size)
     int readlen = 0;
     int retrynum = 100;
 
-    while (readlen == 0) {
-        streambuf_dumpstates(thread->streambuf);
+    while (readlen == 0 && !ISTRYBECLOSED()) {
+        //  streambuf_dumpstates(thread->streambuf);
         ret = streambuf_read(thread->streambuf, buf + readlen, size - readlen);
-        LOGI("---------thread_read_read=%d,size=%d\n", ret, size);
-        streambuf_dumpstates(thread->streambuf);
+        //  LOGI("---------thread_read_read=%d,size=%d\n", ret, size);
+        //streambuf_dumpstates(thread->streambuf);
         if (ret > 0) {
             readlen += ret;
         } else if (ret < 0) {
@@ -131,22 +142,42 @@ int thread_read_read(struct  thread_read *thread, char * buf, int size)
 }
 
 
-int thread_read_seek(struct  thread_read *thread, int64_t off, int wherece)
+int64_t thread_read_seek(struct  thread_read *thread, int64_t off, int whence)
 {
     int ret;
     DTRACE();
+    /*wait stream opened.*/
+    if (SOURCE_SEEK_SIZE == whence) {
+        return thread->options.filesize;
+    }
+    if ((SEEK_CUR != whence &&
+          SEEK_SET  != whence &&
+          SEEK_END  != whence &&
+         SOURCE_SEEK_BY_TIME != whence)) {
+        return -1;
+    }
+    DTRACE();
     pthread_mutex_lock(&thread->pthread_mutex);
-    ret = streambuf_seek(thread->streambuf, off, wherece);
-    if (ret == off) {
+    ret = streambuf_seek(thread->streambuf, off, whence);
+    if (ret >= 0 && ret == off) {
         pthread_mutex_unlock(&thread->pthread_mutex);
         return ret;
     }
+
     ///do seek now.
     thread->request_seek = 1;
-    thread->request_seek_offset = off;
+    thread->seek_offset = off;
+    thread->seek_whence = whence;
     thread->inseeking = 1;
+    thread->seek_ret = -1;
     pthread_mutex_unlock(&thread->pthread_mutex);
-    return 0;
+    DTRACE();
+    /*wait seek end.*/
+    while (thread->inseeking && !ISTRYBECLOSED()) {
+        thread_read_readwait(thread, 1000 * 1000);
+    }
+    DTRACE();
+    return thread->seek_ret;
 }
 int thread_read_openstream(struct  thread_read *thread)
 {
@@ -157,20 +188,34 @@ int thread_read_openstream(struct  thread_read *thread)
         if (ret != 0) {
             LOGI("source opened failed\n");
             release_source(thread->source);
+            thread_read_wakewait(thread);
             thread->source = NULL;
             thread->error = ret;
             return ret;
         }
+        source_getoptions(thread->source, &thread->options);
+        thread_read_wakewait(thread);
         thread->opened = 1;
     }
     return 0;
 }
-int thread_read_seekstream(struct  thread_read *thread, int64_t offset)
+int thread_read_seekstream(struct  thread_read *thread)
 {
+    int ret = -1;
     DTRACE();
+    thread->request_seek = 0;
     if (thread->source) {
-        return source_seek(thread->source, offset, SEEK_SET);
+        ret = source_seek(thread->source, thread->seek_offset, thread->seek_whence);
     }
+    DTRACE();
+    if (ret >= 0) { /*if seek ok.reset all buffers.*/
+        streambuf_reset(thread->streambuf);
+    }
+    thread->seek_ret = ret;
+    thread->inseeking = 0;
+    thread_read_wakewait(thread);
+    LOGI("thread_read_seekstream,ret=%lld\n", thread->seek_ret);
+    /*don't care seek error*/
     return 0;
 }
 int thread_read_download(struct  thread_read *thread)
@@ -190,14 +235,12 @@ int thread_read_download(struct  thread_read *thread)
     buf->pos = source_seek(thread->source, 0, SEEK_CUR);;
     ret = source_read(thread->source, buf->pbuf, buf->bufsize);
     if (ret > 0) {
-        LOGI("thread_read_download read data len=%d\n", ret);
+        //  LOGI("thread_read_download read data len=%d\n", ret);
         buf->bufdatalen = ret;
-        streambuf_dumpstates(thread->streambuf);
+        //streambuf_dumpstates(thread->streambuf);
         streambuf_buf_write(thread->streambuf, buf);
-        streambuf_dumpstates(thread->streambuf);
-        if (thread->onwaitingdata) {
-            thread_read_writedatafinish(thread);
-        }
+        //streambuf_dumpstates(thread->streambuf);
+        thread_read_wakewait(thread);
     } else {
         LOGI("thread_read_download ERROR=%d\n", ret);
         thread->error = ret;
@@ -224,7 +267,7 @@ int thread_read_thread_run_l(struct  thread_read *thread)
     }
     if (thread->request_seek) {
         thread->inseeking = 1;
-        ret = thread_read_seekstream(thread, thread->request_seek_offset);
+        ret = thread_read_seekstream(thread);
         thread->inseeking = 0;
         thread->request_seek = 0;
     }

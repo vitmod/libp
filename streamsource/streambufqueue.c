@@ -157,9 +157,8 @@ int streambuf_write(streambufqueue_t *s, char *buffer, int size, int timestamps)
     return (size > twritelen) ? (size - twritelen) : -1;
 }
 
-int streambuf_seek(streambufqueue_t *s, int off, int whereonce)
+int streambuf_seek(streambufqueue_t *s, int off, int whence)
 {
-
     return -1;
 }
 
@@ -195,6 +194,19 @@ int streambuf_release(streambufqueue_t *s)
     lp_unlock(&s->lock);
     free(s);
     return 0;
+}
+int64_t streambuf_bufpos(streambufqueue_t *s)
+{
+    int64_t p1;
+    bufheader_t *buf;
+    lp_lock(&s->lock);
+    p1 = queue_bufstartpos(&s->newdata);
+    buf = queue_bufpeek(&s->newdata);
+    if (buf) {
+        p1 += buf->data_start - buf->pbuf;
+    }
+    lp_unlock(&s->lock);
+    return p1;
 }
 int streambuf_dumpstates(streambufqueue_t *s)
 {

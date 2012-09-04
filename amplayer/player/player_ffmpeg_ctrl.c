@@ -50,7 +50,7 @@ int ffmpeg_lock(void **pmutex, enum AVLockOp op)
 
 static pthread_t kill_thread_pool[MAX_PLAYER_THREADS];
 static int basic_init = 0;
-static int ffmpeg_interrupt_callback(void)
+int ffmpeg_interrupt_callback(void)
 {
     int pid = pthread_self();
     int interrupted;

@@ -4,6 +4,7 @@
 
 #include "streambufqueue.h"
 #include "source.h"
+
 struct  thread_read {
     pthread_mutex_t  pthread_mutex;
     pthread_cond_t   pthread_cond;
@@ -11,20 +12,29 @@ struct  thread_read {
     int thread_id;
     streambufqueue_t *streambuf;
     source_t *source;
-    /**/
-    int onwaitingdata;
-    int request_exit;
-    int request_seek;
-    int64_t request_seek_offset;
-    int inseeking;
-    int opened;
+    /*basic varials*/
     const char* url;
     const char* headers;
     int flags;
     int error;
     int fatal_error;
-};
+    int64_t totaltime_ms;
+    int      support_seek_cmd;
+    /**/
+    int request_exit;
+    int onwaitingdata;
 
+    /*for seek*/
+    int request_seek;
+    int64_t seek_offset;
+    int      seek_whence;
+    int inseeking;
+    int64_t seek_ret;
+
+    int opened;
+
+    struct  source_options options;
+};
 
 
 struct  thread_read *new_thread_read(const char *url, const char *headers, int flags) ;
@@ -32,6 +42,7 @@ int thread_read_thread_run(unsigned long arg);
 int thread_read_stop(struct  thread_read *thread);
 int thread_read_release(struct  thread_read *thread);
 int thread_read_read(struct  thread_read *thread, char * buf, int size);
-int thread_read_seek(struct  thread_read *thread, int64_t off, int where);
+int64_t thread_read_seek(struct  thread_read *thread, int64_t off, int whence);
+int thread_read_get_options(struct  thread_read *thread, struct  source_options*option);
 #endif
 
