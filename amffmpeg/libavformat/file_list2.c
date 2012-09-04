@@ -383,6 +383,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->playing_item_seq = 0;
     mgt->strategy_up_counts = 0;
     mgt->strategy_down_counts = 0;
+    mgt->listclose = 0;
 
 #ifdef USE_IPAD_REQUEST
     char headers[1024];
@@ -605,6 +606,8 @@ switchnext:
         }
 
     }
+    if (mgt->listclose)
+	return NULL;
     if (next)
         av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d,start=%d,duration=%d\n",
                next->file, mgt->item_num, next->start_time, next->duration);
@@ -741,6 +744,7 @@ static int list_close(URLContext *h)
     if (!mgt) {
         return 0;
     }
+    mgt->listclose = 1;
     CacheHttp_Close(mgt->cache_http_handle);
     list_delall_item(mgt);
     int i;

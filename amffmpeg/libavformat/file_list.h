@@ -104,6 +104,7 @@ typedef struct list_mgt
     char *filename;
     char *location;	
     int flags;
+    int listclose;
     lock_t mutex;
     struct list_item *item_list;	
     pthread_mutex_t list_lock;
