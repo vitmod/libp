@@ -222,7 +222,7 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     samplerate=g_bst->samplerate;
     offset=decode_offset;
     if(dsp_ops->dsp_file_fd)
-        ioctl(dsp_ops->dsp_file_fd,AUDIODSP_LOOKUP_APTS,&offset);
+        ioctl(dsp_ops->dsp_file_fd,AMSTREAM_IOC_APTS_LOOKUP,&offset);
     else
         adec_print("====abuf have not open!\n",val);
     pts=offset;
@@ -547,7 +547,7 @@ static void start_adec(aml_audio_dec_t *audec)
         audec->state = ACTIVE;
 #if 1
         //get info from the audiodsp == can get from amstreamer
-        while ((!audiodsp_get_first_pts_flag(dsp_ops)) && (!audec->need_stop)) {
+        while ((!get_first_apts_flag(dsp_ops)) && (!audec->need_stop)) {
         
             adec_print("wait first pts checkin complete !");
             usleep(100000);
