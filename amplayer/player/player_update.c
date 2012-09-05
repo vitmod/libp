@@ -1227,7 +1227,12 @@ int update_playing_info(play_para_t *p_para)
 	
     return PLAYER_SUCCESS;
 }
-
+long player_get_systemtime_ms(void)
+{
+	struct timeval  time;
+	gettimeofday(&time, NULL);
+	return  (time.tv_usec / 1000 + time.tv_sec * 1000);
+}
 int check_time_interrupt(long *old_msecond, int interval_ms)
 {
     int ret = 0;

@@ -149,6 +149,17 @@ int set_tsync_enable(int enable)
     return set_sysfs_int("/sys/class/tsync/enable", enable);
 
 }
+int get_tsync_enable(void)
+{
+    char buf[32];
+    int ret=0;
+    int val=0;	
+    ret=get_sysfs_str("/sys/class/tsync/enable", buf,32);
+    if(!ret){
+	sscanf(buf,"%d",&val);
+    }
+    return val==1?val:0;	 
+}
 int set_tsync_discontinue(int discontinue)      //kernel set to 1,player clear to 0
 {
     return set_sysfs_int("/sys/class/tsync/discontinue", discontinue);

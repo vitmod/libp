@@ -392,7 +392,17 @@ static void check_amutils_msg(play_para_t *para, player_cmd_t *msg){
 		}	
 	}
 }
-
+static int nextcmd_is_cmd(play_para_t *player,ctrl_cmd_t c_cmd)
+{
+	int is=0;
+	player_cmd_t *msg;
+	lock_message_pool(player);
+	msg=peek_message_locked(player);
+	if(msg && msg->ctrl_cmd==c_cmd)
+		is=1;
+	unlock_message_pool(player);
+	return is;
+}
 int check_flag(play_para_t *p_para)
 {
     player_cmd_t *msg = NULL;
@@ -403,11 +413,32 @@ int check_flag(play_para_t *p_para)
     int find_subtitle_index = 0;
     unsigned int i = 0;
     int subtitle_curr = 0;
-
+    if(p_para->oldcmd.ctrl_cmd==CMD_SEARCH&&
+	nextcmd_is_cmd(p_para,CMD_SEARCH) &&
+	((p_para->oldcmdtime>=player_get_systemtime_ms()-300)) &&/*lastcmd is not too old.*/
+	 p_para->vcodec!=NULL){
+	/*if latest cmd and next cmd are all search,we must wait the frame show.*/
+	ret = codec_get_cntl_state(p_para->vcodec);
+	p_para->oldavsyncstate=get_tsync_enable();
+	if(p_para->oldavsyncstate==1){
+		set_tsync_enable(0);
+		p_para->avsynctmpchanged=1;
+	}
+	if(ret<=0){
+		return NONO_FLAG;
+	}
+    }
     msg = get_message(p_para);  //msg: pause, resume, timesearch,add file, rm file, move up, move down,...
     if (msg) {
+	 p_para->oldcmd=*msg; 	
+	 p_para->oldcmdtime=player_get_systemtime_ms();
         log_print("pid[%d]:: [check_flag:%d]cmd=%x set_mode=%x info=%x param=%d fparam=%f\n", p_para->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param, msg->f_param);
-        check_msg(p_para, msg);
+	if(msg->ctrl_cmd!=CMD_SEARCH && p_para->avsynctmpchanged>0){
+		/*not search now,resore the sync states...*/
+		set_tsync_enable(p_para->oldavsyncstate);
+		p_para->avsynctmpchanged=0;
+    	 }
+	 check_msg(p_para, msg);
         message_free(msg);
         msg = NULL;
     }else{
@@ -417,8 +448,12 @@ int check_flag(play_para_t *p_para)
 			check_msg(p_para, &cmd);
 			check_amutils_msg(p_para, &cmd);
 		}
-	}
-	
+		if(p_para->avsynctmpchanged>0){
+			set_tsync_enable(p_para->oldavsyncstate);
+			p_para->avsynctmpchanged=0;
+    		}
+     }
+    
     if (p_para->playctrl_info.end_flag) {
         if (!p_para->playctrl_info.search_flag &&
             !p_para->playctrl_info.fast_forward &&
@@ -1091,7 +1126,6 @@ write_packet:
                 set_player_state(player, PLAYER_ERROR);
                 break;
             }
-
             if (player->playctrl_info.end_flag) {
                 set_player_state(player, PLAYER_PLAYEND);
                 break;

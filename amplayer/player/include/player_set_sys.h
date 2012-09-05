@@ -40,6 +40,7 @@ int set_black_policy(int blackout);
 int get_black_policy();
 int get_karaok_flag();
 int set_tsync_enable(int enable);
+int get_tsync_enable(void);
 int set_tsync_discontinue(int enable);
 int get_pts_discontinue();
 int set_fb0_blank(int blank);

@@ -85,6 +85,5 @@ typedef struct {
 int message_free(player_cmd_t * cmd);
 player_cmd_t * message_alloc(void);
 int cmd2str(player_cmd_t *cmd, char *buf);
-
 #endif
 

@@ -38,7 +38,32 @@ int message_free(player_cmd_t * cmd)
     cmd = NULL;
     return 0;
 }
-
+int send_message_update(play_para_t *para, player_cmd_t *cmd)
+{
+    int i,j;	
+    player_cmd_t *oldcmd;	
+    int updated=0;	
+	
+    message_pool_t *pool = &para->message_pool;
+    //log_print("[send_message:%d]num=%d in_idx=%d out_idx=%d\n",__LINE__,pool->message_num,pool->message_in_index,pool->message_out_index);
+    pthread_mutex_lock(&pool->msg_mutex);
+    j=pool->message_out_index; 	
+    for(i=0;i<pool->message_num;i++){
+	 oldcmd= pool->message_list[j];
+	 if(oldcmd && (oldcmd->ctrl_cmd==cmd->ctrl_cmd)){/*same cmd*/
+		*oldcmd=*cmd;/*update old one*/
+		  log_print("found old message update old one.\n");
+		updated=1;
+		break;
+	 }	
+    }
+    pthread_mutex_unlock(&pool->msg_mutex);	
+    if(!updated)
+	return send_message(para,cmd);
+    else
+	message_free(cmd);
+    return 0;	
+}
 
 int send_message(play_para_t *para, player_cmd_t *cmd)
 {
@@ -77,7 +102,10 @@ int send_message_by_pid(int pid, player_cmd_t *cmd)
     if (player_para == NULL) {
         return PLAYER_NOT_VALID_PID;
     }
-    ret = send_message(player_para, cmd);
+    if(cmd->ctrl_cmd==CMD_SEARCH)
+	ret = send_message_update(player_para, cmd);
+    else	
+    	ret = send_message(player_para, cmd);
     player_close_pid_data(pid);
     return ret;
 }

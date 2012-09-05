@@ -152,6 +152,12 @@ typedef struct play_para {
     s_stream_info_t sstream_info;
     media_info_t    media_info;
 
+/*for toomany seek cmd*/	
+    player_cmd_t   oldcmd;
+    long oldcmdtime;	
+    int    oldavsyncstate;
+    int    avsynctmpchanged;
+   
     AVFormatContext *pFormatCtx;
 
     codec_para_t    *vcodec;
@@ -212,7 +218,7 @@ int unlock_message_pool(play_para_t *para);
 int lock_message_pool(play_para_t *para);
 player_cmd_t * peek_message_locked(play_para_t *para);
 player_cmd_t * get_message_locked(play_para_t *para);
-
+int send_message_update(play_para_t *para, player_cmd_t *cmd);
 
 player_cmd_t * get_message(play_para_t *para);
 int update_player_states(play_para_t *para, int force);
