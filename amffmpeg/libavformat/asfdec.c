@@ -1058,6 +1058,7 @@ static int ff_asf_parse_packet(AVFormatContext *s, AVIOContext *pb, AVPacket *pk
             av_new_packet(&asf_st->pkt, asf->packet_obj_size);
             asf_st->seq = asf->packet_seq;
             asf_st->pkt.dts = asf->packet_frag_timestamp - asf->hdr.preroll;
+            asf_st->pkt.pts = asf_st->pkt.dts;
             asf_st->pkt.stream_index = asf->stream_index;
             asf_st->pkt.pos =
             asf_st->packet_pos= asf->packet_pos;
