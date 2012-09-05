@@ -2551,7 +2551,7 @@ static void av_estimate_timeings_chapters(AVFormatContext * ic, int64_t old_offs
 			                    //av_log(NULL, AV_LOG_INFO, "end=0x%llx start=0x%llx dur=0x%llx\n",end_time, start_time[pkt->stream_index], duration);
 
 					if(pts_discontinue[pkt->stream_index] != AV_NOPTS_VALUE){
-						duration += pts_discontinue[pkt->stream_index];
+						duration = pts_discontinue[pkt->stream_index] - start_time[pkt->stream_index];
 						//av_log(NULL, AV_LOG_INFO, "discontinue_pts=0x%llx duration=0x%llx\n",pts_discontinue[pkt->stream_index], duration);
 					}
 					else if(end_time<start_time[pkt->stream_index]){
