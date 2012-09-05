@@ -43,7 +43,12 @@ static struct list_demux *list_demux_list = NULL;
 static int list_shrink_live_list(struct list_mgt *mgt);
 
 #define USE_IPAD_REQUEST 1
+#ifdef USE_IPAD_REQUEST
+
 #define SESSLEN 256
+static int generate_playback_session_id(char * ssid, int size);
+static int generate_segment_session_id(char * ssid, int size);
+
 int generate_playback_session_id(char * ssid, int size)
 {
     AVLFG rnd;
@@ -60,6 +65,23 @@ int generate_playback_session_id(char * ssid, int size)
     return -1;
 }
 
+int generate_segment_session_id(char * ssid, int size)
+{
+    AVLFG rnd;
+    char *ex_id = "E4499E08-D4C5-4DB0-A21C-";
+    unsigned int session_id = 0;
+    char session_name[SESSLEN] = "";
+    av_lfg_init(&rnd, 0xDEADC0DE);
+    session_id =  av_lfg_get(&rnd);
+    snprintf(session_name, SESSLEN, "%s%012u", ex_id, session_id);
+    if (ssid != NULL) {
+        snprintf(ssid, size, "%s", session_name);
+        return 0;
+    }
+    return -1;
+}
+
+#endif
 int register_list_demux(struct list_demux *demux)
 {
     list_demux_t **list = &list_demux_list;
@@ -116,7 +138,7 @@ static struct list_item* list_test_find_samefile_item(struct list_mgt *mgt, stru
     list = &mgt->item_list;
     if (item->file != NULL) {
         while (*list != NULL) {
-            if ((item->seq >= 0  && (item->seq == (*list)->seq)) || (item->seq < 0 && strcmp((*list)->file, item->file) == 0)) {
+            if ((item->seq >= 0  && (item->seq == (*list)->seq)) && (!mgt->have_list_end&& !strcmp((*list)->file, item->file))) {
                 /*same seq or same file name*/
                 return *list;
             }
@@ -173,6 +195,7 @@ int list_test_and_add_item(struct list_mgt *mgt, struct list_item*item)
         av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]", sameitem->file, sameitem->seq, item->file, item->seq);
         return -1;/*found same item,drop it */
     }
+    av_log(NULL,AV_LOG_INFO,"add this item,seq number:%d,start:%.4lf,duration:%.4lf\n",item->seq,item->start_time,item->duration);
     list_add_item(mgt, item);
     return 0;
 }
@@ -390,12 +413,21 @@ static int list_open(URLContext *h, const char *filename, int flags)
     char sess_id[40];
     memset(headers, 0, sizeof(headers));
     memset(sess_id, 0, sizeof(sess_id));
-    generate_playback_session_id(sess_id, 37);
+    generate_segment_session_id(sess_id, 37);
     snprintf(headers, sizeof(headers),
-             "Connection: keep-alive\r\n"
+             /*"Connection: keep-alive\r\n"*/
+             "Range: bytes=0- \r\n"
              "X-Playback-Session-Id: %s\r\n", sess_id);
     av_log(NULL, AV_LOG_INFO, "Generate ipad http request headers,\r\n%s\n", headers);
     mgt->ipad_ex_headers = strndup(headers, 1024);
+    memset(headers, 0, sizeof(headers));
+    generate_playback_session_id(sess_id, 37);
+    snprintf(headers, sizeof(headers),
+             /*"Connection: keep-alive\r\n"*/
+             "X-Playback-Session-Id: %s\r\n", sess_id);
+    av_log(NULL, AV_LOG_INFO, "Generate ipad http request media headers,\r\n%s\n", headers);
+    
+    mgt->ipad_req_media_headers = strndup(headers, 1024);
 #endif
 
 
@@ -424,7 +456,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     h->priv_data = mgt;
     mgt->cache_http_handle = NULL;
 #ifdef USE_IPAD_REQUEST
-    ret = CacheHttp_Open(&mgt->cache_http_handle,mgt->ipad_ex_headers);
+    ret = CacheHttp_Open(&mgt->cache_http_handle,mgt->ipad_req_media_headers);
 #else
     ret = CacheHttp_Open(&mgt->cache_http_handle,NULL);
 #endif
@@ -609,8 +641,8 @@ switchnext:
     if (mgt->listclose)
 	return NULL;
     if (next)
-        av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d,start=%d,duration=%d\n",
-               next->file, mgt->item_num, next->start_time, next->duration);
+        av_log(NULL, AV_LOG_INFO, "switch to new file=%s,total=%d,start=%.4lf,duration=%.4lf,index:%d,seq:%d\n",
+               next->file, mgt->item_num, next->start_time, next->duration,next->index,next->seq);
     else {
         av_log(NULL, AV_LOG_INFO, "switch to new file=NULL,total=%d\n", mgt->item_num);
         if (!mgt->have_list_end) {
@@ -620,7 +652,7 @@ switchnext:
                 return NULL;
             }
             usleep(100 * 1000);
-            reload_interval = mgt->target_duration * 500000;
+            reload_interval = mgt->target_duration * 250000;
             isNeedFetch = 1;
             goto reload;
         }
@@ -761,6 +793,9 @@ static int list_close(URLContext *h)
 #ifdef USE_IPAD_REQUEST
     if(NULL!=mgt->ipad_ex_headers){
         av_free(mgt->ipad_ex_headers);
+    }
+    if(NULL!= mgt->ipad_req_media_headers){
+        av_free(mgt->ipad_req_media_headers);
     }
 #endif
     av_free(mgt);

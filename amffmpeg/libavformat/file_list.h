@@ -138,6 +138,7 @@ typedef struct list_mgt
     void *bandwidth_measure;	
     void *cache_http_handle;
     char *ipad_ex_headers; 
+    char *ipad_req_media_headers;
 }list_mgt_t;
 
 typedef struct list_demux
@@ -155,7 +156,6 @@ int list_add_item(struct list_mgt *mgt,struct list_item*item);
 int list_test_and_add_item(struct list_mgt *mgt,struct list_item*item);
 int url_is_file_list(ByteIOContext *s,const char *filename);
 
-int generate_playback_session_id(char * ssid,int size);
 
 #endif /* AVFORMAT_FILE_LIST_H */
 

@@ -38,6 +38,7 @@
 
 #define IPAD_IDENT	"AppleCoreMedia/1.0.0.9A405 (iPad; U; CPU OS 5_0_1 like Mac OS X; zh_cn)"
 
+//#define IPAD_IDENT   "AppleCoreMedia/1.0.0.9B206 (iPad; U; CPU OS 5_1_1 like Mac OS X; zh_cn)"
 /* used for protocol handling */
 #define BUFFER_SIZE (1024*4)
 #define MAX_REDIRECTS 8
@@ -454,7 +455,8 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     if (!has_header(s->headers, "\r\nAccept: "))
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);	
-    if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek))
+    if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek)
+        &&!has_header(headers, "\r\nRange: ")&&!s->hd->is_streamed)
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: ")&&!has_header(headers, "\r\nConnection: "))

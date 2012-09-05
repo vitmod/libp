@@ -42,8 +42,15 @@ static struct list_demux *list_demux_list = NULL;
 #define SHRINK_LIVE_LIST_THRESHOLD (LIVE_LIST_MAX/3)
 static int list_shrink_live_list(struct list_mgt *mgt);
 
+
 #define USE_IPAD_REQUEST 1
+
+#ifdef USE_IPAD_REQUEST
+
 #define SESSLEN 256
+static int generate_playback_session_id(char * ssid, int size);
+static int generate_segment_session_id(char * ssid, int size);
+
 int generate_playback_session_id(char * ssid, int size)
 {
     AVLFG rnd;
@@ -59,7 +66,23 @@ int generate_playback_session_id(char * ssid, int size)
     }
     return -1;
 }
+int generate_segment_session_id(char * ssid, int size)
+{
+    AVLFG rnd;
+    char *ex_id = "E4499E08-D4C5-4DB0-A21C-";
+    unsigned int session_id = 0;
+    char session_name[SESSLEN] = "";
+    av_lfg_init(&rnd, 0xDEADC0DE);
+    session_id =  av_lfg_get(&rnd);
+    snprintf(session_name, SESSLEN, "%s%012u", ex_id, session_id);
+    if (ssid != NULL) {
+        snprintf(ssid, size, "%s", session_name);
+        return 0;
+    }
+    return -1;
+}
 
+#endif
 
 int register_list_demux(struct list_demux *demux)
 {
@@ -174,6 +197,7 @@ int list_test_and_add_item(struct list_mgt *mgt, struct list_item*item)
         av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]", sameitem->file, sameitem->seq, item->file, item->seq);
         return -1;/*found same item,drop it */
     }
+    av_log(NULL,AV_LOG_INFO,"add this item,seq number:%d,start:%lf,duration:%lf\n",item->seq,item->start_time,item->duration);
     list_add_item(mgt, item);
     return 0;
 }
@@ -382,18 +406,26 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->playing_item_seq = 0;
     mgt->strategy_up_counts = 0;
     mgt->strategy_down_counts = 0;
-
 #ifdef USE_IPAD_REQUEST
     char headers[1024];
     char sess_id[40];
     memset(headers, 0, sizeof(headers));
     memset(sess_id, 0, sizeof(sess_id));
-    generate_playback_session_id(sess_id, 37);
-    snprintf(headers, sizeof(headers),  
-             "Connection: keep-alive\r\n"
-              "X-Playback-Session-Id: %s\r\n", sess_id);
+    generate_segment_session_id(sess_id, 37);
+    snprintf(headers, sizeof(headers),
+             /*"Connection: keep-alive\r\n"*/
+             "Range: bytes=0- \r\n"
+             "X-Playback-Session-Id: %s\r\n", sess_id);
     av_log(NULL, AV_LOG_INFO, "Generate ipad http request headers,\r\n%s\n", headers);
     mgt->ipad_ex_headers = strndup(headers, 1024);
+    memset(headers, 0, sizeof(headers));
+    generate_playback_session_id(sess_id, 37);
+    snprintf(headers, sizeof(headers),
+             /*"Connection: keep-alive\r\n"*/
+             "X-Playback-Session-Id: %s\r\n", sess_id);
+    av_log(NULL, AV_LOG_INFO, "Generate ipad http request media headers,\r\n%s\n", headers);
+    
+    mgt->ipad_req_media_headers = strndup(headers, 1024);
 #endif
 
 
@@ -605,7 +637,7 @@ retry:
             ByteIOContext *bio;
             av_log(NULL, AV_LOG_INFO, "list_read switch to new file=%s,flag:%d,seq:%d,index:%d\n", item->file, item->flags, item->seq, item->index);
 #ifdef USE_IPAD_REQUEST   
-            len  = avio_open_h(&bio, item->file, AVIO_FLAG_READ | URL_MINI_BUFFER | URL_NO_LP_BUFFER,mgt->ipad_ex_headers);
+            len  = avio_open_h(&bio, item->file, AVIO_FLAG_READ | URL_MINI_BUFFER | URL_NO_LP_BUFFER,mgt->ipad_req_media_headers);
 #else
             len = url_fopen(&bio, item->file, AVIO_FLAG_READ | URL_MINI_BUFFER | URL_NO_LP_BUFFER);
 #endif
@@ -927,6 +959,10 @@ static int list_close(URLContext *h)
 #ifdef USE_IPAD_REQUEST
     if(NULL!=mgt->ipad_ex_headers){
         av_free(mgt->ipad_ex_headers);
+    }
+
+    if(NULL!= mgt->ipad_req_media_headers){
+        av_free(mgt->ipad_req_media_headers);
     }
 #endif
     av_free(mgt);

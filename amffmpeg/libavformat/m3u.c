@@ -448,15 +448,16 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 					item->seq=mgt->next_seq;
 					mgt->next_seq++;
 			}
-
+                   
 			if(!(tmpitem.flags&INVALID_ITEM_FLAG)){
 				
 				ret =list_test_and_add_item(mgt,item);
 				if(ret==0){
 					getnum++;
 					start_time+=item->duration;
-				}else{
+				}else{				      
 					av_free(item);
+                                 mgt->next_seq--;
 				}
 				
 			}
