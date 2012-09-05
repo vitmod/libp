@@ -36,6 +36,7 @@ ADEC_BEGIN_DECLS
 #define AUDIODSP_GET_FIRST_PTS_FLAG             _IOR('r',6,long)
 #define AUDIODSP_AUTOMUTE_ON                    _IOW('r',9,unsigned long)
 #define AUDIODSP_AUTOMUTE_OFF                   _IOW('r',10,unsigned long)
+#define AUDIODSP_LOOKUP_APTS             _IOR('r',11,long)
 #else
 
 #define AUDIODSP_SET_FMT                        _IOW('a',1,sizeof(long))
@@ -54,6 +55,7 @@ ADEC_BEGIN_DECLS
 #define AUDIODSP_GET_PTS                        _IOR('r',4,sizeof(long))
 #define AUDIODSP_GET_DECODED_NB_FRAMES          _IOR('r',5,sizeof(long))
 #define AUDIODSP_GET_FIRST_PTS_FLAG             _IOR('r',6,sizeof(long))
+#define AUDIODSP_LOOKUP_APTS             _IOR('r',11,sizeof(long))
 #endif
 
 

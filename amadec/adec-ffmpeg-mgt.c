@@ -222,7 +222,7 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     samplerate=g_bst->samplerate;
     offset=decode_offset;
     if(dsp_ops->dsp_file_fd)
-        ioctl(dsp_ops->dsp_file_fd,AMSTREAM_IOC_APTS_LOOKUP,&offset);
+        ioctl(dsp_ops->dsp_file_fd,AUDIODSP_LOOKUP_APTS,&offset);
     else
         adec_print("====abuf have not open!\n",val);
     pts=offset;
