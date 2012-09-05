@@ -1256,13 +1256,14 @@ int time_search(play_para_t *am_p)
                 am_p->playctrl_info.last_seek_time_point = time_point;
             }
         } else {  
-            if (am_p->file_type == MPEG_FILE && time_point > 0 
+            if ((am_p->file_type == MPEG_FILE||am_p->file_type == APE_FILE)&& time_point > 0 
                 && !am_p->playctrl_info.seek_frame_fail
                 && (s->pb && !s->pb->is_slowmedia)) {
                 timestamp = (int64_t)(time_point * AV_TIME_BASE);	           
                 if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
                     timestamp += s->start_time;
                 }
+				log_info("av_seek_frame:time_point = %f  timestamp=%x, starttime=%xn", time_point, timestamp,s->start_time);
                 ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
                 if (ret >= 0) 
                 	return PLAYER_SUCCESS;    
