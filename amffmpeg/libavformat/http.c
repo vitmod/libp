@@ -412,6 +412,10 @@ static int process_line(URLContext *h, char *line, int line_count,
         } else if (!strcasecmp (tag, "Connection")) {
             if (!strcmp(p, "close"))
                 s->willclose = 1;
+        }else  if (!strcasecmp (tag, "Server")) {
+            if (!strncmp(p, "Octoshape-Ondemand", strlen("Octoshape-Ondemand")))
+                h->is_streamed = 0;     /* Octoshape-Ondemand http server support seek */
+                av_log(h, AV_LOG_INFO, "Octoshape-Ondemand support seek!\n");
         }
     }
     return 1;
@@ -456,7 +460,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);	
     if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek)
-        &&!has_header(headers, "\r\nRange: ")&&!s->hd->is_streamed)
+        /*&&!has_header(headers, "\r\nRange: ")&&!s->hd->is_streamed*/)
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: ")&&!has_header(headers, "\r\nConnection: "))
