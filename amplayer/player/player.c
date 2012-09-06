@@ -415,7 +415,7 @@ int check_flag(play_para_t *p_para)
     int subtitle_curr = 0;
     if(p_para->oldcmd.ctrl_cmd==CMD_SEARCH&&
 	nextcmd_is_cmd(p_para,CMD_SEARCH) &&
-	((p_para->oldcmdtime>=player_get_systemtime_ms()-200)) &&/*lastcmd is not too old.*/
+	((p_para->oldcmdtime>=player_get_systemtime_ms()-400)) &&/*lastcmd is not too old.*/
 	 ((p_para->stream_type == STREAM_ES&& p_para->vcodec!=NULL) ||/*ES*/
 	 ( p_para->stream_type != STREAM_ES  && p_para->codec && p_para->vstream_info.has_video) )){/*PS,RM,TS*/
 		/*if latest cmd and next cmd are all search,we must wait the frame show.*/
