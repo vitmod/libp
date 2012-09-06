@@ -415,18 +415,22 @@ int check_flag(play_para_t *p_para)
     int subtitle_curr = 0;
     if(p_para->oldcmd.ctrl_cmd==CMD_SEARCH&&
 	nextcmd_is_cmd(p_para,CMD_SEARCH) &&
-	((p_para->oldcmdtime>=player_get_systemtime_ms()-300)) &&/*lastcmd is not too old.*/
-	 p_para->vcodec!=NULL){
-	/*if latest cmd and next cmd are all search,we must wait the frame show.*/
-	ret = codec_get_cntl_state(p_para->vcodec);
-	p_para->oldavsyncstate=get_tsync_enable();
-	if(p_para->oldavsyncstate==1){
-		set_tsync_enable(0);
-		p_para->avsynctmpchanged=1;
-	}
-	if(ret<=0){
-		return NONO_FLAG;
-	}
+	((p_para->oldcmdtime>=player_get_systemtime_ms()-200)) &&/*lastcmd is not too old.*/
+	 ((p_para->stream_type == STREAM_ES&& p_para->vcodec!=NULL) ||/*ES*/
+	 ( p_para->stream_type != STREAM_ES  && p_para->codec && p_para->vstream_info.has_video) )){/*PS,RM,TS*/
+		/*if latest cmd and next cmd are all search,we must wait the frame show.*/
+		if(p_para->vcodec)
+			ret = codec_get_cntl_state(p_para->vcodec);/*es*/
+		else 
+			ret = codec_get_cntl_state(p_para->codec);/*not es*/
+		p_para->oldavsyncstate=get_tsync_enable();
+		if(p_para->oldavsyncstate==1){
+			set_tsync_enable(0);
+			p_para->avsynctmpchanged=1;
+		}
+		if(ret<=0){
+			return NONO_FLAG;
+		}
     }
     msg = get_message(p_para);  //msg: pause, resume, timesearch,add file, rm file, move up, move down,...
     if (msg) {
