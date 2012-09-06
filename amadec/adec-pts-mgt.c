@@ -217,6 +217,7 @@ int adec_pts_resume(void)
  * \param audec pointer to audec
  * \return 0 on success otherwise -1
  */
+ static int apts_interrupt=0;
 int adec_refresh_pts(aml_audio_dec_t *audec)
 {
     unsigned long pts;
@@ -281,7 +282,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         audec->adsp_ops.last_audio_pts = pts;
         audec->adsp_ops.last_pts_valid = 1;
         audec->auto_mute = 1;
-
+        apts_interrupt=1;
         return 0;
     }
 
@@ -293,8 +294,11 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     audec->adsp_ops.last_pts_valid = 1;
 
     if (abs(pts - systime) < audec->avsync_threshold) {
+        apts_interrupt=0;
         return 0;
     }
+    else if(apts_interrupt)
+        return 0;
 
     /* report apts-system time difference */
     fd = open(TSYNC_APTS, O_RDWR);

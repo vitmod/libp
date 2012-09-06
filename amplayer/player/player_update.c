@@ -753,10 +753,6 @@ static void update_current_time(play_para_t *p_para)
 	            }			
                 time += p_para->discontinue_point * PTS_FREQ;
 	        }
-	        // remove some error pts
-               if((time/PTS_FREQ) - p_para->state.last_time >= 2){
-                    time = p_para->state.last_time * PTS_FREQ;
-               }
 	        log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n", time / PTS_FREQ, p_para->state.current_time, p_para->state.last_time);
 	        p_para->state.current_ms = time / PTS_FREQ_MS;
 	      
