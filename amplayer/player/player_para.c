@@ -1089,7 +1089,7 @@ int player_dec_init(play_para_t *p_para)
 
 	if (p_para->pFormatCtx->duration != -1) {
     	p_para->state.full_time = p_para->pFormatCtx->duration / AV_TIME_BASE;
-        p_para->state.full_time_ms = p_para->pFormatCtx->duration * 1000 / AV_TIME_BASE;
+        p_para->state.full_time_ms = p_para->pFormatCtx->duration / AV_TIME_BASE * 1000;
 	} else {
 		p_para->state.full_time = -1;
         p_para->state.full_time_ms = -1;
