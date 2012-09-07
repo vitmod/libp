@@ -443,7 +443,28 @@ int thumbnail_get_key_data(void* handle, char* key, const void** data, int* data
 
     return 0;
 }
-
+int thumbnail_get_tracks_info(void *handle, int *vtracks,int *atracks,int *stracks)
+{
+	struct video_frame *frame = (struct video_frame *)handle;
+    	struct stream *stream = &frame->stream;
+	AVStream **avs=stream->pFormatCtx->streams;	
+	int i;
+	*vtracks=0;
+	*atracks=0;
+	*stracks=0;
+	for(i=0;i<stream->pFormatCtx->nb_streams;i++){
+		if(avs[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+			(*vtracks)++;
+		else if(avs[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+			(*atracks)++;
+		else if(avs[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE)
+			(*stracks)++;
+		else
+			;
+	}
+	 log_print("thumbnail_get_tracks_info v:%d a:%d s:%d \n",*vtracks,*atracks,*stracks);	
+	return 0;
+}
 void thumbnail_get_video_rotation(void *handle, int* rotation)
 {
     struct video_frame *frame = (struct video_frame *)handle;
