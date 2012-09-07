@@ -138,7 +138,8 @@ static struct list_item* list_test_find_samefile_item(struct list_mgt *mgt, stru
     list = &mgt->item_list;
     if (item->file != NULL) {
         while (*list != NULL) {
-            if ((item->seq >= 0  && (item->seq == (*list)->seq)) && (!mgt->have_list_end&& !strcmp((*list)->file, item->file))) {
+           // if ((item->seq >= 0  && (item->seq == (*list)->seq)) && (!mgt->have_list_end&& !strcmp((*list)->file, item->file))) {
+	    if ((item->seq >= 0  && (item->seq == (*list)->seq)) || (item->seq < 0 && strcmp((*list)->file, item->file) == 0)) {
                 /*same seq or same file name*/
                 return *list;
             }
