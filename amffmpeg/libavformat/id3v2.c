@@ -226,6 +226,16 @@ static int parse_apic_tag(AVFormatContext *s, AVIOContext *pb, int taglen, const
         av_log(s, AV_LOG_INFO, "no memery, av_alloc failed!\n");
 	 return -1;
     }
+    if(!strcmp(mime,"image/jpeg")) {
+            av_log(NULL, AV_LOG_INFO, "cover is image/jpeg, first byte must be 0xff!\n");
+            do{
+                ret = avio_r8(pb);
+                cover_len --;           
+            }while(ret!=0xff& cover_len > 0);
+            avio_seek(pb, -1, SEEK_CUR);
+            cover_len ++;
+            av_log(NULL, AV_LOG_INFO, "[%s:%d]cover data offset=%llx ret=%x\n",  __FUNCTION__, __LINE__, avio_tell(pb));
+    }
     s->cover_data_len = cover_len;
     avio_read(pb, s->cover_data, cover_len);
 
