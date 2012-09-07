@@ -122,6 +122,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     
     CacheHttpContext * s = (CacheHttpContext *)handle;
     pthread_mutex_lock(&s->read_mutex);
+    
     if (s->fifo) {
     	int avail;
        avail = av_fifo_size(s->fifo);
@@ -132,7 +133,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
            av_fifo_generic_read(s->fifo, cache, size, NULL);
     	    pthread_mutex_unlock(&s->read_mutex);
            return size;        
-       } else {
+       } else  if(!s->finish_flag){
            pthread_mutex_unlock(&s->read_mutex);          
            //read just need retry
            return AVERROR(EAGAIN);
@@ -236,7 +237,7 @@ static void *circular_buffer_task( void *_handle)
         }        
        
         list_item_t * item = getCurrentSegment(NULL);
-        if(!item||!item->file) {          
+        if(!item||(!item->file&&!item->flags&ENDLIST_FLAG)) {          
             usleep(WAIT_TIME);
             continue;
         }
