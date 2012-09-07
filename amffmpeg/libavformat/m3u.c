@@ -209,7 +209,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		int ret=0;
 		int slen = strlen("#EXT-X-MEDIA-SEQUENCE:");
 		ret=sscanf(p+slen,"%d",&seq); //skip strlen("#EXT-X-MEDIA-SEQUENCE:");	
-		if(ret>0&&seq>=0&&seq>=mgt->next_seq){
+		if(ret>0&&seq>=0/*&&seq>=mgt->next_seq*/){
 			if(mgt->start_seq<0){
 				mgt->start_seq=seq;	
 				if(seq>0){
@@ -457,12 +457,11 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 					start_time+=item->duration;
 				}else{				      
 					av_free(item);
-                                 mgt->next_seq--;
 				}
 				
 			}
 						
-			if(item->flags &ENDLIST_FLAG)
+			if((item->flags &ENDLIST_FLAG) && (item->flags < (1<<12)))
 			{
 				mgt->have_list_end=1;
 				break;
