@@ -81,7 +81,7 @@ static inline int ff_network_wait_fd(int fd, int write)
     int ev = write ? POLLOUT : POLLIN;
     struct pollfd p = { .fd = fd, .events = ev, .revents = 0 };
     int ret=0;
-	int retry=10; ///10*100ms=1S;
+	int retry=5; ///5*100ms=500ms;
 	do{
 		if(retry<5  && url_interrupt_cb()) /*at lest try 5 times, for some teardown command*/
 			return AVERROR_EXIT;

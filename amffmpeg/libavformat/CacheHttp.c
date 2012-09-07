@@ -257,7 +257,7 @@ static void *circular_buffer_task( void *_handle)
         int err;
         char* filename = av_strdup(item->file);
         
-        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ, s->headers);
+        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers);
         if (err < 0) {
             if(filename){
                 av_free(filename);
