@@ -3078,10 +3078,12 @@ int av_find_stream_info(AVFormatContext *ic)
             av_log(ic, AV_LOG_DEBUG, "interrupted\n");
             break;
         }
-        if(ic->pb->is_streamed&&!strcmp(ic->iformat->name, "mpegts")&&stream_parser_count ==ic->nb_streams){
-            av_log(NULL,AV_LOG_WARNING,"Do fast parser.\n");
-            break;
-        }
+        //if(ic->pb->is_streamed&&!strcmp(ic->iformat->name, "mpegts")&&stream_parser_count ==ic->nb_streams){
+        //    av_log(NULL,AV_LOG_WARNING,"Do fast parser.\n");
+        //    break;
+        // }
+        //bug on some mpegts file..,netflix
+
         /* check if one codec still needs to be handled */
         for(i=0;i<ic->nb_streams;i++) {
             int fps_analyze_framecount = 20;
