@@ -155,13 +155,14 @@ static int http_open_cnx(URLContext *h)
         port = 80;
 
     ff_url_join(buf, sizeof(buf), "tcp", NULL, hostname, port, NULL);
-    err = ffurl_open(&hd, buf, AVIO_FLAG_READ_WRITE);
-    if (err < 0){
-		av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
-        goto fail;
-    }	
-
-    s->hd = hd;
+    if (!s->hd) {
+        err = ffurl_open(&hd, buf, AVIO_FLAG_READ_WRITE);
+        if (err < 0){
+    		av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
+            goto fail;
+        }	
+        s->hd = hd;
+    }
     cur_auth_type = s->auth_state.auth_type;
     if (http_connect(h, path, hoststr, auth, &location_changed) < 0){
        	av_log(h, AV_LOG_ERROR, "http_open_cnx:http_connect failed\n");
@@ -170,6 +171,7 @@ static int http_open_cnx(URLContext *h)
     if (s->http_code == 401) {
         if (cur_auth_type == HTTP_AUTH_NONE && s->auth_state.auth_type != HTTP_AUTH_NONE) {
             ffurl_close(hd);
+            s->hd = NULL;
             goto redo;
         } else{
         	av_log(h, AV_LOG_ERROR, "http_open_cnx:failed s->http_code=%d cur_auth_type=%d\n",s->http_code, cur_auth_type);
@@ -180,6 +182,7 @@ static int http_open_cnx(URLContext *h)
         && location_changed == 1) {
         /* url moved, get next */
         ffurl_close(hd);
+        s->hd = NULL;
         if (redirects++ >= MAX_REDIRECTS){
 			av_log(h, AV_LOG_ERROR, "HTTP open reach MAX_REDIRECTS\n");
             return AVERROR(EIO);
@@ -257,6 +260,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
 	int ret;
 	int open_retry=0;
     h->is_streamed = 1;
+    s->hd = NULL;
 	
     s->filesize = -1;
 	s->is_seek=1;
@@ -278,7 +282,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 	int ret;
 	int open_retry=0;
     h->is_streamed = 1;
-
+     s->hd = NULL;
     s->filesize = -1;
 	s->is_seek=1;
 	s->canseek=1;
@@ -460,7 +464,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);	
     if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek)
-        /*&&!has_header(headers, "\r\nRange: ")&&!s->hd->is_streamed*/)
+        &&!has_header(headers, "\r\nRange: ")/*&&!s->hd->is_streamed*/)
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: ")&&!has_header(headers, "\r\nConnection: "))
@@ -673,6 +677,16 @@ static int http_write(URLContext *h, const uint8_t *buf, int size)
     return size;
 }
 
+int ff_http_do_new_request(URLContext *h, const char *uri)
+{
+    HTTPContext *s = h->priv_data;   
+    s->off = 0;
+    if(uri!=NULL){
+        av_strlcpy(s->location, uri, sizeof(s->location));
+    }
+    
+    return http_open_cnx(h);
+}
 static int http_close(URLContext *h)
 {
     int ret = 0;
