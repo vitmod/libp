@@ -27,6 +27,7 @@ static int sn_threadid=-1;
 static int aout_stop_mutex=0;//aout stop mutex flag
 static int last_valid_pts=0;
 static int out_len_after_last_valid_pts=0;
+static int pcm_cache_size=0;
 
 void *audio_decode_loop(void *args);
 static int set_sysfs_int(const char *path, int val);
@@ -238,7 +239,7 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
         //return -1; 
     }
 
-    int len = g_bst->buf_level;
+    int len = g_bst->buf_level+pcm_cache_size;
     frame_nums = (len * 8 / (data_width * channels));
     delay_pts = (frame_nums*90000/samplerate);
     if (pts > delay_pts) {
@@ -1093,6 +1094,7 @@ APE_FORMAT:
 
     				  //write to the pcm buffer
     				  decode_offset+=dlen;
+    				  pcm_cache_size=outlen;
     				  if(g_bst)
     				  {
             				//while(g_bst->buf_level>=g_bst->buf_length*0.8)
@@ -1129,10 +1131,19 @@ APE_FORMAT:
             				}
             				int wlen=0;
 							
+				       #if 0
             				while(wlen<outlen)
             				{
             				    wlen+=write_pcm_buffer(outbuf, g_bst,outlen); 
             				    outlen-=wlen;
+            				    pcm_cache_size-=wlen;
+            				}
+            				#endif
+                                    while(outlen)
+            				{
+            				    wlen=write_pcm_buffer(outbuf, g_bst,outlen); 
+            				    outlen-=wlen;
+            				    pcm_cache_size-=wlen;
             				}
     				  }
     				//write end
