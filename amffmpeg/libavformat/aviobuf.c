@@ -1138,7 +1138,15 @@ int avio_open_h(AVIOContext **s, const char *filename, int flags,const char * he
     return 0;
 }
 
-
+int avio_reset(AVIOContext *s,int flags){ 
+    int ret = -1;
+    ret = url_resetbuf(s, flags);
+    s->buf_ptr = s->buffer;
+    s->pos = 0;/*I think it is the first,pos now*/
+    s->eof_reached=0;/*clear eof error*/
+    s->error = 0;
+    return  ret;
+}
 int avio_close(AVIOContext *s)
 {
     URLContext *h = s->opaque;

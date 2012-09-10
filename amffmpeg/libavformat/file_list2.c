@@ -35,6 +35,7 @@
 #include "hls_livesession.h"
 #include "CacheHttp.h"
 #include "libavutil/lfg.h"
+#include "http.h"
 static struct list_demux *list_demux_list = NULL;
 #define unused(x)   (x=x)
 
@@ -42,8 +43,6 @@ static struct list_demux *list_demux_list = NULL;
 #define SHRINK_LIVE_LIST_THRESHOLD (LIVE_LIST_MAX/3)
 static int list_shrink_live_list(struct list_mgt *mgt);
 
-#define USE_IPAD_REQUEST 1
-#ifdef USE_IPAD_REQUEST
 
 #define SESSLEN 256
 static int generate_playback_session_id(char * ssid, int size);
@@ -81,7 +80,7 @@ int generate_segment_session_id(char * ssid, int size)
     return -1;
 }
 
-#endif
+
 int register_list_demux(struct list_demux *demux)
 {
     list_demux_t **list = &list_demux_list;
@@ -138,8 +137,7 @@ static struct list_item* list_test_find_samefile_item(struct list_mgt *mgt, stru
     list = &mgt->item_list;
     if (item->file != NULL) {
         while (*list != NULL) {
-           // if ((item->seq >= 0  && (item->seq == (*list)->seq)) && (!mgt->have_list_end&& !strcmp((*list)->file, item->file))) {
-	    if ((item->seq >= 0  && (item->seq == (*list)->seq)) || (item->seq < 0 && strcmp((*list)->file, item->file) == 0)) {
+            if ((item->seq >= 0  && (item->seq == (*list)->seq)) && (!mgt->have_list_end&& !strcmp((*list)->file, item->file))) {
                 /*same seq or same file name*/
                 return *list;
             }
@@ -303,7 +301,7 @@ int url_is_file_list(ByteIOContext *s, const char *filename)
         return 0;    /*if used m3u demux,always failed;*/
     }
     if (!lio) {
-        ret = url_fopen(&lio, filename, AVIO_FLAG_READ | URL_MINI_BUFFER);
+        ret = url_fopen(&lio, filename, AVIO_FLAG_READ | URL_MINI_BUFFER|URL_NO_LP_BUFFER);
         if (ret != 0) {
             return AVERROR(EIO);
         }
@@ -322,16 +320,22 @@ int url_is_file_list(ByteIOContext *s, const char *filename)
 static int list_open_internet(ByteIOContext **pbio, struct list_mgt *mgt, const char *filename, int flags)
 {
     list_demux_t *demux;
-    int ret;
-    ByteIOContext *bio;
+    int ret =0;
+    ByteIOContext *bio = *pbio;
     char* url = filename;
 reload:
     
-#ifdef USE_IPAD_REQUEST   
-    ret = avio_open_h(&bio, url, flags,mgt->ipad_ex_headers);
-#else
-    ret = url_fopen(&bio, url, flags);
-#endif
+    
+    if(bio==NULL){
+        ret = avio_open_h(&bio, url, flags,mgt->ipad_ex_headers);
+        
+    }else{
+        avio_reset(bio,AVIO_FLAG_READ); 
+        URLContext* last = (URLContext*)bio->opaque;      
+        
+        ret = ff_http_do_new_request(last,NULL);
+    }
+    
     if (ret != 0) {
         return AVERROR(EIO);
     }
@@ -341,17 +345,20 @@ reload:
     }
     demux = probe_demux(bio, url);
     if (!demux) {
-        ret = -1;
+        ret = -1;       
         goto error;
     }
     ret = demux->parser(mgt, bio);
-    if (ret <= 0 && mgt->n_variants == 0) {
+    if (ret <0 && mgt->n_variants == 0) {
         ret = -1;
+        
         goto error;
     } else {
+       
         if (mgt->item_num == 0 && mgt->n_variants > 0) { //simplely choose server,mabye need sort variants when got it from server.
             if (bio) {
                 url_fclose(bio);
+                bio = NULL;
             }
 
 
@@ -376,12 +383,13 @@ reload:
         }
 
     }
-
+   
     *pbio = bio;
     return 0;
 error:
-    if (bio) {
+    if (bio) {       
         url_fclose(bio);
+        *pbio  = NULL;
     }
     return ret;
 }
@@ -390,8 +398,7 @@ static struct list_mgt* gListMgt = NULL;
 static int list_open(URLContext *h, const char *filename, int flags)
 {
     struct list_mgt *mgt;
-    int ret;
-    ByteIOContext *bio;
+    int ret;   
     mgt = av_malloc(sizeof(struct list_mgt));
     if (!mgt) {
         return AVERROR(ENOMEM);
@@ -408,15 +415,16 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->strategy_up_counts = 0;
     mgt->strategy_down_counts = 0;
     mgt->listclose = 0;
+    mgt->cur_uio = NULL;
 
-#ifdef USE_IPAD_REQUEST
+
     char headers[1024];
     char sess_id[40];
     memset(headers, 0, sizeof(headers));
     memset(sess_id, 0, sizeof(sess_id));
     generate_segment_session_id(sess_id, 37);
     snprintf(headers, sizeof(headers),
-             /*"Connection: keep-alive\r\n"*/
+             "Connection: keep-alive\r\n"
              "Range: bytes=0- \r\n"
              "X-Playback-Session-Id: %s\r\n", sess_id);
     av_log(NULL, AV_LOG_INFO, "Generate ipad http request headers,\r\n%s\n", headers);
@@ -429,31 +437,24 @@ static int list_open(URLContext *h, const char *filename, int flags)
     av_log(NULL, AV_LOG_INFO, "Generate ipad http request media headers,\r\n%s\n", headers);
     
     mgt->ipad_req_media_headers = strndup(headers, 1024);
-#endif
-
 
     gListMgt = mgt;
-    if ((ret = list_open_internet(&bio, mgt, mgt->filename, flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
+    if ((ret = list_open_internet(&mgt->cur_uio, mgt, mgt->filename, flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
         av_free(mgt);
         return ret;
     }
     lp_lock_init(&mgt->mutex, NULL);
     if (!mgt->have_list_end && (!mgt->have_sub_list) && (mgt->target_duration < 5 || mgt->item_num > 10)) {
         struct list_item *item = mgt->item_list;
-        //int itemindex = mgt->item_num / 2 + 1; /*for live streaming ,choose the middle item.*/
-       int itemindex;
-       if(mgt->item_num > 2)
-           itemindex = mgt->item_num - 2;
-       else
-           itemindex = mgt->item_num/2 + 1;
-        while (--itemindex > 0 && item != NULL) {
+        int itemindex = mgt->item_num / 2 + 1; /*for live streaming ,choose the middle item.*/
+        while (itemindex-- > 0 && item != NULL) {
             item = item->next;
         }
         mgt->current_item = item;
     } else {
         mgt->current_item = mgt->item_list;
     }
-    mgt->cur_uio = NULL;
+ 
     h->is_streamed = 1;
     h->is_slowmedia = 1;
     if (mgt->full_time > 0 && mgt->have_list_end) {
@@ -461,13 +462,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
     }
     h->priv_data = mgt;
     mgt->cache_http_handle = NULL;
-#ifdef USE_IPAD_REQUEST
+
     ret = CacheHttp_Open(&mgt->cache_http_handle,mgt->ipad_req_media_headers);
-#else
-    ret = CacheHttp_Open(&mgt->cache_http_handle,NULL);
-#endif
-    //mgt->bandwidth_measure=bandwidth_measure_alloc(100,0);
-    url_fclose(bio);
+  
+
     return 0;
 }
 
@@ -561,6 +559,11 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
             mgt->item_num = 0;
             mgt->full_time = 0;
             mgt->playing_variant = mgt->variants[estimate_index];
+
+            if(mgt->cur_uio){
+                url_fclose(mgt->cur_uio);
+                mgt->cur_uio = NULL;
+            }
         }
 
         av_log(NULL, AV_LOG_INFO, "select best variant,bandwidth: %d\n", mgt->playing_variant->bandwidth);
@@ -575,7 +578,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
 reload:
     if (mgt->current_item == NULL || mgt->current_item->next == NULL) {
         /*new refresh this mgtlist now*/
-        ByteIOContext *bio;
+        ByteIOContext *bio = mgt->cur_uio;
 
         int ret;
         char* url = NULL;
@@ -588,8 +591,6 @@ reload:
             av_log(NULL, AV_LOG_INFO, "list open url:%s\n", url);
         }
 
-
-
         if (!mgt->have_list_end && (av_gettime() - mgt->last_load_time < reload_interval)) {
             av_log(NULL, AV_LOG_INFO, "drop fetch playlist from server\n");
             isNeedFetch = 0;
@@ -600,7 +601,7 @@ reload:
         if (isNeedFetch == 0 || (ret = list_open_internet(&bio, mgt, url, mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
             goto switchnext;
         }
-        url_fclose(bio);
+      
         if (mgt->current_item && mgt->current_item->file) { /*current item,switch to next*/
             current = mgt->current_item;
             next = mgt->current_item->next;
@@ -705,20 +706,9 @@ static int list_write(URLContext *h, unsigned char *buf, int size)
 static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 {
     struct list_mgt *mgt = h->priv_data;
-    URLContext *subh;
-    struct list_mgt *submgt;
-    struct list_item *item, *item1;
-    struct list_item *cur_item;
+    struct list_item *item;
+    
     int fulltime;
-
-    if (!h->support_time_seek) {
-        if (!mgt->have_list_end && mgt->have_sub_list && mgt->cur_uio) {
-            if (mgt->cur_uio->support_time_seek) {
-                h->support_time_seek = 1;
-                av_log(NULL, AV_LOG_INFO, "sub list support seek\n");
-            }
-        }
-    }
 
     if (whence == AVSEEK_BUFFERED_TIME) {
         int64_t buffed_time = 0;
@@ -796,14 +786,18 @@ static int list_close(URLContext *h)
         av_free(mgt->prefix);
         mgt->prefix = NULL;
     }
-#ifdef USE_IPAD_REQUEST
+
     if(NULL!=mgt->ipad_ex_headers){
         av_free(mgt->ipad_ex_headers);
     }
     if(NULL!= mgt->ipad_req_media_headers){
         av_free(mgt->ipad_req_media_headers);
     }
-#endif
+
+    if (mgt->cur_uio != NULL) {
+        url_fclose(mgt->cur_uio);
+        mgt->cur_uio = NULL;
+    }
     av_free(mgt);
     unused(h);
     gListMgt = NULL;

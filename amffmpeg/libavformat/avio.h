@@ -626,6 +626,7 @@ int avio_open_h(AVIOContext **s, const char *filename, int flags,const char * he
  
 int avio_close(AVIOContext *s);
 
+int avio_reset(AVIOContext *s,int flags);
 /**
  * Open a write only memory stream.
  *
