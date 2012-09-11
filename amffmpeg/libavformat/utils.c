@@ -2698,6 +2698,8 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 	int64_t cur_offset, valid_offset;
 	int64_t ret;
 
+    if(!ic->pb)
+	return 0;
     /* get the file size, if possible */
     if (ic->iformat->flags & AVFMT_NOFILE) {
         file_size = 0;
@@ -2994,9 +2996,10 @@ int av_find_stream_info(AVFormatContext *ic)
     AVPacket pkt1, *pkt;
     int64_t file_size = 0;
     int bit_rate = 0;
-    int64_t old_offset = avio_tell(ic->pb);
+    int64_t old_offset=-1;
     int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
-	
+    if(ic->pb!=NULL)
+    	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       
         for(i = 0;i < ic->nb_streams; i++) {
             st = ic->streams[i];
@@ -3089,7 +3092,7 @@ int av_find_stream_info(AVFormatContext *ic)
             int fps_analyze_framecount = 20;
             st = ic->streams[i];
             int parse_mode = fast_switch;
-            if(ic->pb->is_streamed ==1&&!strcmp(ic->iformat->name, "mpegts")){
+            if(ic->pb && ic->pb->is_streamed ==1&&!strcmp(ic->iformat->name, "mpegts")){
                 parse_mode = SPEED_PARSE_MODE;
             }
             if (!has_codec_parameters_ex(st->codec,parse_mode)){

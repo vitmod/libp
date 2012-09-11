@@ -425,7 +425,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     generate_segment_session_id(sess_id, 37);
     snprintf(headers, sizeof(headers),
              "Connection: keep-alive\r\n"
-             "Range: bytes=0- \r\n"
+             /*"Range: bytes=0- \r\n"*/
              "X-Playback-Session-Id: %s\r\n", sess_id);
     av_log(NULL, AV_LOG_INFO, "Generate ipad http request headers,\r\n%s\n", headers);
     mgt->ipad_ex_headers = strndup(headers, 1024);
