@@ -2621,13 +2621,13 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
             av_free_packet(&st->cur_pkt);
         }
     }
-
-   /* for (i=0; i<ic->nb_streams; i++) {
+    //if stream can not get first dts,use first_dts finded in other stream.  
+    for (i=0; i<ic->nb_streams; i++) {
 	st = ic->streams[i];
 	if (st->first_dts == AV_NOPTS_VALUE) {
 	    st->first_dts = first_dts;
 	}
-    }*/
+     }
 
     /* estimate the end time (duration) */
     /* XXX: may need to support wrapping */
