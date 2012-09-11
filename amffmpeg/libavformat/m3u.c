@@ -133,11 +133,19 @@ static struct variant *new_variant(struct list_mgt *mgt, int bandwidth, const ch
     
     var->bandwidth = bandwidth;
     char* ptr = NULL;
+    int has_prefix = 0;
     if(!av_strstart(url,"https://",ptr)){
-        ff_make_absolute_url(var->url, sizeof(var->url), base, url);
-    }else{      
-        snprintf(var->url,1,"s");
-        ff_make_absolute_url(var->url+1, sizeof(var->url), base, url);
+        if(base!=NULL&&av_strstart(base,"https://",ptr)){//change to  shttps for using android streaming framework.           
+            snprintf(var->url,1,"s");
+            has_prefix = 1;
+        }
+        if(has_prefix>0){
+            ff_make_absolute_url(var->url+1, sizeof(var->url)-1, base, url);
+        }else{
+            ff_make_absolute_url(var->url, sizeof(var->url), base, url);
+        }
+    }else{//change to  shttps for using android streaming framework.       
+        snprintf(var->url,sizeof(var->url),"s%s",url);
     }
     //av_log(NULL,AV_LOG_INFO,"returl=%s\nbase=%s\nurl=%s\n",var->url,base,url);
     dynarray_add(&mgt->variants, &mgt->n_variants, var);
