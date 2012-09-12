@@ -344,6 +344,7 @@ int ffurl_read_complete(URLContext *h, unsigned char *buf, int size)
 
 int ffurl_write(URLContext *h, const unsigned char *buf, int size)
 {
+    if (!h) return 0;
     if (!(h->flags & AVIO_FLAG_WRITE))
         return AVERROR(EIO);
     /* avoid sending too big packets */
