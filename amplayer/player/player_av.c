@@ -549,17 +549,17 @@ static int raw_read(play_para_t *para)
 
         } else if ((rev_byte == AVERROR_EOF) || (cur_offset > para->pFormatCtx->valid_offset) ){ //if(rev_byte != AVERROR(EAGAIN))
 			static int reach_end=0;
-			//if(para->stream_type == STREAM_AUDIO)
-			if(0)
+			if(para->stream_type == STREAM_AUDIO&&para->astream_info.audio_format==AFORMAT_MPEG)
+			//if(0)
 			{
 				
 				if(reach_end<5) 
 				{
 				       reach_end++;
-				       if(!get_readend_set_flag())
-                                        set_readend_flag(1);
+				       //if(!get_readend_set_flag())
+                                   //     set_readend_flag(1);
                                     memset(pbuf,0,tryread_size);
-				       strncpy(pbuf,"FREND",5);
+				      // strncpy(pbuf,"FREND",5);
                     			pkt->data_size = tryread_size;
                                     pkt->avpkt_newflag = 0;
                                     pkt->avpkt_isvalid = 1;
@@ -569,6 +569,7 @@ static int raw_read(play_para_t *para)
                 		{
                 		    reach_end=0;
                 		    para->playctrl_info.read_end_flag = 1;
+                		    log_print("raw read2: read end!,%d,%lld,%lld add :%d byte zero data\n",rev_byte ,cur_offset,para->pFormatCtx->valid_offset,tryread_size*5);
                 		 }
 			}
 			else
