@@ -3074,18 +3074,12 @@ int av_find_stream_info(AVFormatContext *ic)
 
     count = 0;
     read_size = 0;
-    int stream_parser_count = 0;
     for(;;) {
         if(url_interrupt_cb()){
             ret= AVERROR_EXIT;
             av_log(ic, AV_LOG_DEBUG, "interrupted\n");
             break;
         }
-        //if(ic->pb->is_streamed&&!strcmp(ic->iformat->name, "mpegts")&&stream_parser_count ==ic->nb_streams){
-        //    av_log(NULL,AV_LOG_WARNING,"Do fast parser.\n");
-        //    break;
-        // }
-        //bug on some mpegts file..,netflix
 
         /* check if one codec still needs to be handled */
         for(i=0;i<ic->nb_streams;i++) {
@@ -3096,9 +3090,7 @@ int av_find_stream_info(AVFormatContext *ic)
                 parse_mode = SPEED_PARSE_MODE;
             }
             if (!has_codec_parameters_ex(st->codec,parse_mode)){
-                break;
-            }else{
-                stream_parser_count =i+1;
+		break;
             }
             
 	     if(ic->pb &&ic->pb->fastdetectedinfo)	
@@ -3130,7 +3122,13 @@ int av_find_stream_info(AVFormatContext *ic)
                 ret = count;
                 av_log(ic, AV_LOG_DEBUG, "All info found\n");
                 break;
-            }
+            }else if(ic->pb &&ic->pb->fastdetectedinfo){
+	       ///maybe need try more for netflix
+	       //because no pmt.	
+            }else if(has_codec_parameters_ex(st->codec,1)){
+                av_log(ic, AV_LOG_DEBUG, "find enough info\n");
+		break;
+	    }
         }
         /* we did not get all the codec info, but we read too much data */
         if (read_size >= ic->probesize) {
