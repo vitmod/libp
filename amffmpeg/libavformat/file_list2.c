@@ -325,6 +325,10 @@ static int list_open_internet(ByteIOContext **pbio, struct list_mgt *mgt, const 
     char* url = filename;
 reload:
     
+    if (url_interrupt_cb()) {
+         ret = -1;       
+         goto error;   
+    }
     
     if(bio==NULL){
         ret = avio_open_h(&bio, url, flags,mgt->ipad_ex_headers);

@@ -306,7 +306,7 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
         if (ret)
            fast_retries = FFMAX(fast_retries, 2);
         len += ret;
-        if (len < size && fast_retries<8 && url_interrupt_cb()) /*at least try several times for some teardown cmd finished.*/
+        if (/*len < size && fast_retries<8 &&*/ url_interrupt_cb()) /*at least try several times for some teardown cmd finished.*/
             return AVERROR_EXIT;
     }
     return len;

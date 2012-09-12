@@ -127,13 +127,16 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     	int avail;
        avail = av_fifo_size(s->fifo);
     	av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
-       if (avail) {
+	if(url_interrupt_cb()) {
+	    pthread_mutex_unlock(&s->read_mutex);
+	    return 0;
+	} else if(avail) {
            // Maximum amount available
            size = FFMIN( avail, size);
            av_fifo_generic_read(s->fifo, cache, size, NULL);
     	    pthread_mutex_unlock(&s->read_mutex);
            return size;        
-       } else  if(!s->finish_flag){
+       } else if(!s->finish_flag) {
            pthread_mutex_unlock(&s->read_mutex);          
            //read just need retry
            return AVERROR(EAGAIN);

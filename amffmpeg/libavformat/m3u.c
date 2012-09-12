@@ -389,6 +389,9 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	#endif
 	while(m3u_format_get_line(s,line,1024)>=0)
 	{
+               if (url_interrupt_cb()) {
+                       return -1;
+               }
 		tmpitem.ktype = KEY_NONE;
 		ret = m3u_parser_line(mgt,line,&tmpitem);
 		if(ret>0)
