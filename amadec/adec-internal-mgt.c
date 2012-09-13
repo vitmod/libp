@@ -66,6 +66,7 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_AAC_LATM, "aac_latm"},
     {ACODEC_FMT_APE, "ape"},
     {ACODEC_FMT_MPEG, "mp3"},
+    {ACODEC_FMT_NULL, "null"},
 };
 
 static int audio_decoder = AUDIO_ARC_DECODER;
