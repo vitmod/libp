@@ -213,14 +213,16 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
 	av_log(h, AV_LOG_INFO, "[%s]off=%d s->off=%d\n", __FUNCTION__, off, s->off);
     if(off>=0)
 		s->off = off;	
-    /* if it fails, continue on old connection */
+    	/* if it fails, continue on old connection */
 	/*reget it*/
+	s->hd=NULL;
 	if(s->max_connects>1 && old_hd){
 		old_buf_size = s->buf_end - s->buf_ptr;
-    	memcpy(old_buf, s->buf_ptr, old_buf_size);
+    		memcpy(old_buf, s->buf_ptr, old_buf_size);
 	}else{
 		if(old_hd){
 			ffurl_close(old_hd);
+			
 			av_log(h, AV_LOG_INFO, "[%s]close old handle\n", __FUNCTION__);
 		}
 		old_hd=NULL;
