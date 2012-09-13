@@ -268,7 +268,24 @@ int64_t url_ftell(AVIOContext *s)
     return avio_seek(s, 0, SEEK_CUR);
 }
 #endif
-
+int url_start_user_seek(AVIOContext *s)
+{	
+	if(!s)
+		return -1;
+	s->seekflags|=LESS_READ_SEEK;
+	if(s->enabled_lp_buffer)
+		return url_lp_set_seekflags(s->opaque,LESS_READ_SEEK);
+	return 0;
+}
+int url_finished_user_seek(AVIOContext *s)
+{
+	if(!s)
+		return -1;
+	s->seekflags&=~LESS_READ_SEEK;
+	if(s->enabled_lp_buffer)
+		return url_lp_clear_seekflags(s->opaque,LESS_READ_SEEK);
+	return 0;
+}
 int64_t avio_size(AVIOContext *s)
 {
     int64_t size;

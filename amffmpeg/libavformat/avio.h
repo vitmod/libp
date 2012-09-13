@@ -48,6 +48,13 @@
  *       when implementing custom I/O. Normally these are set to the
  *       function pointers specified in avio_alloc_context()
  */
+
+/*
+if user seek.
+try less read seek,for fast seek..
+*/
+#define LESS_READ_SEEK	(0x1000)
+
 typedef struct {
     unsigned char *buffer;  /**< Start of the buffer. */
     int buffer_size;        /**< Maximum buffer size */
@@ -97,7 +104,7 @@ typedef struct {
 	int support_time_seek;
 	int is_encrypted_media;
 	int flags;
-
+	int seekflags;
 	unsigned long proppads[8];//data copyed from probed.
 } AVIOContext;
 
@@ -128,6 +135,7 @@ typedef struct URLContext {
 	 int fastdetectedinfo;/*need fast detect*/
 	int support_time_seek;
 	char *location;
+	int seekflags;
 } URLContext;
 
 #define URL_PROTOCOL_FLAG_NESTED_SCHEME 1 /*< The protocol name can be the first part of a nested protocol scheme */
@@ -708,6 +716,12 @@ static inline int url_support_time_seek(AVIOContext *s)
  int64_t url_fbuffered_time(ByteIOContext *s);
 #define av_read_frame_flush(s) ff_read_frame_flush(s)
 int ffio_fdopen_resetlpbuf(AVIOContext *s,int lpsize);
+
+int url_lp_set_seekflags(URLContext *s,int seekflagmask);
+int url_lp_clear_seekflags(URLContext *s,int seekflagmask);
+
+int url_start_user_seek(AVIOContext *s);
+int url_finished_user_seek(AVIOContext *s);
 
 #include "libavformat/url.h"
 #include "libavformat/aviolpbuf.h"

@@ -1174,9 +1174,11 @@ int time_search(play_para_t *am_p)
     int64_t offset = 0;
     unsigned int temp = 0;
     int stream_index = -1;
-    int64_t ret;
+    int64_t ret=PLAYER_SUCCESS;
     int seek_flags =am_getconfig_bool("media.libplayer.seek.fwdsearch")?0: AVSEEK_FLAG_BACKWARD;
-	int sample_size;
+    int sample_size;
+	
+    url_start_user_seek(s->pb);
     /* If swith audio, then use audio stream index */
     if (am_p->playctrl_info.seek_base_audio) {       
         seek_flags |= AVSEEK_FLAG_ANY;
@@ -1197,10 +1199,12 @@ int time_search(play_para_t *am_p)
             av_read_frame_flush(s);
             am_p->discontinue_point = ret;
             log_info("[time_search:%d] direct seek discontinue_point =%f\n", __LINE__, am_p->discontinue_point);
-            return PLAYER_SUCCESS;
+            ret=PLAYER_SUCCESS;
+	     goto searchexit;		
         }
         /*failed*/
-        return PLAYER_SEEK_FAILED;
+        ret=PLAYER_SEEK_FAILED;
+	 goto searchexit;		
     } else if (time_point <= temp || temp <= 0) {
         if (am_p->file_type == AVI_FILE || 
             am_p->file_type == MP4_FILE ||
@@ -1241,7 +1245,8 @@ int time_search(play_para_t *am_p)
                 ret = url_fseek(s->pb, offset, SEEK_SET);
                 if (ret < 0) {
                     log_info("%s: could not seek to position 0x%llx  ret=0x%llx\n", s->filename, offset, ret);
-                    return PLAYER_SEEK_FAILED;
+		      ret=PLAYER_SEEK_FAILED;
+	 	      goto searchexit;					
                 }
             } else {
                 if (time_point == 0 && am_p->file_type == MOV_FILE) { // maybe all file types can be seeked to dataoffset if timepoint==0
@@ -1251,7 +1256,8 @@ int time_search(play_para_t *am_p)
                 }
                 if (ret < 0) {
                     log_info("[%s] could not seek to position %0.3f s ret=%lld\n", __FUNCTION__, (double)timestamp / AV_TIME_BASE, ret);
-                    return PLAYER_SEEK_FAILED;
+		      ret=PLAYER_SEEK_FAILED;
+	 	      goto searchexit;			
                 }
                 offset = url_ftell(s->pb);
                 if ((am_p->playctrl_info.last_seek_time_point != (int)time_point)
@@ -1273,9 +1279,10 @@ int time_search(play_para_t *am_p)
                 }
 				log_info("av_seek_frame:time_point = %f  timestamp=%x, starttime=%xn", time_point, timestamp,s->start_time);
                 ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
-                if (ret >= 0) 
-                	return PLAYER_SUCCESS;    
-                else
+                if (ret >= 0){ 
+			ret=PLAYER_SUCCESS;
+	 	       goto searchexit;		
+                }else
                 	am_p->playctrl_info.seek_frame_fail = 1;
             }				
             offset = ((int64_t)(time_point * (s->bit_rate >> 3)));
@@ -1312,14 +1319,18 @@ int time_search(play_para_t *am_p)
             ret = url_fseek(s->pb, offset, SEEK_SET);
             if (ret < 0) {
                 log_info("%s: could not seek to position 0x%llx  ret=0x%llx\n", s->filename, offset, ret);
-                return PLAYER_SEEK_FAILED;
+                ret= PLAYER_SEEK_FAILED;
+		  goto searchexit;			
             }
         }
 
         /* reset seek info */
         //time_point = 0;
     }
-    return PLAYER_SUCCESS;
+    ret=PLAYER_SUCCESS;
+searchexit:
+    url_finished_user_seek(s->pb);	
+    return (int)ret;
 }
 
 

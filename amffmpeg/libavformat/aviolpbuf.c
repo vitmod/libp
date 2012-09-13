@@ -81,7 +81,7 @@ Can seek back size:
 
 
 #define LP_ASSERT(x)	 do{if(!(x)) av_log(NULL,AV_LOG_INFO,"****\t\tERROR at line file%s=%d\n\n\n",__FILE__,__LINE__);}while(0)
-#define DEF_MAX_READ_SEEK (1024*512)
+#define DEF_MAX_READ_SEEK (1024*6)
 int url_lpopen(URLContext *s,int size)
 {
 	url_lpbuf_t *lp;
@@ -423,7 +423,8 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 	}else if( (s->is_streamed && offset1>0) || /*can't suport seek,and can support read seek.*/
 			((offset1>0 &&  s->is_slowmedia) && 	/*is slowmedia and seek formard*/
 			(offset1<lp->buffer_size-lp->block_read_size && offset1<=lp->max_read_seek) &&/*don't do too big size seek*/ 
-			(lp->file_size<=0 || (lp->file_size>0 && offset1<lp->file_size/2))))/*if offset1>filesize/2,thendo first seek end,don't buffer*/
+			(lp->file_size<=0 || (lp->file_size>0 && offset1<lp->file_size/2)) &&/*if offset1>filesize/2,thendo first seek end,don't buffer*/
+			(offset1<=((lp->seekflags&LESS_READ_SEEK)?lp->max_read_seek/16:lp->max_read_seek))))/*do less readseek,if have less seek flags*/
 	{/*seek to buffer end,but buffer is not full,do read seek*/
 		int read_offset,ret;
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer read seek forward offset=%lld offset1=%lld  whence=%d\n",offset,offset1,whence);
@@ -536,6 +537,25 @@ int url_lp_getbuffering_size(URLContext *s,int *forward_data,int *back_data)
 	if(back_data)	
 		*back_data=valid_data_can_seek_back;
 	return (valid_data_can_seek_back+valid_data_can_seek_forward);
+}
+
+int url_lp_set_seekflags(URLContext *s,int seekflagmask)
+{
+	url_lpbuf_t *lp;
+	if(!s || !s->lpbuf)
+		return AVERROR(EINVAL);
+	lp=s->lpbuf;
+	lp->seekflags|=seekflagmask;
+	return 0;
+}
+int url_lp_clear_seekflags(URLContext *s,int seekflagmask)
+{
+	url_lpbuf_t *lp;
+	if(!s || !s->lpbuf)
+		return AVERROR(EINVAL);
+	lp=s->lpbuf;
+	lp->seekflags&=~seekflagmask;
+	return 0;
 }
 
 

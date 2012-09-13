@@ -27,6 +27,7 @@ typedef struct  url_lpbuf{
 	int dbg_cnt;
 	float max_forword_level;
 	int max_read_seek;
+	int seekflags;
 }url_lpbuf_t;
 #define IO_LP_BUFFER_SIZE (1024*1024*64)
 #define IO_LP_BUFFER_MINI_SIZE (1024*32)
