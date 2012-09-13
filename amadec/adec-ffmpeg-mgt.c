@@ -24,12 +24,30 @@ static buffer_stream_t *g_bst=NULL;
 static int fd_uio=-1;
 static AudioInfo g_AudioInfo;
 static int sn_threadid=-1;
+static int sn_getpackage_threadid=-1;
+
 static int aout_stop_mutex=0;//aout stop mutex flag
 static int last_valid_pts=0;
 static int out_len_after_last_valid_pts=0;
 static int pcm_cache_size=0;
 
+struct package{
+    char *data;//buf ptr
+    int size;               //package size
+    struct package * next;//next ptr
+};
+typedef struct {
+    struct package *first;
+    int pack_num;
+    struct package *current;
+    int mutex; //  0 idle 1 inuse
+}Package_List;
+Package_List pack_list;
+
+
 void *audio_decode_loop(void *args);
+void *audio_getpackage_loop(void *args);
+
 static int set_sysfs_int(const char *path, int val);
 static void stop_decode_thread(aml_audio_dec_t *audec);
 
@@ -67,7 +85,6 @@ int find_audio_lib(aml_audio_dec_t *audec)
 	
 	for (i = 0; i < num; i++) {        
 		f = &audio_lib_list[i];        
-		//if (f->codec_id & pcodec->ctxCodec->codec_id) 
 		if (f->codec_id == audec->format) 
 		{            
 			fd = dlopen(audio_lib_list[i].name,RTLD_NOW);
@@ -82,10 +99,6 @@ int find_audio_lib(aml_audio_dec_t *audec)
 			else 
 			{
 				adec_print("cant find decoder lib\n");
-				//fd = open("libfaad.so",RTLD_NOW);
-				//adec_print("fd =  %d \n",fd);
-				//if (fd >= 0)					
-				//	close(fd);
 				return -1;
 			}			
 			return 0;
@@ -190,6 +203,107 @@ audio_decoder_operations_t AudioFFmpegDecoder=
 };
 
 #endif//***************Arm Decoder end***************
+
+#if 1 /*package list ops*/
+int package_list_free()
+{
+    while((pack_list.mutex))
+        usleep(100);
+        pack_list.mutex=1;
+    while(pack_list.pack_num)
+    {
+        struct package * p=pack_list.first;
+        pack_list.first=pack_list.first->next;
+        free(p->data);
+        free(p);
+        pack_list.pack_num--;
+    }
+    pack_list.mutex=0;
+    return 0;
+}
+
+int package_list_init()
+{
+    pack_list.first=NULL;
+    pack_list.pack_num=0;
+    pack_list.current=NULL;
+    pack_list.mutex=0;
+    return 0;
+}
+
+int package_add(char * data,int size)
+{
+    if(pack_list.mutex)
+        return -3;
+    pack_list.mutex=1;  
+    if(pack_list.pack_num==4)//enough
+    {
+         pack_list.mutex=0;
+        return -2;
+    }
+    struct package *p=malloc(sizeof(struct package));
+    if(!p) //malloc failed
+        return -1;
+    p->data=data;
+    p->size=size;
+    if(pack_list.pack_num==0)//first package
+    {
+        pack_list.first=p;
+        pack_list.current=p;
+        pack_list.pack_num=1;
+    }
+    else
+    {
+        pack_list.current->next=p;
+        pack_list.current=p;
+        pack_list.pack_num++;
+    }
+    pack_list.mutex=0;
+    return 0;
+}
+
+struct package * package_get()
+{
+    if(pack_list.mutex)
+        return NULL;
+    pack_list.mutex=1;  
+    if(pack_list.pack_num==0)
+    {
+        pack_list.mutex=0;
+        return NULL;
+    }
+    struct package *p=pack_list.first;
+    if(pack_list.pack_num==1)
+    {
+        pack_list.first=NULL;
+        pack_list.pack_num=0;
+        pack_list.current=NULL;
+    }
+    else
+    {
+        pack_list.first=pack_list.first->next;
+        pack_list.pack_num--;
+    }
+    pack_list.mutex=0;
+    return p;
+}
+
+int get_package_size()
+{
+    int nTotalSize=0;
+    int num=pack_list.pack_num;
+    if(num==0)
+        return 0;
+    struct package *p=pack_list.first;
+    while(num)
+    {
+        nTotalSize+=p->size;
+        p=p->next;
+        num--;
+    }
+    return num;
+}
+#endif
 
 #if 1//now in use but need to replace
 int armdec_stream_read(dsp_operations_t *dsp_ops, char *buffer, int size)
@@ -384,6 +498,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
         aout_stop_mutex=0;
         last_valid_pts=0;
         out_len_after_last_valid_pts=0;
+        package_list_init();
         while(0!=set_sysfs_int(DECODE_ERR_PATH,DECODE_NONE_ERR))
         {
             adec_print("====set codec fatal   failed ! \n");
@@ -702,35 +817,168 @@ static void start_decode_thread(aml_audio_dec_t *audec)
         return -1;
     }
     pthread_t    tid;
+    int ret = pthread_create(&tid, NULL, (void *)audio_getpackage_loop, (void *)audec);
+    sn_getpackage_threadid=tid;
+    adec_print("Create get package thread success! tid = %d\n", tid);
     //thread need to sync
-    int ret = pthread_create(&tid, NULL, (void *)audio_decode_loop, (void *)audec);
+    ret = pthread_create(&tid, NULL, (void *)audio_decode_loop, (void *)audec);
     if (ret != 0) {
         adec_print("Create ffmpeg decode thread failed!\n");
         return ret;
     }
-    adec_print("Create ffmpeg decode thread success! tid = %d\n", tid);
     sn_threadid=tid;
+    adec_print("Create ffmpeg decode thread success! tid = %d\n", tid);
+    
 }
 static void stop_decode_thread(aml_audio_dec_t *audec)
 {
     exit_decode_thread=1;
     int ret = pthread_join(sn_threadid, NULL);
-    adec_print("thread exit success \n");
+    adec_print("decode thread exit success \n");
+    ret = pthread_join(sn_getpackage_threadid, NULL);
+    adec_print("get package thread exit success \n");
     exit_decode_thread=0;
     sn_threadid=-1;
+    sn_getpackage_threadid=-1;
+}
+
+void *audio_getpackage_loop(void *args)
+{
+     int ret;
+    aml_audio_dec_t *audec;
+    audio_out_operations_t *aout_ops;
+    audio_decoder_operations_t *adec_ops;
+    int nNextFrameSize=0;//next read frame size
+    int inlen = 0;//real data size in in_buf
+    int nRestLen=0;//left data after last decode 
+    int nInBufferSize=0;//full buffer size
+    char *inbuf = NULL;//real buffer
+    int rlen = 0;//read buffer ret size
+    char *pRestData=NULL;
+    
+    int dlen = 0;//decode size one time
+    int declen = 0;//current decoded size
+	
+    char startcode[5];	
+    int extra_data = 8;
+    int nCodecID;
+    int nAudioFormat;
+
+    char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];//max frame size out buf
+    int outlen = 0;
+    	
+    adec_print("adec_getpackage_loop start!\n");
+    audec = (aml_audio_dec_t *)args;
+    aout_ops = &audec->aout_ops;
+    adec_ops=audec->adec_ops;
+    nAudioFormat=audec->format;
+    inlen=0;
+    nNextFrameSize=adec_ops->nInBufSize;    
+    while (1){
+exit_decode_loop:
+          //detect quit condition
+          if(exit_decode_thread)
+	      {
+	            if(inbuf)
+	                free(inbuf);
+	            package_list_free();
+        	     break;
+	      }
+	      //step 2  get read buffer size
+	      if(nAudioFormat==ACODEC_FMT_APE ||nAudioFormat==ACODEC_FMT_ALAC)
+	      {	
+		         inlen=0;//not save the left data
+			  if (read_buffer(startcode,4) > 0)
+			  {	
+				    while(1)
+				    {
+	    				if (nAudioFormat==ACODEC_FMT_APE&&(startcode[0]=='A')&&(startcode[1]=='P')&&(startcode[2]=='T')&&(startcode[3]=='S'))
+	    						break;	
+	    				if (nAudioFormat==ACODEC_FMT_ALAC&&(startcode[0] == 0x11)&&(startcode[1] == 0x22)&&(startcode[2] == 0x33)&&(startcode[3] == 0x44))
+	    						break;
+	    				if(read_buffer(&startcode[4],1)<=0)
+	    				{
+	    				    if(exit_decode_thread)
+                                	    {
+                                	            if(inbuf)
+                                	                free(inbuf);
+                                	            package_list_free();
+                                        	     goto QUIT;
+                                	      }
+	    				    }
+	    				memcpy(startcode,&startcode[1],4);
+				     }
+
+					if (nAudioFormat==ACODEC_FMT_APE){			
+						read_buffer(startcode,4);			
+						nNextFrameSize  = startcode[3]<<24|startcode[2]<<16|startcode[1]<<8|startcode[0]+extra_data;		
+						nNextFrameSize  = (nNextFrameSize+3)&(~3);				
+					}
+					if (nAudioFormat==ACODEC_FMT_ALAC){	
+						read_buffer(startcode,2);
+						nNextFrameSize = startcode[0]<<8|startcode[1];		
+					}
+					if(nNextFrameSize<=0){
+						adec_print("framesize error!-------------------------------------\n");	
+						continue;
+					}
+					//nInBufferSize = nNextFrameSize;			
+			  }
+			  else{
+				  //get data failed,maybe at the end
+				  usleep(100000);
+				  adec_print("==get data failed \n");
+				  continue;
+			  }
+                }                
+                nInBufferSize = nNextFrameSize;
+		  if (inbuf != NULL) {
+			  free(inbuf);
+			  inbuf = NULL;
+		  }
+		  inbuf = malloc(nInBufferSize);
+                //step 3  read buffer
+                int nNextReadSize=nInBufferSize;
+                int nRet=0;
+                int nReadErrCount=0;
+                int nCurrentReadCount=0;
+                int nReadSizePerTime=10*1024;
+                rlen=0;
+                while(nNextReadSize>0)
+                {
+                    if(nNextReadSize<=nReadSizePerTime)
+                        nReadSizePerTime=nNextReadSize;
+                    nRet = read_buffer(inbuf+rlen, nReadSizePerTime);//read 10K per time
+                    if(nRet<=0)
+                        nReadErrCount++;
+                    else
+                        nReadErrCount=0;
+                    if(nReadErrCount==20)
+                        break;
+                    rlen+=nRet;
+                    nNextReadSize-=nRet;
+                }
+                if(nReadErrCount==20)
+                    continue;
+                nCurrentReadCount=rlen;
+                rlen += inlen;
+                while(package_add(inbuf,rlen))
+                {
+                    //add failed
+                    if(exit_decode_thread)
+	                goto exit_decode_loop;
+	             usleep(100000);
+                }
+                inbuf=NULL;
+        }
+QUIT:
+        adec_print("Exit adec_getpackage_loop Thread!");
+        pthread_exit(NULL);
+        return NULL;
 }
 
 void *audio_decode_loop(void *args)
 {
-	#define READ_BUF_SIZE (1024*191)
-	#define READBUF_PER (1024*10)
-	int ReadApeErrCount =0;
-	int nNextReadSize = 0;
-	int bufoffset = 0;
-	int tmpoffset = 0;
-	char *inapebuf = NULL;
-	int apesym = 0;
-
     int ret;
     aml_audio_dec_t *audec;
     audio_out_operations_t *aout_ops;
@@ -743,10 +991,12 @@ void *audio_decode_loop(void *args)
     char *inbuf = NULL;//real buffer
     int rlen = 0;//read buffer ret size
     char *pRestData=NULL;
+    char *inbuf2;
     
     int dlen = 0;//decode size one time
     int declen = 0;//current decoded size
-	
+    int nCurrentReadCount=0;
+    
     char startcode[5];	
     int extra_data = 8;
     int nCodecID;
@@ -808,266 +1058,49 @@ exit_decode_loop:
 	        }
 	      }
 	      //step 2  get read buffer size
-             //if ( nCodecID== CODEC_ID_APE || nCodecID == CODEC_ID_ALAC)
-	      if(nAudioFormat==ACODEC_FMT_APE ||nAudioFormat==ACODEC_FMT_ALAC)
-	      {	
-		      inlen=0;//not save the left data
-			  if (read_buffer(startcode,4) > 0)
-			  {	
-				    while(1)
-				    {
-	    				if (nAudioFormat==ACODEC_FMT_APE&&(startcode[0]=='A')&&(startcode[1]=='P')&&(startcode[2]=='T')&&(startcode[3]=='S'))
-	    						break;	
-	    				if (nAudioFormat==ACODEC_FMT_ALAC&&(startcode[0] == 0x11)&&(startcode[1] == 0x22)&&(startcode[2] == 0x33)&&(startcode[3] == 0x44))
-	    						break;
-	    				read_buffer(&startcode[4],1);
-						if(exit_decode_thread)
-						 		{
-								   if (inbuf) 
-								   {
-										free(inbuf);
-										inbuf = NULL;
-								 	}
-								 exit_decode_thread_success=1;
-								 break;
-						 		}
-	    				memcpy(startcode,&startcode[1],4);
-					}
-
-					if (nAudioFormat==ACODEC_FMT_APE){			
-						read_buffer(startcode,4);			
-						nNextFrameSize  = startcode[3]<<24|startcode[2]<<16|startcode[1]<<8|startcode[0]+extra_data;		
-						nNextFrameSize  = (nNextFrameSize+3)&(~3);	
-						apesym = 0;
-						ReadApeErrCount = 0;
-					}
-					if (nAudioFormat==ACODEC_FMT_ALAC){	
-						read_buffer(startcode,2);
-						nNextFrameSize = startcode[0]<<8|startcode[1];		
-					}
-					if(nNextFrameSize<=0){
-						adec_print("framesize error!-------------------------------------\n");	
-						goto error; 	
-					}
-					//nInBufferSize = nNextFrameSize;			
-			  }
-			  else{
-				  //get data failed,maybe at the end
-				  usleep(100000);
-				  continue;
-			  }
-                }                
-                nInBufferSize = nNextFrameSize + inlen;
-		  if (inbuf != NULL) {
-			  free(inbuf);
-			  inbuf = NULL;
-		  }
-		  inbuf = malloc(nInBufferSize);
-		  if(inlen&&pRestData)
-		  {
-		    memcpy(inbuf, pRestData, inlen);
-		    free(pRestData);
-		  }
-		  else
-		    inlen=0;
-                //step 3  read buffer
-		//  adec_print("====start read data:%d byte \n",nNextFrameSize);	  
-                //rlen = read_buffer(inlen+inbuf, nNextFrameSize);
-
-				//int nNextReadSize=nNextFrameSize;
-				nNextReadSize=nNextFrameSize;
-                int nRet=0;
-                int nReadErrCount=0;
-                int nCurrentReadCount=0;
-                rlen=0;
-				if(nAudioFormat==ACODEC_FMT_APE){
-					if(nNextReadSize > READ_BUF_SIZE){
-						int readnum = nNextReadSize / READ_BUF_SIZE;
-						int readdata = nNextReadSize % READ_BUF_SIZE;
-						while(readnum >= 0){
-							if(readnum == 0){
-								nNextReadSize= readdata;
-							}
-							else
-								nNextReadSize = READ_BUF_SIZE;
-							while(nNextReadSize> 0){
-								nRet = read_buffer(inbuf+inlen+rlen, nNextReadSize);
-                    			if(nRet<=0)
-                       	 			nReadErrCount++;
-                    			else
-                        			nReadErrCount=0;
-                    			if(nReadErrCount==20)
-                        			break;
-                    			rlen+=nRet;
-                    			nNextReadSize-=nRet;
-							}
-							if(nReadErrCount==20){
-								break;
-							}
-							readnum--;
-						}
-					}
-					else{
-						while(nNextReadSize>0)
-                		{
-                    		nRet = read_buffer(inbuf+inlen+rlen, nNextReadSize);
-                    		if(nRet<=0)
-                        		nReadErrCount++;
-                    		else
-                        		nReadErrCount=0;
-                    		if(nReadErrCount==20)
-                        		break;
-                    		rlen+=nRet;
-                    		nNextReadSize-=nRet;
-                		}
-					}
-						
-				}
-				else{
-                	while(nNextReadSize>0)
-                	{
-                    	nRet = read_buffer(inbuf+inlen+rlen, nNextReadSize);
-                    	if(nRet<=0)
-                        	nReadErrCount++;
-                    	else
-                        	nReadErrCount=0;
-                    	if(nReadErrCount==20)
-                        	break;
-                    	rlen+=nRet;
-                    	nNextReadSize-=nRet;
-                	}
-				}
-                if(nReadErrCount==20){
-                    continue;
-                }
-APE_FORMAT:
-                nCurrentReadCount=rlen;
-                rlen += inlen;
-          
-              inlen=rlen;
+             struct package *p_Package;
+             p_Package=package_get();
+             if(!p_Package){
+                usleep(1000);
+                continue;
+             }
+             if (inbuf != NULL) {
+        	    free(inbuf);
+                  inbuf = NULL;
+             }
+             if(inlen&&pRestData)
+    	      {
+    	            rlen=p_Package->size+inlen;
+    	            inbuf=malloc(rlen);
+    	            memcpy(inbuf, pRestData, inlen);
+    	            memcpy(inbuf+inlen,p_Package->data,p_Package->size);
+    	            free(pRestData);
+    	            free(p_Package->data);
+    	      }
+    	      else
+    	      {
+    	        rlen=p_Package->size;
+    	        inbuf=p_Package->data;
+    	        p_Package->data=NULL;
+    	      }
+    	       free(p_Package);
+    	       nCurrentReadCount=rlen;
+    	       inlen=rlen;
               declen  = 0;
               if (nCurrentReadCount > 0)
               {
     			  //inlen = rlen;
     			  //adec_print("declen=%d,rlen = %d--------------------------------------------------\n\n", declen,rlen);
-				  if((nAudioFormat==ACODEC_FMT_APE)&&(0 == apesym))
-				  {
-						 if(exit_decode_thread)
-						 {
-								   if (inbuf) 
-								   {
-										   free(inbuf);
-										inbuf = NULL;
-								 }
-								 exit_decode_thread_success=1;
-								 break;
-						 }
-						 //detect audio info changed
-						 memset(&g_AudioInfo,0,sizeof(AudioInfo));
-						adec_ops->getinfo(audec->adec_ops, &g_AudioInfo);
-						 if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
-						 {
-						   if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
-						   {
-							   if(aout_stop_mutex==0)
-							   {
-									   aout_stop_mutex=1;
-									   g_bst->channels=audec->channels=g_AudioInfo.channels;
-										  g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
-									   aout_ops->stop(audec);
-									   aout_ops->init(audec);
-									   aout_ops->start(audec);
-									   aout_stop_mutex=0;
-							   }
-						   }
-						 }
-				  		
-						apesym = 1;
-						if(read_buffer(startcode,4) > 0)
-						{  
-							while(1)
-							{
-								if (nAudioFormat==ACODEC_FMT_APE&&(startcode[0]=='A')&&(startcode[1]=='P')&&(startcode[2]=='T')&&(startcode[3]=='S'))
-										break;   
-								read_buffer(&startcode[4],1);
-								if(exit_decode_thread)
-						 		{
-								   if (inbuf) 
-								   {
-										free(inbuf);
-										inbuf = NULL;
-								 	}
-								 exit_decode_thread_success=1;
-								 break;
-						 		}
-								
-								memcpy(startcode,&startcode[1],4);
-							}
-				  
-						if (nAudioFormat==ACODEC_FMT_APE){			  
-								read_buffer(startcode,4);		  
-								nNextFrameSize	= startcode[3]<<24|startcode[2]<<16|startcode[1]<<8|startcode[0]+extra_data;	  
-								nNextFrameSize	= (nNextFrameSize+3)&(~3);	    
-						}
-						if(nNextFrameSize<=0){
-								adec_print("framesize error!-------------------------------------\n");	  
-								goto error;   
-						}	
-						
-					}
-					else{
-						
-						//usleep(100000);
-				  		//continue;
-				  		ReadApeErrCount = 20;
-						apesym = 0;
-					}
-				}
-
-                 if(1 == apesym){
-				 	
-				 	if(inapebuf != NULL){
-					  	free(inapebuf);
-						inapebuf = NULL;
-					}
-					inapebuf = malloc(nNextFrameSize);
-					nNextReadSize = nNextFrameSize;
-					bufoffset= 0;
-					tmpoffset= 0;
-				 }
-
-				  
-				  while(declen<rlen){
-				  	if(exit_decode_thread){
-					 	adec_print("exit decoder,-----------------------------\n");
-    				 	goto exit_decode_loop;
-    				}
-
-					if((1 == apesym)&&(0 == ReadApeErrCount)&&(nNextReadSize >= READBUF_PER)){
-						
-						int readbufsize1 = READBUF_PER;
-						while(readbufsize1 > 0){
-							tmpoffset = read_buffer(inapebuf + bufoffset, readbufsize1);
-                    		if(tmpoffset <= 0){
-                        		ReadApeErrCount++;
-								if(ReadApeErrCount == 20)
-                        			break;
-							}
-                    		else{
-								ReadApeErrCount = 0;
-                    			bufoffset += tmpoffset;
-                    			readbufsize1 -= tmpoffset;
-								nNextReadSize -= tmpoffset;
-                    		}	
-						}
-					}
-					
-
+    			  while (declen<rlen) {
+				 if(exit_decode_thread)
+    				  {
+					 adec_print("exit decoder,-----------------------------\n");
+    				        goto exit_decode_loop;
+    				  }
     				  outlen = AVCODEC_MAX_AUDIO_FRAME_SIZE;
     				  //adec_print("decode_audio------------------------------------\n");
     				  //dlen = decode_audio(audec->pcodec->ctxCodec, outbuf, &outlen, inbuf+declen, inlen);
-
-					  dlen = adec_ops->decode(audec->adec_ops, outbuf, &outlen, inbuf+declen, inlen);
+    				  dlen = adec_ops->decode(audec->adec_ops, outbuf, &outlen, inbuf+declen, inlen);
     				  //dlen = decodeAACfile(outbuf, &outlen, inbuf+declen, inlen);
     				  if (dlen <= 0)
     				  {
@@ -1100,46 +1133,16 @@ APE_FORMAT:
             				//while(g_bst->buf_level>=g_bst->buf_length*0.8)
             				while(g_bst->buf_length-g_bst->buf_level<outlen)
             				{
-            					
             				    if(exit_decode_thread)
             				    {
-    						 		adec_print("exit decoder,-----------------------------\n");
+    						 adec_print("exit decoder,-----------------------------\n");
             				        goto exit_decode_loop;
             				        break;
             				    }
-
-								if((1 == apesym)&&(0 == ReadApeErrCount)&&(nNextReadSize >= READBUF_PER)){
-									
-									int readbufsize2 = READBUF_PER;
-									while(readbufsize2 > 0){
-										tmpoffset = read_buffer(inapebuf + bufoffset, readbufsize2);
-                    					if(tmpoffset <= 0){
-                        					ReadApeErrCount++;
-											if(ReadApeErrCount == 20)
-                        						break;
-										}
-                    					else{
-											ReadApeErrCount = 0;
-                    						bufoffset += tmpoffset;
-                    						readbufsize2 -= tmpoffset;
-											nNextReadSize -= tmpoffset;
-                    					}	
-									}
-								}
-								else
-            				    	usleep(100000);
+            				    usleep(100000);
             				}
             				int wlen=0;
-							
-				       #if 0
-            				while(wlen<outlen)
-            				{
-            				    wlen+=write_pcm_buffer(outbuf, g_bst,outlen); 
-            				    outlen-=wlen;
-            				    pcm_cache_size-=wlen;
-            				}
-            				#endif
-                                    while(outlen)
+            				while(outlen)
             				{
             				    wlen=write_pcm_buffer(outbuf, g_bst,outlen); 
             				    outlen-=wlen;
@@ -1155,90 +1158,6 @@ APE_FORMAT:
                    usleep(100000);
                    continue;
               }
-			  if(20 == ReadApeErrCount){
-			  		ReadApeErrCount = 0;
-			  		continue;
-			    }
-			  if(1 == apesym){
-			  	
-			  	if(20 == ReadApeErrCount){
-					ReadApeErrCount = 0;
-			  		continue;
-			    }
-			  	if(nNextReadSize > 0){
-					
-#if 0
-					if(nNextReadSize > READ_BUF_SIZE){
-#endif
-						int readbufi = nNextReadSize / READ_BUF_SIZE;
-						int readbufj = nNextReadSize % READ_BUF_SIZE;
-						while(readbufi >= 0){
-							if(readbufi == 0){
-								nNextReadSize = readbufj;
-							}
-							else
-								nNextReadSize = READ_BUF_SIZE;
-							while(nNextReadSize > 0){
-								tmpoffset = read_buffer(inapebuf + bufoffset, nNextReadSize);
-                    			if(tmpoffset <= 0){
-                        			ReadApeErrCount++;
-									if(ReadApeErrCount == 20)
-                        				break;
-								}
-                    			else{
-									ReadApeErrCount = 0;
-                    				bufoffset += tmpoffset;
-									nNextReadSize -= tmpoffset;
-                    			}	
-							}
-							if(ReadApeErrCount == 20)
-								break;
-							readbufi --;
-
-						}
-#if 0
-					}
-					else{
-						while(nNextReadSize > 0){
-							tmpoffset = read_buffer(inapebuf + bufoffset, nNextReadSize);
-                    		if(tmpoffset <= 0){
-                        		ReadApeErrCount++;
-								if(ReadApeErrCount == 20)
-                        			break;
-							}
-                    		else{
-								ReadApeErrCount = 0;
-                    			bufoffset += tmpoffset;
-								nNextReadSize -= tmpoffset;
-                    		}	
-						}
-					}
-#endif
-				}
-				if(20 == ReadApeErrCount){
-					
-					ReadApeErrCount = 0;
-					continue;
-				}
-				else{
-                    
-					inlen = 0;
-					apesym = 0;
-					if(inbuf != NULL){
-						free(inbuf);
-						inbuf = NULL;
-					}
-					inbuf = inapebuf;
-					inapebuf = NULL;
-					rlen = bufoffset;
-					ReadApeErrCount = 0;
-					goto APE_FORMAT;
-				}
-			  }
-			  
-
-
-			  
 	}
     
     adec_print("Exit adec_armdec_loop Thread!");
