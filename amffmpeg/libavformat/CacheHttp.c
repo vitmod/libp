@@ -24,7 +24,6 @@
 #include <time.h>
 #include <strings.h>
 #include "internal.h"
-#include "network.h"
 #include "os_support.h"
 #include "libavutil/opt.h"
 #include <pthread.h>
@@ -127,7 +126,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     	int avail;
        avail = av_fifo_size(s->fifo);
     	av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
-	if(url_interrupt_cb()) {
+	if(url_interrupt_cb() || NETWORK_EXIT) {
 	    pthread_mutex_unlock(&s->read_mutex);
 	    return 0;
 	} else if(avail) {
@@ -229,7 +228,7 @@ static void *circular_buffer_task( void *_handle)
 
        av_log(h, AV_LOG_ERROR, "----------circular_buffer_task  item ");
        s->reset_flag = 1;
-	if (url_interrupt_cb()) {
+	if (url_interrupt_cb() || NETWORK_EXIT) {
 		 s->circular_buffer_error = EINTR;
                goto FAIL;
 	}
@@ -281,7 +280,7 @@ static void *circular_buffer_task( void *_handle)
            if(s->RESET)
                 break;
             
-	    if (url_interrupt_cb()) {
+	    if (url_interrupt_cb() || NETWORK_EXIT) {
 		 s->circular_buffer_error = EINTR;
                break;
 	    }

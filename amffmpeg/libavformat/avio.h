@@ -723,6 +723,9 @@ int url_lp_clear_seekflags(URLContext *s,int seekflagmask);
 int url_start_user_seek(AVIOContext *s);
 int url_finished_user_seek(AVIOContext *s);
 
+void url_set_network_interrupt(void);
+void url_set_network_uninterrupt(void);
+
 #include "libavformat/url.h"
 #include "libavformat/aviolpbuf.h"
 

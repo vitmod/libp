@@ -23,6 +23,7 @@
 #define AVFORMAT_CACHEHTTP_H
 
 #include "url.h"
+#include "network.h"
 
  int CacheHttp_Open(void ** handle,const char* headers);
  int CacheHttp_Read(void * handle, uint8_t * cache, int size);

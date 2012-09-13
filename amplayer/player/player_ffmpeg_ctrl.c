@@ -76,6 +76,16 @@ void ffmpeg_uninterrupt(pthread_t thread_id)
 {
     itemlist_del_match_data_item(&kill_item_list, thread_id);
 }
+
+void ffmpeg_network_interrupt()
+{
+       url_set_network_interrupt();
+}
+void ffmpeg_network_uninterrupt()
+{
+       url_set_network_uninterrupt();
+}
+
 int ffmpeg_init(void)
 {
     if (basic_init > 0) {

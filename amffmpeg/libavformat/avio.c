@@ -30,6 +30,8 @@
 #endif
 #include "url.h"
 
+int NETWORK_EXIT = 0;
+
 /** @name Logging context. */
 /*@{*/
 static const char *urlcontext_to_name(void *ptr)
@@ -221,6 +223,16 @@ int av_register_protocol2(URLProtocol *protocol, int size)
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"                \
     "0123456789+-."
 
+void url_set_network_interrupt(void)
+{
+       NETWORK_EXIT = 1;
+}
+
+void url_set_network_uninterrupt(void)
+{
+       NETWORK_EXIT = 0;
+}
+
 int ffurl_alloc(URLContext **puc, const char *filename, int flags)
 {
     URLProtocol *up;
@@ -287,6 +299,10 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
 
     len = 0;
     while (len < size_min) {
+        if(NETWORK_EXIT) {
+               av_log(NULL,AV_LOG_ERROR,"------------> tao_network_exit");
+               return AVERROR_EXIT;
+        }
         ret = transfer_func(h, buf+len, size-len);
         if (ret == AVERROR(EINTR))
             continue;
@@ -306,7 +322,7 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
         if (ret)
            fast_retries = FFMAX(fast_retries, 2);
         len += ret;
-        if (/*len < size && fast_retries<8 &&*/ url_interrupt_cb()) /*at least try several times for some teardown cmd finished.*/
+        if (len < size && fast_retries<8 && url_interrupt_cb()) /*at least try several times for some teardown cmd finished.*/
             return AVERROR_EXIT;
     }
     return len;
