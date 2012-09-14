@@ -774,7 +774,8 @@ struct mad_pcm *pcm)
 	nsamples  = pcm->length;
 	left_ch   = pcm->samples[0];
 	right_ch  = pcm->samples[1];
-	*pcm_out_len += 4608;
+	//*pcm_out_len += 4608;
+	*pcm_out_len += pcm->length*2*(header->mode>0?2:1);;
 	while (nsamples--) {
 		signed int sample_l;
 		signed int sample_r;
@@ -784,17 +785,18 @@ struct mad_pcm *pcm)
 		sample_l = scale(*left_ch++);
 		//putchar((sample >> 0) & 0xff);
 		//putchar((sample >> 8) & 0xff);
-
+		pcm_out_data[0] = sample_l >> 0;
+		pcm_out_data[1] = sample_l >> 8;
+              pcm_out_data += 2;
 		if (nchannels == 2) {
 			sample_r = scale(*right_ch++);
 			//putchar((sample >> 0) & 0xff);
 			//putchar((sample >> 8) & 0xff);
+        		pcm_out_data[0] = sample_r >> 0;
+        		pcm_out_data[1] = sample_r >> 8;
+        		pcm_out_data += 2;
 		}
-		pcm_out_data[0] = sample_l >> 0;
-		pcm_out_data[1] = sample_l >> 8;
-		pcm_out_data[2] = sample_r >> 0;
-		pcm_out_data[3] = sample_r >> 8;
-		pcm_out_data += 4;
+		
 	}
 
 	return MAD_FLOW_CONTINUE;
