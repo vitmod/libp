@@ -46,10 +46,10 @@ typedef struct {
     int EXITED;
     int RESET;
     int reset_flag;
+    int finish_flag;
     int circular_buffer_error; 
     double item_duration;
     double item_starttime;
-    int finish_flag;
     int64_t item_pos;
     int64_t item_size;
     AVFifoBuffer * fifo;    
@@ -135,6 +135,9 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
            av_fifo_generic_read(s->fifo, cache, size, NULL);
     	    pthread_mutex_unlock(&s->read_mutex);
            return size;        
+       } else if(s->EXITED) {
+           pthread_mutex_unlock(&s->read_mutex); 
+           return 0;
        } else if(!s->finish_flag) {
            pthread_mutex_unlock(&s->read_mutex);          
            //read just need retry
@@ -260,7 +263,7 @@ static void *circular_buffer_task( void *_handle)
         char* filename = av_strdup(item->file);
         
         err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers);
-        if (err < 0) {
+        if (err) {
             if(filename){
                 av_free(filename);
             }
