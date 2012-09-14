@@ -348,7 +348,7 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
         pts = last_valid_pts;
         frame_nums = (out_len_after_last_valid_pts * 8 / (data_width * channels));
         pts+= (frame_nums*90000/samplerate);
-        adec_print("==decode_offset:%d offset:%d \n",decode_offset,pts);
+        //adec_print("==decode_offset:%d out_pcm:%d   pts:%d \n",decode_offset,out_len_after_last_valid_pts,pts);
         return pts; 
         //return -1; 
     }
@@ -364,7 +364,7 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     val=pts;
     last_valid_pts=pts;
     out_len_after_last_valid_pts=0;
-    adec_print("====get pts:%ld offset:%ld frame_num:%lld delay:%ld \n",val,decode_offset,frame_nums,delay_pts);
+    //adec_print("====get pts:%ld offset:%ld frame_num:%lld delay:%ld \n",val,decode_offset,frame_nums,delay_pts);
     return val;
 }
 
@@ -528,6 +528,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
             default:
                 audec->adec_ops->bps=16;
         }
+        adec_print("==param= bps:%d samplerate:%d channel:%d \n",audec->adec_ops->bps,audec->adec_ops->samplerate,audec->adec_ops->channels);
         audec->adec_ops->extradata_size=audec->extradata_size;
         if(audec->extradata_size>0)
             memcpy(audec->adec_ops->extradata,audec->extradata,audec->extradata_size);
@@ -864,7 +865,6 @@ void *audio_getpackage_loop(void *args)
     int nCodecID;
     int nAudioFormat;
 
-    char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];//max frame size out buf
     int outlen = 0;
     	
     adec_print("adec_getpackage_loop start!\n");
@@ -977,6 +977,7 @@ QUIT:
         return NULL;
 }
 
+static char pcm_buf_tmp[AVCODEC_MAX_AUDIO_FRAME_SIZE];//max frame size out buf
 void *audio_decode_loop(void *args)
 {
     int ret;
@@ -1001,8 +1002,7 @@ void *audio_decode_loop(void *args)
     int extra_data = 8;
     int nCodecID;
     int nAudioFormat;
-
-    char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];//max frame size out buf
+    char *outbuf=pcm_buf_tmp;
     int outlen = 0;
     	
     adec_print("adec_armdec_loop start!\n");
