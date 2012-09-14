@@ -1772,8 +1772,8 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
         filesize = avio_size(s->pb);
         pos_max = filesize - 1;
         do{
-			if(url_interrupt_cb())
-				break;
+			//if(url_interrupt_cb())
+				//break;
             pos_max -= step;
             ts_max = read_timestamp(s, stream_index, &pos_max, pos_max + step);
             step += step;
@@ -1783,8 +1783,8 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
 			av_log(NULL, AV_LOG_ERROR, "av_gen_search failed, max pts not found\n");
             return -1;
         }
-
-        while(ts_max > target_ts){
+        for(;;){
+        //while(ts_max > target_ts){
             int64_t tmp_pos= pos_max + 1;
             int64_t tmp_ts= read_timestamp(s, stream_index, &tmp_pos, INT64_MAX);
             if(tmp_ts == AV_NOPTS_VALUE)
