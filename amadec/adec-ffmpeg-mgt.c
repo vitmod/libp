@@ -498,6 +498,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
         aout_stop_mutex=0;
         last_valid_pts=0;
         out_len_after_last_valid_pts=0;
+        pcm_cache_size=0;
         package_list_init();
         while(0!=set_sysfs_int(DECODE_ERR_PATH,DECODE_NONE_ERR))
         {
@@ -843,40 +844,96 @@ static void stop_decode_thread(aml_audio_dec_t *audec)
     sn_getpackage_threadid=-1;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  getNextFrameSize  Get next frame size
+*
+* @param[in]   format     audio format
+*
+* @return      -1: no frame_size  use default   0: need get again  non_zero: success
+*/
+/* --------------------------------------------------------------------------*/
+
+typedef struct {
+    char buff[10];
+    int size;
+    int status;//0 init 1 finding sync word 2 finding framesize 3 frame size found
+}StartCode;
+static StartCode start_code;
+static int get_frame_size(int format)
+{
+    int frame_szie=0;
+    int ret=0;
+    int extra_data=8;//?
+    if(start_code.status==0||start_code.status==3)
+        memset(&start_code,0,sizeof(StartCode));
+    /*ape case*/
+    if(format==ACODEC_FMT_APE){	
+        if(start_code.status==0)//have not get the sync data
+        {
+            ret=read_buffer(start_code.buff,4);
+            if(ret<=0)
+                return 0;
+            start_code.size=4;
+            start_code.status=1;          
+        }
+        if(start_code.status==1) {//start find sync word
+            if(start_code.size<4){
+                ret=read_buffer(start_code.buff+start_code.size,4-start_code.size);
+                if(ret<=0)
+                    return 0;
+                start_code.size=4;
+            }
+            if(start_code.size==4){
+                if((start_code.buff[0]=='A')&&(start_code.buff[1]=='P')&&(start_code.buff[2]=='T')&&(start_code.buff[3]=='S')){
+                   
+                    start_code.size=0;
+                    start_code.status=2;  //sync word found ,start find frame size
+                }
+                else{
+                    start_code.size=3;
+                    memcpy(start_code.buff,&start_code.buff[1],3);
+                    return 0;
+                }
+              }
+              
+            }
+            if(start_code.status==2)
+            {
+                ret=read_buffer(start_code.buff,4);
+                if(ret<=0)
+                    return 0;
+                start_code.size=4;
+                frame_szie  = start_code.buff[3]<<24|start_code.buff[2]<<16|start_code.buff[1]<<8|start_code.buff[0]+extra_data;		
+	         frame_szie  = (frame_szie+3)&(~3);	
+	         start_code.status=3;//found frame size
+	         return frame_szie;
+            }
+        }
+    return -1;
+}
+
 void *audio_getpackage_loop(void *args)
 {
      int ret;
     aml_audio_dec_t *audec;
-    audio_out_operations_t *aout_ops;
     audio_decoder_operations_t *adec_ops;
     int nNextFrameSize=0;//next read frame size
     int inlen = 0;//real data size in in_buf
-    int nRestLen=0;//left data after last decode 
     int nInBufferSize=0;//full buffer size
     char *inbuf = NULL;//real buffer
     int rlen = 0;//read buffer ret size
-    char *pRestData=NULL;
-    
-    int dlen = 0;//decode size one time
-    int declen = 0;//current decoded size
-	
-    char startcode[5];	
-    int extra_data = 8;
-    int nCodecID;
     int nAudioFormat;
-
-    int outlen = 0;
     	
     adec_print("adec_getpackage_loop start!\n");
     audec = (aml_audio_dec_t *)args;
-    aout_ops = &audec->aout_ops;
     adec_ops=audec->adec_ops;
     nAudioFormat=audec->format;
     inlen=0;
     nNextFrameSize=adec_ops->nInBufSize;    
     while (1){
 exit_decode_loop:
-          //detect quit condition
+          /*detect quit condition*/
           if(exit_decode_thread)
 	      {
 	            if(inbuf)
@@ -884,60 +941,23 @@ exit_decode_loop:
 	            package_list_free();
         	     break;
 	      }
-	      //step 2  get read buffer size
-	      if(nAudioFormat==ACODEC_FMT_APE ||nAudioFormat==ACODEC_FMT_ALAC)
-	      {	
-		         inlen=0;//not save the left data
-			  if (read_buffer(startcode,4) > 0)
-			  {	
-				    while(1)
-				    {
-	    				if (nAudioFormat==ACODEC_FMT_APE&&(startcode[0]=='A')&&(startcode[1]=='P')&&(startcode[2]=='T')&&(startcode[3]=='S'))
-	    						break;	
-	    				if (nAudioFormat==ACODEC_FMT_ALAC&&(startcode[0] == 0x11)&&(startcode[1] == 0x22)&&(startcode[2] == 0x33)&&(startcode[3] == 0x44))
-	    						break;
-	    				if(read_buffer(&startcode[4],1)<=0)
-	    				{
-	    				    if(exit_decode_thread)
-                                	    {
-                                	            if(inbuf)
-                                	                free(inbuf);
-                                	            package_list_free();
-                                        	     goto QUIT;
-                                	      }
-	    				    }
-	    				memcpy(startcode,&startcode[1],4);
-				     }
-
-					if (nAudioFormat==ACODEC_FMT_APE){			
-						read_buffer(startcode,4);			
-						nNextFrameSize  = startcode[3]<<24|startcode[2]<<16|startcode[1]<<8|startcode[0]+extra_data;		
-						nNextFrameSize  = (nNextFrameSize+3)&(~3);				
-					}
-					if (nAudioFormat==ACODEC_FMT_ALAC){	
-						read_buffer(startcode,2);
-						nNextFrameSize = startcode[0]<<8|startcode[1];		
-					}
-					if(nNextFrameSize<=0){
-						adec_print("framesize error!-------------------------------------\n");	
-						continue;
-					}
-					//nInBufferSize = nNextFrameSize;			
-			  }
-			  else{
-				  //get data failed,maybe at the end
-				  usleep(100000);
-				  adec_print("==get data failed \n");
-				  continue;
-			  }
-                }                
+	      /*step 2  get read buffer size*/
+	      nNextFrameSize=get_frame_size(nAudioFormat);
+	      //adec_print("==get frame size:%d \n",nNextFrameSize);
+	      if(nNextFrameSize==-1)
+	        nNextFrameSize=adec_ops->nInBufSize;
+	      else if(nNextFrameSize==0)
+	      {
+	        usleep(1000);
+	        continue;
+	      }
+	      /*step 3  read buffer*/
                 nInBufferSize = nNextFrameSize;
 		  if (inbuf != NULL) {
 			  free(inbuf);
 			  inbuf = NULL;
 		  }
 		  inbuf = malloc(nInBufferSize);
-                //step 3  read buffer
                 int nNextReadSize=nInBufferSize;
                 int nRet=0;
                 int nReadErrCount=0;
@@ -946,20 +966,20 @@ exit_decode_loop:
                 rlen=0;
                 while(nNextReadSize>0)
                 {
+                    if(exit_decode_thread)
+	                goto exit_decode_loop;
                     if(nNextReadSize<=nReadSizePerTime)
                         nReadSizePerTime=nNextReadSize;
                     nRet = read_buffer(inbuf+rlen, nReadSizePerTime);//read 10K per time
                     if(nRet<=0)
-                        nReadErrCount++;
-                    else
-                        nReadErrCount=0;
-                    if(nReadErrCount==20)
-                        break;
+                    {
+                        usleep(1000);
+                        continue;
+                    }
                     rlen+=nRet;
                     nNextReadSize-=nRet;
+                    
                 }
-                if(nReadErrCount==20)
-                    continue;
                 nCurrentReadCount=rlen;
                 rlen += inlen;
                 while(package_add(inbuf,rlen))
