@@ -269,8 +269,15 @@ static void get_av_codec_type(play_para_t *p_para)
 
                 if (profile == 1) {
                     pCodecCtx->profile = FF_PROFILE_AAC_MAIN;
-					p_para->astream_info.has_audio = 0;
-					log_print("AAC MAIN not support yet!!\n");
+                    /*add main profile support if choose arm audio decoder*/
+                    char value[PROPERTY_VALUE_MAX];
+                    int ret = property_get("media.arm.audio.decoder",value,NULL);
+                   if (ret>0 && match_types("aac",value))
+                         log_print("AAC MAIN support by arm audio decoder!!\n");
+                  else{
+			   p_para->astream_info.has_audio = 0;
+			   log_print("AAC MAIN not support yet!!\n");
+		    }
                 }
                 //else
                 //  p_para->astream_info.has_audio = 0;
