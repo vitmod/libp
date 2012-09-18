@@ -615,7 +615,7 @@ static int decode_frame(FLACContext *s)
         audio_codec_print("switching bps mid-stream is not supported\n");
         return -1;
     }
-    if (s->bps > 16) {
+    if (0/*s->bps > 16*/) {
         s->avctx->sample_fmt = SAMPLE_FMT_S32;
         s->sample_shift = 32 - s->bps;
         s->is32 = 1;
@@ -750,8 +750,16 @@ decodecontinue:
 					*samples_32++ = (left)	<< s->sample_shift;\
 					*samples_32++ = (right) << s->sample_shift;\
 				} else {\
-					*samples_16++ = (left)	<< s->sample_shift;\
-					*samples_16++ = (right) << s->sample_shift;\
+					 if(s->sample_shift>=0)\
+                	                {\
+                        	                *samples_16++ = (left)  << s->sample_shift;\
+                        	                *samples_16++ = (right) << s->sample_shift;\
+                	                }\
+                	                else\
+                	                {\
+                	                    *samples_16++ = (left)  >> (-1*s->sample_shift);\
+                        	             *samples_16++ = (right) >> (-1*s->sample_shift);\
+                	                }\
 				}\
 			}\
 			break;
@@ -762,8 +770,13 @@ decodecontinue:
 			for (i = 0; i < s->channels; i++) {
 				if (s->is32)
 					*samples_32++ = s->decoded[i][j] << s->sample_shift;
-				else
-					*samples_16++ = s->decoded[i][j] << s->sample_shift;
+				else 
+				{
+				    if(s->sample_shift>=0)
+	                            *samples_16++ = s->decoded[i][j] << s->sample_shift;
+	                        else
+	                            *samples_16++ = s->decoded[i][j] >> (-1*s->sample_shift);
+	                        }
 			}
 		}
 		break;

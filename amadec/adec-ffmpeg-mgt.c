@@ -70,6 +70,7 @@ audio_lib_t audio_lib_list[] =
 	{ACODEC_FMT_AAC_LATM, "libfaad.so"},
 	{ACODEC_FMT_APE, "libape.so"},
 	{ACODEC_FMT_MPEG, "libmad.so"},
+	{ACODEC_FMT_FLAC, "libflac.so"},
 	NULL
 } ;
 
@@ -1125,7 +1126,7 @@ exit_decode_loop:
     				  if (dlen <= 0)
     				  {
     				  	  //adec_print("dlen = %d error----\n",dlen);
-    					  if ((nAudioFormat==ACODEC_FMT_APE ||nAudioFormat==ACODEC_FMT_ALAC))
+    					  if (nAudioFormat==ACODEC_FMT_APE)
     					  {
     					        inlen=0;	  
     					  }
