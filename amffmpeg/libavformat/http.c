@@ -270,7 +270,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     av_strlcpy(s->location, uri, sizeof(s->location));
 	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
-	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb() &&!NETWORK_EXIT){
+	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
 		s->is_seek=0;
 		s->canseek=0;
     	ret = http_open_cnx(h);
@@ -291,7 +291,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     av_strlcpy(s->location, uri+1, sizeof(s->location));	
 	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
-	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb() &&!NETWORK_EXIT){
+	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
 		s->is_seek=0;
 		s->canseek=0;
     	ret = http_open_cnx(h);
@@ -549,7 +549,7 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
     int len;
 	int err_retry=READ_RETRY_MAX;
 retry:	
-	if (url_interrupt_cb() || NETWORK_EXIT) {
+	if (url_interrupt_cb()) {
 		av_log(h, AV_LOG_INFO, "http_read interrupt, err :-%d\n", AVERROR(EIO));
 		return AVERROR(EIO);
 	}

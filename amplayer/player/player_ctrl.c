@@ -241,12 +241,10 @@ int player_stop(int pid)
     if (cmd) {
         cmd->ctrl_cmd = CMD_STOP;
         ffmpeg_interrupt(player_para->thread_mgt.pthread_id);
-	ffmpeg_network_interrupt();
         r = send_message(player_para, cmd);
         r = player_thread_wait_exit(player_para);
         log_print("[player_stop:%d]wait player_theadpid[%d] r = %d\n", __LINE__, player_para->player_id, r);
         clear_all_message(player_para);
-	ffmpeg_network_uninterrupt();
         ffmpeg_uninterrupt(player_para->thread_mgt.pthread_id);
     } else {
         r = PLAYER_NOMEM;

@@ -64,8 +64,6 @@ static inline int ff_neterrno(void)
 #include <poll.h>
 #endif
 
-extern int NETWORK_EXIT;
-
 int ff_socket_nonblock(int socket, int enable);
 
 static inline int ff_network_init(void)
@@ -85,8 +83,6 @@ static inline int ff_network_wait_fd(int fd, int write)
     int ret=0;
 	int retry=5; ///5*50ms=250ms;
 	do{
-                if(NETWORK_EXIT)
-                       return AVERROR_EXIT;
 		if(retry<5  && url_interrupt_cb()) /*at lest try 5 times, for some teardown command*/
 			return AVERROR_EXIT;
     	ret = poll(&p, 1, 50);/*50ms*/

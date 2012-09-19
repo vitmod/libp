@@ -325,7 +325,7 @@ static int list_open_internet(ByteIOContext **pbio, struct list_mgt *mgt, const 
     char* url = filename;
 reload:
     
-    if (url_interrupt_cb() || NETWORK_EXIT) {
+    if (url_interrupt_cb()) {
          ret = -1;       
          goto error;   
     }
@@ -604,7 +604,7 @@ reload:
             av_log(NULL, AV_LOG_INFO, "drop fetch playlist from server\n");
             isNeedFetch = 0;
         }
-        if (url_interrupt_cb() || NETWORK_EXIT) {
+        if (url_interrupt_cb()) {
             return NULL;
         }
         if (isNeedFetch == 0 || (ret = list_open_internet(&bio, mgt, url, mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
@@ -664,7 +664,7 @@ switchnext:
         if (!mgt->have_list_end) {
 
 
-            if (url_interrupt_cb() || NETWORK_EXIT) {
+            if (url_interrupt_cb()) {
                 return NULL;
             }
             usleep(100 * 1000);
@@ -684,7 +684,7 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
     int len = AVERROR(EIO);
     int counts = 10;
     do {
-        if (url_interrupt_cb() || NETWORK_EXIT) {
+        if (url_interrupt_cb()) {
             av_log(NULL, AV_LOG_ERROR, " url_interrupt_cb\n");
             len = AVERROR(EINTR);
             break;
