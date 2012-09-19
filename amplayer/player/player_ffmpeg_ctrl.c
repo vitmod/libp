@@ -50,11 +50,13 @@ int ffmpeg_lock(void **pmutex, enum AVLockOp op)
 
 static pthread_t kill_thread_pool[MAX_PLAYER_THREADS];
 static int basic_init = 0;
-int ffmpeg_interrupt_callback(void)
+int ffmpeg_interrupt_callback(unsigned long npid)
 {
-    int pid = pthread_self();
+    int pid =npid; 
     int interrupted;
     static int dealock_detected_cnt=0;
+    if(pid==0)
+        pid=pthread_self();
     interrupted=itemlist_have_match_data(&kill_item_list, pid);
     if(!interrupted){
         dealock_detected_cnt=0;

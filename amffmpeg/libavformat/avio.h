@@ -32,7 +32,7 @@
 
 #include "libavformat/version.h"
 
-
+#include "pthread.h"
 
 #define AVIO_SEEKABLE_NORMAL 0x0001 /**< Seeking works like for a local file */
 
@@ -211,9 +211,14 @@ attribute_deprecated int url_poll(URLPollEntry *poll_table, int n, int timeout);
  */
 #define URL_FLAG_NONBLOCK 4
 
-typedef int URLInterruptCB(void);
-extern URLInterruptCB *url_interrupt_cb;
+typedef int URLInterruptCB(unsigned long pid);
+////extern URLInterruptCB *url_interrupt_cb;
+int url_interrupt_cb(void);
+int ffmpeg_pthread_map_init(void);
+int ffmpeg_pthread_create(pthread_t *thread_out, pthread_attr_t const * attr,
+                   void *(*start_routine)(void *), void * arg);
 
+int ffmpeg_pthread_join(pthread_t thid, void ** ret_val);
 /**
  * @defgroup old_url_funcs Old url_* functions
  * @deprecated use the buffered API based on AVIOContext instead
@@ -236,7 +241,7 @@ attribute_deprecated void url_get_filename(URLContext *h, char *buf, int buf_siz
 attribute_deprecated int av_url_read_pause(URLContext *h, int pause);
 attribute_deprecated int64_t av_url_read_seek(URLContext *h, int stream_index,
                                               int64_t timestamp, int flags);
-attribute_deprecated void url_set_interrupt_cb(int (*interrupt_cb)(void));
+attribute_deprecated void url_set_interrupt_cb(URLInterruptCB *interrupt_cb);
 
 /**
  * returns the next registered protocol after the given protocol (the first if
@@ -403,7 +408,7 @@ int avio_check(const char *url, int flags);
  * in this case by the interrupted function. 'NULL' means no interrupt
  * callback is given.
  */
-void avio_set_interrupt_cb(int (*interrupt_cb)(void));
+void avio_set_interrupt_cb(URLInterruptCB *interrupt_cb);
 
 /**
  * Allocate and initialize an AVIOContext for buffered I/O. It must be later
