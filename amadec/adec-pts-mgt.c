@@ -282,7 +282,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         audec->adsp_ops.last_audio_pts = pts;
         audec->adsp_ops.last_pts_valid = 1;
         audec->auto_mute = 1;
-        apts_interrupt=1;
+        apts_interrupt=10;
         return 0;
     }
 
@@ -297,8 +297,10 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         apts_interrupt=0;
         return 0;
     }
-    else if(apts_interrupt)
+    else if(apts_interrupt>0){
+        apts_interrupt --;
         return 0;
+        }
 
     /* report apts-system time difference */
     fd = open(TSYNC_APTS, O_RDWR);
