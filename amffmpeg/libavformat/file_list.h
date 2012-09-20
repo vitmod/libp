@@ -82,7 +82,8 @@ struct AESCryptoContext{
 typedef struct list_item
 {
     const char *file;
-    int 	   flags;	  
+    int 	   flags;
+    int         have_list_end;
     double  	start_time;
     double		duration;
     int 	bandwidth;

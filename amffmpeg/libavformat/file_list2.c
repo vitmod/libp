@@ -463,6 +463,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     } else {
         mgt->current_item = mgt->item_list;
     }
+    mgt->current_item->have_list_end = mgt->have_list_end;
  
     h->is_streamed = 1;
     h->is_slowmedia = 1;

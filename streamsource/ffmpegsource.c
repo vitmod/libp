@@ -25,7 +25,7 @@ static int ffmpegsource_l_open(source_t *as, const char * url, const char *heade
         ffurl_close(uio);
     }
     as->priv[0] = 0;
-    ret = ffurl_open_h(&uio, url, flags, header);
+    ret = ffurl_open_h(&uio, url, flags, header, NULL);
     if (ret != 0) {
         return ret;
     }

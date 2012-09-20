@@ -48,6 +48,7 @@ typedef struct {
     int RESET;
     int reset_flag;
     int finish_flag;
+    int have_list_end;
     int circular_buffer_error; 
     double item_duration;
     double item_starttime;
@@ -60,9 +61,9 @@ typedef struct {
 
 } CacheHttpContext;
 
-static int CacheHttp_ffurl_open_h(URLContext ** h, const char * filename, int flags, const char * headers)
+static int CacheHttp_ffurl_open_h(URLContext ** h, const char * filename, int flags, const char * headers, int * http)
 {
-    return ffurl_open_h(h, filename, flags,headers);
+    return ffurl_open_h(h, filename, flags,headers, http);
 }
 
 static int CacheHttp_ffurl_read(URLContext * h, unsigned char * buf, int size)
@@ -97,6 +98,7 @@ int CacheHttp_Open(void ** handle,const char* headers)
     s->item_starttime = 0;
     s->finish_flag = 0;
     s->reset_flag = -1;
+    s->have_list_end = -1;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);      
@@ -251,6 +253,7 @@ static void *circular_buffer_task( void *_handle)
         s->reset_flag = 0;
         s->item_starttime = item->start_time;
         s->item_duration = item->duration;
+        s->have_list_end = item->have_list_end;
         if(item&&item->flags&ENDLIST_FLAG){
             s->finish_flag =1;
         }        
@@ -260,16 +263,21 @@ static void *circular_buffer_task( void *_handle)
             break;
         }
         
-        int err;
+        int err, http_code;
         char* filename = av_strdup(item->file);
         
-        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers);
+        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers, &http_code);
         if (err) {
             if(filename){
                 av_free(filename);
-            }
-	      av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
-             break;
+            }	      
+             if(1 == http_code && !s->have_list_end) {
+                av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
+                goto SKIP;
+             } else {
+                av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
+                 break;
+             }          
         }
         
         s->hd = h;
@@ -332,6 +340,7 @@ static void *circular_buffer_task( void *_handle)
             av_free(filename);
             filename = NULL;
         }
+SKIP:
 	 if(!s->RESET)
         	switchNextSegment(NULL);
     }
