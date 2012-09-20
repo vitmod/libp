@@ -314,6 +314,10 @@ int url_feof(AVIOContext *s)
         s->eof_reached=0;
         fill_buffer(s);
     }
+   if(s->eof_reached){
+       /*if end level eof,make sure the buffer have no data.*/
+       return (s->buf_ptr >= s->buf_end);
+   }	
     return s->eof_reached;
 }
 
