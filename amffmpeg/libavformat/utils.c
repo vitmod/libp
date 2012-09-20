@@ -2699,11 +2699,15 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     }
 }
 
+extern  int  adts_bitrate_parse(AVFormatContext *s, int *bitrate, int64_t old_offset);
 static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
 	int64_t cur_offset, valid_offset;
 	int64_t ret;
+    int bitrate=0;
+    int i=0;
+    AVStream *st=NULL;
 
     if(!ic->pb)
 	return 0;
@@ -2749,9 +2753,9 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
         file_size>0 && ic->pb->seekable /*&& !ic->pb->is_slowmedia*/ && !ic->pb->is_streamed) {
         /* get accurate estimate from the PTSes */
         if(!strcmp(ic->iformat->name, "mpegts"))
-               av_estimate_timings_from_pts(ic, old_offset);
-	 else 
-	 	av_estimate_timeings_chapters(ic, old_offset);
+                av_estimate_timings_from_pts(ic, old_offset);
+        else 
+                av_estimate_timeings_chapters(ic, old_offset);
     } else if (av_has_duration(ic)) {
         /* at least one component has timings - we use them for all
            the components */
@@ -2759,6 +2763,17 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     } else {
         av_log(ic, AV_LOG_WARNING, "Estimating duration from bitrate, this may be inaccurate\n");
         /* less precise: use bitrate info */
+        if (!strcmp(ic->iformat->name, "aac") ){
+	   ret=adts_bitrate_parse(ic, &bitrate,old_offset); 
+	   if(ret>0){
+	          for(i=0;i<ic->nb_streams;i++) {
+                    st = ic->streams[i];
+                    st->codec->bit_rate=bitrate;
+             }
+             ic->bit_rate=bitrate;
+	   av_log(NULL, AV_LOG_INFO, "VBR AAC: read all frames to ensure correct bitrate %d \n",ic->bit_rate);
+	   }
+        }
         av_estimate_timings_from_bit_rate(ic);
     }
     av_update_stream_timings(ic);
