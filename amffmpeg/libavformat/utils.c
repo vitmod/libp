@@ -394,6 +394,13 @@ static int set_codec_from_probe_data(AVFormatContext *s, AVStream *st, AVProbeDa
             }
         }
     }
+
+    if (st->codec->mpegps_video_idprobed 
+        && (score < AVPROBE_SCORE_MAX / 10)) {
+        st->codec->codec_id   = CODEC_ID_MPEG2VIDEO;
+        st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
+        av_log(NULL, AV_LOG_ERROR, "[%s:%d]probe score %d\n", __FUNCTION__, __LINE__, score);
+    }
     return score;
 }
 
