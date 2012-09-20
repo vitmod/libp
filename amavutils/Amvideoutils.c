@@ -277,3 +277,20 @@ int amvideo_utils_set_screen_mode(int mode)
     return 0;
 }
 
+int amvideo_utils_get_video_angle(int *angle)
+{
+    LOG_FUNCTION_NAME
+    int angle_fd;
+    int angle_value = 0;
+    
+    angle_fd = open(ANGLE_PATH, O_RDONLY);
+    if (angle_fd >= 0) {
+        ioctl(angle_fd, PPMGR_IOC_GET_ANGLE, &angle_value);
+        //LOGI("get ppmgr angle %d\n", angle_value);
+        close(angle_fd);
+    }
+    
+    *angle = angle_value;
+
+    return 0;
+}
