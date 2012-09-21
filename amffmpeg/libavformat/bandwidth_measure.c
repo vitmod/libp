@@ -114,19 +114,19 @@ int bandwidth_measure_get_bandwidth(void  *band,int *fast_band,int *mid_band,int
 	
 	time_us=rates->latest_f_duration_us;
 	if(time_us>0 && rates->latest_f_bytes>0)
-		*fast_band=(int64_t)rates->latest_f_bytes*8*1000/(time_us/1000);/*bits per seconds*/
+		*fast_band=(int64_t)rates->latest_f_bytes*8*1000*1000/time_us;/*bits per seconds*/
 	else
 		*fast_band=0;
 
 	time_us=rates->latest_m_duration_us;
 	if(time_us>0 && rates->latest_m_bytes>0)
-		*mid_band=(int64_t)rates->latest_m_bytes*8*1000/(time_us/1000);/*bits per seconds*/
+		*mid_band=(int64_t)rates->latest_m_bytes*8*1000*1000/time_us;/*bits per seconds*/
 	else
 		*mid_band=0;
 
 	time_us=av_gettime()-rates->init_time_us;
 	if(time_us>0)
-		*avg_band=rates->total_bytes*8*1000/(time_us/1000);/*bits per seconds*/
+		*avg_band=rates->total_bytes*8*1000*1000/time_us;/*bits per seconds*/
 	else
 		*avg_band=0;
 	return 0;
