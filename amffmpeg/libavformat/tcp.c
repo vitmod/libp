@@ -76,6 +76,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
 		hints.ai_family = AF_UNSPEC;	
     hints.ai_socktype = SOCK_STREAM;
     snprintf(portstr, sizeof(portstr), "%d", port);
+	av_log(h, AV_LOG_INFO,"tcp will get address from dns!\n");	
     if (listen_socket)
         hints.ai_flags |= AI_PASSIVE;
     if (!hostname[0])
