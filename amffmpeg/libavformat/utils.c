@@ -521,6 +521,7 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
     int64_t old_dataoff;
     AVFormatContext *s = logctx;
     int maxretry=0;
+    int eof_flag = 0;
     int64_t filesize = avio_size(pb);
     av_log(NULL, AV_LOG_INFO, "%s:size=%lld\n", pd.filename, filesize);
     if (filesize <= 0&&!pb->is_streamed)
@@ -566,6 +567,7 @@ retry_probe:
         int ret, score = probe_size < max_probe_size ? AVPROBE_SCORE_MAX/4 : 0;
        // int buf_offset = (probe_size == PROBE_BUF_MIN) ? 0 : probe_size>>1;
 	 int buf_offset =  pd.buf_size ;
+
         if (probe_size < offset) {
             continue;
         }
@@ -577,28 +579,40 @@ retry_probe:
            if (ret != AVERROR_EOF &&ret != AVERROR(EAGAIN)) {
                 av_free(buf);
                 return ret;
+            } else if (ret == AVERROR_EOF) {
+                eof_flag = 1;
             }
-		maxretry++;
-		if(maxretry>1000)
-			return -1;	
+            maxretry++;      
+            if(maxretry>1000)
+            	return -1;	
             score = 0;
             ret = 0;            /* error was end of file, nothing read */
 	}else{
 		maxretry=0;
 	}
-        pd.buf_size += ret;
-        pd.buf = &buf[offset];
+	if(ret > 0 || eof_flag == 1) {
+            pd.buf_size += ret;
+            pd.buf = &buf[offset];
 
-        memset(pd.buf + pd.buf_size, 0, AVPROBE_PADDING_SIZE);
-
-        /* guess file format */
-        *fmt = av_probe_input_format2(&pd, 1, &score);
-        if(*fmt){
-            if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
-                av_log(logctx, AV_LOG_WARNING, "Format %s detected only with low score of %d, misdetection possible!\n", (*fmt)->name, score);
-            }else
-                av_log(logctx, AV_LOG_INFO, "Format %s probed with size=%d and score=%d\n", (*fmt)->name, probe_size, score);
+            memset(pd.buf + pd.buf_size, 0, AVPROBE_PADDING_SIZE);
+            av_log(NULL, AV_LOG_INFO, "[%s]read %d bytes for probe format\n", __FUNCTION__, pd.buf_size);
+            /* guess file format */
+            *fmt = av_probe_input_format2(&pd, 1, &score);
+            if(*fmt){
+                if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
+                    av_log(logctx, AV_LOG_WARNING, "Format %s detected only with low score of %d, misdetection possible!\n", (*fmt)->name, score);
+                }else{
+                    av_log(logctx, AV_LOG_INFO, "Format %s probed with size=%d and score=%d\n", (*fmt)->name, probe_size, score);
+                 }
+           }
        }
+       else{       
+	    av_log(NULL, AV_LOG_WARNING, "[%s]no new data for probe,retry\n", __FUNCTION__);
+	}
+	if (eof_flag == 1){
+	    av_log(NULL, AV_LOG_WARNING, "[%s]read end, exit probe format\n", __FUNCTION__);
+	    break;
+	}
     }
 	
     if (!*fmt) {
@@ -3020,6 +3034,7 @@ int av_find_stream_info(AVFormatContext *ic)
     int bit_rate = 0;
     int64_t old_offset=-1;
     int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
+    av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d\n", __FUNCTION__, fast_switch);
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       
@@ -3349,6 +3364,7 @@ int av_find_stream_info(AVFormatContext *ic)
  find_stream_info_err:
     for (i=0; i < ic->nb_streams; i++)
         av_freep(&ic->streams[i]->info);
+    av_log(NULL, AV_LOG_INFO, "[%s]return\n", __FUNCTION__);
     return ret;
 }
 
