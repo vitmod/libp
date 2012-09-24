@@ -76,8 +76,9 @@ void adec_reset_track(aml_audio_dec_t *audec)
 		adec_print("reset audio_track: samplerate=%d channels=%d\n", audec->samplerate,audec->channels);
         audio_out_operations_t *out_ops = &audec->aout_ops;
 		out_ops->mute(audec, 1);
+		out_ops->pause(audec);
         out_ops->stop(audec);
-		audec->SessionID +=1;
+		//audec->SessionID +=1;
         out_ops->init(audec);
         out_ops->start(audec);
 	    //adec_reset_track_enable(0);
