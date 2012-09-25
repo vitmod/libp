@@ -3162,7 +3162,7 @@ int av_find_stream_info(AVFormatContext *ic)
             /* NOTE: if the format has no header, then we need to read
                some packets to get most of the streams, so we cannot
                stop here */
-            if (!(ic->ctx_flags & AVFMTCTX_NOHEADER) ||fast_switch) {
+            if (!(ic->ctx_flags & AVFMTCTX_NOHEADER) ||(fast_switch && ic->nb_streams>=2)) {
                 /* if we found the info for all the codecs, we can stop */
                 ret = count;
                 av_log(ic, AV_LOG_DEBUG, "All info found\n");
