@@ -680,7 +680,7 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
 {
     struct list_mgt *mgt = h->priv_data;
     int len = AVERROR(EIO);
-    int counts = 10;
+    int counts = 200;
     do {
         if (url_interrupt_cb()) {
             av_log(NULL, AV_LOG_ERROR, " url_interrupt_cb\n");
@@ -688,12 +688,13 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
             break;
         }
         len = CacheHttp_Read(mgt->cache_http_handle, buf, size);
+        /*
         if (len == AVERROR(EAGAIN)) {
-            usleep(1000 * 200);
+            usleep(1000 * 10);
             break;
-        }
+        }*/
         if (len <= 0) {
-            usleep(1000 * 200);
+            usleep(1000 * 10);
         }
         if (len > 0) {
             break;
