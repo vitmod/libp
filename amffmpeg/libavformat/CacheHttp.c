@@ -37,6 +37,7 @@
 #define BUFFER_SIZE (1024*4)
 #define CIRCULAR_BUFFER_SIZE (20*188*4096)
 #define WAIT_TIME (100*1000)
+#define TMP_BUFFER_SIZE (500*1024)
 
 #define PLAYBACK_SESSION_ID "X-Playback-Session-Id:" 
 
@@ -48,6 +49,7 @@ typedef struct {
     int RESET;
     int reset_flag;
     int finish_flag;
+    int have_list_end;
     int circular_buffer_error; 
     double item_duration;
     double item_starttime;
@@ -60,9 +62,9 @@ typedef struct {
 
 } CacheHttpContext;
 
-static int CacheHttp_ffurl_open_h(URLContext ** h, const char * filename, int flags, const char * headers)
+static int CacheHttp_ffurl_open_h(URLContext ** h, const char * filename, int flags, const char * headers, int * http)
 {
-    return ffurl_open_h(h, filename, flags,headers);
+    return ffurl_open_h(h, filename, flags,headers, http);
 }
 
 static int CacheHttp_ffurl_read(URLContext * h, unsigned char * buf, int size)
@@ -97,6 +99,7 @@ int CacheHttp_Open(void ** handle,const char* headers)
     s->item_starttime = 0;
     s->finish_flag = 0;
     s->reset_flag = -1;
+    s->have_list_end = -1;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);      
@@ -251,6 +254,7 @@ static void *circular_buffer_task( void *_handle)
         s->reset_flag = 0;
         s->item_starttime = item->start_time;
         s->item_duration = item->duration;
+        s->have_list_end = item->have_list_end;
         if(item&&item->flags&ENDLIST_FLAG){
             s->finish_flag =1;
         }        
@@ -260,26 +264,31 @@ static void *circular_buffer_task( void *_handle)
             break;
         }
         
-        int err;
+        int err, http_code;
         char* filename = av_strdup(item->file);
         
-        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers);
+        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers, &http_code);
         if (err) {
             if(filename){
                 av_free(filename);
-            }
-	      av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
-             break;
+            }	      
+             if(1 == http_code && !s->have_list_end) {
+                av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
+                goto SKIP;
+             } else {
+                av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
+                 break;
+             }          
         }
         
         s->hd = h;
         s->item_pos = 0;
         s->item_size = CacheHttp_ffurl_seek(s->hd, 0, AVSEEK_SIZE);
+        char tmpbuf[TMP_BUFFER_SIZE];
+        int left = 0;
+        int tmpdatasize = 0;
         
         while(!s->EXIT) {
-
-	    int left;
-           int len;
 
            if(s->RESET)
                 break;
@@ -289,41 +298,48 @@ static void *circular_buffer_task( void *_handle)
                break;
 	    }
 
-	    pthread_mutex_lock(&s->read_mutex);
-	    left = av_fifo_space(s->fifo);
-           left = FFMIN(left, s->fifo->end - s->fifo->wptr);
+           if(!s->hd)
+                break;
 
-           if( !left) {
-		pthread_mutex_unlock(&s->read_mutex);
-		usleep(WAIT_TIME);
-            	continue;
-           }
-
-           if(s->hd) {
-                if(s->EXIT){
-                    pthread_mutex_unlock(&s->read_mutex);
-                    break;
-                }
+           if(s->hd && tmpdatasize <= 0) {
                 bandwidth_measure_start_read(s->bandwidth_measure);                 
-                len = CacheHttp_ffurl_read(s->hd, s->fifo->wptr, left);
-                bandwidth_measure_finish_read(s->bandwidth_measure,len);
-           } else {
-                pthread_mutex_unlock(&s->read_mutex);
-                break;
+                tmpdatasize = CacheHttp_ffurl_read(s->hd, tmpbuf, TMP_BUFFER_SIZE);
+                bandwidth_measure_finish_read(s->bandwidth_measure,tmpdatasize);
            }
-           
-           if (len > 0) {
-        	  s->fifo->wptr += len;
-                if (s->fifo->wptr >= s->fifo->end)
-                    s->fifo->wptr = s->fifo->buffer;
-                s->fifo->wndx += len;
-                s->item_pos += len;
-           } else {
-                pthread_mutex_unlock(&s->read_mutex);
-                av_log(h, AV_LOG_ERROR, "---------- circular_buffer_task read ret <= 0");
-                break;
-           }
-           pthread_mutex_unlock(&s->read_mutex);
+
+            //if(tmpdatasize > 0) {
+        	    pthread_mutex_lock(&s->read_mutex);
+        	    left = av_fifo_space(s->fifo);
+                  left = FFMIN(left, s->fifo->end - s->fifo->wptr);
+                  
+
+                   if( !left) {
+        		pthread_mutex_unlock(&s->read_mutex);
+        		usleep(WAIT_TIME);
+                    	continue;
+                   }
+                     left = FFMIN(left, tmpdatasize);
+                   if(left >0) {
+                        memcpy(s->fifo->wptr, tmpbuf , left);
+                        tmpdatasize-=left;
+                   }
+                   if(tmpdatasize>0){
+                      memmove(tmpbuf, tmpbuf+left , tmpdatasize);
+                    }
+                   
+                   if (left > 0) {
+                	  s->fifo->wptr += left;
+                        if (s->fifo->wptr >= s->fifo->end)
+                            s->fifo->wptr = s->fifo->buffer;
+                        s->fifo->wndx += left;
+                        s->item_pos += left;
+                   } else {
+                        pthread_mutex_unlock(&s->read_mutex);
+                        av_log(h, AV_LOG_ERROR, "---------- circular_buffer_task read ret <= 0");
+                        break;
+                   }
+                   pthread_mutex_unlock(&s->read_mutex);
+             //}
 
 	    //usleep(WAIT_TIME);
 
@@ -332,6 +348,7 @@ static void *circular_buffer_task( void *_handle)
             av_free(filename);
             filename = NULL;
         }
+SKIP:
 	 if(!s->RESET)
         	switchNextSegment(NULL);
     }

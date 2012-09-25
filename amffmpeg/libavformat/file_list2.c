@@ -448,22 +448,20 @@ static int list_open(URLContext *h, const char *filename, int flags)
         return ret;
     }
     lp_lock_init(&mgt->mutex, NULL);
-    if (!mgt->have_list_end && (!mgt->have_sub_list) && (mgt->target_duration < 5 || mgt->item_num > 10)) {
-        struct list_item *item = mgt->item_list;
-        //int itemindex = mgt->item_num / 2 + 1; /*for live streaming ,choose the middle item.*/
-        int itemindex;
-        if(mgt->item_num > 2)
-            itemindex = mgt->item_num - 2;
-        else
-            itemindex = mgt->item_num/2 + 1;
-        while (--itemindex > 0 && item != NULL) {
-            item = item->next;
-        }
-        mgt->current_item = item;
-    } else {
-        mgt->current_item = mgt->item_list;
-    }
- 
+	
+	float value = 0.0;
+	ret = am_getconfig_float("libplayer.hls.stpos", &value);
+	if (ret < 0 || value <= 0) {	
+		if (!mgt->have_list_end) {			
+			int itemindex = mgt->item_num / 2+1; /*for live streaming ,choose the middle item.*/
+			mgt->current_item = list_find_item_by_index(mgt,itemindex-1);
+		} else {
+			mgt->current_item = mgt->item_list;
+		}		
+	}else{
+		mgt->current_item = list_find_item_by_index(mgt,(int)value-1);
+	}	
+   
     h->is_streamed = 1;
     h->is_slowmedia = 1;
     if (mgt->full_time > 0 && mgt->have_list_end) {
@@ -682,7 +680,7 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
 {
     struct list_mgt *mgt = h->priv_data;
     int len = AVERROR(EIO);
-    int counts = 10;
+    int counts = 200;
     do {
         if (url_interrupt_cb()) {
             av_log(NULL, AV_LOG_ERROR, " url_interrupt_cb\n");
@@ -690,12 +688,13 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
             break;
         }
         len = CacheHttp_Read(mgt->cache_http_handle, buf, size);
+        /*
         if (len == AVERROR(EAGAIN)) {
-            usleep(1000 * 200);
+            usleep(1000 * 10);
             break;
-        }
+        }*/
         if (len <= 0) {
-            usleep(1000 * 200);
+            usleep(1000 * 10);
         }
         if (len > 0) {
             break;

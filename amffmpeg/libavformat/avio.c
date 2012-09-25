@@ -151,6 +151,7 @@ static int url_alloc_for_protocol (URLContext **puc, struct URLProtocol *up,
     uc->prot = up;
     uc->flags = flags;
     uc->is_streamed = 0; /* default = not streamed */
+    uc->http_code = -1;
     uc->max_packet_size = 0; /* default: stream file */
     if (up->priv_data_size) {
         uc->priv_data = av_mallocz(up->priv_data_size);
@@ -304,7 +305,7 @@ int ffurl_open(URLContext **puc, const char *filename, int flags)
     *puc = NULL;
     return ret;
 }
-int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *headers)
+int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *headers, int * http_404_flag)
 {
     int ret = ffurl_alloc(puc, filename, flags);
     if (ret)
@@ -313,6 +314,11 @@ int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *h
 		(*puc)->headers=av_strdup(headers);
 	}
     ret = ffurl_connect(*puc);
+    if(http_404_flag) {
+        *http_404_flag = 0;
+        if(404 == (*puc)->http_code)
+            *http_404_flag = 1;
+    }
     if (!ret)
         return 0;
     ffurl_close(*puc);

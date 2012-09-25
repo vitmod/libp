@@ -1572,7 +1572,9 @@ static int mpegts_read_header(AVFormatContext *s,
 
     /* read the first 1024 bytes to get packet size */
     pos = avio_tell(pb);
-    len = avio_read(pb, buf, sizeof(buf));
+    do {
+        len = avio_read(pb, buf, sizeof(buf));
+    } while((len < sizeof(buf) || len == AVERROR(EAGAIN)) && !url_interrupt_cb());
     if (len != sizeof(buf))
         goto fail;
     ts->raw_packet_size = get_packet_size(buf, sizeof(buf));

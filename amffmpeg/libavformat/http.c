@@ -270,7 +270,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     av_strlcpy(s->location, uri, sizeof(s->location));
 	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
-	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
+	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb() && s->http_code != 404){
 		s->is_seek=0;
 		s->canseek=0;
     	ret = http_open_cnx(h);
@@ -368,6 +368,7 @@ static int process_line(URLContext *h, char *line, int line_count,
         while (isspace(*p))
             p++;
         s->http_code = strtol(p, &end, 10);
+        h->http_code = s->http_code;
 
         av_dlog(NULL, "http_code=%d\n", s->http_code);
 

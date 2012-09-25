@@ -803,7 +803,8 @@ static int ff_asf_get_packet(AVFormatContext *s, AVIOContext *pb)
     off= 32768;
     if (s->packet_size > 0)
         off= (avio_tell(pb) - s->data_offset) % s->packet_size + 3;
-
+    if(off<=0)
+        off= 32768;
     c=d=e=-1;
     while(off-- > 0){
         c=d; d=e;
@@ -979,7 +980,7 @@ static int ff_asf_parse_packet(AVFormatContext *s, AVIOContext *pb, AVPacket *pk
     ASFStream *asf_st = 0;
     for (;;) {
         int ret;
-        if(url_feof(pb) || (url_ftell(pb) > s->valid_offset)) {
+        if(url_feof(pb) || (s->valid_offset>0 && url_ftell(pb) >= s->valid_offset)) {
             av_log(NULL, AV_LOG_INFO, "[ff_asf_parse_packet] feof\n");
             return AVERROR_EOF;
         }

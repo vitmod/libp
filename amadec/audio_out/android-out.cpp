@@ -21,6 +21,7 @@ extern "C" {
 #include <adec-pts-mgt.h>
 #include <log-print.h>
 #include "aml_resample.h"
+#include <audiodsp_update_format.h>
 }
 
 namespace android
@@ -57,6 +58,7 @@ static int dsp_pcm_read(aml_audio_dec_t*audec,char *data_in,int len)
    return pcm_cnt_bytes/sizeof(short);
 }
 
+extern "C" int android_reset_track(struct aml_audio_dec* audec);
 
 void audioCallback(int event, void* user, void *info)
 {
@@ -71,6 +73,8 @@ void audioCallback(int event, void* user, void *info)
     int NumSamp_in,NumSamp_out,NumCh,NumSampRequir=0;
 	static int print_flag=0;
 	int outbuf_offset=0;
+	int dsp_format_changed_flag=0;
+	static int pcm_left_len=-1;
     if (event != AudioTrack::EVENT_MORE_DATA) {
         adec_print("audioCallback: event = %d \n", event);
         return;
@@ -161,7 +165,21 @@ void audioCallback(int event, void* user, void *info)
 	resample_out:
 		
 	    buffer->size=outbuf_offset*sizeof(short);
-		//adec_print("RETURN_NUM-----------------------------%d\n\n\n",outbuf_offset);
+		//------------------------------------
+        dsp_format_changed_flag=audiodsp_format_update(audec);
+	    if(dsp_format_changed_flag>0){
+			pcm_left_len=audiodsp_get_pcm_left_len();
+	    }
+		if(pcm_left_len>=0){
+			if(pcm_left_len>buffer->size){
+				pcm_left_len-=buffer->size;
+				memset((char*)(data_out),0,buffer->size);
+			}else if(pcm_left_len<=buffer->size){
+			    memset((char*)(data_out),0,pcm_left_len);
+				pcm_left_len=-1;	
+				adec_reset_track(audec);
+			}
+		}
 		//---------------------------------------------
     } else {
         adec_print("audioCallback: dsp not work!\n");

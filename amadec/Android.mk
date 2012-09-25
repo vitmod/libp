@@ -18,7 +18,7 @@ endif
 
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
-           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c
+           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c
 
 
 LOCAL_MODULE := libamadec
@@ -47,7 +47,7 @@ endif
 
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
-           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c
+           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c
 
 LOCAL_MODULE := libamadec
 
@@ -115,3 +115,29 @@ include $(BUILD_PHONY_PACKAGE)
 
 _audio_firmware_modules :=
 _audio_firmware :=
+
+
+#
+# arm audio decoder module
+#
+arm_audio_decoder_dir=acodec_lib
+arm_audio_decoder_files :=$(wildcard $(LOCAL_PATH)/$(arm_audio_decoder_dir)/*.so)
+arm_audio_decoder_files :=$(patsubst $(LOCAL_PATH)/%,%,$(arm_audio_decoder_files))
+
+define _add-audio-decoder-libs
+
+	include $(CLEAR_VARS)
+	LOCAL_MODULE := $(notdir $(1))
+	LOCAL_SRC_FILES := $1
+	LOCAL_MODULE_TAGS := optional
+	LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+	LOCAL_MODULE_PATH := $(TARGET_OUT)/lib
+	include $(BUILD_PREBUILT)
+	
+endef
+
+_audio_decoder :=
+$(foreach _audio_decoder, $(arm_audio_decoder_files), \
+  $(eval $(call _add-audio-decoder-libs,$(_audio_decoder))))
+
+_audio_decoder :=

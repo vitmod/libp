@@ -394,6 +394,13 @@ static int set_codec_from_probe_data(AVFormatContext *s, AVStream *st, AVProbeDa
             }
         }
     }
+
+    if (st->codec->mpegps_video_idprobed 
+        && (score < AVPROBE_SCORE_MAX / 10)) {
+        st->codec->codec_id   = CODEC_ID_MPEG2VIDEO;
+        st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
+        av_log(NULL, AV_LOG_ERROR, "[%s:%d]probe score %d\n", __FUNCTION__, __LINE__, score);
+    }
     return score;
 }
 
@@ -514,6 +521,7 @@ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
     int64_t old_dataoff;
     AVFormatContext *s = logctx;
     int maxretry=0;
+    int eof_flag = 0;
     int64_t filesize = avio_size(pb);
     av_log(NULL, AV_LOG_INFO, "%s:size=%lld\n", pd.filename, filesize);
     if (filesize <= 0&&!pb->is_streamed)
@@ -559,6 +567,7 @@ retry_probe:
         int ret, score = probe_size < max_probe_size ? AVPROBE_SCORE_MAX/4 : 0;
        // int buf_offset = (probe_size == PROBE_BUF_MIN) ? 0 : probe_size>>1;
 	 int buf_offset =  pd.buf_size ;
+
         if (probe_size < offset) {
             continue;
         }
@@ -570,28 +579,40 @@ retry_probe:
            if (ret != AVERROR_EOF &&ret != AVERROR(EAGAIN)) {
                 av_free(buf);
                 return ret;
+            } else if (ret == AVERROR_EOF) {
+                eof_flag = 1;
             }
-		maxretry++;
-		if(maxretry>1000)
-			return -1;	
+            maxretry++;      
+            if(maxretry>1000)
+            	return -1;	
             score = 0;
             ret = 0;            /* error was end of file, nothing read */
 	}else{
 		maxretry=0;
 	}
-        pd.buf_size += ret;
-        pd.buf = &buf[offset];
+	if(ret > 0 || eof_flag == 1) {
+            pd.buf_size += ret;
+            pd.buf = &buf[offset];
 
-        memset(pd.buf + pd.buf_size, 0, AVPROBE_PADDING_SIZE);
-
-        /* guess file format */
-        *fmt = av_probe_input_format2(&pd, 1, &score);
-        if(*fmt){
-            if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
-                av_log(logctx, AV_LOG_WARNING, "Format %s detected only with low score of %d, misdetection possible!\n", (*fmt)->name, score);
-            }else
-                av_log(logctx, AV_LOG_INFO, "Format %s probed with size=%d and score=%d\n", (*fmt)->name, probe_size, score);
+            memset(pd.buf + pd.buf_size, 0, AVPROBE_PADDING_SIZE);
+            av_log(NULL, AV_LOG_INFO, "[%s]read %d bytes for probe format\n", __FUNCTION__, pd.buf_size);
+            /* guess file format */
+            *fmt = av_probe_input_format2(&pd, 1, &score);
+            if(*fmt){
+                if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
+                    av_log(logctx, AV_LOG_WARNING, "Format %s detected only with low score of %d, misdetection possible!\n", (*fmt)->name, score);
+                }else{
+                    av_log(logctx, AV_LOG_INFO, "Format %s probed with size=%d and score=%d\n", (*fmt)->name, probe_size, score);
+                 }
+           }
        }
+       else{       
+	    av_log(NULL, AV_LOG_WARNING, "[%s]no new data for probe,retry\n", __FUNCTION__);
+	}
+	if (eof_flag == 1){
+	    av_log(NULL, AV_LOG_WARNING, "[%s]read end, exit probe format\n", __FUNCTION__);
+	    break;
+	}
     }
 	
     if (!*fmt) {
@@ -2692,11 +2713,15 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     }
 }
 
+extern  int  adts_bitrate_parse(AVFormatContext *s, int *bitrate, int64_t old_offset);
 static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
 {
     int64_t file_size;
 	int64_t cur_offset, valid_offset;
 	int64_t ret;
+    int bitrate=0;
+    int i=0;
+    AVStream *st=NULL;
 
     if(!ic->pb)
 	return 0;
@@ -2742,9 +2767,9 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
         file_size>0 && ic->pb->seekable /*&& !ic->pb->is_slowmedia*/ && !ic->pb->is_streamed) {
         /* get accurate estimate from the PTSes */
         if(!strcmp(ic->iformat->name, "mpegts"))
-               av_estimate_timings_from_pts(ic, old_offset);
-	 else 
-	 	av_estimate_timeings_chapters(ic, old_offset);
+                av_estimate_timings_from_pts(ic, old_offset);
+        else 
+                av_estimate_timeings_chapters(ic, old_offset);
     } else if (av_has_duration(ic)) {
         /* at least one component has timings - we use them for all
            the components */
@@ -2752,6 +2777,17 @@ static int av_estimate_timings(AVFormatContext *ic, int64_t old_offset)
     } else {
         av_log(ic, AV_LOG_WARNING, "Estimating duration from bitrate, this may be inaccurate\n");
         /* less precise: use bitrate info */
+        if (!strcmp(ic->iformat->name, "aac") ){
+	   ret=adts_bitrate_parse(ic, &bitrate,old_offset); 
+	   if(ret>0){
+	          for(i=0;i<ic->nb_streams;i++) {
+                    st = ic->streams[i];
+                    st->codec->bit_rate=bitrate;
+             }
+             ic->bit_rate=bitrate;
+	   av_log(NULL, AV_LOG_INFO, "VBR AAC: read all frames to ensure correct bitrate %d \n",ic->bit_rate);
+	   }
+        }
         av_estimate_timings_from_bit_rate(ic);
     }
     av_update_stream_timings(ic);
@@ -2998,6 +3034,7 @@ int av_find_stream_info(AVFormatContext *ic)
     int bit_rate = 0;
     int64_t old_offset=-1;
     int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
+    av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d\n", __FUNCTION__, fast_switch);
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       
@@ -3125,7 +3162,7 @@ int av_find_stream_info(AVFormatContext *ic)
             /* NOTE: if the format has no header, then we need to read
                some packets to get most of the streams, so we cannot
                stop here */
-            if (!(ic->ctx_flags & AVFMTCTX_NOHEADER) ||fast_switch) {
+            if (!(ic->ctx_flags & AVFMTCTX_NOHEADER) ||(fast_switch && ic->nb_streams>=2)) {
                 /* if we found the info for all the codecs, we can stop */
                 ret = count;
                 av_log(ic, AV_LOG_DEBUG, "All info found\n");
@@ -3327,6 +3364,7 @@ int av_find_stream_info(AVFormatContext *ic)
  find_stream_info_err:
     for (i=0; i < ic->nb_streams; i++)
         av_freep(&ic->streams[i]->info);
+    av_log(NULL, AV_LOG_INFO, "[%s]return\n", __FUNCTION__);
     return ret;
 }
 

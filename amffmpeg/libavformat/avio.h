@@ -125,6 +125,7 @@ typedef struct URLContext {
     struct URLProtocol *prot;
 	struct  url_lpbuf  *lpbuf;
     int flags;
+    int http_code;
     int is_streamed;  /**< true if streamed (no seek possible), default = false */
     int max_packet_size;  /**< if non zero, the stream is packetized with this max packet size */
     void *priv_data;
