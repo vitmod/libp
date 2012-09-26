@@ -333,7 +333,7 @@ static void *circular_buffer_task( void *_handle)
                             s->fifo->wptr = s->fifo->buffer;
                         s->fifo->wndx += left;
                         s->item_pos += left;
-                   } else if (left != AVERROR(EOF)){
+                   } else if (left != AVERROR(EAGAIN)){
                         pthread_mutex_unlock(&s->read_mutex);
                         av_log(h, AV_LOG_ERROR, "---------- circular_buffer_task read left = %d\n", left);
                         break;
