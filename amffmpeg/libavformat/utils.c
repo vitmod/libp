@@ -602,6 +602,16 @@ retry_probe:
                 if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
                     av_log(logctx, AV_LOG_WARNING, "Format %s detected only with low score of %d, misdetection possible!\n", (*fmt)->name, score);
                 }else{
+                    if (!strcmp((*fmt)->name, "psxstr") && (score == 50)) {
+                        /* it is psxstr but something like mpeg ps for score 50 */
+                        AVInputFormat *fmt1 = NULL;
+                        while ((fmt1 = av_iformat_next(fmt1))) {
+                            if (!strcmp(fmt1->name, "mpeg")) {
+                                *fmt = fmt1;
+                                break;
+                            }
+                        }
+                    }
                     av_log(logctx, AV_LOG_INFO, "Format %s probed with size=%d and score=%d\n", (*fmt)->name, probe_size, score);
                  }
            }
