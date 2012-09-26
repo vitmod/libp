@@ -64,7 +64,7 @@ static int audiodsp_get_format_changed_flag()
 
 }
 
-static void audiodsp_set_format_changed_flag( int val)
+ void audiodsp_set_format_changed_flag( int val)
 {
     set_sysfs_int("/sys/class/audiodsp/format_change_flag", val);
 
@@ -72,7 +72,7 @@ static void audiodsp_set_format_changed_flag( int val)
 
 void adec_reset_track(aml_audio_dec_t *audec)
 {
-	if(1/*reset_track_enable*/){
+	if(audiodsp_get_format_changed_flag()){
 		adec_print("reset audio_track: samplerate=%d channels=%d\n", audec->samplerate,audec->channels);
         audio_out_operations_t *out_ops = &audec->aout_ops;
 		out_ops->mute(audec, 1);
@@ -81,7 +81,7 @@ void adec_reset_track(aml_audio_dec_t *audec)
 		//audec->SessionID +=1;
         out_ops->init(audec);
         out_ops->start(audec);
-	    //adec_reset_track_enable(0);
+	    audiodsp_set_format_changed_flag(0);
 	}
 }
 
@@ -97,7 +97,7 @@ int audiodsp_format_update(aml_audio_dec_t *audec)
     }
 	
 	ret=0;
-	//if(audiodsp_get_format_changed_flag())
+	if(1/*audiodsp_get_format_changed_flag()*/)
 	{
          ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_CHANNELS_NUM, &val);
          if (val != (unsigned long) - 1) {

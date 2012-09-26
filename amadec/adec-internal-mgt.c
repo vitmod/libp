@@ -342,8 +342,9 @@ static void *adec_message_loop(void *args)
         adec_flag_check(audec);
 
         msg = adec_get_message(audec);
+		adec_reset_track(audec);
         if (!msg) {
-            usleep(100000);
+            usleep(10000);
             continue;
         }
 

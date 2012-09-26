@@ -169,6 +169,7 @@ void audioCallback(int event, void* user, void *info)
         dsp_format_changed_flag=audiodsp_format_update(audec);
 	    if(dsp_format_changed_flag>0){
 			pcm_left_len=audiodsp_get_pcm_left_len();
+			audiodsp_set_format_changed_flag(1);
 	    }
 		if(pcm_left_len>=0){
 			if(pcm_left_len>buffer->size){
@@ -177,7 +178,8 @@ void audioCallback(int event, void* user, void *info)
 			}else if(pcm_left_len<=buffer->size){
 			    memset((char*)(data_out),0,pcm_left_len);
 				pcm_left_len=-1;	
-				adec_reset_track(audec);
+				//adec_reset_track(audec);
+			
 			}
 		}
 		//---------------------------------------------
@@ -263,6 +265,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
 
     }
     af_resample_linear_init();
+	audiodsp_set_format_changed_flag(0);
     out_ops->private_data = (void *)track;
     return 0;
 }
