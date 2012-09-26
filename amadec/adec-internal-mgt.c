@@ -339,12 +339,12 @@ static void *adec_message_loop(void *args)
         //  usleep(100000);
         //  continue;
         //}
+		adec_reset_track(audec);
         adec_flag_check(audec);
 
         msg = adec_get_message(audec);
-		adec_reset_track(audec);
         if (!msg) {
-            usleep(10000);
+            usleep(100000);
             continue;
         }
 
@@ -894,7 +894,7 @@ int audiodec_init(aml_audio_dec_t *audec)
     get_output_func(audec);
     int nCodecType=audec->format;
     set_audio_decoder(nCodecType);
-
+    audec->format_changed_flag=0;
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
     		audec->adsp_ops.dsp_file_fd = -1;
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);

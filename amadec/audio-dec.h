@@ -67,6 +67,7 @@ struct aml_audio_dec {
     int extradata_size;      ///< extra data size
     char extradata[AUDIO_EXTRA_DATA_SIZE];
 	int SessionID;
+	int format_changed_flag;
 };
 
 //from amcodec
