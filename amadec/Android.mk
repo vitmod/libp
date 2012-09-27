@@ -52,6 +52,9 @@ LOCAL_SRC_FILES := \
 LOCAL_MODULE := libamadec
 
 LOCAL_ARM_MODE := arm
+##################################################
+$(shell cp $(LOCAL_PATH)/acodec_lib/*.so $(TARGET_OUT)/lib)
+###################################################
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc
 
 LOCAL_PRELINK_MODULE := false
@@ -116,28 +119,3 @@ include $(BUILD_PHONY_PACKAGE)
 _audio_firmware_modules :=
 _audio_firmware :=
 
-
-#
-# arm audio decoder module
-#
-arm_audio_decoder_dir=acodec_lib
-arm_audio_decoder_files :=$(wildcard $(LOCAL_PATH)/$(arm_audio_decoder_dir)/*.so)
-arm_audio_decoder_files :=$(patsubst $(LOCAL_PATH)/%,%,$(arm_audio_decoder_files))
-
-define _add-audio-decoder-libs
-
-	include $(CLEAR_VARS)
-	LOCAL_MODULE := $(notdir $(1))
-	LOCAL_SRC_FILES := $1
-	LOCAL_MODULE_TAGS := optional
-	LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-	LOCAL_MODULE_PATH := $(TARGET_OUT)/lib
-	include $(BUILD_PREBUILT)
-	
-endef
-
-_audio_decoder :=
-$(foreach _audio_decoder, $(arm_audio_decoder_files), \
-  $(eval $(call _add-audio-decoder-libs,$(_audio_decoder))))
-
-_audio_decoder :=
