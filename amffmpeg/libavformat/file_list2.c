@@ -158,7 +158,7 @@ static struct list_item* list_find_item_by_index(struct list_mgt *mgt, int index
         av_log(NULL, AV_LOG_INFO, "just return last item,index:%d\n", index);
         next_index = index;
     }
-    if (index >= 0) {
+    if (index >= -1) {
         while (*list != NULL) {
             if ((*list)->index == next_index) {
                 /*same index*/
@@ -341,6 +341,7 @@ reload:
     }
     
     if (ret != 0) {
+        bio = NULL;
         return AVERROR(EIO);
     }
     mgt->location = bio->reallocation;
@@ -449,18 +450,26 @@ static int list_open(URLContext *h, const char *filename, int flags)
     }
     lp_lock_init(&mgt->mutex, NULL);
 	
-	float value = 0.0;
-	ret = am_getconfig_float("libplayer.hls.stpos", &value);
-	if (ret < 0 || value <= 0) {	
-		if (!mgt->have_list_end) {			
-			int itemindex = mgt->item_num / 2+1; /*for live streaming ,choose the middle item.*/
-			mgt->current_item = list_find_item_by_index(mgt,itemindex-1);
-		} else {
-			mgt->current_item = mgt->item_list;
-		}		
-	}else{
-		mgt->current_item = list_find_item_by_index(mgt,(int)value-1);
-	}	
+    float value = 0.0;
+    ret = am_getconfig_float("libplayer.hls.stpos", &value);
+    if (ret < 0 || value <= 0) {	
+        if (!mgt->have_list_end) {
+            int itemindex =0;
+            if(mgt->item_num<10&&mgt->target_duration<5){
+                itemindex = mgt->item_num / 2+1; /*for live streaming ,choose the middle item.*/
+
+            }else if(mgt->item_num>=10){
+                itemindex = mgt->item_num-3; //last item
+            }else if(mgt->item_num<10&&mgt->target_duration>5){
+                itemindex =  mgt->item_num -1;               
+            }
+            mgt->current_item = list_find_item_by_index(mgt,itemindex-1);
+        } else {
+            mgt->current_item = mgt->item_list;
+        }		
+    }else{
+    	mgt->current_item = list_find_item_by_index(mgt,(int)value-1);
+    }	
    
     h->is_streamed = 1;
     h->is_slowmedia = 1;

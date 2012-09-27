@@ -246,7 +246,7 @@ static void *circular_buffer_task( void *_handle)
         }        
        
         list_item_t * item = getCurrentSegment(NULL);
-        if(!item||(!item->file&&!item->flags&ENDLIST_FLAG)) {          
+        if(!item||(!item->file&&!item->flags&ENDLIST_FLAG)) {
             usleep(WAIT_TIME);
             continue;
         }
@@ -266,17 +266,28 @@ static void *circular_buffer_task( void *_handle)
         
         int err, http_code;
         char* filename = av_strdup(item->file);
-        
+
+OPEN_RETRY:
         err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers, &http_code);
         if (err) {
-            if(filename){
-                av_free(filename);
-            }	      
+            if(url_interrupt_cb()) {
+                if(filename) {
+                    av_free(filename);
+                    filename = NULL;
+                }
+                break;
+             }
              if(1 == http_code && !s->have_list_end) {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
                 goto SKIP;
+             } else if(s->have_list_end) {
+                goto OPEN_RETRY;
              } else {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
+                if(filename) {
+                    av_free(filename);
+                    filename = NULL;
+                }
                  break;
              }          
         }
@@ -333,7 +344,10 @@ static void *circular_buffer_task( void *_handle)
                             s->fifo->wptr = s->fifo->buffer;
                         s->fifo->wndx += left;
                         s->item_pos += left;
-                   } else if (left != AVERROR(EAGAIN)){
+                   } else if(left == AVERROR(EAGAIN) || (left < 0 && s->have_list_end)) {
+                        pthread_mutex_unlock(&s->read_mutex);
+                        continue;
+                   } else {
                         pthread_mutex_unlock(&s->read_mutex);
                         av_log(h, AV_LOG_ERROR, "---------- circular_buffer_task read left = %d\n", left);
                         break;
@@ -343,12 +357,13 @@ static void *circular_buffer_task( void *_handle)
 
 	    //usleep(WAIT_TIME);
 
-        }     
+        } 
+
+SKIP:
         if(filename){
             av_free(filename);
             filename = NULL;
         }
-SKIP:
 	 if(!s->RESET)
         	switchNextSegment(NULL);
     }
