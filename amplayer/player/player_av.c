@@ -55,6 +55,7 @@ static const media_type media_array[] = {
     {"dts", DTS_FILE, STREAM_AUDIO},
     {"flac", FLAC_FILE, STREAM_AUDIO},
     {"h264", H264_FILE, STREAM_VIDEO},
+    {"cavs", AVS_FILE, STREAM_VIDEO},
     {"mpegvideo", M2V_FILE, STREAM_VIDEO},
     {"p2p", P2P_FILE, STREAM_ES},
     {"asf", ASF_FILE, STREAM_ES},
@@ -221,11 +222,15 @@ vformat_t video_type_convert(enum CodecID id)
         format = VFORMAT_SW;
         break;
 
+	case CODEC_ID_CAVS:
+	case CODEC_ID_AVS:
+		 format = VFORMAT_AVS;
+		 break;
     default:
         format = VFORMAT_UNSUPPORT;
         log_print("video_type_convert failed:unsupport video,codec_id=0x%x\n", id);
     }
-    log_print("[video_type_convert]video codec_id=0x%x format=%d\n", id, format);
+    log_print("[video_type_convert  test ]video codec_id=0x%x format=%d\n", id, format);
     return format;
 }
 
@@ -349,6 +354,13 @@ vdec_type_t video_codec_type_convert(unsigned int id)
         log_print("[video_codec_type_convert]VIDEO_DEC_FORMAT_SW(0x%x)\n", id);
         dec_type = VIDEO_DEC_FORMAT_SW;
         break;
+
+	 case CODEC_ID_CAVS:
+	 case CODEC_ID_AVS:
+			
+		log_print("[video_codec_type_convert]VIDEO_DEC_FORMAT_AVS(0x%x)\n", id);
+		dec_type = VIDEO_DEC_FORMAT_AVS;
+		break;
 
     default:
         log_print("[video_codec_type_convert]error:VIDEO_TYPE_UNKNOW  id = 0x%x\n", id);
