@@ -77,6 +77,7 @@ do { \
 
 #define EXTERNAL_PTS        (1)
 #define SYNC_OUTSIDE       (2)
+#define USE_IDR_FRAMERATE   (4)
 #define ADTS_HEADER_SIZE    (7)
 
 #define SUBTITLE_SYNC_HIGH  0x414d4c55

@@ -33,6 +33,11 @@ static int stream_ts_init(play_para_t *p_para)
             codec->am_sysinfo.format = vinfo->video_codec_type;
             codec->am_sysinfo.width = vinfo->video_width;
             codec->am_sysinfo.height = vinfo->video_height;
+            if (p_para->pFormatCtx->pb && p_para->pFormatCtx->pb->is_slowmedia) {
+                /* ts slow media, use idr framerate */
+                log_print("[%s:%d]Slow media detected for ts\n", __FUNCTION__, __LINE__);
+                codec->am_sysinfo.param = USE_IDR_FRAMERATE;
+            }
         } else if (codec->video_type == VFORMAT_VC1|| codec->video_type == VFORMAT_AVS) {
             codec->am_sysinfo.format = vinfo->video_codec_type;
             codec->am_sysinfo.width = vinfo->video_width;
