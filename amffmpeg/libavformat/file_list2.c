@@ -332,16 +332,20 @@ reload:
     
     if(bio==NULL){
         ret = avio_open_h(&bio, url, flags,mgt->ipad_ex_headers);
+        av_log(NULL,AV_LOG_INFO,"http open,return value: %d\n",ret);
         
     }else{
         avio_reset(bio,AVIO_FLAG_READ); 
-        URLContext* last = (URLContext*)bio->opaque;      
-        
+        URLContext* last = (URLContext*)bio->opaque;            
         ret = ff_http_do_new_request(last,NULL);
+        av_log(NULL,AV_LOG_INFO,"do http request,return value: %d\n",ret);
     }
     
-    if (ret != 0) {
-        bio = NULL;
+    if (ret != 0) {      
+        if(bio!=NULL){
+            avio_close(bio);
+            bio = NULL;
+        }
         return AVERROR(EIO);
     }
     mgt->location = bio->reallocation;
@@ -431,14 +435,15 @@ static int list_open(URLContext *h, const char *filename, int flags)
     snprintf(headers, sizeof(headers),
              "Connection: keep-alive\r\n"
              /*"Range: bytes=0- \r\n"*/
-             "X-Playback-Session-Id: %s\r\n", sess_id);
+             "X-Playback-Session-Id: %s\r\n%s", sess_id,h!=NULL&&h->headers!=NULL?h->headers:"");
     av_log(NULL, AV_LOG_INFO, "Generate ipad http request headers,\r\n%s\n", headers);
     mgt->ipad_ex_headers = strndup(headers, 1024);
+   
     memset(headers, 0, sizeof(headers));
     generate_playback_session_id(sess_id, 37);
     snprintf(headers, sizeof(headers),
              /*"Connection: keep-alive\r\n"*/
-             "X-Playback-Session-Id: %s\r\n", sess_id);
+             "X-Playback-Session-Id: %s\r\n%s", sess_id,h!=NULL&&h->headers!=NULL?h->headers:"");
     av_log(NULL, AV_LOG_INFO, "Generate ipad http request media headers,\r\n%s\n", headers);
     
     mgt->ipad_req_media_headers = strndup(headers, 1024);

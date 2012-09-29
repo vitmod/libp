@@ -127,7 +127,7 @@ static int http_open_cnx(URLContext *h)
     int port, use_proxy, err, location_changed = 0, redirects = 0;
     HTTPAuthType cur_auth_type;
     HTTPContext *s = h->priv_data;
-    URLContext *hd = NULL;
+    URLContext *hd =  s->hd;
 
     proxy_path = getenv("http_proxy");
     use_proxy = (proxy_path != NULL) && !getenv("no_proxy") &&
@@ -140,8 +140,7 @@ static int http_open_cnx(URLContext *h)
     av_url_split(NULL, 0, auth, sizeof(auth), hostname, sizeof(hostname), &port,
                  path1, sizeof(path1), s->location);
     ff_url_join(hoststr, sizeof(hoststr), NULL, NULL, hostname, port, NULL);
-
-    if (use_proxy) {
+    if (use_proxy) {        
         av_url_split(NULL, 0, auth, sizeof(auth), hostname, sizeof(hostname), &port,
                      NULL, 0, proxy_path);
         path = s->location;
@@ -153,19 +152,21 @@ static int http_open_cnx(URLContext *h)
     }
     if (port < 0)
         port = 80;
-
+ 
     ff_url_join(buf, sizeof(buf), "tcp", NULL, hostname, port, NULL);
-    if (!s->hd) {
+    if (!s->hd) {      
         err = ffurl_open(&hd, buf, AVIO_FLAG_READ_WRITE);
         if (err < 0){
-    		av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
+    	     av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
             goto fail;
         }	
         s->hd = hd;
+    }else{
+        av_log(h,AV_LOG_INFO,"http_open_cnx,using old handle\n");
     }
     cur_auth_type = s->auth_state.auth_type;
     if (http_connect(h, path, hoststr, auth, &location_changed) < 0){
-       	av_log(h, AV_LOG_ERROR, "http_open_cnx:http_connect failed\n");
+        av_log(h, AV_LOG_ERROR, "http_open_cnx:http_connect failed\n");
         goto fail;
     }
     if (s->http_code == 401) {
@@ -174,7 +175,7 @@ static int http_open_cnx(URLContext *h)
             s->hd = NULL;
             goto redo;
         } else{
-        	av_log(h, AV_LOG_ERROR, "http_open_cnx:failed s->http_code=%d cur_auth_type=%d\n",s->http_code, cur_auth_type);
+            av_log(h, AV_LOG_ERROR, "http_open_cnx:failed s->http_code=%d cur_auth_type=%d\n",s->http_code, cur_auth_type);
             goto fail;
         }
     }
@@ -184,17 +185,19 @@ static int http_open_cnx(URLContext *h)
         ffurl_close(hd);
         s->hd = NULL;
         if (redirects++ >= MAX_REDIRECTS){
-			av_log(h, AV_LOG_ERROR, "HTTP open reach MAX_REDIRECTS\n");
+	     av_log(h, AV_LOG_ERROR, "HTTP open reach MAX_REDIRECTS\n");
             return AVERROR(EIO);
         }
         location_changed = 0;
-		h->location=s->location;
+	 h->location=s->location;
         goto redo;
     }
     return 0;
  fail:
-    if (hd)
-        ffurl_close(hd);
+    if (s->hd){
+        ffurl_close(s->hd);
+        s->hd = NULL;        
+    }
     if(s->is_seek && s->canseek)
 		s->canseek=0;//changed can't support seek;
     s->hd = NULL;
@@ -478,7 +481,8 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
                            "Host: %s\r\n", hoststr);
 
     /* now add in custom headers */
-    av_strlcpy(headers+len, s->headers, sizeof(headers)-len);
+    if (s->headers)
+        av_strlcpy(headers + len, s->headers, sizeof(headers) - len);
 
     snprintf(s->buffer, sizeof(s->buffer),
              "%s %s HTTP/1.1\r\n"
@@ -687,8 +691,20 @@ int ff_http_do_new_request(URLContext *h, const char *uri)
     if(uri!=NULL){
         av_strlcpy(s->location, uri, sizeof(s->location));
     }
+    int open_retry = 0;
+    int ret = -1;
+
+    s->is_seek=1;
+    s->canseek=1;
+    ret = http_open_cnx(h);
     
-    return http_open_cnx(h);
+    while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
+        s->is_seek=0;
+        s->canseek=0;
+        ret = http_open_cnx(h);
+    }        
+    s->is_seek=0;
+    return ret;
 }
 static int http_close(URLContext *h)
 {

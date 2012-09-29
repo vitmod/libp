@@ -1171,13 +1171,20 @@ int avio_reset(AVIOContext *s,int flags){
 int avio_close(AVIOContext *s)
 {
     URLContext *h = s->opaque;
-	if(s->filename) av_free(s->filename);
-    av_free(s->buffer);
-    av_free(s);
-	if(h && h->lpbuf)	
-	{
-		url_lpfree(h);
-	}
+    if(s->filename){
+        av_free(s->filename);
+        s->filename = NULL;
+
+    }
+    if(s&&s->buffer){
+        av_free(s->buffer);
+        av_free(s);
+        s = NULL;
+    }
+    if(h && h->lpbuf)	
+    {
+        url_lpfree(h);
+    }
     return ffurl_close(h);
 }
 
