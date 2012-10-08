@@ -707,13 +707,14 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
             usleep(1000 * 10);
             break;
         }*/
-        if (len <= 0) {
+        if (len <0) {
             usleep(1000 * 10);
         }
-        if (len > 0) {
+        if (len >= 0) {
             break;
         }
-    } while (len == 0 && counts-- > 0);
+    } while (counts-- > 0);
+    
     return len;
 }
 
