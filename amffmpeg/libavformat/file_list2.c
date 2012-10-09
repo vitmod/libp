@@ -844,7 +844,8 @@ URLProtocol file_list_protocol = {
 list_item_t* getCurrentSegment(void* hSession)
 {
     struct list_item *item = gListMgt->current_item;
-    item->have_list_end = gListMgt->have_list_end;
+    if(item)
+        item->have_list_end = gListMgt->have_list_end;
     return item;
 
 }
