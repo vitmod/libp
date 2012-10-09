@@ -1191,6 +1191,7 @@ int time_search(play_para_t *am_p)
         if (ret >= 0) {
             av_read_frame_flush(s);
             am_p->discontinue_point = (int)ret;
+            am_p->playctrl_info.time_point = (int)ret;
             log_info("[time_search:%d] direct seek discontinue_point =%d\n", __LINE__, am_p->discontinue_point);
             ret=PLAYER_SUCCESS;
                 goto searchexit;
