@@ -176,6 +176,21 @@ static int mp3_read_header(AVFormatContext *s,
 
     if (!av_dict_get(s->metadata, "", NULL, AV_DICT_IGNORE_SUFFIX))
         ff_id3v1_read(s);
+	int64_t offset=0;
+	int flag=0;
+	offset = avio_tell(s->pb);
+	avio_skip(s->pb,1);
+	avio_seek(s->pb,-1,SEEK_CUR);
+	while( (s->pb->buf_end - s->pb->buf_ptr) != 0 ) {
+		if ((*s->pb->buf_ptr == 0xff) && ((*s->pb->buf_ptr++ & 0xe0) == 0xe0) ) {
+			av_log(NULL, AV_LOG_ERROR, "## mp3 frame_header found!---------------\n");
+			flag=1;
+			s->pb->buf_ptr--;
+			break;
+		}
+		s->pb->buf_ptr++;
+	}
+	if (flag==0) avio_seek(s->pb, offset, SEEK_SET);
 
     if (mp3_parse_vbr_tags(s, st, off) < 0)
         avio_seek(s->pb, off, SEEK_SET);
