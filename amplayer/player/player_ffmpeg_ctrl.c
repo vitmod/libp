@@ -52,23 +52,24 @@ static pthread_t kill_thread_pool[MAX_PLAYER_THREADS];
 static int basic_init = 0;
 int ffmpeg_interrupt_callback(unsigned long npid)
 {
-    int pid =npid; 
+    int pid = npid;
     int interrupted;
-    static int dealock_detected_cnt=0;
-    if(pid==0)
-        pid=pthread_self();
-    interrupted=itemlist_have_match_data(&kill_item_list, pid);
-    if(!interrupted){
-        dealock_detected_cnt=0;
-        return 0;	
+    static int dealock_detected_cnt = 0;
+    if (pid == 0) {
+        pid = pthread_self();
     }
-    if(dealock_detected_cnt++<1000){
+    interrupted = itemlist_have_match_data(&kill_item_list, pid);
+    if (!interrupted) {
+        dealock_detected_cnt = 0;
+        return 0;
+    }
+    if (dealock_detected_cnt++ < 1000) {
         return 1;
-    } 
+    }
     /*player maybe locked,kill my self now*/
     log_error("DETECTED AMPLAYER DEADLOCK,kill it\n");
-    abort();	
-    return 1;	
+    abort();
+    return 1;
 }
 void ffmpeg_interrupt(pthread_t thread_id)
 {
@@ -96,15 +97,17 @@ int ffmpeg_init(void)
 }
 int ffmpeg_buffering_data(play_para_t *para)
 {
-	int ret=-1;
-    if (para && para->pFormatCtx ) {
-		player_mate_wake(para,100*1000);
-		if(para->pFormatCtx->pb)	/*lpbuf buffering*/
-			ret=url_buffering_data(para->pFormatCtx->pb, 0);
-		if(ret<0) /*iformat may buffering.,call lp buf also*/
-			ret=av_buffering_data(para->pFormatCtx,0);		
-		player_mate_sleep(para);
-		return ret;
+    int ret = -1;
+    if (para && para->pFormatCtx) {
+        player_mate_wake(para, 100 * 1000);
+        if (para->pFormatCtx->pb) { /*lpbuf buffering*/
+            ret = url_buffering_data(para->pFormatCtx->pb, 0);
+        }
+        if (ret < 0) { /*iformat may buffering.,call lp buf also*/
+            ret = av_buffering_data(para->pFormatCtx, 0);
+        }
+        player_mate_sleep(para);
+        return ret;
     } else {
         return -1;
     }
@@ -123,7 +126,7 @@ int ffmpeg_open_file(play_para_t *am_p)
     AVFormatContext *pFCtx ;
     int ret = -1;
     int byteiosize = FILE_BUFFER_SIZE;
-	const char * header=am_p->start_param ? am_p->start_param->headers : NULL;
+    const char * header = am_p->start_param ? am_p->start_param->headers : NULL;
     // Open video file
     if (am_p == NULL) {
         log_print("[ffmpeg_open_file] Empty pointer!\n");
@@ -135,8 +138,8 @@ int ffmpeg_open_file(play_para_t *am_p)
     if (am_p->file_name != NULL) {
 Retry_open:
         //ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, am_p->start_param ? am_p->start_param->headers : NULL);
-		ret = av_open_input_file_header(&pFCtx, am_p->file_name, NULL, byteiosize, NULL,header);
-		log_print("[ffmpeg_open_file] file=%s,header=%s\n",am_p->file_name,header);
+        ret = av_open_input_file_header(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, header);
+        log_print("[ffmpeg_open_file] file=%s,header=%s\n", am_p->file_name, header);
         if (ret != 0) {
             if (ret == AVERROR(EAGAIN)) {
                 goto  Retry_open;
@@ -170,9 +173,9 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
             AVStream *st = pFCtx->streams[i];
             if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
                 // special process for vp8 vp6 vp6f vp6a video
-                if ((st->codec->codec_id == CODEC_ID_VP8) ||\
-                    (st->codec->codec_id == CODEC_ID_VP6) ||\
-                    (st->codec->codec_id == CODEC_ID_VP6F) ||\
+                if ((st->codec->codec_id == CODEC_ID_VP8) || \
+                    (st->codec->codec_id == CODEC_ID_VP6) || \
+                    (st->codec->codec_id == CODEC_ID_VP6F) || \
                     (st->codec->codec_id == CODEC_ID_VP6A)) {
                     if (vpx_flag == 0) {
                         sprintf(vpx_string, "%s", (st->codec->codec_id == CODEC_ID_VP8) ? "vp8" : "vp6");

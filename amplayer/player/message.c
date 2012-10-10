@@ -40,29 +40,30 @@ int message_free(player_cmd_t * cmd)
 }
 int send_message_update(play_para_t *para, player_cmd_t *cmd)
 {
-    int i,j;	
-    player_cmd_t *oldcmd;	
-    int updated=0;	
-	
+    int i, j;
+    player_cmd_t *oldcmd;
+    int updated = 0;
+
     message_pool_t *pool = &para->message_pool;
     //log_print("[send_message:%d]num=%d in_idx=%d out_idx=%d\n",__LINE__,pool->message_num,pool->message_in_index,pool->message_out_index);
     pthread_mutex_lock(&pool->msg_mutex);
-    j=pool->message_out_index; 	
-    for(i=0;i<pool->message_num;i++){
-	 oldcmd= pool->message_list[j];
-	 if(oldcmd && (oldcmd->ctrl_cmd==cmd->ctrl_cmd)){/*same cmd*/
-		*oldcmd=*cmd;/*update old one*/
-		  log_print("found old message update old one.\n");
-		updated=1;
-		break;
-	 }	
+    j = pool->message_out_index;
+    for (i = 0; i < pool->message_num; i++) {
+        oldcmd = pool->message_list[j];
+        if (oldcmd && (oldcmd->ctrl_cmd == cmd->ctrl_cmd)) { /*same cmd*/
+            *oldcmd = *cmd; /*update old one*/
+            log_print("found old message update old one.\n");
+            updated = 1;
+            break;
+        }
     }
-    pthread_mutex_unlock(&pool->msg_mutex);	
-    if(!updated)
-	return send_message(para,cmd);
-    else
-	message_free(cmd);
-    return 0;	
+    pthread_mutex_unlock(&pool->msg_mutex);
+    if (!updated) {
+        return send_message(para, cmd);
+    } else {
+        message_free(cmd);
+    }
+    return 0;
 }
 
 int send_message(play_para_t *para, player_cmd_t *cmd)
@@ -102,10 +103,11 @@ int send_message_by_pid(int pid, player_cmd_t *cmd)
     if (player_para == NULL) {
         return PLAYER_NOT_VALID_PID;
     }
-    if(cmd->ctrl_cmd==CMD_SEARCH)
-	ret = send_message_update(player_para, cmd);
-    else	
-    	ret = send_message(player_para, cmd);
+    if (cmd->ctrl_cmd == CMD_SEARCH) {
+        ret = send_message_update(player_para, cmd);
+    } else {
+        ret = send_message(player_para, cmd);
+    }
     player_close_pid_data(pid);
     return ret;
 }
@@ -166,28 +168,28 @@ player_cmd_t * peek_message_locked(play_para_t *para)
 
 int lock_message_pool(play_para_t *para)
 {
-	message_pool_t *pool = &para->message_pool;
-	pthread_mutex_lock(&pool->msg_mutex);
-	return 0;
+    message_pool_t *pool = &para->message_pool;
+    pthread_mutex_lock(&pool->msg_mutex);
+    return 0;
 }
 int unlock_message_pool(play_para_t *para)
 {
-	message_pool_t *pool = &para->message_pool;
-	pthread_mutex_unlock(&pool->msg_mutex);
-	return 0;
+    message_pool_t *pool = &para->message_pool;
+    pthread_mutex_unlock(&pool->msg_mutex);
+    return 0;
 }
 player_cmd_t * peek_message(play_para_t *para)
 {
-	player_cmd_t *cmd;
-	message_pool_t *pool = &para->message_pool;
-	if (pool == NULL) {
+    player_cmd_t *cmd;
+    message_pool_t *pool = &para->message_pool;
+    if (pool == NULL) {
         log_error("[peek_message]pool is null!\n");
         return NULL;
     }
-	pthread_mutex_lock(&pool->msg_mutex);
-	cmd=peek_message_locked(para);
-	pthread_mutex_unlock(&pool->msg_mutex);
-	return cmd;
+    pthread_mutex_lock(&pool->msg_mutex);
+    cmd = peek_message_locked(para);
+    pthread_mutex_unlock(&pool->msg_mutex);
+    return cmd;
 }
 
 void clear_all_message(play_para_t *para)
@@ -217,7 +219,7 @@ int update_player_states(play_para_t *para, int force)
     para->state.last_sta = para->state.status;
     para->state.status = get_player_state(para);
 
-    if (check_time_interrupt(&cb->callback_old_time, cb->update_interval) || force) {        
+    if (check_time_interrupt(&cb->callback_old_time, cb->update_interval) || force) {
         player_info_t state;
         MEMCPY(&state, &para->state, sizeof(state));
         //if(force == 1)
@@ -230,7 +232,7 @@ int update_player_states(play_para_t *para, int force)
                   state.current_ms,
                   state.full_time,
                   state.last_time);
-		log_print("**[update_state]abuflevel=%.08f vbublevel=%.08f abufrp=%x vbufrp=%x read_end=%d\n",                                 
+        log_print("**[update_state]abuflevel=%.08f vbublevel=%.08f abufrp=%x vbufrp=%x read_end=%d\n",
                   state.audio_bufferlevel,
                   state.video_bufferlevel,
                   para->abuffer.buffer_rp,
@@ -242,7 +244,7 @@ int update_player_states(play_para_t *para, int force)
         }
         send_event(para, PLAYER_EVENTS_PLAYER_INFO, &state, 0);
         para->state.error_no = 0;
-	 player_hwbuflevel_update(para);
+        player_hwbuflevel_update(para);
     }
     return 0;
 }
@@ -380,14 +382,14 @@ int cmd2str(player_cmd_t *cmd, char *buf)
         case CMD_SET_STEREO:
             len = sprintf(buf, "%s", "SET_STEREO");
             break;
-		case CMD_EN_AUTOBUF:
-			len = sprintf(buf, "%s", "ENABLE_AUTOBUF");
+        case CMD_EN_AUTOBUF:
+            len = sprintf(buf, "%s", "ENABLE_AUTOBUF");
             break;
-			
-		case CMD_SET_AUTOBUF_LEV:
-			len = sprintf(buf, "%s:%.03f:%.03f:%.03f", "SET_AUTOBUF_LEVEL", cmd->f_param, cmd->f_param1, cmd->f_param2);
-            break;	
-			
+
+        case CMD_SET_AUTOBUF_LEV:
+            len = sprintf(buf, "%s:%.03f:%.03f:%.03f", "SET_AUTOBUF_LEVEL", cmd->f_param, cmd->f_param1, cmd->f_param2);
+            break;
+
         default:
             len = sprintf(buf, "%s", "UNKNOW_SETMODE_COMMAND");
             break;

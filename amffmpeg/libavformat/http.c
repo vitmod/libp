@@ -548,17 +548,16 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 
 static int http_read(URLContext *h, uint8_t *buf, int size)
 {
-	#define MILLION 1000
+    #define MILLION 1000
 
     HTTPContext *s = h->priv_data;
     int len;
-	int err_retry=READ_RETRY_MAX;
-retry:	
-	if (url_interrupt_cb()) {
-		av_log(h, AV_LOG_INFO, "http_read interrupt, err :-%d\n", AVERROR(EIO));
-		return AVERROR(EIO);
-	}
-	
+    int err_retry=READ_RETRY_MAX;
+retry:
+    if (url_interrupt_cb()) {
+        av_log(h, AV_LOG_INFO, "http_read interrupt, err :-%d\n", AVERROR(EIO));
+        return AVERROR(EIO);
+    }
     if (s->chunksize >= 0) {
         if (!s->chunksize) {
             char line[32];
@@ -566,9 +565,9 @@ retry:
             for(;;) {
                 do {
                     if (http_get_line(s, line, sizeof(line)) < 0){
-						av_log(h, AV_LOG_ERROR, "http_read failed\n");
+                        av_log(h, AV_LOG_ERROR, "http_read failed\n");
                         return AVERROR(EIO);
-                    }	
+                    }   
                 } while (!*line);    /* skip CR LF from last chunk */
 
                 s->chunksize = strtoll(line, NULL, 16);
@@ -576,7 +575,7 @@ retry:
                 av_dlog(h, "Chunked encoding data size: %"PRId64"'\n", s->chunksize);
 
                 if (!s->chunksize){
-					av_log(h, AV_LOG_ERROR, "http_read s->chunksize failed\n");
+                    av_log(h, AV_LOG_ERROR, "http_read s->chunksize failed\n");
                     return 0;
                 }	
                 break;
@@ -593,25 +592,25 @@ retry:
         s->buf_ptr += len;
     } else {
         if (!s->willclose && s->filesize >= 0 && s->off >= s->filesize){
-			av_log(h, AV_LOG_ERROR, "http_read eof len=%d\n",len);
+            av_log(h, AV_LOG_ERROR, "http_read eof len=%d\n",len);
             return 0;
         }
-		if(s->hd){
-        	len = ffurl_read(s->hd, buf, size);
-		}else{
-			av_log(h, AV_LOG_INFO, "http read hd not opened,force to retry open\n");
-			len=-1;/*hd not opened,force to retry open*/
-			goto errors;
-		}
-		//av_log(h, AV_LOG_ERROR, "ffurl_read %d\n",len);
+        if(s->hd){
+            len = ffurl_read(s->hd, buf, size);
+        }else{
+            av_log(h, AV_LOG_INFO, "http read hd not opened,force to retry open\n");
+            len=-1;/*hd not opened,force to retry open*/
+            goto errors;
+        }
+        //av_log(h, AV_LOG_ERROR, "ffurl_read %d\n",len);
     }
     if (len > 0) {
-	 if(s->do_readseek_size<=0)
-        	s->off += len;
+        if(s->do_readseek_size<=0)
+            s->off += len;
         if (s->chunksize > 0)
             s->chunksize -= len;
     }
-	if(len==AVERROR(EAGAIN)){
+    if(len==AVERROR(EAGAIN)){
 		struct timespec new_time;
 		long new_time_mseconds;
 		long max_wait_time=READ_RETRY_MAX_TIME_MS;
