@@ -414,6 +414,7 @@ int check_flag(play_para_t *p_para)
     int find_subtitle_index = 0;
     unsigned int i = 0;
     int subtitle_curr = 0;
+
     if (p_para->oldcmd.ctrl_cmd == CMD_SEARCH &&
         nextcmd_is_cmd(p_para, CMD_SEARCH) &&
         ((p_para->oldcmdtime >= player_get_systemtime_ms() - 400)) && /*lastcmd is not too old.*/
@@ -425,7 +426,9 @@ int check_flag(play_para_t *p_para)
         } else {
             ret = codec_get_cntl_state(p_para->codec);    /*not es*/
         }
-        p_para->oldavsyncstate = get_tsync_enable();
+        if(p_para->avsynctmpchanged == 0) {
+            p_para->oldavsyncstate = get_tsync_enable();
+        }
         if (p_para->oldavsyncstate == 1) {
             set_tsync_enable(0);
             p_para->avsynctmpchanged = 1;
