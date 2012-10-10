@@ -169,6 +169,7 @@ int CacheHttp_Reset(void * handle)
     if(s->fifo)
         av_fifo_reset(s->fifo);
     s->RESET = 0;
+    s->finish_flag = 0;
     pthread_mutex_unlock(&s->read_mutex);
     return 0;
 }
@@ -257,11 +258,15 @@ static void *circular_buffer_task( void *_handle)
         s->have_list_end = item->have_list_end;
         if(item&&item->flags&ENDLIST_FLAG){
             s->finish_flag =1;
+        }else{
+            s->finish_flag =0;
         }        
        
         if(s->finish_flag){      
             av_log(NULL, AV_LOG_INFO, "ENDLIST_FLAG, return 0\n");
-            break;
+            //break;
+            usleep(500*1000);
+            continue;
         }
         
         int err, http_code;
