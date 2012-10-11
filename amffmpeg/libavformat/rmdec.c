@@ -625,7 +625,7 @@ static int rm_assemble_video_frame(AVFormatContext *s, AVIOContext *pb,
         vst->slices = ((hdr & 0x3F) << 1) + 1;
         vst->videobufsize = len2 + 8*vst->slices + 1;
         av_free_packet(&vst->pkt); //FIXME this should be output.
-        if(av_new_packet(&vst->pkt, vst->videobufsize) < 0||pkt->size<=0){
+        if(av_new_packet(&vst->pkt, vst->videobufsize) < 0||pkt->size<=0)
             return AVERROR(ENOMEM);
         vst->videobufpos = 8*vst->slices + 1;
         vst->cur_slice = 0;
