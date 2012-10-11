@@ -281,6 +281,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
 	 fd = -1;
         audec->adsp_ops.last_audio_pts = pts;
         audec->adsp_ops.last_pts_valid = 1;
+        adec_print("set automute!\n");
         audec->auto_mute = 1;
         apts_interrupt=10;
         return 0;

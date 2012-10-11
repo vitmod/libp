@@ -258,12 +258,14 @@ static void adec_flag_check(aml_audio_dec_t *audec)
 {
     audio_out_operations_t *aout_ops = &audec->aout_ops;
 
-    if (audec->auto_mute && (audec->state > INITTED)) {
+    if (audec->auto_mute && (audec->state > INITTED) &&(audec->state != PAUSED)) {
         aout_ops->pause(audec);
+        adec_print("automute, puase audio out!\n");
         while ((!audec->need_stop) && track_switch_pts(audec)) {
             usleep(1000);
         }
         aout_ops->resume(audec);
+        adec_print("resume audio out, automute invalid\n");
         audec->auto_mute = 0;
     }
 }
@@ -339,7 +341,7 @@ static void *adec_message_loop(void *args)
         //  usleep(100000);
         //  continue;
         //}
-		adec_reset_track(audec);
+        adec_reset_track(audec);
         adec_flag_check(audec);
 
         msg = adec_get_message(audec);

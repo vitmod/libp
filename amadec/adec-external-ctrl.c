@@ -228,7 +228,7 @@ int audio_decode_automute(void *handle, int stat)
         adec_print("audio handle is NULL !\n");
         return -1;
     }
-
+    adec_print("set automute!\n");
     audec->auto_mute = 1;
     return 0;
 }
