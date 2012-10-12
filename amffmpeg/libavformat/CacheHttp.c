@@ -55,6 +55,9 @@ typedef struct {
     double item_starttime;
     int64_t item_pos;
     int64_t item_size;
+    enum KeyType ktype;
+    char key[33];
+    char iv[33];
     AVFifoBuffer * fifo;    
     void * bandwidth_measure;
     pthread_t circular_buffer_thread;
@@ -67,6 +70,28 @@ static int CacheHttp_ffurl_open_h(URLContext ** h, const char * filename, int fl
     return ffurl_open_h(h, filename, flags,headers, http);
 }
 
+static int CacheHttp_advanced_ffurl_open_h(URLContext ** h,const char * filename, int flags, const char * headers, int * http,CacheHttpContext* ctx){
+    if(ctx->ktype == KEY_NONE){
+        return CacheHttp_ffurl_open_h(h, filename, flags,headers, http);
+    }else{//crypto streaming
+        int ret = -1;
+        URLContext* input = NULL;
+        if ((ret = ffurl_alloc(&input, filename, AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK)) < 0){
+            return ret;    
+        }
+        
+        av_set_string3(input->priv_data, "key", ctx->key, 0, NULL);
+        av_set_string3(input->priv_data, "iv", ctx->iv, 0, NULL);
+        if ((ret = ffurl_connect(input)) < 0) {
+            ffurl_close(input);
+            input = NULL;
+            *h = NULL;
+            return ret;
+        }
+        *h = input;
+    }
+    return 0;
+}
 static int CacheHttp_ffurl_read(URLContext * h, unsigned char * buf, int size)
 {
     return ffurl_read(h, buf, size);
@@ -256,6 +281,12 @@ static void *circular_buffer_task( void *_handle)
         s->item_starttime = item->start_time;
         s->item_duration = item->duration;
         s->have_list_end = item->have_list_end;
+        s->ktype = item->ktype;
+        if(item->key_ctx!=NULL&& s->ktype==KEY_AES_128){
+            ff_data_to_hex(s->iv, item->key_ctx->iv, sizeof(item->key_ctx->iv), 0);
+            ff_data_to_hex(s->key, item->key_ctx->key, sizeof(item->key_ctx->key), 0);
+            s->iv[32] = s->key[32] = '\0';
+        }
         if(item&&item->flags&ENDLIST_FLAG){
             s->finish_flag =1;
         }else{
@@ -270,10 +301,23 @@ static void *circular_buffer_task( void *_handle)
         }
         
         int err, http_code;
-        char* filename = av_strdup(item->file);
+        char* filename = NULL;
+        if(s->ktype == KEY_NONE){
+            filename = av_strdup(item->file);
+
+        }else{
+            char url[MAX_URL_SIZE];
+            if (strstr(item->file, "://"))
+                snprintf(url, sizeof(url), "crypto+%s", item->file);
+            else
+                snprintf(url, sizeof(url), "crypto:%s", item->file);
+
+            filename = av_strdup(url);
+            
+        }
 
 OPEN_RETRY:
-        err = CacheHttp_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers, &http_code);
+        err = CacheHttp_advanced_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers, &http_code,s);
         if (err) {
             if(url_interrupt_cb()) {
                 if(filename) {
@@ -349,7 +393,7 @@ OPEN_RETRY:
                             s->fifo->wptr = s->fifo->buffer;
                         s->fifo->wndx += left;
                         s->item_pos += left;
-                   } else if(left == AVERROR(EAGAIN) || (left < 0 && s->have_list_end)) {
+                   } else if(left == AVERROR(EAGAIN) || (left < 0 && s->have_list_end&& left != AVERROR_EOF)) {
                         pthread_mutex_unlock(&s->read_mutex);
                         continue;
                    } else {

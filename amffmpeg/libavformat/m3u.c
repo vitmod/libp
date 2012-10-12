@@ -286,10 +286,12 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 			key_priv_info->key_type = key_type;
 			if(mgt->has_iv>0){
 				memcpy(key_priv_info->iv,iv,sizeof(key_priv_info->iv));
-			}
-			
-			av_log(NULL,AV_LOG_INFO,"aes key location : %s\n",info.uri);
-			av_strlcpy(key_priv_info->key_from, info.uri, sizeof(key_priv_info->key_from));
+			}			
+                    
+                    memcpy(key_priv_info->key_from, "s", 1);
+                    memcpy(key_priv_info->key_from+1, info.uri, MAX_URL_SIZE-1);
+                  
+                    av_log(NULL,AV_LOG_INFO,"aes key location,before:%s,after:%s\n",info.uri,key_priv_info->key_from);
 			key_priv_info->is_have_key_file = 0;
 			mgt->key_tmp = key_priv_info;
 			mgt->flags |= KEY_FLAG;
