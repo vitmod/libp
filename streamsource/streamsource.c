@@ -39,7 +39,7 @@ static int streamsource_open(URLContext *h, const char *filename, int flags)
         return -1;
     }
 
-    h->is_slowmedia = 1;
+    ///h->is_slowmedia = 1;
 
     thread_read_get_options(ss->tread , &op);
     h->is_streamed = op.is_streaming;

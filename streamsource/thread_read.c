@@ -16,7 +16,7 @@
 #include <errno.h>
 int ffmpeg_interrupt_callback(void);
 #define ISTRYBECLOSED() (ffmpeg_interrupt_callback())
-
+#define MAX_READ_SEEK (2*1024*1024)
 int thread_read_thread_run(unsigned long arg);
 struct  thread_read *new_thread_read(const char *url, const char *headers, int flags) {
     pthread_t       tid;
@@ -43,6 +43,10 @@ struct  thread_read *new_thread_read(const char *url, const char *headers, int f
     thread->url = url;
     thread->flags = flags;
     thread->headers = headers;
+    thread->max_read_seek_len = MAX_READ_SEEK;	
+    thread->toreadblocksize=32*1024;	
+    thread->readtotalsize=0;
+    thread->readcnt=0;	
     ret = pthread_create(&tid, &pthread_attr, (void*)&thread_read_thread_run, (void*)thread);
     thread->pthread_id = tid;
     return thread;
@@ -83,7 +87,7 @@ int  thread_read_readwait(struct  thread_read *thread, int microseconds)
 
 int thread_read_wakewait(struct  thread_read *thread)
 {
-    int ret;
+    int ret=0;
     if (thread->onwaitingdata) {
         pthread_mutex_lock(&thread->pthread_mutex);
         ret = pthread_cond_signal(&thread->pthread_cond);
@@ -122,10 +126,12 @@ int thread_read_read(struct  thread_read *thread, char * buf, int size)
         if (ret > 0) {
             readlen += ret;
         } else if (ret < 0) {
+          streambuf_dumpstates(thread->streambuf);
             break;
         } else if (ret == 0) {
             if (thread->fatal_error) {
-                return thread->fatal_error;
+                ret = thread->fatal_error;
+		  break;
             }
             if (thread->error < 0 && thread->error != -11) {
                 ret = thread->error;
@@ -144,8 +150,8 @@ int thread_read_read(struct  thread_read *thread, char * buf, int size)
 
 int64_t thread_read_seek(struct  thread_read *thread, int64_t off, int whence)
 {
-    int ret;
-    DTRACE();
+    int ret=0;
+    int64_t pos = streambuf_bufpos(thread->streambuf);
     /*wait stream opened.*/
     if (SOURCE_SEEK_SIZE == whence) {
         return thread->options.filesize;
@@ -156,14 +162,61 @@ int64_t thread_read_seek(struct  thread_read *thread, int64_t off, int whence)
          SOURCE_SEEK_BY_TIME != whence)) {
         return -1;
     }
-    DTRACE();
-    pthread_mutex_lock(&thread->pthread_mutex);
-    ret = streambuf_seek(thread->streambuf, off, whence);
-    if (ret >= 0 && ret == off) {
-        pthread_mutex_unlock(&thread->pthread_mutex);
-        return ret;
+    {
+	    LOGI("thread_read_seek,on buf seek before,beforepos=%lld,off=%lld,whence=%d,ret=%lld\n", pos, off, whence, ret);	
+	    streambuf_dumpstates(thread->streambuf);
+	    ret = streambuf_seek(thread->streambuf, off, whence);
+	    if (ret >= 0) {
+		 streambuf_dumpstates(thread->streambuf);	
+		 LOGI("thread_read_seek,on buf ok,beforepos=%lld,off=%lld,whence=%d,ret=%lld\n", pos, off, whence, ret);	
+	        return ret;
+	    }
+	    LOGI("-thread_read_seek,on buf seek failed.......\n");
     }
+    ret = 0; //clear seek error.
+    {/*try read seek.*/
+        int64_t reloff = 0;
+        int bufeddatalen = streambuf_bufdatasize(thread->streambuf);
+        int diff;
+        if (SEEK_CUR == whence) {
+            reloff = streambuf_bufpos(thread->streambuf) + off;
+        } else if (SEEK_SET == whence) {
+            reloff = off;
+        } else if (SEEK_END  == whence) {
+            if (thread->options.filesize > 0) {
+                reloff = thread->options.filesize - 1;
+            } else {
+                reloff = -1;
+            }
+        }
+        diff = reloff - pos;
+        LOGI("thread_read_seek,before do  read seek diff=%d,pos=%lld", diff, pos);
+        if ((reloff > 0) && (diff > 0) &&
+            (diff - bufeddatalen) < thread->max_read_seek_len) {
+            int toreadlen = reloff - pos;
+            char readbuf[1024 * 32];
+            LOGI("thread_read_seek,start do read seek toreadlen=%d", toreadlen);
+            ret = 0;
+            while (toreadlen > 0 && !ISTRYBECLOSED()) {
+                int rlen = thread_read_read(thread, readbuf, 32 * 1024);
+                LOGI("thread_read_seek,read seek toreadlen=%d,rlen=%d", toreadlen, rlen);
+                if (rlen > 0) {
+                    toreadlen -= rlen;
+                } else {
+                    ret = rlen;
+                }
+                if (ret < 0 && ret != -11) {
+                    break;
+                }
+            }
+        }
+        pos = streambuf_bufpos(thread->streambuf);
+        if (reloff > 0 && pos == reloff) { /*seek finished.*/
+            return pos;
+        }
+     }
 
+    pthread_mutex_lock(&thread->pthread_mutex);
     ///do seek now.
     thread->request_seek = 1;
     thread->seek_offset = off;
@@ -173,7 +226,7 @@ int64_t thread_read_seek(struct  thread_read *thread, int64_t off, int whence)
     pthread_mutex_unlock(&thread->pthread_mutex);
     DTRACE();
     /*wait seek end.*/
-    while (thread->inseeking && !ISTRYBECLOSED()) {
+    while (thread->inseeking && !ISTRYBECLOSED() && !thread->fatal_error) {
         thread_read_readwait(thread, 1000 * 1000);
     }
     DTRACE();
@@ -207,7 +260,6 @@ int thread_read_seekstream(struct  thread_read *thread)
     if (thread->source) {
         ret = source_seek(thread->source, thread->seek_offset, thread->seek_whence);
     }
-    DTRACE();
     if (ret >= 0) { /*if seek ok.reset all buffers.*/
         streambuf_reset(thread->streambuf);
     }
@@ -222,20 +274,31 @@ int thread_read_download(struct  thread_read *thread)
 {
     int ret;
     bufheader_t *buf;
-    int readsize = av_gettime() % 10240 + 1;
-    if (readsize < 0) {
-        readsize = -readsize;
-    }
+    int readsize = thread->toreadblocksize;
     buf = streambuf_getbuf(thread->streambuf, readsize);
     if (!buf) {
-        LOGI("not enough bufffer's %d\n", readsize);
-        streambuf_dumpstates(thread->streambuf);
-        return -1;
+	  streambuf_dumpstates(thread->streambuf);	
+	if (streambuf_bufdatasize(thread->streambuf) > 16) {
+		//have data,I think it maybe too many buffer used .do wait. now
+		usleep(10 * 1000); /*...*/
+		ret=0;
+	} else {
+		thread->fatal_error = SOURCE_ERROR_NOMEN;
+		ret=SOURCE_ERROR_NOMEN;
+		LOGI("not enough bufffer's %d\n", readsize);
+	}
+        return ret;
     }
     buf->pos = source_seek(thread->source, 0, SEEK_CUR);;
     ret = source_read(thread->source, buf->pbuf, buf->bufsize);
     if (ret > 0) {
-        //  LOGI("thread_read_download read data len=%d\n", ret);
+	 thread->readtotalsize+=ret;
+    	 thread->readcnt++;		
+	 if(thread->readcnt>10&& thread->toreadblocksize!=ret && ret>16){
+	 	thread->toreadblocksize=16+(thread->readtotalsize)/thread->readcnt;
+		thread->readcnt=1;
+		thread->readtotalsize=(thread->readtotalsize)/thread->readcnt;
+	 }
         buf->bufdatalen = ret;
         //streambuf_dumpstates(thread->streambuf);
         streambuf_buf_write(thread->streambuf, buf);
@@ -244,10 +307,7 @@ int thread_read_download(struct  thread_read *thread)
     } else {
         LOGI("thread_read_download ERROR=%d\n", ret);
         thread->error = ret;
-        if (thread->error == SOURCE_ERROR_EOF || ret == 0) {
-            thread->error = SOURCE_ERROR_EOF;
-        }
-        if (ret != EAGAIN) {
+        if (ret != EAGAIN && thread->error != SOURCE_ERROR_EOF) {
             thread->fatal_error = ret;
         }
         streambuf_buf_free(thread->streambuf, buf);
@@ -262,17 +322,25 @@ int thread_read_thread_run_l(struct  thread_read *thread)
     if (!thread->opened) {
         ret = thread_read_openstream(thread);
         if (ret < 0) {
-            thread->fatal_error = ret;
+	     thread->fatal_error = 0;		
+            thread->error = ret;
         }
     }
     if (thread->request_seek) {
         thread->inseeking = 1;
+	 thread->fatal_error = 0;
+	 thread->error = 0;	
         ret = thread_read_seekstream(thread);
         thread->inseeking = 0;
         thread->request_seek = 0;
     }
     if (thread->opened) {
-        ret = thread_read_download(thread);
+	  if(thread->error != SOURCE_ERROR_EOF)
+	  {
+		 ret = thread_read_download(thread);		
+         } else {
+         	usleep(10 * 1000); /*EOF,wait new seek or other errors.*/
+	  }	
     }
     return ret;
 }

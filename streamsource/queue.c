@@ -5,7 +5,13 @@
  * author       :zh.zhou@amlogic.com
  ********************************************/
 #include "queue.h"
-
+/*
+         tail(push/gettail,peektail)                            head(get/peek,push head)
+            |                                                             |
+ (file end)...buf5-->buf4-->buf3-->buf1-->buf0...po(file start)
+            |                                                             |
+ queue                                                          start pos
+ */
 int queue_init(bufqueue_t *queue, int flags)
 {
     memset(queue, 0, sizeof(bufheader_t));
@@ -56,12 +62,13 @@ bufheader_t *queue_bufalloc(int datasize)
 int queue_bufrealloc(bufheader_t *buf, int datasize)
 {
     char *oldbuf = buf->pbuf;
-    free(oldbuf);
+
     buf->pbuf = malloc(datasize);
     if (!buf->pbuf) {
         buf->pbuf = oldbuf;
         return -1;
     }
+    free((void *)oldbuf);	
     buf->bufsize = datasize;
     return 0;
 }
@@ -76,26 +83,25 @@ int queue_buffree(bufheader_t*buf)
 int queue_bufpush(bufqueue_t *queue, bufheader_t *buf)
 {
     list_add_tail(&buf->list, &queue->list);
-    if (queue->datasize <= 0) {
+    if (queue->datasize <= 0) { 
         queue->startpos = buf->pos;
     }
     queue->datasize += buf->bufdatalen;
     return 0;
 }
-
-bufheader_t *queue_bufget(bufqueue_t *queue)
+int queue_bufpushhead(bufqueue_t *queue, bufheader_t *buf)
 {
-    bufheader_t *buf;
-    if (list_empty(&queue->list)) {
-        return NULL;
-    }
-    buf = list_first_entry(&queue->list, bufheader_t, list);
-    list_del(&buf->list);
-    queue->startpos += buf->bufdatalen;
-    queue->datasize -= buf->bufdatalen;
-    return buf;
+    list_add(&buf->list, &queue->list);
+    queue->datasize += buf->bufdatalen;
+    return 0;
 }
 
+int queue_bufdel(bufqueue_t *queue, bufheader_t *buf)
+{     
+	list_del(&buf->list); 
+	queue->datasize -= buf->bufdatalen;
+	return 0; 
+}
 bufheader_t *queue_bufpeek(bufqueue_t *queue)
 {
     bufheader_t *buf;
@@ -105,6 +111,32 @@ bufheader_t *queue_bufpeek(bufqueue_t *queue)
     buf = list_first_entry(&queue->list, bufheader_t, list);
     return buf;
 }
+bufheader_t *queue_bufget(bufqueue_t *queue)
+{
+    bufheader_t *buf = queue_bufpeek(queue);
+    if (buf != NULL) {
+        queue_bufdel(queue, buf);
+        queue->startpos += buf->bufdatalen;
+    }
+    return buf;
+}
+bufheader_t *queue_bufpeektail(bufqueue_t *queue)
+{
+    bufheader_t *buf;
+    if (list_empty(&queue->list)) {
+        return NULL;
+    }
+    buf = list_entry(queue->list.prev, bufheader_t, list);
+    return buf;
+}
+ bufheader_t *queue_bufgettail(bufqueue_t *queue)
+ {
+    bufheader_t *buf = queue_bufpeektail(queue);
+    if (buf != NULL) {
+        queue_bufdel(queue, buf);
+    }
+     return buf;
+ }
 
 int queue_bufpeeked_partdatasize(bufqueue_t *queue, bufheader_t *buf, int size)
 {
