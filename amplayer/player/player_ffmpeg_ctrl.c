@@ -63,7 +63,7 @@ int ffmpeg_interrupt_callback(unsigned long npid)
         dealock_detected_cnt = 0;
         return 0;
     }
-    if (dealock_detected_cnt++ < 1000) {
+    if (dealock_detected_cnt++ < 10000) {
         return 1;
     }
     /*player maybe locked,kill my self now*/
