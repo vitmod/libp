@@ -103,6 +103,7 @@ typedef struct {
 	int enabled_lp_buffer;
 	int support_time_seek;
 	int is_encrypted_media;
+	int iscmf;
 	int flags;
 	int seekflags;
 	unsigned long proppads[8];//data copyed from probed.
@@ -167,7 +168,11 @@ typedef struct URLProtocol {
 #define AVCMD_SLICE_SIZE				(1000+2)
 #define AVCMD_SLICE_DURATION			(1000+3)
 #define AVCMD_SLICE_INFO				(1000+4)
-#define AVCMD_SLICE_NUM				(1000+5)
+#define AVCMD_SLICE_INDEX				(1000+5)
+#define AVCMD_SLICE_STARTTIME               (1000+6)
+#define AVCMD_SLICE_ENDTIME                   (1000+7)
+#define AVCMD_TOTAL_DURATION			 (1000+8)
+#define AVCMD_TOTAL_NUM			        (1000+9)
     int (*url_getinfo)(URLContext *h, int cmd,int flag,void*info);
 } URLProtocol;
 
@@ -485,7 +490,8 @@ int avio_put_str16le(AVIOContext *s, const char *str);
 #define AVSEEK_BUFFERED_TIME 	0x40000
 #define AVSEEK_FULLTIME 		0x50000
 
-#define AVSEEK_SLICE_INDEX		0x80000	
+#define AVSEEK_SLICE_BYINDEX	(0x80000+1)	
+#define AVSEEK_SLICE_BYTIME	(0x80000+2)	
 
 
 int64_t avio_seek(AVIOContext *s, int64_t offset, int whence);
@@ -720,6 +726,7 @@ static inline int url_support_time_seek(AVIOContext *s)
  int64_t url_ffulltime(ByteIOContext *s);
  int64_t url_buffed_pos(ByteIOContext *s);
  int64_t url_fbuffered_time(ByteIOContext *s);
+ int64_t url_fseekslicebytime(AVIOContext *s,int64_t timestamp, int flags);
 #define av_read_frame_flush(s) ff_read_frame_flush(s)
 int ffio_fdopen_resetlpbuf(AVIOContext *s,int lpsize);
 

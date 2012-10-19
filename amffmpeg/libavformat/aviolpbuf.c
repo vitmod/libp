@@ -389,7 +389,6 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 	else
 		valid_data_can_seek_forward=lp->buffer_size-(lp->rp-lp->wp);
 	pos_on_read = lp->pos-valid_data_can_seek_forward;
- 	
 	if(whence == SEEK_CUR)
 	{
 		offset1 = pos_on_read;
@@ -504,9 +503,34 @@ int64_t url_lpexseek(URLContext *s, int64_t offset, int whence)
 	 	}
 		ret= AVERROR(EPIPE);
 	}
+      else if (whence == AVSEEK_SLICE_BYTIME)
+      {
+               ret= s->prot->url_seek(s, offset, AVSEEK_SLICE_BYTIME);
+               if (ret < 0){
+                    lp_unlock(&lp->mutex);
+                    return -1;
+               }
+               lp_unlock(&lp->mutex);
+               return ret;
+       }
 seek_end:
 	lp_unlock(&lp->mutex);
 	return ret;
+}
+int url_lpreset(URLContext *s)
+ {   
+      url_lpbuf_t *lp;
+      if(!s || !s->lpbuf){
+            return AVERROR(EINVAL);
+      }
+       lp=s->lpbuf;
+       if(lp){
+           lp->rp=lp->buffer;
+            lp->wp=lp->buffer;
+            lp->pos=0;
+            lp->valid_data_size=0;
+       }
+       return 0;
 }
 
 int url_lp_getbuffering_size(URLContext *s,int *forward_data,int *back_data)

@@ -329,6 +329,23 @@ int url_ferror(AVIOContext *s)
     return s->error;
 }
 #endif
+
+int64_t url_fseekslicebytime(AVIOContext *s,int64_t timestamp, int flags)
+{
+	int64_t offset1;
+	if(s->exseek){
+		if((offset1=s->exseek(s->opaque, timestamp, flags))>=0)
+		{
+			if (!s->write_flag)
+				s->buf_end = s->buffer;
+			s->buf_ptr = s->buffer;
+			s->pos = 0;/*I think it is the first,pos now*/
+			s->eof_reached=0;/*clear eof error*/
+			return offset1;
+		}
+	}
+	return AVERROR(EPIPE);
+}
 int64_t url_ffulltime(AVIOContext *s)
 {
 	int64_t size;
@@ -1038,6 +1055,10 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 #endif
 	(*s)->support_time_seek = h->support_time_seek;
 	(*s)->reallocation=h->location;
+    if(h->prot&&h->prot->name)
+	 if (h->prot&&h->prot->name &&!strncmp( h->prot->name, "cmf", 3)) {
+	 	(*s)->iscmf=1;
+	 }
     (*s)->seekable = h->is_streamed ? 0 : AVIO_SEEKABLE_NORMAL;
     (*s)->max_packet_size = max_packet_size;
     if(h->prot) {
