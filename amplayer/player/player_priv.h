@@ -48,7 +48,7 @@ do { \
 #define MIN_RAW_DATA_SIZE   (0x1000)        //4k
 #define RESERVE_VIDEO_SIZE  (256)
 #define RESERVE_AUDIO_SIZE  (64)
-#define MAX_PACKET_SIZE     (2*1024*1024)
+#define MAX_PACKET_SIZE     (4*1024*1024)
 #define FILE_BUFFER_SIZE    (1024*32)//(1024*512)   
 #define CHECK_END_COUNT     (40)
 #define CHECK_AUDIO_HALT_CNT (50)

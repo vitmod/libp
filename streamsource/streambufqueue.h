@@ -29,11 +29,12 @@ int streambuf_read(streambufqueue_t *s, char *buffer, int size);
 bufheader_t *streambuf_getbuf(streambufqueue_t *s, int size);
 int streambuf_buf_write(streambufqueue_t *s, bufheader_t *buf);
 int streambuf_write(streambufqueue_t *s, char *buffer, int size, int timestamps);
-int streambuf_seek(streambufqueue_t *s, int off, int whereonce);
+int64_t streambuf_seek(streambufqueue_t *s, int64_t off, int whence);
 int streambuf_reset(streambufqueue_t *s);
 int streambuf_buf_free(streambufqueue_t *s, bufheader_t *buf);
 int streambuf_dumpstates(streambufqueue_t *s);
 int64_t streambuf_bufpos(streambufqueue_t *s);
+int streambuf_bufdatasize(streambufqueue_t *s);
 #endif
 
 

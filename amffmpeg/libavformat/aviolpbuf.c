@@ -81,7 +81,7 @@ Can seek back size:
 
 
 #define LP_ASSERT(x)	 do{if(!(x)) av_log(NULL,AV_LOG_INFO,"****\t\tERROR at line file%s=%d\n\n\n",__FILE__,__LINE__);}while(0)
-#define DEF_MAX_READ_SEEK (1024*6)
+#define DEF_MAX_READ_SEEK (1024*1024*3)
 int url_lpopen(URLContext *s,int size)
 {
 	url_lpbuf_t *lp;

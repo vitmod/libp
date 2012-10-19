@@ -32,8 +32,12 @@ struct  thread_read {
     int64_t seek_ret;
 
     int opened;
-
+    int max_read_seek_len;
     struct  source_options options;
+
+    int toreadblocksize;
+    int64_t readtotalsize;
+    int readcnt;	
 };
 
 

@@ -1789,7 +1789,13 @@ int set_header_info(play_para_t *para)
 
         if (pkt->type == CODEC_VIDEO) {
             if (((para->vstream_info.video_format == VFORMAT_H264) || (para->vstream_info.video_format == VFORMAT_H264MVC)) &&
-                (para->file_type != AVI_FILE && para->file_type != STREAM_FILE)) {
+                (para->file_type != STREAM_FILE)) {
+                if(para->file_type == AVI_FILE){
+                    if((pkt->data_size>=3&&(pkt->data[0]==0)&&(pkt->data[1]==0)&&(pkt->data[2]==1))
+                            ||(pkt->data_size>=4&&(pkt->data[0]==0)&&(pkt->data[1]==0)&&(pkt->data[2]==0)&&(pkt->data[3]==1))){
+                    return PLAYER_SUCCESS;
+                    }
+                }	
                 ret = h264_update_frame_header(pkt);
                 if (ret != PLAYER_SUCCESS) {
                     return ret;
