@@ -656,7 +656,7 @@ static void fill_buffer(AVIOContext *s)
     int max_buffer_size = s->max_packet_size ? s->max_packet_size : IO_BUFFER_SIZE;
 
     /* no need to do anything if EOF already reached */
-    if (s->eof_reached)
+    if (s->eof_reached || s->error)
         return;
 
     if(s->update_checksum && dst == s->buffer){
