@@ -863,6 +863,13 @@ int player_dec_reset(play_para_t *p_para)
     } else {
         set_tsync_enable(0);
         p_para->playctrl_info.avsync_enable = 0;
+	}
+
+    if((timestamp != pFormatCtx->start_time) 
+        && p_para->vstream_info.has_video
+        && (p_para->stream_type == STREAM_TS)) {
+        p_para->vstream_info.video_width = 0;
+        p_para->vstream_info.video_height = 0;
     }
     if (decoder->init(p_para) != PLAYER_SUCCESS) {
         log_print("[player_dec_reset] deocder init failed!\n");
@@ -1251,11 +1258,20 @@ int player_decoder_init(play_para_t *p_para)
         p_para->playctrl_info.avsync_enable = 0;
     }
     if (p_para->vstream_info.has_video) {
+        unsigned int time_point = p_para->playctrl_info.time_point;
+        int64_t timestamp = (int64_t)time_point * AV_TIME_BASE;
+
         /*
         if we have video,we need to clear the pcrsrc to 0.
         if not the pcrscr maybe a big number..
         */
         set_sysfs_str("/sys/class/tsync/pts_pcrscr", "0x0");
+
+        if((timestamp != p_para->pFormatCtx->start_time) 
+            && (p_para->stream_type == STREAM_TS)) {
+            p_para->vstream_info.video_width = 0;
+            p_para->vstream_info.video_height = 0;
+        }
     }
 
     if (decoder->init(p_para) != PLAYER_SUCCESS) {
