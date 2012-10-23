@@ -685,7 +685,11 @@ static int http_write(URLContext *h, const uint8_t *buf, int size)
 
 int ff_http_do_new_request(URLContext *h, const char *uri)
 {
+    if(!h)
+        return -1;
     HTTPContext *s = h->priv_data;   
+    if(!s)
+        return -1;
     s->off = 0;
     if(uri!=NULL){
         av_strlcpy(s->location, uri, sizeof(s->location));
