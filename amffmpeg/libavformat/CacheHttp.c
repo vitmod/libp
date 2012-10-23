@@ -37,9 +37,8 @@
 #define BUFFER_SIZE (1024*4)
 #define CIRCULAR_BUFFER_SIZE (20*188*4096)
 #define WAIT_TIME (100*1000)
-#define TMP_BUFFER_SIZE (500*1024)
+#define TMP_BUFFER_SIZE (188*7) //< 1452BYTES=MTU(1500)-PPP(8)-IP header(20)-TCP header(20) 
 
-#define PLAYBACK_SESSION_ID "X-Playback-Session-Id:" 
 
 typedef struct {
     URLContext * hd;
