@@ -62,23 +62,13 @@ struct encrypt_key_priv_t{
     int is_have_key_file; //just get file from server 
 };
 
-#define MAX_BUFFER_BLOCKS 150
-#define BLOCKSIZE 16
+
 
 struct AES128KeyContext{	
 	uint8_t key[16];
 	uint8_t iv[16];
 };
 
-struct AESCryptoContext{
-    uint8_t inbuffer [BLOCKSIZE*MAX_BUFFER_BLOCKS],
-    	outbuffer[BLOCKSIZE*MAX_BUFFER_BLOCKS];
-    uint8_t *outptr;
-    int indata, indata_used, outdata;
-    int eof;	
-    struct AVAES *aes;
-    int have_init;
-};
 typedef struct list_item
 {
     const char *file;
@@ -86,15 +76,16 @@ typedef struct list_item
     int         have_list_end;
     double  	start_time;
     double		duration;
+    int64_t file_size;
     int 	bandwidth;
     int 	seq;
     int    index;
     enum KeyType ktype;
     struct AES128KeyContext* key_ctx; //just store key info.
-    struct AESCryptoContext* crypto;
     struct list_item * prev;
     struct list_item * next;	
 }list_item_t;
+
 struct variant{
     char url[MAX_URL_SIZE];
     int bandwidth;
@@ -135,8 +126,6 @@ typedef struct list_mgt
     //end.
     ByteIOContext	*cur_uio;
     struct list_demux *demux;
-    int 	have_sub_list;
-    void *bandwidth_measure;	
     void *cache_http_handle;
     char *ipad_ex_headers; 
     char *ipad_req_media_headers;

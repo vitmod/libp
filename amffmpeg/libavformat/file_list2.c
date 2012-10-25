@@ -221,14 +221,6 @@ static int list_del_item(struct list_mgt *mgt, struct list_item*item)
     }
     mgt->item_num--;
     if (item->ktype == KEY_AES_128) {
-        if (item->crypto) {
-            if (item->crypto->aes) {
-                av_free(item->crypto->aes);
-
-            }
-            av_free(item->crypto);
-
-        }
         av_free(item->key_ctx);
     }
 
@@ -267,14 +259,7 @@ static int list_delall_item(struct list_mgt *mgt)
     while (p != NULL) {
         t = p->next;
         mgt->item_num--;
-        if (p->ktype == KEY_AES_128) {
-            if (p->crypto) {
-                if (p->crypto->aes) {
-                    av_free(p->crypto->aes);
-                }
-                av_free(p->crypto);
-
-            }
+        if (p->ktype == KEY_AES_128) {           
             av_free(p->key_ctx);
         }
 
@@ -761,7 +746,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
     }
 
     if (whence == AVSEEK_TO_TIME) {
-        av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x,have sublist:%d\n", pos, whence, mgt->have_sub_list);
+        av_log(NULL, AV_LOG_INFO, "list_seek to Time =%lld,whence=%x\n", pos, whence);
 
         if (pos >= 0 && pos < mgt->full_time) {
             for (item = mgt->item_list; item; item = item->next) {
