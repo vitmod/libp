@@ -475,6 +475,40 @@ static int list_open(URLContext *h, const char *filename, int flags)
     return 0;
 }
 
+#define ADAPTATION_PROFILE_DEFAULT 1  //AGREESSIVE_ADAPTIVE
+static int get_adaptation_profile(){
+    float value = 0.0;
+    int ret = -1;
+    ret = am_getconfig_float("libplayer.hls.profile", &value);
+    if(ret < 0 || value <0||value>3){
+        ret = ADAPTATION_PROFILE_DEFAULT;
+    }else{
+        ret= (int)value;
+    }
+    av_log(NULL, AV_LOG_INFO,"just get adaptation profile: %d\n",ret);
+    return ret;
+
+}
+
+static float get_adaptation_ex_para(int type){
+    float value = 0.0;
+    int ret = -1;
+    if(type==0){
+        ret = am_getconfig_float("libplayer.hls.sensitivity", &value);
+    }else if(type == 1){
+        ret = am_getconfig_float("libplayer.hls.uplevel", &value);
+    }else{
+        ret = am_getconfig_float("libplayer.hls.downlevel", &value);
+    }
+    if(ret < 0 || value <0){
+        ret = -1;
+    }else{
+        ret= value;
+    }
+    av_log(NULL, AV_LOG_INFO,"just get adaptation extend parameter: %f\n",ret);
+    return ret;
+
+}
 #define AUDIO_BANDWIDTH_MAX 100000  //100k
 static int select_best_variant(struct list_mgt *c)
 {
@@ -483,10 +517,13 @@ static int select_best_variant(struct list_mgt *c)
     int min_index = 0, min_band = -1;
     int max_index = 0, max_band = -1;
     int m, f, a;
+    AdaptationProfile vf;
     // Consider only 80% of the available bandwidth usable.
     CacheHttp_GetSpeed(c->cache_http_handle, &f, &m, &a);
+    vf = get_adaptation_profile();
+    
     //int bandwidthBps = (a * 8) / 10;
-    if (m < 1) {
+    if (m < 1||vf ==CONSTANT_ADAPTIVE) {
         int org_playing_index = -1;
         for (i = 0; i < c->n_variants; i++) {
             struct variant *v = c->variants[i];
@@ -497,7 +534,27 @@ static int select_best_variant(struct list_mgt *c)
         }
         return org_playing_index;
     }
+    
     int bandwidthBps = m;
+    if(vf == CONSERVATIVE_ADAPTIVE){
+        float sensitivity =get_adaptation_ex_para(0);
+        if(sensitivity!=-1&&sensitivity>0.5&&sensitivity<1){
+            bandwidthBps*=sensitivity;
+        }else{
+            bandwidthBps*=0.8;
+        }
+    }else if(vf ==MEAN_ADAPTIVE){
+
+    }
+
+    int up_counts = get_adaptation_ex_para(1);
+    if(up_counts == -1){
+        up_counts = 1;
+    }
+    int down_counts = get_adaptation_ex_para(2);
+    if(down_counts == -1){
+        down_counts = 1;
+    }
     for (i = 0; i < c->n_variants; i++) {
         struct variant *v = c->variants[i];
         if (v->bandwidth <= bandwidthBps && v->bandwidth > best_band && v->bandwidth > AUDIO_BANDWIDTH_MAX) {
@@ -518,11 +575,25 @@ static int select_best_variant(struct list_mgt *c)
     }
 
     if (c->playing_variant->bandwidth > c->variants[best_index]->bandwidth) {
-        return best_index;
+        c->strategy_down_counts++;
+        if (c->strategy_down_counts == down_counts) {
+            c->strategy_down_counts = 0;
+            return best_index;
+        } else {
+            int playing_index = -1;
+            for (i = 0; i < c->n_variants; i++) {
+                struct variant *v = c->variants[i];
+                if (v->bandwidth == c->playing_variant->bandwidth) {
+                    playing_index = i;
+                    break;
+                }
+            }
+            return playing_index;
+        }
 
     } else if (c->playing_variant->bandwidth < c->variants[best_index]->bandwidth) {
         c->strategy_up_counts++;
-        if (c->strategy_up_counts == 1) {
+        if (c->strategy_up_counts == up_counts) {
             c->strategy_up_counts = 0;
             return best_index;
         } else {

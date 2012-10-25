@@ -32,6 +32,12 @@
 #define lp_lock(x)		pthread_mutex_lock(x)
 #define lp_unlock(x)   	pthread_mutex_unlock(x)
 
+typedef enum _AdaptationProfile{
+    CONSTANT_ADAPTIVE = 0, //just  does not switch variant. 
+    AGREESSIVE_ADAPTIVE, //only the last throughput measurement
+    CONSERVATIVE_ADAPTIVE,//the last throughput measurement with by a sensitivity parameter(eg.0.8)
+    MEAN_ADAPTIVE,//the last throughput measurement and buffer fullness    
+}AdaptationProfile;
 
 
 #define DISCONTINUE_FLAG			(1<<0)
