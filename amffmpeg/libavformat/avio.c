@@ -318,6 +318,8 @@ int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *h
         *http_404_flag = 0;
         if(404 == (*puc)->http_code)
             *http_404_flag = 1;
+        if(503 == (*puc)->http_code)
+            *http_404_flag = 2;
     }
     if (!ret)
         return 0;

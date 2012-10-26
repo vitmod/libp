@@ -273,7 +273,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     av_strlcpy(s->location, uri, sizeof(s->location));
 	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
-	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb() && s->http_code != 404){
+	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb() && (s->http_code != 404 ||s->http_code != 503)){
 		s->is_seek=0;
 		s->canseek=0;
     	ret = http_open_cnx(h);
