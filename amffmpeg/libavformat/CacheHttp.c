@@ -31,6 +31,7 @@
 #include "libavutil/fifo.h"
 #include "CacheHttp.h"
 #include "hls_livesession.h"
+#include "amconfigutils.h"
 
 #include "bandwidth_measure.h" 
 
@@ -126,7 +127,15 @@ int CacheHttp_Open(void ** handle,const char* headers)
     s->have_list_end = -1;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
-    s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);      
+    float value=0.0;
+    int config_ret;
+    config_ret=am_getconfig_float("libplayer.ffmpeg.hlshttpbufmax",&value);
+    if(config_ret<0 || value < 1024*32)
+    	s->fifo = av_fifo_alloc(CIRCULAR_BUFFER_SIZE);
+    else{
+    	s->fifo = av_fifo_alloc(value);
+    }
+          
     pthread_mutex_init(&s->read_mutex,NULL);
     
     s->EXIT = 0;
@@ -422,7 +431,8 @@ FAIL:
         CacheHttp_ffurl_close(h);
     s->hd = NULL;
     s->EXITED = 1;
-    
+
+    av_log(NULL,AV_LOG_INFO,"--------> CacheHttp thread quit !");
     return NULL;
 }
 
