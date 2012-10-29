@@ -624,7 +624,7 @@ static int get_adaptation_profile(){
 
 static float get_adaptation_ex_para(int type){
     float value = 0.0;
-    int ret = -1;
+    float ret = -1;
     if(type==0){
         ret = am_getconfig_float("libplayer.hls.sensitivity", &value);
     }else if(type == 1){
@@ -640,7 +640,7 @@ static float get_adaptation_ex_para(int type){
     if(ret < 0 || value <0){
         ret = -1;
     }else{
-        ret= value;
+        ret = value;
     }
     av_log(NULL, AV_LOG_INFO,"just get adaptation extend parameter: %f\n",ret);
     return ret;
