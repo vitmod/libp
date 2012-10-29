@@ -37,6 +37,7 @@ typedef enum _AdaptationProfile{
     AGREESSIVE_ADAPTIVE, //only the last throughput measurement
     CONSERVATIVE_ADAPTIVE,//the last throughput measurement with by a sensitivity parameter(eg.0.8)
     MEAN_ADAPTIVE,//the last throughput measurement and buffer fullness    
+    MANUAL_ADAPTIVE,
 }AdaptationProfile;
 
 
@@ -95,6 +96,7 @@ typedef struct list_item
 struct variant{
     char url[MAX_URL_SIZE];
     int bandwidth;
+    int priority; 
 };
 
 typedef struct list_mgt
@@ -123,7 +125,7 @@ typedef struct list_mgt
     //added for Playlist file with encrypted media segments	
     int n_variants;
     struct variant ** variants;	
-    int is_variant;
+    int is_variant;    
     int has_iv;
     int bandwidth;
     char* prefix; //	

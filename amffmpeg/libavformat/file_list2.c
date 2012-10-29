@@ -302,6 +302,151 @@ int url_is_file_list(ByteIOContext *s, const char *filename)
     return demux != NULL ? 100 : 0;
 }
 
+#define AUDIO_BANDWIDTH_MAX 100000  //100k
+static int  fast_sort_streams(struct list_mgt * mgt){
+    int key,left,middle,right;  
+    struct variant *var= NULL;
+    int i,j,tmp,stuff[mgt->n_variants];
+    for (i=0; i < mgt->n_variants; i++){
+        var = mgt->variants[i];
+        stuff[i] = var->bandwidth;
+       
+    }
+    for (i=1; i < mgt->n_variants; i++){
+        key = stuff[i];
+        left = 0;
+        right = i-1;
+        while(left<=right){
+            middle=(left+right)/2;             
+            if (key>stuff[middle]) {//down order
+                right=middle-1;
+            }else{
+                left=middle+1;
+            }         
+            
+        }
+        for (j=i;j>left;j--){
+            stuff[j]=stuff[j-1];
+        }
+        stuff[left]=key; 
+    }
+
+    j = mgt->n_variants - 1;
+    for (i=0; i < mgt->n_variants; i++){
+        for (tmp=0; tmp <  mgt->n_variants; tmp++){
+            var = mgt->variants[tmp];
+            if (var->bandwidth == stuff[i]){
+                var->priority = j--;    
+                //av_log(NULL,AV_LOG_INFO,"===priority:%d,bandwidth:%d\n",var->priority,var->bandwidth);
+                break;
+            }
+        }
+
+    }
+
+    float value = 0.0;
+    int ret = -1;
+    ret = am_getconfig_float("libplayer.hls.bw_max", &value);
+    if(ret>=0&&value>0){
+         for (i=0; i < mgt->n_variants; i++){
+            var = mgt->variants[i];
+            if(var->bandwidth>value){
+                var->priority = -1;
+            }
+         }
+
+    }
+    ret = am_getconfig_float("libplayer.hls.bw_min", &value);
+    if(ret>=0&&value>0){        
+        for (i=0; i < mgt->n_variants; i++){
+            var = mgt->variants[i];
+            if(var->bandwidth<value){
+                var->priority = -2;
+            }
+        }
+
+    }else{
+        for (i=0; i < mgt->n_variants; i++){
+            var = mgt->variants[i];
+            if(var->bandwidth<AUDIO_BANDWIDTH_MAX){
+                var->priority = -2;
+            }
+        }           
+    }
+
+    ret = am_getconfig_float("libplayer.hls.bw_start", &value);
+    if(ret>=0&&value>0){
+        for (i=0; i < mgt->n_variants; i++){
+            var = mgt->variants[i];
+            if(var->priority>=0&&var->bandwidth==(int)value){
+                mgt->playing_variant= var;
+                break;
+            }
+        }        
+
+    }else{
+        for (i=0; i < mgt->n_variants; i++){
+            var = mgt->variants[i];
+            if(var->priority>=0){
+                mgt->playing_variant= var;
+                break;
+            }
+        }         
+
+    }
+   
+    
+    av_log(NULL,AV_LOG_INFO,"Do fast sort streaming");
+    return 0;
+    
+}
+
+static int switch_bw_level(struct list_mgt * mgt, int updown){
+
+    int priority =-1;
+    if(updown>0){
+        if(mgt->playing_variant->priority==mgt->n_variants-1||
+            mgt->playing_variant->priority+updown>mgt->n_variants-1){
+            av_log(NULL,AV_LOG_WARNING,"failed to switch bandwidth,up level:%d\n",updown);
+        }else{            
+            priority =  mgt->playing_variant->priority+updown;
+
+        }
+    }else if(updown<0){
+        if(mgt->playing_variant->priority==0||
+            mgt->playing_variant->priority-updown<0){
+            av_log(NULL,AV_LOG_WARNING,"failed to switch bandwidth,up level:%d\n",updown);
+        }else{            
+           priority = mgt->playing_variant->priority-updown;
+
+        }        
+    }
+    int i,playing_index;
+    struct variant *v = NULL;
+    if(priority<0){        
+        for (i = 0; i < mgt->n_variants; i++) {
+            v = mgt->variants[i];
+            if (v->bandwidth == mgt->playing_variant->bandwidth) {
+                playing_index = i;
+                break;
+            }
+        }
+
+
+    }else{
+        for (i = 0; i < mgt->n_variants; i++) {
+            v = mgt->variants[i];
+            if (priority == mgt->playing_variant->priority) {
+                playing_index = i;
+                break;
+            }
+        }
+
+    }
+    return playing_index;
+  
+
+}
 static int list_open_internet(ByteIOContext **pbio, struct list_mgt *mgt, const char *filename, int flags)
 {
     list_demux_t *demux;
@@ -354,25 +499,11 @@ reload:
                 url_fclose(bio);
                 bio = NULL;
             }
-
-
-            float value = 0.0;
-            ret = am_getconfig_float("libplayer.hls.level", &value);
-            if (ret < 0 || value <= 0) {
-                struct variant *v = mgt->variants[0];
-                url = v->url;
-                mgt->playing_variant = v;
-                av_log(NULL, AV_LOG_INFO, "[%d]reload playlist,url:%s\n", __LINE__, url);
-                goto reload;
-            } else if (value < mgt->n_variants) {
-                int iValue = (int)(value + 0.5);
-                struct variant *v = mgt->variants[iValue];
-                url = v->url;
-                mgt->playing_variant = v;
-                av_log(NULL, AV_LOG_INFO, "[%d]reload playlist,url:%s,%d\n", __LINE__, url, iValue);
-                goto reload;
-
-            }
+            
+            fast_sort_streams(mgt);            
+            url = mgt->playing_variant->url;           
+            av_log(NULL, AV_LOG_INFO, "[%d]reload playlist,url:%s\n", __LINE__, url);
+            goto reload;           
 
         }
 
@@ -387,6 +518,7 @@ error:
     }
     return ret;
 }
+
 
 static struct list_mgt* gListMgt = NULL;
 static int list_open(URLContext *h, const char *filename, int flags)
@@ -480,7 +612,7 @@ static int get_adaptation_profile(){
     float value = 0.0;
     int ret = -1;
     ret = am_getconfig_float("libplayer.hls.profile", &value);
-    if(ret < 0 || value <0||value>3){
+    if(ret < 0 || value <0){
         ret = ADAPTATION_PROFILE_DEFAULT;
     }else{
         ret= (int)value;
@@ -496,9 +628,14 @@ static float get_adaptation_ex_para(int type){
     if(type==0){
         ret = am_getconfig_float("libplayer.hls.sensitivity", &value);
     }else if(type == 1){
-        ret = am_getconfig_float("libplayer.hls.uplevel", &value);
-    }else{
-        ret = am_getconfig_float("libplayer.hls.downlevel", &value);
+        ret = am_getconfig_float("libplayer.hls.upcounts", &value);
+    }else if(type == 2){
+        ret = am_getconfig_float("libplayer.hls.downcounts", &value);
+    }else if(type == 3){
+        ret = am_getconfig_float("libplayer.hls.switchsteps", &value);
+        if(ret<0){
+            ret = 0;
+        }
     }
     if(ret < 0 || value <0){
         ret = -1;
@@ -509,7 +646,7 @@ static float get_adaptation_ex_para(int type){
     return ret;
 
 }
-#define AUDIO_BANDWIDTH_MAX 100000  //100k
+
 static int select_best_variant(struct list_mgt *c)
 {
     int i;
@@ -544,9 +681,32 @@ static int select_best_variant(struct list_mgt *c)
             bandwidthBps*=0.8;
         }
     }else if(vf ==MEAN_ADAPTIVE){
+        int cache_buf_level = 0,codec_buf_level = 0;
+        CacheHttp_GetBufferPercentage(c->cache_http_handle,&cache_buf_level);
+        codec_buf_level = c->codec_buf_level/100;
+        av_log(NULL,AV_LOG_INFO,"cache http buffer pecentage:%d \%,av buffer level:%d \%\n",cache_buf_level,codec_buf_level);
+        int playing_index = -1;
+        
+        if(bandwidthBps>=c->playing_variant->bandwidth&&(codec_buf_level>5&&codec_buf_level<=10||codec_buf_level<=5&&c->playing_variant->priority==0)){
+      
+            playing_index = switch_bw_level(c,0);
+            return playing_index;
+        }else if(bandwidthBps<c->playing_variant->bandwidth&&codec_buf_level<5){  
+            playing_index = switch_bw_level(c,-1);      
+            return playing_index;
 
+        }else if(bandwidthBps>=c->playing_variant->bandwidth&&codec_buf_level>10){
+            playing_index = switch_bw_level(c,1);      
+            return playing_index;
+
+        }
+
+
+    }else if(vf ==MANUAL_ADAPTIVE){
+        int steps = (int)get_adaptation_ex_para(0);
+        return switch_bw_level(c,steps);   
     }
-
+    
     int up_counts = get_adaptation_ex_para(1);
     if(up_counts == -1){
         up_counts = 1;
@@ -618,7 +778,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
         return NULL;
     }
 
-    if (mgt->n_variants > 0) { //vod,have mulit-bandwidth streams
+    if (mgt->n_variants > 0&&mgt->codec_buf_level>=0) { //vod,have mulit-bandwidth streams
         mgt->playing_item_index = mgt->current_item->index;
         mgt->playing_item_seq = mgt->current_item->seq;
         av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);

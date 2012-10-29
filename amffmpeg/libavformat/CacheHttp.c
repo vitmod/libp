@@ -31,7 +31,6 @@
 #include "libavutil/fifo.h"
 #include "CacheHttp.h"
 #include "hls_livesession.h"
-#include "amconfigutils.h"
 
 #include "bandwidth_measure.h" 
 
@@ -62,6 +61,7 @@ typedef struct {
     void * bandwidth_measure;
     pthread_t circular_buffer_thread;
     pthread_mutex_t  read_mutex;    
+    int is_first_read;
 
 } CacheHttpContext;
 
@@ -125,6 +125,7 @@ int CacheHttp_Open(void ** handle,const char* headers)
     s->finish_flag = 0;
     s->reset_flag = -1;
     s->have_list_end = -1;
+    s->is_first_read = 1;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     float value=0.0;
@@ -135,7 +136,6 @@ int CacheHttp_Open(void ** handle,const char* headers)
     else{
     	s->fifo = av_fifo_alloc(value);
     }
-          
     pthread_mutex_init(&s->read_mutex,NULL);
     
     s->EXIT = 0;
@@ -162,7 +162,20 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     if (s->fifo) {
     	int avail;
        avail = av_fifo_size(s->fifo);
-    	av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
+    	//av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
+        if(s->is_first_read>0){
+            float value = 0.0;
+            int ret = -1;        
+            ret = am_getconfig_float("libplayer.hls.initial_buffered", &value);
+            if(ret>=0){
+                if(avail/1024<value){
+                    //av_log(NULL, AV_LOG_INFO, "buffer data avail=%d, initial buffer buffered data size=%f  ",avail,value*1024);                   
+                    pthread_mutex_unlock(&s->read_mutex);
+                    return AVERROR(EAGAIN);
+                }
+            }
+            s->is_first_read = 0;
+        }
 	if(url_interrupt_cb()) {
 	    pthread_mutex_unlock(&s->read_mutex);
 	    return 0;
@@ -431,8 +444,24 @@ FAIL:
         CacheHttp_ffurl_close(h);
     s->hd = NULL;
     s->EXITED = 1;
-
-    av_log(NULL,AV_LOG_INFO,"--------> CacheHttp thread quit !");
+    
     return NULL;
+}
+
+
+int CacheHttp_GetBufferPercentage(void *_handle,int* per){
+    int ret = 0;
+    int total = 0;
+    if(!_handle){
+        return AVERROR(EIO);
+    }
+    CacheHttpContext * s = (CacheHttpContext *)_handle; 
+    pthread_mutex_lock(&s->read_mutex);
+   
+    total = av_fifo_size(s->fifo);
+    *per  = (int)total*100/CIRCULAR_BUFFER_SIZE;
+    *per = ret;
+    pthread_mutex_unlock(&s->read_mutex);
+    return 0;
 }
 

@@ -30,5 +30,6 @@
  int CacheHttp_GetSpeed(void * handle, int * arg1, int * arg2, int * arg3);
  int CacheHttp_Reset(void * handle);
  int CacheHttp_GetBuffedTime(void *handle);
+ int CacheHttp_GetBufferPercentage(void *handle,int* per);//from 0~100
  
  #endif
