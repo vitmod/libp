@@ -410,7 +410,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->strategy_down_counts = 0;
     mgt->listclose = 0;
     mgt->cur_uio = NULL;
-
+    mgt->codec_buf_level=-1;
 
     char headers[1024];
     char sess_id[40];
@@ -886,7 +886,17 @@ static int list_get_handle(URLContext *h)
 {
     return (intptr_t) h->priv_data;
 }
-
+static int list_setcmd(URLContext *h, int cmd,int flag,unsigned long info)
+{
+    struct list_mgt *mgt = h->priv_data;
+    int ret=-1;
+    if(AVCMD_SET_CODEC_DATA_LEVEL==cmd){
+        mgt->codec_buf_level=info;
+	 av_log(NULL, AV_LOG_INFO, "list_setcmd codec buf level=%d\n",(int)info);
+        ret=0;
+    }
+    return ret;
+}
 URLProtocol file_list_protocol = {
     .name = "list",
     .url_open = list_open,
@@ -896,6 +906,7 @@ URLProtocol file_list_protocol = {
     .url_close = list_close,
     .url_exseek = list_seek, /*same as seek is ok*/
     .url_get_file_handle = list_get_handle,
+    .url_setcmd = list_setcmd,
 };
 list_item_t* getCurrentSegment(void* hSession)
 {

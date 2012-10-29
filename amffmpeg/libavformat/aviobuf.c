@@ -371,7 +371,13 @@ int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags)
 	}
 	return AVERROR(EPIPE);
 }
-
+int url_setcmd(AVIOContext *s, int cmd,int flag,unsigned long info)
+{
+    if(s->url_setcmd){
+        s->url_setcmd(s->opaque,cmd,flag,info);
+    }
+    return 0;
+}
 int64_t url_fbuffered_time(AVIOContext *s)
 {
 	int64_t bufferedtime;
@@ -1054,6 +1060,7 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 	(*s)->fastdetectedinfo = h->fastdetectedinfo;
 #endif
 	(*s)->support_time_seek = h->support_time_seek;
+       (*s)->url_setcmd = h->prot->url_setcmd;
 	(*s)->reallocation=h->location;
     if(h->prot&&h->prot->name)
 	 if (h->prot&&h->prot->name &&!strncmp( h->prot->name, "cmf", 3)) {

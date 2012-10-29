@@ -954,7 +954,7 @@ static int  update_buffering_states(play_para_t *p_para,
     } else {
         vlevel = 0;
     }
-
+    ffmpeg_seturl_buffered_level(p_para,(int)(10000*(alevel<vlevel?(alevel):(vlevel))));
     if (p_para->buffering_enable && p_para->buffering_start_time_s > 0) {
         /*reset  buffering parameters for  frame rate*/
         int bitrate = 0;

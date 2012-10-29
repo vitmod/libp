@@ -901,6 +901,7 @@ void *player_thread(play_para_t *player)
     update_playing_info(player);
     update_player_states(player, 1);
     player_mate_init(player, 1000 * 10);
+    ffmpeg_seturl_buffered_level(player,0);	
     if (player->vstream_info.video_format == VFORMAT_SW) {
         log_print("Use SW video decoder\n");
 

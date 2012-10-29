@@ -112,6 +112,12 @@ int ffmpeg_buffering_data(play_para_t *para)
         return -1;
     }
 }
+int ffmpeg_seturl_buffered_level(play_para_t *para,int levelx10000)
+{
+    if(para&& para->pFormatCtx && para->pFormatCtx->pb)
+        url_setcmd(para->pFormatCtx->pb,AVCMD_SET_CODEC_DATA_LEVEL,0,levelx10000);	
+    return 0;
+}
 int ffmpeg_close_file(play_para_t *am_p)
 {
     AVFormatContext *pFCtx = am_p->pFormatCtx;

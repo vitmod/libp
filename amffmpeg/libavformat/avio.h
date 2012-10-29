@@ -68,6 +68,8 @@ typedef struct {
     int (*read_packet)(void *opaque, uint8_t *buf, int buf_size);
     int (*write_packet)(void *opaque, uint8_t *buf, int buf_size);
     int64_t (*seek)(void *opaque, int64_t offset, int whence);
+
+    int (*url_setcmd)(void *opaque, int cmd,int flag,unsigned long info);
     int64_t pos;            /**< position in the file of the current buffer */
     int must_flush;         /**< true if the next seek should flush */
     int eof_reached;        /**< true if eof reached */
@@ -174,6 +176,9 @@ typedef struct URLProtocol {
 #define AVCMD_TOTAL_DURATION			 (1000+8)
 #define AVCMD_TOTAL_NUM			        (1000+9)
     int (*url_getinfo)(URLContext *h, int cmd,int flag,void*info);
+
+ #define AVCMD_SET_CODEC_DATA_LEVEL		(3000+1)//info=buffer data level*10000,-1 is codec not init.
+    int (*url_setcmd)(URLContext *h, int cmd,int flag,unsigned long info);
 } URLProtocol;
 
 typedef struct URLPollEntry {
@@ -735,7 +740,7 @@ int url_lp_clear_seekflags(URLContext *s,int seekflagmask);
 
 int url_start_user_seek(AVIOContext *s);
 int url_finished_user_seek(AVIOContext *s);
-
+int url_setcmd(AVIOContext *s, int cmd,int flag,unsigned long info);
 #include "libavformat/url.h"
 #include "libavformat/aviolpbuf.h"
 
