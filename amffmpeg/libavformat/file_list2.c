@@ -415,7 +415,7 @@ static int switch_bw_level(struct list_mgt * mgt, int updown){
     }else if(updown<0){
         if(mgt->playing_variant->priority==0||
             mgt->playing_variant->priority-updown<0){
-            av_log(NULL,AV_LOG_WARNING,"failed to switch bandwidth,up level:%d\n",updown);
+            av_log(NULL,AV_LOG_WARNING,"failed to switch bandwidth,down level:%d\n",updown);
         }else{            
            priority = mgt->playing_variant->priority-updown;
 
@@ -632,7 +632,7 @@ static float get_adaptation_ex_para(int type){
     }else if(type == 2){
         ret = am_getconfig_float("libplayer.hls.downcounts", &value);
     }else if(type == 3){
-        ret = am_getconfig_float("libplayer.hls.switchsteps", &value);
+        ret = am_getconfig_float("libplayer.hls.fixed_bw", &value);
         if(ret<0){
             ret = 0;
         }
@@ -703,8 +703,16 @@ static int select_best_variant(struct list_mgt *c)
 
 
     }else if(vf ==MANUAL_ADAPTIVE){
-        int steps = (int)get_adaptation_ex_para(0);
-        return switch_bw_level(c,steps);   
+        int fix_bw = (int)get_adaptation_ex_para(3);
+        int expected_level_index = switch_bw_level(c,0); //get current index
+        for (i = 0; i < c->n_variants; i++) {
+        struct variant *v = c->variants[i];
+            if (v->bandwidth == fix_bw) {
+                expected_level_index = i;
+                break;
+            }  
+        }
+        return expected_level_index;   
     }
     
     int up_counts = get_adaptation_ex_para(1);
@@ -1052,7 +1060,7 @@ static int list_setcmd(URLContext *h, int cmd,int flag,unsigned long info)
     int ret=-1;
     if(AVCMD_SET_CODEC_DATA_LEVEL==cmd){
         mgt->codec_buf_level=info;
-	 av_log(NULL, AV_LOG_INFO, "list_setcmd codec buf level=%d\n",(int)info);
+	 //av_log(NULL, AV_LOG_INFO, "list_setcmd codec buf level=%d\n",(int)info);
         ret=0;
     }
     return ret;
