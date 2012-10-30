@@ -48,6 +48,11 @@ static int list_shrink_live_list(struct list_mgt *mgt);
 static int generate_playback_session_id(char * ssid, int size);
 static int generate_segment_session_id(char * ssid, int size);
 
+static float get_adaptation_ex_para(int type);
+#define HLS_RATETAG "amffmpeg-hls"
+
+#define RLOG(...) av_tag_log(HLS_RATETAG,__VA_ARGS__)
+
 int generate_playback_session_id(char * ssid, int size)
 {
     AVLFG rnd;
@@ -374,22 +379,34 @@ static int  fast_sort_streams(struct list_mgt * mgt){
         }           
     }
 
+
     ret = am_getconfig_float("libplayer.hls.bw_start", &value);
     if(ret>=0&&value>0){
         for (i=0; i < mgt->n_variants; i++){
             var = mgt->variants[i];
-            if(var->priority>=0&&var->bandwidth==(int)value){
-                mgt->playing_variant= var;
+            if(var->priority==(int)value){
+                mgt->playing_variant= var;                
                 break;
             }
         }        
 
     }else{
+        ret =(int)get_adaptation_ex_para(3);
         for (i=0; i < mgt->n_variants; i++){
             var = mgt->variants[i];
-            if(var->priority>=0){
-                mgt->playing_variant= var;
-                break;
+            if(ret>=0){
+               
+                if(var->priority==ret){
+                    
+                    mgt->playing_variant= var;
+                    break;
+                }               
+            }else{
+                if(var->priority>=0){
+                   
+                    mgt->playing_variant= var;
+                    break;
+                }
             }
         }         
 
@@ -643,94 +660,79 @@ static float get_adaptation_ex_para(int type){
     }else{
         ret = value;
     }
-    av_log(NULL, AV_LOG_INFO,"just get adaptation extend parameter: %f\n",ret);
+    av_log(NULL, AV_LOG_INFO,"just get adaptation extend parameter(value:%d): %f\n",type,ret);
     return ret;
 
 }
 
-static int select_best_variant(struct list_mgt *c)
-{
-    int i;
-    int best_index = -1, best_band = -1;
+
+
+#define COMP_IGNORE_ZONE   1024*10  //10k
+#define DEF_UP_COUNTS  1
+#define DEF_DOWN_COUNTS 1
+
+static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
+    int mean_bps, fast_bps, avg_bps,ret = -1;
+    int measure_bw =0;
+    float net_sensitivity=get_adaptation_ex_para(0);
+     
+    ret =CacheHttp_GetSpeed(c->cache_http_handle, &fast_bps, &mean_bps, &avg_bps);
+    measure_bw = mean_bps;
+    RLOG("hls current bandwidth=%dbps",measure_bw);
+    if(net_sensitivity>0){
+        measure_bw*=net_sensitivity;
+    }
+    
+    if(measure_bw>c->playing_variant->bandwidth+COMP_IGNORE_ZONE){
+        c->strategy_up_counts++;
+        if(c->strategy_down_counts>0){
+            c->strategy_down_counts=0;
+        }
+        int upcounts = DEF_UP_COUNTS;
+        ret = (int)get_adaptation_ex_para(1);
+        if(ret>0){
+            upcounts = ret;
+        }
+        if(c->strategy_up_counts>=upcounts){//increase speed
+            *measued_bw = measure_bw;
+            return 1;
+        }        
+        
+    }else if(measure_bw<c->playing_variant-COMP_IGNORE_ZONE){
+        c->strategy_down_counts++;
+        if(c->strategy_up_counts>0){
+            c->strategy_up_counts=0;
+        }
+        int downcounts = DEF_DOWN_COUNTS;
+        ret = (int)get_adaptation_ex_para(2);
+        if(ret>0){
+            downcounts = ret;
+        }
+        if(c->strategy_down_counts>=downcounts){//decrease speed
+            *measued_bw  = measure_bw;
+            return -1;
+        }           
+    }else{//keep original speed
+        *measued_bw  = measure_bw;
+        return 0;
+    }
+
+    return 0;
+
+}
+
+static  struct variant* hls_get_right_variant(struct list_mgt* c,int bw){
+    int best_index = -1,best_band = -1;
     int min_index = 0, min_band = -1;
     int max_index = 0, max_band = -1;
-    int m, f, a;
-    AdaptationProfile vf;
-    // Consider only 80% of the available bandwidth usable.
-    CacheHttp_GetSpeed(c->cache_http_handle, &f, &m, &a);
-    vf = get_adaptation_profile();
-    
-    //int bandwidthBps = (a * 8) / 10;
-    if (m < 1||vf ==CONSTANT_ADAPTIVE) {
-        int org_playing_index = -1;
-        for (i = 0; i < c->n_variants; i++) {
-            struct variant *v = c->variants[i];
-            if (v->bandwidth == c->playing_variant->bandwidth) {
-                org_playing_index = i;
-                break;
-            }
-        }
-        return org_playing_index;
-    }
-    
-    int bandwidthBps = m;
-    if(vf == CONSERVATIVE_ADAPTIVE){
-        float sensitivity =get_adaptation_ex_para(0);
-        if(sensitivity!=-1&&sensitivity>0.5&&sensitivity<1){
-            bandwidthBps*=sensitivity;
-        }else{
-            bandwidthBps*=0.8;
-        }
-    }else if(vf ==MEAN_ADAPTIVE){
-        int cache_buf_level = 0,codec_buf_level = 0;
-        CacheHttp_GetBufferPercentage(c->cache_http_handle,&cache_buf_level);
-        codec_buf_level = c->codec_buf_level/100;
-        av_log(NULL,AV_LOG_INFO,"cache http buffer pecentage:%d \%,av buffer level:%d \%\n",cache_buf_level,codec_buf_level);
-        int playing_index = -1;
-        
-        if(bandwidthBps>=c->playing_variant->bandwidth&&(codec_buf_level>5&&codec_buf_level<=10||codec_buf_level<=5&&c->playing_variant->priority==0)){
-      
-            playing_index = switch_bw_level(c,0);
-            return playing_index;
-        }else if(bandwidthBps<c->playing_variant->bandwidth&&codec_buf_level<5){  
-            playing_index = switch_bw_level(c,-1);      
-            return playing_index;
-
-        }else if(bandwidthBps>=c->playing_variant->bandwidth&&codec_buf_level>10){
-            playing_index = switch_bw_level(c,1);      
-            return playing_index;
-
-        }
-
-
-    }else if(vf ==MANUAL_ADAPTIVE){
-        int fix_bw = (int)get_adaptation_ex_para(3);
-        int expected_level_index = switch_bw_level(c,0); //get current index
-        for (i = 0; i < c->n_variants; i++) {
-        struct variant *v = c->variants[i];
-            if (v->bandwidth == fix_bw) {
-                expected_level_index = i;
-                break;
-            }  
-        }
-        return expected_level_index;   
-    }
-    
-    int up_counts = get_adaptation_ex_para(1);
-    if(up_counts == -1){
-        up_counts = 1;
-    }
-    int down_counts = get_adaptation_ex_para(2);
-    if(down_counts == -1){
-        down_counts = 1;
-    }
+    int i =0;
     for (i = 0; i < c->n_variants; i++) {
         struct variant *v = c->variants[i];
-        if (v->bandwidth <= bandwidthBps && v->bandwidth > best_band && v->bandwidth > AUDIO_BANDWIDTH_MAX) {
+        if (v->bandwidth <= bw && v->bandwidth > best_band && v->priority>=0) {
             best_band = v->bandwidth;
             best_index = i;
         }
-        if (v->bandwidth > AUDIO_BANDWIDTH_MAX && (v->bandwidth < min_band || min_band < 0)) {
+        if ((v->bandwidth < min_band || min_band < 0)&&v->priority>=0) {
             min_band = v->bandwidth;
             min_index = i;
         }
@@ -742,43 +744,111 @@ static int select_best_variant(struct list_mgt *c)
     if (best_index < 0) { /*no low rate streaming found,used the lowlest*/
         best_index = min_index;
     }
+    av_log(NULL, AV_LOG_INFO, "select best bandwidth,index:%d,bandwidth:%d,priority:%d\n", \
+        best_index, c->variants[best_index]->bandwidth, c->variants[best_index]->priority);
+    return c->variants[best_index];
+}
+static int hls_aggressive_adaptive_bw_set(struct list_mgt* c,int bw){
+    struct variant* var = hls_get_right_variant(c,bw);
+    if(c->playing_variant->bandwidth != var->bandwidth){
+        c->playing_variant = var;
+        return 0;
+    }
+    return -1;
+}
 
-    if (c->playing_variant->bandwidth > c->variants[best_index]->bandwidth) {
-        c->strategy_down_counts++;
-        if (c->strategy_down_counts == down_counts) {
-            c->strategy_down_counts = 0;
-            return best_index;
-        } else {
-            int playing_index = -1;
-            for (i = 0; i < c->n_variants; i++) {
-                struct variant *v = c->variants[i];
-                if (v->bandwidth == c->playing_variant->bandwidth) {
-                    playing_index = i;
-                    break;
-                }
-            }
-            return playing_index;
-        }
+#define CODEC_BUFFER_LOW_FLAG  5
+#define CODEC_BUFFER_HIGH_FLAG 10
 
-    } else if (c->playing_variant->bandwidth < c->variants[best_index]->bandwidth) {
-        c->strategy_up_counts++;
-        if (c->strategy_up_counts == up_counts) {
-            c->strategy_up_counts = 0;
-            return best_index;
-        } else {
-            int playing_index = -1;
-            for (i = 0; i < c->n_variants; i++) {
-                struct variant *v = c->variants[i];
-                if (v->bandwidth == c->playing_variant->bandwidth) {
-                    playing_index = i;
-                    break;
-                }
-            }
-            return playing_index;
+static int hls_mean_adaptive_bw_set(struct list_mgt* c,int flag){
+    int cache_buf_level = 0,codec_buf_level = 0;
+    CacheHttp_GetBufferPercentage(c->cache_http_handle,&cache_buf_level);
+    codec_buf_level = c->codec_buf_level/100;
+    av_log(NULL,AV_LOG_INFO,"cache http buffer pecentage:%% %d,av buffer level:%%%d \%\n",cache_buf_level,codec_buf_level);
+    int playing_index = -1;
+    
+    if(codec_buf_level>CODEC_BUFFER_LOW_FLAG&&codec_buf_level<=CODEC_BUFFER_HIGH_FLAG \
+        ||codec_buf_level<=CODEC_BUFFER_LOW_FLAG&&c->playing_variant->priority==0){
+        playing_index = switch_bw_level(c,0);
+        
+    }else if(flag<0&&codec_buf_level<CODEC_BUFFER_LOW_FLAG){  
+        playing_index = switch_bw_level(c,-1);      
+        
+
+    }else if(flag>0&&codec_buf_level>CODEC_BUFFER_HIGH_FLAG){
+        playing_index = switch_bw_level(c,1); 
+    }
+    if(c->playing_variant->bandwidth!= c->variants[playing_index]->bandwidth){
+        c->playing_variant = c->variants[playing_index];
+        return 0;
+
+    }else{
+        return -1;    
+    }
+
+}
+
+static int hls_manual_adaptive_bw_set(struct list_mgt* c){
+    int priority = (int)get_adaptation_ex_para(3);
+    int i;
+    int is_found = -1;
+    for(i=0;i<c->n_variants;i++){
+        struct variant* var = c->variants[i];
+        if(priority!=c->playing_variant->priority&&var->priority ==priority){           
+            c->playing_variant = var;
+            is_found = 1;
+            break;
         }
     }
-    av_log(NULL, AV_LOG_INFO, "select best bandwidth,index:%d,bandwidth:%d\n", best_index, c->variants[best_index]->bandwidth);
-    return best_index;
+
+    if(is_found>0){
+        return 0;
+
+    }else{
+        return -1;
+    }
+  
+}
+static int select_best_variant(struct list_mgt *c)
+{
+    int cur_bw =0;
+    int flag = -1;
+    int change_flag = 0;
+    int ret =-1;
+    int adaptive_profile = get_adaptation_profile();
+    flag = hls_common_bw_adaptive_check(c,&cur_bw);
+
+    switch(adaptive_profile){
+        case CONSTANT_ADAPTIVE:           
+        case MANUAL_ADAPTIVE:
+            ret = hls_manual_adaptive_bw_set(c);
+            if(ret ==0){
+                
+                change_flag = 1;
+            }
+            break;
+        case AGREESSIVE_ADAPTIVE:            
+        case CONSERVATIVE_ADAPTIVE:
+            if(flag!=0){
+                ret = hls_aggressive_adaptive_bw_set(c,cur_bw);
+                if(ret==0){
+                    change_flag = 1;
+                }
+            }            
+            break;
+        case MEAN_ADAPTIVE:
+            
+            ret = hls_mean_adaptive_bw_set(c,flag);
+            if(ret==0){
+                change_flag =1;
+            }
+            break;
+        default:
+            break;
+    }
+
+    return change_flag;
+
 }
 static struct list_item * switchto_next_item(struct list_mgt *mgt) {
     struct list_item *next = NULL;
@@ -791,8 +861,8 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
         mgt->playing_item_index = mgt->current_item->index;
         mgt->playing_item_seq = mgt->current_item->seq;
         av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
-        int estimate_index = select_best_variant(mgt);
-        if (mgt->playing_variant->bandwidth != mgt->variants[estimate_index]->bandwidth) { //will remove this tricks.
+        int is_switch = select_best_variant(mgt);
+        if (is_switch>0) { //will remove this tricks.
 
             if (mgt->item_num > 0) {
                 list_delall_item(mgt);
@@ -803,8 +873,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
             mgt->next_seq = -1;
             mgt->next_index = 0;
             mgt->item_num = 0;
-            mgt->full_time = 0;
-            mgt->playing_variant = mgt->variants[estimate_index];
+            mgt->full_time = 0;            
 
             if(mgt->cur_uio){
                 url_fclose(mgt->cur_uio);
