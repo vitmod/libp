@@ -943,7 +943,7 @@ static int  update_buffering_states(play_para_t *p_para,
 {
     float alevel, vlevel;
     float minlevel, maxlevel;
-
+    float avlevel;
     if (abuf->size > 0) {
         alevel = (float)abuf->data_len / abuf->size;
     } else {
@@ -954,7 +954,25 @@ static int  update_buffering_states(play_para_t *p_para,
     } else {
         vlevel = 0;
     }
-    ffmpeg_seturl_buffered_level(p_para,(int)(10000*(alevel<vlevel?(alevel):(vlevel))));
+    if (p_para->astream_info.has_audio && p_para->vstream_info.has_video) {
+        minlevel = MIN(alevel, vlevel);
+        maxlevel = MAX(alevel, vlevel);
+    } else if (p_para->astream_info.has_audio) {
+        minlevel = alevel;
+        maxlevel = alevel;
+    } else {
+        minlevel = vlevel;
+        maxlevel = vlevel;
+    }
+    minlevel = MIN(alevel, vlevel);
+    maxlevel = MAX(alevel, vlevel);	
+    avlevel=minlevel;
+    if(maxlevel>0.8){
+	avlevel+=maxlevel-0.8;
+	avlevel=MIN(avlevel, 1);
+    }
+    ffmpeg_seturl_buffered_level(p_para,(int)(10000*avlevel));
+    
     if (p_para->buffering_enable && p_para->buffering_start_time_s > 0) {
         /*reset  buffering parameters for  frame rate*/
         int bitrate = 0;
@@ -1025,17 +1043,6 @@ static int  update_buffering_states(play_para_t *p_para,
 
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
-        if (p_para->astream_info.has_audio && p_para->vstream_info.has_video) {
-            minlevel = MIN(alevel, vlevel);
-            maxlevel = MAX(alevel, vlevel);
-        } else if (p_para->astream_info.has_audio) {
-            minlevel = alevel;
-            maxlevel = alevel;
-        } else {
-            minlevel = vlevel;
-            maxlevel = vlevel;
-        }
-
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&
             (minlevel < p_para->buffering_threshhold_min)  &&
             (maxlevel < p_para->buffering_threshhold_max * 3 / 4) &&
