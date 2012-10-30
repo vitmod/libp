@@ -205,7 +205,7 @@ int64_t avio_seek(AVIOContext *s, int64_t offset, int whence)
             return offset1;
         offset += offset1;
     }
-	
+
     offset1 = offset - pos;
     if (!s->must_flush &&
         offset1 >= 0 && offset1 <= (s->buf_end - s->buffer)) {
@@ -989,6 +989,8 @@ int ffio_fdopen_resetlpbuf(AVIOContext *s,int lpsize)
 		ret=ffio_init_context(s, s->buffer, s->buffer_size,
 		          h->flags & AVIO_FLAG_WRITE, h,
 		         (void*)ffurl_read, (void*)ffurl_write, (void*)ffurl_seek);
+              (s)->exseek=NULL;
+		(s)->enabled_lp_buffer=0;
 	}
 	s->pos=old_pos;
 	return ret;
@@ -1062,8 +1064,7 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 	(*s)->support_time_seek = h->support_time_seek;
        (*s)->url_setcmd = h->prot->url_setcmd;
 	(*s)->reallocation=h->location;
-    if(h->prot&&h->prot->name)
-	 if (h->prot&&h->prot->name &&!strncmp( h->prot->name, "cmf", 3)) {
+	 if (h->prot&&h->prot->name &&(!strncmp( h->prot->name, "cmf", 3) || !strncmp( h->prot->name, "list", 4))) {
 	 	(*s)->iscmf=1;
 	 }
     (*s)->seekable = h->is_streamed ? 0 : AVIO_SEEKABLE_NORMAL;

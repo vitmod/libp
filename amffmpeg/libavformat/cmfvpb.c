@@ -33,6 +33,7 @@
 #include "isom.h"
 #include "libavcodec/get_bits.h"
 #include "avio.h"
+#include <stdio.h>
 
 #include "cmfvpb.h"
 
@@ -56,6 +57,10 @@ static int cmfvpb_open(struct cmfvpb *cv , int index)
     ret = cv->input->prot->url_getinfo(cv->input, AVCMD_SLICE_STARTTIME, 0 , &cv->start_time);
     ret = cv->input->prot->url_getinfo(cv->input, AVCMD_SLICE_ENDTIME, 0 , &cv->end_time);
 
+    if(cv->start_offset == -1)
+        cv->start_offset = 0;
+    if(cv->size == -1)
+        cv->size =0;
     cv->end_offset = cv->start_offset + cv->size;
     cv->curslice_duration=cv->end_time-cv->start_time;
     cv->seg_pos = 0;
@@ -127,10 +132,30 @@ static int cmfvpb_read(URLContext *v, uint8_t *buf, int buf_size)
         av_log(NULL, AV_LOG_INFO, "cmfvpb_read failed\n");
         return -1;
     }
-    rsize = FFMIN(buf_size, cv->size -cv->seg_pos);
-    len = ffurl_read(cv->input, buf, buf_size);
+    if(cv->size == 0)
+        rsize = buf_size;
+    else
+        rsize = FFMIN(buf_size, cv->size -cv->seg_pos);
+    //len = ffurl_read(cv->input, buf, buf_size);
+RETRY:
+    len = ffurl_read(cv->input, buf, rsize);
+    if(len == AVERROR(EAGAIN))
+        goto RETRY;
+    
+#if 0
+    if(len > 0) {
+        FILE *fp = NULL;
+        fp = fopen("/temp/cmf_0.ts", "ab+");
+        if(fp) {
+            fwrite(buf, 1, len, fp);
+            fflush(fp);
+            fclose(fp);
+        }
+    }
+#endif
+
     if (len < 0) {
-        av_log(NULL, AV_LOG_INFO, "cmfvpb_read failed\n");
+        av_log(NULL, AV_LOG_INFO, "cmfvpb_read failed  len=%d\n",len);
         return -1;
     }
     cv->seg_pos += len;
@@ -224,7 +249,8 @@ int cmfvpb_dup_pb(AVIOContext *pb, struct cmfvpb **cmfvpb, int index)
     cv->vlpcontext.priv_data = cv; 
     cv->vlpcontext.prot = &cv->alcprot;
     cv->vlpcontext.is_slowmedia=1;
-
+    cv->vlpcontext.is_streamed=0;
+    cv->vlpcontext.support_time_seek = 0;
     ret= cmfvpb_open(cv, index);
     if (ret < 0){
         av_log(NULL, AV_LOG_INFO, "cmfvpb_open failed %s---%d \n",__FUNCTION__,__LINE__);
@@ -238,25 +264,27 @@ int cmfvpb_dup_pb(AVIOContext *pb, struct cmfvpb **cmfvpb, int index)
     }
     memcpy(vpb, pb, sizeof(*pb));
     vpb->iscmf=0;
+    vpb->is_slowmedia=1;
+    vpb->is_streamed=0;
+    vpb->support_time_seek = 0;
     read_buffer = av_malloc(INITIAL_BUFFER_SIZE);
     if (!read_buffer) {
         av_free(cv);
         return AVERROR(ENOMEM);
     }
 
-   
     lpbufsize= (int)cv->size;//the size must be deal with;
 
     if (lpbufsize >IO_LP_BUFFER_SIZE) {
          lpbufsize= IO_LP_BUFFER_SIZE;
-   }    
+   }  
     av_log(NULL, AV_LOG_INFO, "cmfvpb_LPBUF cv->size[%lld] [%lld]M   lpbuf [%d][%d]M      cv->vlpcontext.is_slowmedia=[%d]\n",cv->size,(cv->size/(1024*1024)),lpbufsize,(lpbufsize/(1024*1024)),cv->vlpcontext.is_slowmedia);
     if(url_lpopen_ex(&cv->vlpcontext,lpbufsize,AVIO_FLAG_READ,cmfvpb_read,cmfvpb_seek)==0){
                 ffio_init_context(vpb, read_buffer, INITIAL_BUFFER_SIZE, 0, cv,
                      cmfvpb_lpread, NULL, cmfvpb_lpseek);
 	}
     vpb->exseek = cmfvpb_lpexseek;
-
+    vpb->seekable=!vpb->is_streamed;
     cv->pb = vpb;
     *cmfvpb = cv;
     return 0;

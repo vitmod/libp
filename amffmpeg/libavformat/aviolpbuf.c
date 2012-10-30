@@ -168,6 +168,7 @@ int url_lpopen(URLContext *s,int size)
 	return 0;
 }
 
+#if 0
 int url_lpopen_ex(URLContext *s,
 			int size,
 			int flags,
@@ -190,6 +191,36 @@ int url_lpopen_ex(URLContext *s,
 		uc->prot->flags=uc->flags ;
 	}else{
 	}
+	return ret;
+}
+#endif
+
+int url_lpopen_ex(URLContext *s,
+			int size,
+			int flags,
+	 	    	int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
+                  	int64_t (*seek)(void *opaque, int64_t offset, int whence))
+{
+       int ret;    
+	URLContext   *uc=s;
+       if (!uc->prot){
+            av_log(NULL,AV_LOG_INFO,"url_lpopen_ex failed\n");
+            return -1;
+      }
+	uc->av_class = NULL;
+	uc->filename = (char *)NULL;
+	uc->flags = flags;
+	uc->is_streamed = 0; 	      /* default = not streamed */
+	uc->max_packet_size = 0;  /* default: stream file */
+	uc->prot->url_read=read_packet;
+	uc->prot->url_seek=seek;
+	uc->prot->url_exseek=seek;
+	uc->prot->flags=uc->flags ;    
+	ret=url_lpopen(uc,size);
+      if (ret < 0){
+            av_log(NULL,AV_LOG_INFO," url_lpopen -failed\n");
+            return -1;
+      } 
 	return ret;
 }
 

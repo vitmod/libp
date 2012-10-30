@@ -31,6 +31,7 @@
 #include "avformat.h"
 #include "avio_internal.h"
 #include "flv.h"
+#include <stdio.h>
 
 typedef struct {
     int wrong_dts; ///< wrong dts due to negative cts

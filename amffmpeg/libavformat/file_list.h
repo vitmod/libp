@@ -79,11 +79,11 @@ struct AES128KeyContext{
 typedef struct list_item
 {
     const char *file;
+    int64_t item_size;
     int 	   flags;
     int         have_list_end;
     double  	start_time;
     double		duration;
-    int64_t file_size;
     int 	bandwidth;
     int 	seq;
     int    index;
@@ -112,6 +112,7 @@ typedef struct list_mgt
     int next_index;
     struct list_item *current_item;
     int playing_item_index;
+    int cmf_item_index;
     int playing_item_seq;
     int strategy_up_counts;
     int strategy_down_counts;

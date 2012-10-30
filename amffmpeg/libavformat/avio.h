@@ -717,6 +717,7 @@ static inline int url_support_time_seek(AVIOContext *s)
 	URLContext *h;	
 	if (!s)
 		return 0;
+#if 0
 	if(!s->support_time_seek && s->opaque){
 		h = (URLContext *)s->opaque;
 		if(h && h->support_time_seek){
@@ -724,6 +725,7 @@ static inline int url_support_time_seek(AVIOContext *s)
 			av_log(NULL, AV_LOG_INFO, "[url_support_time_seek]for h->support_time_seek, so s->support_time_seek = 1\n");
 		}
 	}
+#endif
 	return s->support_time_seek;
 }
  int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags);

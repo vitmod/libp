@@ -339,8 +339,19 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
         if (score > score_max) {
             score_max = score;
             fmt = fmt1;
-        }else if (score == score_max)
+        }else if (score == score_max) {
+            if(score == AVPROBE_SCORE_MAX) {
+                if(!strncmp(fmt->name, "cmf", 3)) {
+                    if(!strncmp(fmt1->name, "flv", 3) || !strncmp(fmt1->name, "mov", 3)) {
+                        continue;
+                    } else {
+                        fmt = fmt1;
+                        continue;
+                    }
+                }
+            }
             fmt = NULL;
+        }
     }
     *score_ret= score_max;
      if(lpd.pads[0] != 0) 
@@ -3039,6 +3050,7 @@ int av_find_stream_info(AVFormatContext *ic)
     int64_t old_offset=-1;
     int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
     av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d\n", __FUNCTION__, fast_switch);
+    //return 0;
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       

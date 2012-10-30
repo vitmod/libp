@@ -33,6 +33,7 @@
 #include "riff.h"
 #include "isom.h"
 #include "libavcodec/get_bits.h"
+#include <stdio.h>
 
 #if CONFIG_ZLIB
 #include <zlib.h>
@@ -53,7 +54,8 @@
 static int cmf_probe(AVProbeData *p)
 {
     if (p && p->s  && p->s->iscmf) {
-		return 101;
+	    //return 101;
+	    return AVPROBE_SCORE_MAX;
     }
     return 0;
 }
@@ -125,6 +127,10 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
     	}
         goto fail;
     }
+    if (!memcmp(bs->sctx->iformat->name,"flv",3)) {
+        ret=av_find_stream_info(bs->sctx);
+        av_log(s, AV_LOG_INFO, "xxx-------av_find_stream_info=%d",ret);
+    }
     if (first) {
         /* Create new AVStreams for each stream in this chip
              Add into the Best format ;
@@ -137,7 +143,6 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
             }
             avcodec_copy_context(st->codec, bs->sctx->streams[j]->codec);
         }
-
         for (i = 0; i < (int)s->nb_streams ; i++)   {
             AVStream *st = s->streams[i];
             AVStream *sst = bs->sctx->streams[i];
@@ -154,11 +159,12 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
         s->duration = newvpb->total_duration*1000;
         av_log(s, AV_LOG_INFO, "get duration  [%lld]us [%lld]ms [%lld]s\n", s->duration,newvpb->total_duration,(newvpb->total_duration/1000));
     }
-    av_log(s, AV_LOG_INFO, "seek ci->ctx->media_data_offset [%llx]\n", bs->sctx->media_dataoffset);
-    ret = avio_seek(bs->sctx->pb, bs->sctx->media_dataoffset, SEEK_SET);
-    if (ret < 0) {
-        av_log(s, AV_LOG_INFO, "avio_seek failed %s---%d \n",__FUNCTION__,__LINE__);
-        return ret;
+    if (memcmp(bs->sctx->iformat->name,"flv",3)) {
+        ret = avio_seek(bs->sctx->pb, bs->sctx->media_dataoffset, SEEK_SET);
+        if (ret < 0) {
+            av_log(s, AV_LOG_INFO, "avio_seek failed %s---%d \n",__FUNCTION__,__LINE__);
+            return ret;
+        }
     }
     bs->cmfvpb = newvpb;
 fail:
@@ -174,8 +180,13 @@ static int cmf_read_header(AVFormatContext *s, AVFormatParameters *ap)
     ap=ap;
     AVIOContext *pb=s->pb;
     if (pb->read_packet || pb->seek) {
+        ffio_fdopen_resetlpbuf(pb,0);
         ffio_init_context(pb, pb->buffer, pb->buffer_size, 0, pb->opaque,
                           NULL, NULL, NULL);/*reset old pb*/
+        pb->is_slowmedia=0;
+        pb->is_streamed=1;
+        pb->seekable=0;
+        pb->support_time_seek = 0;
     }
     return cmf_parser_next_slice(s, 0, 1);
 
@@ -190,19 +201,42 @@ static int cmf_read_packet(AVFormatContext *s, AVPacket *mpkt)
 retry_read:
     ci = cmf->cmfvpb;
 	
-	if(cmf->sctx!=NULL)
-    	ret = av_read_frame(cmf->sctx, &cmf->pkt);
-	else
-		ret = -1;
-	
+	if(cmf->sctx!=NULL) {
+    	    ret = av_read_frame(cmf->sctx, &cmf->pkt);
+#if 0
+           if(ret >= 0) {
+                FILE * fp = NULL;
+                fp = fopen("/temp/cmf_1.ts", "ab+");
+                if(fp) {
+                    fwrite(cmf->pkt.data, 1, cmf->pkt.size, fp);
+                    fflush(fp);
+                    fclose(fp);
+                }
+           }
+#endif
+	} else {
+	    ret = -1;
+	}
+
+    //if(ret == AVERROR(EAGAIN) && !memcmp(cmf->sctx->iformat->name,"flv",3))
+        //return ret;
+    if(ret == AVERROR(EAGAIN)) {
+        av_log(NULL, AV_LOG_ERROR,"-------->cmf_retry_read");
+        goto retry_read;
+    }
     if (ret < 0) {
+        av_log(NULL,AV_LOG_INFO,"----------->cmf_read_packet ret=%d", ret);
 		if(cmf->sctx){
        		cmf_flush_packet_queue(cmf->sctx);
 		}
         cmf_reset_packet(&cmf->pkt);
         url_lpreset(&ci->vlpcontext);
         cmf->parsering_index = cmf->parsering_index + 1;
-        av_log(s, AV_LOG_INFO, "\n--cmf_read_packet parsernextslice cmf->parsering_index[0x%llx]--\n", cmf->parsering_index);
+        if(!memcmp(cmf->sctx->iformat->name,"flv",3) && cmf->is_seeked) {
+            cmf->parsering_index--;
+            cmf->is_seeked = 0;
+        }
+        av_log(s, AV_LOG_INFO, "\n--cmf_read_packet parsernextslice cmf->parsering_index = %lld--\n", cmf->parsering_index);
         if (cmf->parsering_index >= ci->total_num){
             av_log(s, AV_LOG_INFO, " cmf_read_packet to lastindex,curindex [%lld] totalnum[%lld]\n", cmf->parsering_index,ci->total_num);
             return AVERROR_EOF;
@@ -223,6 +257,11 @@ retry_read:
     if (st_parent->start_time == AV_NOPTS_VALUE) {
         st_parent->start_time  = cmf->pkt.pts;
         av_log(s, AV_LOG_INFO, "first packet st->start_time [0x%llx] [0x%llx]\n", st_parent->start_time, cmf->pkt.stream_index);
+    }
+    *mpkt = cmf->pkt;
+
+    if(s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_AUDIO && (!memcmp(cmf->sctx->iformat->name,"mpegts",6)||!memcmp(cmf->sctx->iformat->name,"mpegps",6))) {
+        mpkt->flags|=AV_PKT_FLAG_AAC_WITH_ADTS_HEADER;
     }
     *mpkt = cmf->pkt;
     return 0;
@@ -274,21 +313,25 @@ int cmf_read_seek(AVFormatContext *s, int stream_index, int64_t sample_time, int
             av_log(s, AV_LOG_INFO, "cmf read_seek: seekbytime error seektimestamp[%lld]ms\n",seektimestamp);
             return -1;
         }
+        cmf->is_seeked = 1;
         cmfvpb_getinfo(ci,AVCMD_SLICE_INDEX,0,&ci->cur_index);
         cmfvpb_getinfo(ci, AVCMD_SLICE_START_OFFSET, 0, &ci->start_offset); 
-        cmfvpb_getinfo(ci, AVCMD_SLICE_SIZE, 0 , &ci->size);
+        //cmfvpb_getinfo(ci, AVCMD_SLICE_SIZE, 0 , &ci->size);
         cmfvpb_getinfo(ci, AVCMD_SLICE_STARTTIME, 0 , &ci->start_time);
         cmfvpb_getinfo(ci, AVCMD_SLICE_ENDTIME, 0 , &ci->end_time);
 
-        ci->end_offset = ci->start_offset + ci->size;
+        //ci->end_offset = ci->start_offset + ci->size;
         ci->curslice_duration=ci->end_time-ci->start_time;
         
         cmf->parsering_index = ci->cur_index;
         remain_seektime = seektimestamp - ci->start_time;
         cmf_flush_packet_queue(cmf->sctx);
         cmf_reset_packet(&cmf->pkt);
-        av_log(s, AV_LOG_INFO, "cmf read_seek:OUT_CUR_SLICE switchtoincurindex index[%lld] seektimestamp[%lld]ms start-end [%lld--%lld]ms  remainseektime[%lld]ms\n",ci->cur_index,seektimestamp,ci->start_time,ci->end_time,remain_seektime);
         ret = cmf_parser_next_slice(s, cmf->parsering_index, 0);
+        cmfvpb_getinfo(ci, AVCMD_SLICE_SIZE, 0 , &ci->size);
+        ci->end_offset = ci->start_offset + ci->size;
+        av_log(s, AV_LOG_INFO, "cmf read_seek:OUT_CUR_SLICE switchtoincurindex index[%lld] seektimestamp[%lld]ms start-end [%lld--%lld]ms  remainseektime[%lld]ms\n",ci->cur_index,seektimestamp,ci->start_time,ci->end_time,remain_seektime);
+
         if (ret>=0) {
              av_log(s, AV_LOG_INFO, "cmf read_seek:switchto incurindex index[%lld] seektimestamp[%lld]ms starttime[%lld]ms endtime[%lld]ms remainseektime[%lld]ms\n",ci->cur_index,seektimestamp,ci->start_time,ci->end_time,remain_seektime);
             //parser succeed,seek in cur slice;

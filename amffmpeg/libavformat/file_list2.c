@@ -541,6 +541,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->strategy_up_counts = 0;
     mgt->strategy_down_counts = 0;
     mgt->listclose = 0;
+    mgt->cmf_item_index = 0;
     mgt->cur_uio = NULL;
     mgt->codec_buf_level=-1;
 
@@ -938,7 +939,6 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
             break;
         }
     } while (counts-- > 0);
-    
     return len;
 }
 
@@ -972,10 +972,12 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
     }
 
     if (whence == AVSEEK_SIZE) {
+        av_log(NULL, AV_LOG_INFO, "----------->listseek AVSEEK_SIZE");
         return mgt->file_size;
     }
     av_log(NULL, AV_LOG_INFO, "list_seek pos=%lld,whence=%x\n", pos, whence);
     if (whence == AVSEEK_FULLTIME) {
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_FULLTIME");
         if (mgt->have_list_end) {
             av_log(NULL, AV_LOG_INFO, "return mgt->full_timet=%d\n", mgt->full_time);
             return (int64_t)mgt->full_time;
@@ -1009,6 +1011,68 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 
 
     }
+
+#if 1
+    if(whence == SEEK_SET) {
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek SEEK_SET");
+        for (item = mgt->item_list; item; item = item->next) {
+            if(mgt->cmf_item_index == item->index) {
+                    /*mgt->current_item = NULL;
+                    CacheHttp_Reset(mgt->cache_http_handle);
+                    mgt->current_item = item;
+                    mgt->playing_item_index = item->index - 1;
+                    if (!mgt->have_list_end) {
+                        mgt->playing_item_seq = item->seq - 1;
+                    }*/
+                    return 0;
+            }
+        }
+    }
+
+    if (whence == AVSEEK_SLICE_BYINDEX) {
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_SLICE_BYINDEX");
+        if(pos >= 0 && pos < mgt->item_num) {
+            for (item = mgt->item_list; item; item = item->next) {
+                if(pos == item->index) {
+                    mgt->cmf_item_index = pos;                  
+                    mgt->current_item = NULL;
+                    CacheHttp_Reset(mgt->cache_http_handle);
+                    mgt->current_item = item;
+                    mgt->playing_item_index = item->index - 1;
+                    if (!mgt->have_list_end) {
+                        mgt->playing_item_seq = item->seq - 1;
+                    }                   
+                    while(item->item_size <= 0) {
+                        usleep(200*1000);
+                    }
+                    return pos;
+                }
+            }
+        }
+    }
+
+    if (whence == AVSEEK_SLICE_BYTIME) {
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_SLICE_BYTIME");
+         if (pos >= 0 && pos < mgt->full_time * 1000) {
+                for (item = mgt->item_list; item; item = item->next) {
+                    if (item->start_time * 1000 <= pos && pos < (item->start_time + item->duration) * 1000) {
+                        mgt->cmf_item_index = item->index;
+                        /*
+                        mgt->current_item = NULL;
+                        CacheHttp_Reset(mgt->cache_http_handle);
+                        mgt->current_item = item;
+                        mgt->playing_item_index = item->index - 1;
+                        if (!mgt->have_list_end) {
+                            mgt->playing_item_seq = item->seq - 1;
+                        }
+                        */
+                        return item->index;
+                    }
+            }
+         }
+    }
+#endif
+    
     av_log(NULL, AV_LOG_INFO, "list_seek failed\n");
     return -1;
 }
@@ -1065,6 +1129,67 @@ static int list_setcmd(URLContext *h, int cmd,int flag,unsigned long info)
     }
     return ret;
 }
+
+static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *info)
+{
+    av_log(NULL, AV_LOG_INFO, "list_getinfo enter\n");
+    struct list_mgt *mgt = h->priv_data;
+
+    if (!mgt) {
+        return 0;
+    }
+
+    if(!mgt->have_list_end)
+        return 0;
+    
+    if (cmd == AVCMD_TOTAL_DURATION) {
+        *info = mgt->full_time * 1000;
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_TOTAL_DURATION=%lld", *info);
+        return 0;
+    } else if (cmd == AVCMD_TOTAL_NUM) {
+        *info = mgt->item_num - 1;
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_TOTAL_NUM=%lld", *info);
+        return 0;
+    } else if (cmd == AVCMD_SLICE_START_OFFSET) {
+        *info = -1;
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_START_OFFSET");
+        return 0;
+    } else if (cmd == AVCMD_SLICE_SIZE) {
+        *info = -1;
+        struct list_item *item;
+        av_log(NULL,AV_LOG_INFO,"----------> list_getinfo, cmf_item_index=%d", mgt->cmf_item_index);
+        for (item = mgt->item_list; item; item = item->next) {
+                if(mgt->cmf_item_index == item->index) {
+                    *info = item->item_size;
+                    av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_SIZE=%lld", *info);
+                    return 0;
+                }
+        }
+    } else if (cmd == AVCMD_SLICE_INDEX) {
+        *info = mgt->cmf_item_index;
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_INDEX=%d", *info);
+        return 0;
+    } else {
+        struct list_item *item;
+         for (item = mgt->item_list; item; item = item->next) {
+                if(mgt->cmf_item_index == item->index) {
+                    if(cmd == AVCMD_SLICE_STARTTIME) {
+                        *info = (int64_t)item->start_time*1000;
+                        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_STARTTIME=%lld", *info);
+                    }
+                    if(cmd == AVCMD_SLICE_ENDTIME) {
+                        *info = (int64_t)(item->start_time + item->duration)*1000;
+                        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_ENDTIME=%lld", *info);
+                    }
+                    return 0;
+                }
+         }
+    }
+
+    return 0;
+    
+}
+
 URLProtocol file_list_protocol = {
     .name = "list",
     .url_open = list_open,
@@ -1075,6 +1200,7 @@ URLProtocol file_list_protocol = {
     .url_exseek = list_seek, /*same as seek is ok*/
     .url_get_file_handle = list_get_handle,
     .url_setcmd = list_setcmd,
+    .url_getinfo = list_getinfo,
 };
 list_item_t* getCurrentSegment(void* hSession)
 {
