@@ -154,7 +154,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     if (s->fifo) {
     	int avail;
        avail = av_fifo_size(s->fifo);
-    	av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
+    	//av_log(NULL, AV_LOG_INFO, "----------- http_read   avail=%d, size=%d ",avail,size);
 	if(url_interrupt_cb()) {
 	    pthread_mutex_unlock(&s->read_mutex);
 	    return 0;
@@ -344,6 +344,7 @@ OPEN_RETRY:
         s->hd = h;
         s->item_pos = 0;
         s->item_size = CacheHttp_ffurl_seek(s->hd, 0, AVSEEK_SIZE);
+        item->item_size = s->item_size;
         char tmpbuf[TMP_BUFFER_SIZE];
         int left = 0;
         int tmpdatasize = 0;
@@ -423,6 +424,7 @@ FAIL:
         CacheHttp_ffurl_close(h);
     s->hd = NULL;
     s->EXITED = 1;
+    av_log(NULL, AV_LOG_ERROR, "---------> CacheHttp thread quit !");
     
     return NULL;
 }

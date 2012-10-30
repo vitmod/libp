@@ -81,7 +81,7 @@ Can seek back size:
 
 
 #define LP_ASSERT(x)	 do{if(!(x)) av_log(NULL,AV_LOG_INFO,"****\t\tERROR at line file%s=%d\n\n\n",__FILE__,__LINE__);}while(0)
-#define DEF_MAX_READ_SEEK (1024*6)
+#define DEF_MAX_READ_SEEK (1024*1024*6)
 int url_lpopen(URLContext *s,int size)
 {
 	url_lpbuf_t *lp;
@@ -168,6 +168,7 @@ int url_lpopen(URLContext *s,int size)
 	return 0;
 }
 
+#if 0
 int url_lpopen_ex(URLContext *s,
 			int size,
 			int flags,
@@ -190,6 +191,36 @@ int url_lpopen_ex(URLContext *s,
 		uc->prot->flags=uc->flags ;
 	}else{
 	}
+	return ret;
+}
+#endif
+
+int url_lpopen_ex(URLContext *s,
+			int size,
+			int flags,
+	 	    	int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
+                  	int64_t (*seek)(void *opaque, int64_t offset, int whence))
+{
+       int ret;    
+	URLContext   *uc=s;
+       if (!uc->prot){
+            av_log(NULL,AV_LOG_INFO,"url_lpopen_ex failed\n");
+            return -1;
+      }
+	uc->av_class = NULL;
+	uc->filename = (char *)NULL;
+	uc->flags = flags;
+	uc->is_streamed = 0; 	      /* default = not streamed */
+	uc->max_packet_size = 0;  /* default: stream file */
+	uc->prot->url_read=read_packet;
+	uc->prot->url_seek=seek;
+	uc->prot->url_exseek=seek;
+	uc->prot->flags=uc->flags ;    
+	ret=url_lpopen(uc,size);
+      if (ret < 0){
+            av_log(NULL,AV_LOG_INFO," url_lpopen -failed\n");
+            return -1;
+      } 
 	return ret;
 }
 
@@ -389,7 +420,6 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 	else
 		valid_data_can_seek_forward=lp->buffer_size-(lp->rp-lp->wp);
 	pos_on_read = lp->pos-valid_data_can_seek_forward;
- 	
 	if(whence == SEEK_CUR)
 	{
 		offset1 = pos_on_read;
@@ -504,9 +534,34 @@ int64_t url_lpexseek(URLContext *s, int64_t offset, int whence)
 	 	}
 		ret= AVERROR(EPIPE);
 	}
+      else if (whence == AVSEEK_SLICE_BYTIME)
+      {
+               ret= s->prot->url_seek(s, offset, AVSEEK_SLICE_BYTIME);
+               if (ret < 0){
+                    lp_unlock(&lp->mutex);
+                    return -1;
+               }
+               lp_unlock(&lp->mutex);
+               return ret;
+       }
 seek_end:
 	lp_unlock(&lp->mutex);
 	return ret;
+}
+int url_lpreset(URLContext *s)
+ {   
+      url_lpbuf_t *lp;
+      if(!s || !s->lpbuf){
+            return AVERROR(EINVAL);
+      }
+       lp=s->lpbuf;
+       if(lp){
+           lp->rp=lp->buffer;
+            lp->wp=lp->buffer;
+            lp->pos=0;
+            lp->valid_data_size=0;
+       }
+       return 0;
 }
 
 int url_lp_getbuffering_size(URLContext *s,int *forward_data,int *back_data)

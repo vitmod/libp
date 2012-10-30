@@ -82,6 +82,7 @@ struct AESCryptoContext{
 typedef struct list_item
 {
     const char *file;
+    int64_t item_size;
     int 	   flags;
     int         have_list_end;
     double  	start_time;
@@ -113,6 +114,7 @@ typedef struct list_mgt
     int next_index;
     struct list_item *current_item;
     int playing_item_index;
+    int cmf_item_index;
     int playing_item_seq;
     int strategy_up_counts;
     int strategy_down_counts;

@@ -710,7 +710,7 @@ typedef struct auto_switch_protol{
 #include "mmsh.h"
 auto_switch_protol_t switch_table[]=
 {
-	{"list:",url_is_file_list},
+	{"cmflist:",url_is_file_list},
 /*	{"hls+",hlsproto_probe},*/
 	{"nsc:",is_nsc_file},
 	{"mmsh:",is_mmsh_file},
@@ -3045,6 +3045,7 @@ int av_find_stream_info(AVFormatContext *ic)
     int64_t old_offset=-1;
     int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
     av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d\n", __FUNCTION__, fast_switch);
+    //return 0;
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       
