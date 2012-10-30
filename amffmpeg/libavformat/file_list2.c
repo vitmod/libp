@@ -416,7 +416,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->key_tmp = NULL;
     mgt->start_seq = -1;
     mgt->next_seq = -1;
-    mgt->filename = filename + 8;
+    mgt->filename = filename + 5;
     mgt->flags = flags;
     mgt->next_index = 0;
     mgt->playing_item_index = 0;
@@ -478,9 +478,9 @@ static int list_open(URLContext *h, const char *filename, int flags)
     }	
    
     h->is_streamed = 1;
-    //h->is_slowmedia = 1;
+    h->is_slowmedia = 1;
     if (mgt->full_time > 0 && mgt->have_list_end) {
-        h->support_time_seek = 0;
+        h->support_time_seek = 1;
     }
     h->priv_data = mgt;
     mgt->cache_http_handle = NULL;
@@ -748,12 +748,12 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
     }
 
     if (whence == AVSEEK_SIZE) {
-        av_log(NULL, AV_LOG_INFO, "-----------> tao_listseek AVSEEK_SIZE");
+        av_log(NULL, AV_LOG_INFO, "----------->listseek AVSEEK_SIZE");
         return mgt->file_size;
     }
     av_log(NULL, AV_LOG_INFO, "list_seek pos=%lld,whence=%x\n", pos, whence);
     if (whence == AVSEEK_FULLTIME) {
-        av_log(NULL, AV_LOG_INFO, "-----------> tao_listseek AVSEEK_FULLTIME");
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_FULLTIME");
         if (mgt->have_list_end) {
             av_log(NULL, AV_LOG_INFO, "return mgt->full_timet=%d\n", mgt->full_time);
             return (int64_t)mgt->full_time;
@@ -790,7 +790,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 
 #if 1
     if(whence == SEEK_SET) {
-        av_log(NULL, AV_LOG_INFO, "-----------> tao_listseek SEEK_SET");
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek SEEK_SET");
         for (item = mgt->item_list; item; item = item->next) {
             if(mgt->cmf_item_index == item->index) {
                     /*mgt->current_item = NULL;
@@ -806,7 +806,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
     }
 
     if (whence == AVSEEK_SLICE_BYINDEX) {
-        av_log(NULL, AV_LOG_INFO, "-----------> tao_listseek AVSEEK_SLICE_BYINDEX");
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_SLICE_BYINDEX");
         if(pos >= 0 && pos < mgt->item_num) {
             for (item = mgt->item_list; item; item = item->next) {
                 if(pos == item->index) {
@@ -819,7 +819,6 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
                         mgt->playing_item_seq = item->seq - 1;
                     }                   
                     while(item->item_size <= 0) {
-                        av_log(NULL, AV_LOG_INFO, "-----------> tao_waitforsize");
                         usleep(100*1000);
                     }
                     return pos;
@@ -829,7 +828,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
     }
 
     if (whence == AVSEEK_SLICE_BYTIME) {
-        av_log(NULL, AV_LOG_INFO, "-----------> tao_listseek AVSEEK_SLICE_BYTIME");
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_SLICE_BYTIME");
          if (pos >= 0 && pos < mgt->full_time * 1000) {
                 for (item = mgt->item_list; item; item = item->next) {
                     if (item->start_time * 1000 <= pos && pos < (item->start_time + item->duration) * 1000) {
@@ -910,30 +909,30 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
     
     if (cmd == AVCMD_TOTAL_DURATION) {
         *info = mgt->full_time * 1000;
-        av_log(NULL, AV_LOG_INFO, " ----------> tao_list_getinfo, AVCMD_TOTAL_DURATION=%lld", *info);
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_TOTAL_DURATION=%lld", *info);
         return 0;
     } else if (cmd == AVCMD_TOTAL_NUM) {
         *info = mgt->item_num - 1;
-        av_log(NULL, AV_LOG_INFO, " ----------> tao_list_getinfo, AVCMD_TOTAL_NUM=%lld", *info);
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_TOTAL_NUM=%lld", *info);
         return 0;
     } else if (cmd == AVCMD_SLICE_START_OFFSET) {
         *info = -1;
-        av_log(NULL, AV_LOG_INFO, " ----------> tao_list_getinfo, AVCMD_SLICE_START_OFFSET");
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_START_OFFSET");
         return 0;
     } else if (cmd == AVCMD_SLICE_SIZE) {
         *info = -1;
         struct list_item *item;
-        av_log(NULL,AV_LOG_INFO,"----------> tao_list_getinfo, cmf_item_index=%d", mgt->cmf_item_index);
+        av_log(NULL,AV_LOG_INFO,"----------> list_getinfo, cmf_item_index=%d", mgt->cmf_item_index);
         for (item = mgt->item_list; item; item = item->next) {
                 if(mgt->cmf_item_index == item->index) {
                     *info = item->item_size;
-                    av_log(NULL, AV_LOG_INFO, " ----------> tao_list_getinfo, AVCMD_SLICE_SIZE=%lld", *info);
+                    av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_SIZE=%lld", *info);
                     return 0;
                 }
         }
     } else if (cmd == AVCMD_SLICE_INDEX) {
         *info = mgt->cmf_item_index;
-        av_log(NULL, AV_LOG_INFO, " ----------> tao_list_getinfo, AVCMD_SLICE_INDEX=%d", *info);
+        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_INDEX=%d", *info);
         return 0;
     } else {
         struct list_item *item;
@@ -941,11 +940,11 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
                 if(mgt->cmf_item_index == item->index) {
                     if(cmd == AVCMD_SLICE_STARTTIME) {
                         *info = (int64_t)item->start_time*1000;
-                        av_log(NULL, AV_LOG_INFO, " ----------> tao_list_getinfo, AVCMD_SLICE_STARTTIME=%lld", *info);
+                        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_STARTTIME=%lld", *info);
                     }
                     if(cmd == AVCMD_SLICE_ENDTIME) {
                         *info = (int64_t)(item->start_time + item->duration)*1000;
-                        av_log(NULL, AV_LOG_INFO, " ----------> tao_list_getinfo, AVCMD_SLICE_ENDTIME=%lld", *info);
+                        av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_ENDTIME=%lld", *info);
                     }
                     return 0;
                 }
@@ -957,7 +956,7 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
 }
 
 URLProtocol file_list_protocol = {
-    .name = "cmflist",
+    .name = "list",
     .url_open = list_open,
     .url_read  = list_read,
     .url_write = list_write,

@@ -339,8 +339,19 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
         if (score > score_max) {
             score_max = score;
             fmt = fmt1;
-        }else if (score == score_max)
+        }else if (score == score_max) {
+            if(score == AVPROBE_SCORE_MAX) {
+                if(!strncmp(fmt->name, "cmf", 3)) {
+                    if(!strncmp(fmt1->name, "flv", 3) || !strncmp(fmt1->name, "mov", 3)) {
+                        continue;
+                    } else {
+                        fmt = fmt1;
+                        continue;
+                    }
+                }
+            }
             fmt = NULL;
+        }
     }
     *score_ret= score_max;
      if(lpd.pads[0] != 0) 
@@ -710,7 +721,7 @@ typedef struct auto_switch_protol{
 #include "mmsh.h"
 auto_switch_protol_t switch_table[]=
 {
-	{"cmflist:",url_is_file_list},
+	{"list:",url_is_file_list},
 /*	{"hls+",hlsproto_probe},*/
 	{"nsc:",is_nsc_file},
 	{"mmsh:",is_mmsh_file},

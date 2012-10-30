@@ -53,12 +53,10 @@
 
 static int cmf_probe(AVProbeData *p)
 {
-    av_log(NULL, AV_LOG_ERROR, "-----------> tao_cmf  000");
     if (p && p->s  && p->s->iscmf) {
-	    return 101;
-	    //return 0;
+	    //return 101;
+	    return AVPROBE_SCORE_MAX;
     }
-    av_log(NULL, AV_LOG_ERROR, "-----------> tao_cmf  111");
     return 0;
 }
 static void cmf_reset_packet(AVPacket *pkt)
@@ -131,7 +129,7 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
     }
     if (!memcmp(bs->sctx->iformat->name,"flv",3)) {
         ret=av_find_stream_info(bs->sctx);
-        av_log(s, AV_LOG_INFO, "xxx-------tao_av_find_stream_info=%d",ret);
+        av_log(s, AV_LOG_INFO, "xxx-------av_find_stream_info=%d",ret);
     }
     if (first) {
         /* Create new AVStreams for each stream in this chip
@@ -161,9 +159,7 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
         s->duration = newvpb->total_duration*1000;
         av_log(s, AV_LOG_INFO, "get duration  [%lld]us [%lld]ms [%lld]s\n", s->duration,newvpb->total_duration,(newvpb->total_duration/1000));
     }
-    av_log(NULL,AV_LOG_ERROR,"---------> tao_flvname name=%s", bs->sctx->iformat->name);
     if (memcmp(bs->sctx->iformat->name,"flv",3)) {
-        av_log(s, AV_LOG_INFO, "seek ci->ctx->media_data_offset [%llx]\n", bs->sctx->media_dataoffset);
         ret = avio_seek(bs->sctx->pb, bs->sctx->media_dataoffset, SEEK_SET);
         if (ret < 0) {
             av_log(s, AV_LOG_INFO, "avio_seek failed %s---%d \n",__FUNCTION__,__LINE__);
@@ -184,11 +180,13 @@ static int cmf_read_header(AVFormatContext *s, AVFormatParameters *ap)
     ap=ap;
     AVIOContext *pb=s->pb;
     if (pb->read_packet || pb->seek) {
+        ffio_fdopen_resetlpbuf(pb,0);
         ffio_init_context(pb, pb->buffer, pb->buffer_size, 0, pb->opaque,
                           NULL, NULL, NULL);/*reset old pb*/
-        pb->is_slowmedia=1;
+        pb->is_slowmedia=0;
         pb->is_streamed=1;
         pb->seekable=0;
+        pb->support_time_seek = 0;
     }
     return cmf_parser_next_slice(s, 0, 1);
 
@@ -223,11 +221,11 @@ retry_read:
     //if(ret == AVERROR(EAGAIN) && !memcmp(cmf->sctx->iformat->name,"flv",3))
         //return ret;
     if(ret == AVERROR(EAGAIN)) {
-        av_log(NULL, AV_LOG_ERROR,"-------->tao_cmf_retry_read");
+        av_log(NULL, AV_LOG_ERROR,"-------->cmf_retry_read");
         goto retry_read;
     }
     if (ret < 0) {
-        av_log(NULL,AV_LOG_INFO,"-----------> tao_cmf_read_packet ret=%d", ret);
+        av_log(NULL,AV_LOG_INFO,"----------->cmf_read_packet ret=%d", ret);
 		if(cmf->sctx){
        		cmf_flush_packet_queue(cmf->sctx);
 		}

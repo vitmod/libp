@@ -155,7 +155,7 @@ RETRY:
 #endif
 
     if (len < 0) {
-        av_log(NULL, AV_LOG_INFO, "tao_cmfvpb_read failed  len=%d\n",len);
+        av_log(NULL, AV_LOG_INFO, "cmfvpb_read failed  len=%d\n",len);
         return -1;
     }
     cv->seg_pos += len;
@@ -250,6 +250,7 @@ int cmfvpb_dup_pb(AVIOContext *pb, struct cmfvpb **cmfvpb, int index)
     cv->vlpcontext.prot = &cv->alcprot;
     cv->vlpcontext.is_slowmedia=1;
     cv->vlpcontext.is_streamed=0;
+    cv->vlpcontext.support_time_seek = 0;
     ret= cmfvpb_open(cv, index);
     if (ret < 0){
         av_log(NULL, AV_LOG_INFO, "cmfvpb_open failed %s---%d \n",__FUNCTION__,__LINE__);
@@ -265,6 +266,7 @@ int cmfvpb_dup_pb(AVIOContext *pb, struct cmfvpb **cmfvpb, int index)
     vpb->iscmf=0;
     vpb->is_slowmedia=1;
     vpb->is_streamed=0;
+    vpb->support_time_seek = 0;
     read_buffer = av_malloc(INITIAL_BUFFER_SIZE);
     if (!read_buffer) {
         av_free(cv);
