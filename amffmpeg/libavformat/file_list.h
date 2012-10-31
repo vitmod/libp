@@ -35,8 +35,8 @@
 typedef enum _AdaptationProfile{
     CONSTANT_ADAPTIVE = 0, //just  does not switch variant. 
     AGREESSIVE_ADAPTIVE, //only the last throughput measurement
-    CONSERVATIVE_ADAPTIVE,//the last throughput measurement with by a sensitivity parameter(eg.0.8)
     MEAN_ADAPTIVE,//the last throughput measurement and buffer fullness    
+    CONSERVATIVE_ADAPTIVE,//the last throughput measurement with by a sensitivity parameter(eg.0.8)
     MANUAL_ADAPTIVE,
 }AdaptationProfile;
 
@@ -139,7 +139,8 @@ typedef struct list_mgt
     char *ipad_ex_headers; 
     char *ipad_req_media_headers;
     int codec_buf_level;//10000*data/size;-1,not inited.
-
+    int switch_up_num;
+    int switch_down_num;
     int debug_level;
 }list_mgt_t;
 

@@ -144,8 +144,19 @@ int CacheHttp_Open(void ** handle,const char* headers)
     if(headers){
         av_strlcpy(s->headers,headers,BUFFER_SIZE);
     }
-    s->bandwidth_measure=bandwidth_measure_alloc(100,0);        
-    int ret = ffmpeg_pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
+    int ret = am_getconfig_float("libplayer.hls.measured_buffer",&value);
+    int  meause_unit_max = 1024*1024*10;//10M
+    if(ret>=0){
+        meause_unit_max = (int)value*1024;
+    }
+    
+    if(meause_unit_max/TMP_BUFFER_SIZE<100){
+        s->bandwidth_measure=bandwidth_measure_alloc(100,0);        
+
+    }else{
+        s->bandwidth_measure=bandwidth_measure_alloc(meause_unit_max/TMP_BUFFER_SIZE,0); 
+    }
+    ret = ffmpeg_pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
     av_log(NULL, AV_LOG_INFO, "----------- pthread_create ret=%d\n",ret);
 
     return ret;
@@ -246,7 +257,7 @@ int CacheHttp_GetSpeed(void * _handle, int * arg1, int * arg2, int * arg3)
   
     CacheHttpContext * s = (CacheHttpContext *)_handle; 
     int ret = bandwidth_measure_get_bandwidth(s->bandwidth_measure,arg1,arg2,arg3);	
-    av_log(NULL, AV_LOG_ERROR, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",*arg1/1000,*arg1%1000,*arg2/1000,*arg2%1000,*arg3/1000,*arg3%1000);
+    //av_log(NULL, AV_LOG_ERROR, "download bandwidth latest=%d.%d kbps,latest avg=%d.%d k bps,avg=%d.%d kbps\n",*arg1/1000,*arg1%1000,*arg2/1000,*arg2%1000,*arg3/1000,*arg3%1000);
     return ret;
 }
 
