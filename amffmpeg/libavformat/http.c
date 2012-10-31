@@ -213,7 +213,7 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
     int64_t old_chunksize=s->chunksize ;	
 	int old_buf_size=0;
 	char old_buf[BUFFER_SIZE];
-	av_log(h, AV_LOG_INFO, "[%s]off=%d s->off=%d\n", __FUNCTION__, off, s->off);
+	av_log(h, AV_LOG_INFO, "[%s]off=%lld s->off=%lld\n", __FUNCTION__, off, s->off);
     if(off>=0)
 		s->off = off;	
     	/* if it fails, continue on old connection */
@@ -248,7 +248,7 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
     		s->buf_end = s->buffer;
 		s->chunksize=-1;
 	        s->hd = 0;
-	        s->off = 0;
+	        s->off = old_off;
 	        return -1;
 		}
     }
