@@ -2891,7 +2891,12 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
                  }
 		    break;
 		case AVMEDIA_TYPE_VIDEO:
-		    val = enc->width;
+			if(fastmode == 8){
+			   val = (enc->durcount>15?1:0)&&enc->width;
+			   av_log(NULL, AV_LOG_INFO, "[%s]enc->durcount=%d\n", __FUNCTION__, enc->durcount);
+			}else{
+		           val = enc->width;
+			}
 		    break;
 		default:
 		    val = 1;
@@ -3040,6 +3045,7 @@ static int tb_unreliable(AVCodecContext *c){
 
 #define TRACE() av_log(NULL, AV_LOG_INFO, "[%s:%d]\n", __FUNCTION__, __LINE__)
 #define SPEED_PARSE_MODE 2
+#define ASF_PARSE_MODE  8
 int av_find_stream_info(AVFormatContext *ic)
 {
     int i, count, ret, read_size, j;
@@ -3050,7 +3056,6 @@ int av_find_stream_info(AVFormatContext *ic)
     int64_t old_offset=-1;
     int fast_switch=am_getconfig_bool("media.libplayer.fastswitch");
     av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d\n", __FUNCTION__, fast_switch);
-    //return 0;
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       
@@ -3148,6 +3153,11 @@ int av_find_stream_info(AVFormatContext *ic)
             if(ic->pb && ic->pb->is_streamed ==1&&!strcmp(ic->iformat->name, "mpegts")){
                 parse_mode = SPEED_PARSE_MODE;
             }
+	   if(!strcmp(ic->iformat->name, "asf")){
+	        parse_mode = ASF_PARSE_MODE ;
+		av_log(NULL, AV_LOG_INFO, "parse_mode=%d\n",parse_mode);
+	    }
+	    st->codec->durcount=st->info->duration_count;
             if (!has_codec_parameters_ex(st->codec,parse_mode)){
                 break;
             }else{

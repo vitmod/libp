@@ -2932,6 +2932,8 @@ typedef struct AVCodecContext {
     /* added by Z.C
      * for some special ps files */
      int mpegps_video_idprobed;
+	/*for some special asf files */
+	 int durcount;
 } AVCodecContext;
 
 /**
