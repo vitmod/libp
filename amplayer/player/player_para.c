@@ -102,6 +102,51 @@ exitf1:
     }
 }
 
+static int check_codec_parameters_ex(AVCodecContext *enc,int fastmode)
+{
+    int val;
+	if(!fastmode){
+		switch(enc->codec_type) {
+		case AVMEDIA_TYPE_AUDIO:
+                 
+		    val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
+		    if(!enc->frame_size &&
+		       (enc->codec_id == CODEC_ID_VORBIS ||
+		        enc->codec_id == CODEC_ID_AAC ||
+		        enc->codec_id == CODEC_ID_MP1 ||
+		        enc->codec_id == CODEC_ID_MP2 ||
+		        enc->codec_id == CODEC_ID_MP3 ||
+		        enc->codec_id == CODEC_ID_SPEEX ||
+		        enc->codec_id == CODEC_ID_CELT))
+		        return 0;
+		    break;
+		case AVMEDIA_TYPE_VIDEO:
+		    val = enc->width && enc->pix_fmt != PIX_FMT_NONE;
+		    break;
+		default:
+		    val = 1;
+		    break;
+		}
+	}else{
+		switch(enc->codec_type) {
+		case AVMEDIA_TYPE_AUDIO:		    
+		    if(fastmode == 2){//maybe ts audio need set fastmode=2
+		       val =1;
+		    }else{
+		       val = enc->sample_rate && enc->channels;
+		    }
+		    break;
+		case AVMEDIA_TYPE_VIDEO:
+		    val = enc->width;
+		    break;
+		default:
+		    val = 1;
+		    break;
+		}
+    }
+    return enc->codec_id != CODEC_ID_NONE && val != 0;
+}
+
 static void get_av_codec_type(play_para_t *p_para)
 {
     AVFormatContext *pFormatCtx = p_para->pFormatCtx;
@@ -194,7 +239,8 @@ static void get_av_codec_type(play_para_t *p_para)
             p_para->vstream_info.video_ratio64  = (pStream->sample_aspect_ratio.num << 32) | pStream->sample_aspect_ratio.den;
             p_para->vstream_info.video_rotation_degree = pStream->rotation_degree;
 
-            log_print("[%s:%d]time_base=%d/%d,r_frame_rate=%d/%d ratio=%d/%d video_pts=%.3f\n", __FUNCTION__, __LINE__, \
+            log_print("[%s:%d]vpid=0x%x,time_base=%d/%d,r_frame_rate=%d/%d ratio=%d/%d video_pts=%.3f\n", __FUNCTION__, __LINE__, \
+                      p_para->vstream_info.video_pid,\
                       pCodecCtx->time_base.num, pCodecCtx->time_base.den, \
                       pStream->r_frame_rate.den, pStream->r_frame_rate.num, \
                       pStream->sample_aspect_ratio.num, pStream->sample_aspect_ratio.den, p_para->vstream_info.video_pts);
@@ -393,10 +439,13 @@ static void get_stream_info(play_para_t *p_para)
             } else {
                 if (temp_vidx == -1) {
                     if (strcmp(pFormat->iformat->name, "mpegts") == 0 && pStream->encrypt) {
-                        //mpegts ¼ÓÃÜ
+                        //mpegts encrypt
                         log_print("pid=%d crytion\n", pStream->id);
-                    } else {
-                        temp_vidx = i;
+                    } else { 
+                       if(!strcmp(pFormat->iformat->name, "mpegts") &&!check_codec_parameters_ex(pStream->codec,1))
+                              log_print("video pid=%d has not codec parameter\n", pStream->id);
+                       else
+                              temp_vidx = i;
                     }
                 }
             }
@@ -423,10 +472,14 @@ static void get_stream_info(play_para_t *p_para)
                 }
             } else if (temp_aidx == -1 && audio_format != AFORMAT_UNSUPPORT) {
                 if (strcmp(pFormat->iformat->name, "mpegts") == 0 && pStream->encrypt) {
-                    //mpegts ¼ÓÃÜ
+                    //mpegts encrypt
                     log_print("pid=%d crytion\n", pStream->id);
-                } else {
-                    temp_aidx = i;
+                } else { 
+                    if(!strcmp(pFormat->iformat->name, "mpegts") &&!check_codec_parameters_ex(pStream->codec,1))
+                              log_print("audio pid=%d has not codec parameter\n", pStream->id);
+                    else
+                              temp_aidx = i;
+                    
                 }
             }
             /* find chinese language audio track */
