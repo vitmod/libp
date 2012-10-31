@@ -1079,6 +1079,18 @@ int player_dec_init(play_para_t *p_para)
     dump_format(p_para->pFormatCtx, 0, p_para->file_name, 0);
 
     ret = set_file_type(p_para->pFormatCtx->iformat->name, &file_type, &stream_type);
+
+    if(memcmp(p_para->pFormatCtx->iformat->name,"mpegts",6)==0){
+	   if( p_para->pFormatCtx->pb && p_para->pFormatCtx->pb->is_slowmedia &&  //is network...
+	   	am_getconfig_bool("libplayer.netts.softdemux") ){
+	   	log_print("configned network tsstreaming used soft demux,used soft demux now.\n");
+	   	file_type=STREAM_FILE;
+		stream_type=STREAM_ES;
+		ret = PLAYER_SUCCESS;
+	   }
+    }
+
+	
     if (ret != PLAYER_SUCCESS) {
         set_player_state(p_para, PLAYER_ERROR);
         p_para->state.status = PLAYER_ERROR;
