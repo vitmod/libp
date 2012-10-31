@@ -356,6 +356,7 @@ static void get_stream_info(play_para_t *p_para)
     int audio_index = p_para->astream_info.audio_index;
     int sub_index = p_para->sstream_info.sub_index;
     int temp_vidx = -1, temp_aidx = -1, temp_sidx = -1;
+    int temppid=-1;
     int bitrate = 0;
     int read_packets = 0;
     int ret = 0;
@@ -402,6 +403,18 @@ static void get_stream_info(play_para_t *p_para)
         } else if (pCodec->codec_type == CODEC_TYPE_AUDIO) {
             p_para->astream_num ++;
             audio_format = audio_type_convert(pCodec->codec_id, p_para->file_type);
+
+	    //not support blueray stream,one PID has two audio track(truehd+ac3)
+	    if(strcmp(pFormat->iformat->name, "mpegts") == 0){
+	       if(pCodec->codec_id==CODEC_ID_TRUEHD){
+		  temppid=pStream->id;	
+		  log_print("temppidstream: %s:%d\n",pFormat->iformat->name,temppid);
+	       }else if(pCodec->codec_id==CODEC_ID_AC3&&pStream->id==temppid){
+		  audio_format = AFORMAT_UNSUPPORT;
+		  log_print("unsupport truehd and AC-3 with the same pid\n");
+	      }  
+	    } 
+				           
 
             if (p_para->file_type == RM_FILE) {
                 if ((temp_aidx == -1)
