@@ -218,12 +218,12 @@ retry_read:
 	    ret = -1;
 	}
 
-    //if(ret == AVERROR(EAGAIN) && !memcmp(cmf->sctx->iformat->name,"flv",3))
-        //return ret;
     if(ret == AVERROR(EAGAIN)) {
         av_log(NULL, AV_LOG_ERROR,"-------->cmf_retry_read");
         goto retry_read;
     }
+    if(ret == AVERROR_EXIT)
+        return ret;
     if (ret < 0) {
         av_log(NULL,AV_LOG_INFO,"----------->cmf_read_packet ret=%d", ret);
 		if(cmf->sctx){
