@@ -190,12 +190,13 @@ int av_tag_log(const char * tag,const char *fmt, ...)
 	va_list vl;
 	va_start(vl, fmt);
 	char line[1024];
+       memset(line,0,1024);
 	vsnprintf(line + strlen(line), sizeof(line) - strlen(line), fmt, vl);
-	LOG(tag,"%s",line);
+	//LOG(tag,"%s",line);
 	#ifdef ANDROID
-	LOG(tag,"%s",line);
+	    LOG(tag,"%s",line);
 	#else	
-    	fputs(line, stderr);
+    	    fputs(line, stderr);
 	#endif
 	va_end(vl);
 	return 0;

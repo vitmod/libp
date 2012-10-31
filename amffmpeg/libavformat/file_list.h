@@ -139,6 +139,8 @@ typedef struct list_mgt
     char *ipad_ex_headers; 
     char *ipad_req_media_headers;
     int codec_buf_level;//10000*data/size;-1,not inited.
+
+    int debug_level;
 }list_mgt_t;
 
 typedef struct list_demux

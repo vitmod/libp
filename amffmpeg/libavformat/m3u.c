@@ -81,7 +81,7 @@ static int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
             if (q > line && q[-1] == '\r')
                 q--;
             *q = '\0';
-	     av_log(NULL, AV_LOG_INFO, "m3u_format_get_line line %d=%s\n",sizeof(line),line);
+	     //av_log(NULL, AV_LOG_INFO, "m3u_format_get_line line %d=%s\n",sizeof(line),line);
             return q-line;
         } else {
             if ((q - line) < line_size - 1)
@@ -193,7 +193,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		item->file=p; 
 		enditem=1;
 	}else if(av_strstart(line,EXT_LETV_VER, &ptr)){
-	     av_log(NULL,AV_LOG_INFO,"Get letv version: %s\n",ptr+1);
+	     //av_log(NULL,AV_LOG_INFO,"Get letv version: %s\n",ptr+1);
             mgt->flags|=IGNORE_SEQUENCE_FLAG;
        }else if(is_TAG(p,EXT_X_ENDLIST)){
 		item->flags|=ENDLIST_FLAG;		
@@ -201,7 +201,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 	}else if(is_TAG(p,EXTINF)){
 		double duration=0.00;
              parseDouble(p+8,&duration);
-             av_log(NULL,AV_LOG_INFO,"Get item duration:%.4lf\n",duration);
+             //av_log(NULL,AV_LOG_INFO,"Get item duration:%.4lf\n",duration);
 		//sscanf(p+8,"%d",&duration);//skip strlen("#EXTINF:")
 		if(duration>0){
 			item->flags|=DURATION_FLAG;
@@ -209,7 +209,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		}        
 	} else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {            	
 		mgt->target_duration = atoi(ptr);
-		av_log(NULL, AV_LOG_INFO, "get target duration:%ld\n",mgt->target_duration);
+		//av_log(NULL, AV_LOG_INFO, "get target duration:%ld\n",mgt->target_duration);
 	}else if(is_TAG(p,EXT_X_ALLOW_CACHE)){
 		item->flags|=ALLOW_CACHE_FLAG;
 	}else if(is_TAG(p,EXT_X_MEDIA_SEQUENCE)&&!(mgt->flags&IGNORE_SEQUENCE_FLAG)){
@@ -239,7 +239,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		ff_parse_key_value(p, (ff_parse_key_val_cb) handle_variant_args,
 		           &info);
 		mgt->bandwidth = atoi(info.bandwidth);		
-		av_log(NULL, AV_LOG_INFO, "get a stream info,bandwidth:%d\n",mgt->bandwidth);		
+		//av_log(NULL, AV_LOG_INFO, "get a stream info,bandwidth:%d\n",mgt->bandwidth);		
 		mgt->is_variant = 1;
 		return -(TRICK_LOGIC_BASE+1);
 	}
@@ -261,12 +261,12 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		struct encrypt_key_priv_t* key_priv_info = av_mallocz(sizeof(struct encrypt_key_priv_t));
 		
 		if(NULL == key_priv_info){
-			av_log(NULL,AV_LOG_ERROR,"no memory for key_info\n");
+			//av_log(NULL,AV_LOG_ERROR,"no memory for key_info\n");
 			return -1;
 		}		
 
 		if(NULL!=mgt->key_tmp){
-			av_log(NULL,AV_LOG_INFO,"released old key info\n");
+			//av_log(NULL,AV_LOG_INFO,"released old key info\n");
 			av_free(mgt->key_tmp);
 			mgt->key_tmp = NULL;
 		}
@@ -291,14 +291,14 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
                     memcpy(key_priv_info->key_from, "s", 1);
                     memcpy(key_priv_info->key_from+1, info.uri, MAX_URL_SIZE-1);
                   
-                    av_log(NULL,AV_LOG_INFO,"aes key location,before:%s,after:%s\n",info.uri,key_priv_info->key_from);
+                    //av_log(NULL,AV_LOG_INFO,"aes key location,before:%s,after:%s\n",info.uri,key_priv_info->key_from);
 			key_priv_info->is_have_key_file = 0;
 			mgt->key_tmp = key_priv_info;
 			mgt->flags |= KEY_FLAG;
 			return -(TRICK_LOGIC_BASE+0);
 			
 		}else{
-			av_log(NULL,AV_LOG_INFO,"just only support aes key\n");
+			//av_log(NULL,AV_LOG_INFO,"just only support aes key\n");
 			av_free(key_priv_info);
 			key_priv_info = NULL;
 		}
@@ -382,8 +382,8 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	}
 	memset(&tmpitem,0,sizeof(tmpitem));
 	tmpitem.seq=-1;
-	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
-	av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefixex=%s\n",prefixex);
+	//av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefix=%s\n",prefix);
+	//av_log(NULL, AV_LOG_INFO, "m3u_format_parser get prefixex=%s\n",prefixex);
 	#if 0
 	if(mgt->n_variants>0){
 		free_variant_list(mgt);
@@ -449,7 +449,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				if(mgt->has_iv>0){
 					memcpy(item->key_ctx->iv,mgt->key_tmp->iv,sizeof(item->key_ctx->iv));				
 				}else{//from applehttp.c
-					av_log(NULL,AV_LOG_INFO,"Current item seq number:%d\n",item->seq);		
+					//av_log(NULL,AV_LOG_INFO,"Current item seq number:%d\n",item->seq);		
 					AV_WB32(item->key_ctx->iv + 12, item->seq);
 				}
 
@@ -493,7 +493,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			                       mgt->key_tmp->key_from);					
 					
 					}
-					av_log(NULL,AV_LOG_INFO,"Just get aes key file from server\n");		
+					//av_log(NULL,AV_LOG_INFO,"Just get aes key file from server\n");		
 					mgt->key_tmp->is_have_key_file = 1;
 						
 					ffurl_close(uc);
@@ -515,7 +515,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			if(tmpitem.flags&ALLOW_CACHE_FLAG)
 				mgt->flags|=ALLOW_CACHE_FLAG;
 			if(tmpitem.flags&INVALID_ITEM_FLAG){
-				av_log(NULL,AV_LOG_INFO,"just a trick,drop this item,seq number:%d\n",tmpitem.seq);
+				//av_log(NULL,AV_LOG_INFO,"just a trick,drop this item,seq number:%d\n",tmpitem.seq);
 				continue;
 			}
 		}
@@ -529,7 +529,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 	mgt->file_size=AVERROR_STREAM_SIZE_NOTVALID;
 	mgt->full_time=start_time;
 	mgt->last_load_time = av_gettime();
-	av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%.4lf\n",getnum,start_time);
+	//av_log(NULL, AV_LOG_INFO, "m3u_format_parser end num =%d,fulltime=%.4lf\n",getnum,start_time);
 	return getnum;
 }
 
@@ -570,7 +570,7 @@ static int m3u_probe(ByteIOContext *s,const char *file)
 
 			if(memcmp(line,EXTM3U,strlen(EXTM3U))==0)
 			{				
-				av_log(NULL, AV_LOG_INFO, "get m3u flags!!\n");
+				//av_log(NULL, AV_LOG_INFO, "get m3u flags!!\n");
 				return 100;
 			}
 		}	
