@@ -407,6 +407,8 @@ static void get_stream_info(play_para_t *p_para)
     int read_packets = 0;
     int ret = 0;
     aformat_t audio_format;
+    int vcodec_noparameter_idx=-1;
+    int acodec_noparameter_idx=-1;
 
     p_para->first_index = pFormat->first_index;
 
@@ -442,10 +444,14 @@ static void get_stream_info(play_para_t *p_para)
                         //mpegts encrypt
                         log_print("pid=%d crytion\n", pStream->id);
                     } else { 
-                       if(!strcmp(pFormat->iformat->name, "mpegts") &&!check_codec_parameters_ex(pStream->codec,1))
-                              log_print("video pid=%d has not codec parameter\n", pStream->id);
+                       if(!strcmp(pFormat->iformat->name, "mpegts") &&!check_codec_parameters_ex(pStream->codec,1)){
+                       //Maybe all vcodec without codec parameter but at least choose one stream,save it.Need double check at last.		 
+		        if(vcodec_noparameter_idx==-1)
+			   vcodec_noparameter_idx=i;
+                           log_print("video pid=%d has not codec parameter\n", pStream->id); 
+		    }
                        else
-                              temp_vidx = i;
+                          temp_vidx = i;
                     }
                 }
             }
@@ -475,10 +481,13 @@ static void get_stream_info(play_para_t *p_para)
                     //mpegts encrypt
                     log_print("pid=%d crytion\n", pStream->id);
                 } else { 
-                    if(!strcmp(pFormat->iformat->name, "mpegts") &&!check_codec_parameters_ex(pStream->codec,1))
-                              log_print("audio pid=%d has not codec parameter\n", pStream->id);
+                    if(!strcmp(pFormat->iformat->name, "mpegts") &&!check_codec_parameters_ex(pStream->codec,1)){
+                       //Maybe all acodec without codec parameter but at least choose one stream,save it.Need double check at last.
+                          if(acodec_noparameter_idx==-1)
+                              acodec_noparameter_idx=i;
+                          log_print("audio pid=%d has not codec parameter\n", pStream->id);}
                     else
-                              temp_aidx = i;
+                          temp_aidx = i;
                     
                 }
             }
@@ -502,7 +511,12 @@ static void get_stream_info(play_para_t *p_para)
             }
         }
     }
-
+   //double check for mpegts
+    if(!strcmp(pFormat->iformat->name, "mpegts") &&p_para->vstream_num>=1&&temp_vidx==-1&&vcodec_noparameter_idx!=-1)
+        temp_vidx=vcodec_noparameter_idx;
+    if(!strcmp(pFormat->iformat->name, "mpegts") &&p_para->astream_num>=1&&temp_aidx==-1&&acodec_noparameter_idx!=-1)
+        temp_aidx=acodec_noparameter_idx;
+	
     if (p_para->vstream_num >= 1) {
         p_para->vstream_info.has_video = 1;
     } else {
