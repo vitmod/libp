@@ -991,7 +991,7 @@ void *player_thread(play_para_t *player)
             } else {
                 /*low level buf is full ,do buffering or just do wait.*/
                 if (player->enable_rw_on_pause) { /*enabled buffing on paused...*/
-                    if (ffmpeg_buffering_data(player) < 0) {
+                    if (ffmpeg_buffering_data(player) <= 0) {
                         player_thread_wait(player, 100 * 1000); //100ms
                         ///continue;
                     }
