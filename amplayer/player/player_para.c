@@ -304,7 +304,25 @@ static void get_av_codec_type(play_para_t *p_para)
                       p_para->astream_info.audio_format, p_para->astream_info.audio_channel);
             p_para->astream_info.has_audio = 0;
         }
-
+		
+		//----------------------------------
+		//more than 6 ch was not support
+		 if ((p_para->astream_info.audio_channel > 6) &&
+            (IS_AUDIO_NOT_SUPPORT_EXCEED_6CH(p_para->astream_info.audio_format))) {
+            log_print(" afmt=%d channel=%d ******** we do not support more than 6ch \n", \
+                      p_para->astream_info.audio_format, p_para->astream_info.audio_channel);
+            p_para->astream_info.has_audio = 0;
+        }
+		 
+		//more than 48000 was not support
+		if ((p_para->astream_info.audio_samplerate > 48000) &&
+            (IS_AUDIO_NOT_SUPPORT_EXCEED_FS48k(p_para->astream_info.audio_format))) {
+            log_print(" afmt=%d sample_rate=%d ******** we do not support more than 48000 \n", \
+                         p_para->astream_info.audio_format, p_para->astream_info.audio_samplerate);
+            p_para->astream_info.has_audio = 0;
+        }
+		//---------------------------------
+		
         if (p_para->astream_info.audio_format == AFORMAT_AAC || p_para->astream_info.audio_format == AFORMAT_AAC_LATM) {
             pCodecCtx->profile = FF_PROFILE_UNKNOWN;
             AVCodecContext  *pCodecCtx = p_para->pFormatCtx->streams[audio_index]->codec;
