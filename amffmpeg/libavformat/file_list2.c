@@ -509,7 +509,11 @@ reload:
                 bio = NULL;
             }
             
-            fast_sort_streams(mgt);            
+            ret = fast_sort_streams(mgt);  
+            if(mgt->playing_variant==NULL||mgt->playing_variant->url==NULL||strlen(mgt->playing_variant->url)<4){
+                av_log(NULL,AV_LOG_ERROR,"failed to sort or get streams\n");
+                goto error;
+            }
             url = mgt->playing_variant->url;           
             //av_log(NULL, AV_LOG_INFO, "[%d]reload playlist,url:%s\n", __LINE__, url);
             goto reload;           
@@ -612,8 +616,11 @@ static int list_open(URLContext *h, const char *filename, int flags)
     }
     h->priv_data = mgt;
     mgt->cache_http_handle = NULL;
+    
     ret = CacheHttp_Open(&mgt->cache_http_handle,mgt->ipad_req_media_headers);
-    hls_base_info_dump(mgt);
+    if(mgt->debug_level>0){
+        hls_base_info_dump(mgt);
+    }
   
 
     return 0;
@@ -776,7 +783,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
      
     ret =CacheHttp_GetSpeed(c->cache_http_handle, &fast_bps, &mean_bps, &avg_bps);
     measure_bw = mean_bps;
-    RLOG("Player current measured bandwidth: %d bps,(%.3f kpbs)",measure_bw,(float)measure_bw/1024);
+    RLOG("Player current measured bandwidth: %d bps,(%.3f kbps)",measure_bw,(float)measure_bw/1024);
     if(net_sensitivity>0){
         measure_bw*=net_sensitivity;
     }
@@ -793,6 +800,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
         }
         if(c->strategy_up_counts>=upcounts){//increase speed
             *measued_bw = measure_bw;
+            c->strategy_up_counts = 0;
             return 1;
         }        
         
@@ -808,6 +816,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
         }
         if(c->strategy_down_counts>=downcounts){//decrease speed
             *measued_bw  = measure_bw;
+            c->strategy_down_counts = 0;
             return -1;
         }           
     }else{//keep original speed
@@ -972,7 +981,6 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
         //av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
         int is_switch = select_best_variant(mgt);
         if (is_switch>0) { //will remove this tricks.
-            hls_base_info_dump(mgt);
             if (mgt->item_num > 0) {
                 list_delall_item(mgt);
             }
@@ -988,6 +996,9 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
                 url_fclose(mgt->cur_uio);
                 mgt->cur_uio = NULL;
             }
+        }
+        if(mgt->debug_level>0){
+            hls_base_info_dump(mgt);
         }
 
         //av_log(NULL, AV_LOG_INFO, "select best variant,bandwidth: %d\n", mgt->playing_variant->bandwidth);
