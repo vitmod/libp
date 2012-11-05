@@ -361,7 +361,7 @@ OPEN_RETRY:
              if(1 == http_code && !s->have_list_end) {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
                 goto SKIP;
-             } else if(s->have_list_end || (2 == http_code && !s->have_list_end)) {
+             } else if(s->have_list_end || ((2 == http_code || 3 == http_code)&& !s->have_list_end)) {
                 goto OPEN_RETRY;
              } else {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
