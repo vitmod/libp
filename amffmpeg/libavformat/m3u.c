@@ -436,11 +436,11 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 						strcpy(item->file,prefix);
 						strcpy(item->file+prefix_len,tmpitem.file+1);/*don't copy two '/',we have left before*/
 					}else{/*no '/', some I save the full path frefix*/
-						if(!strncmp(prefixex,"shttps://",9)){
+						/*if(!strncmp(prefixex,"shttps://",9)){//2012,1105,removed by peter,for bug65327
 							strcpy(item->file,"http");
 							strcpy(item->file+4,prefixex+6);
 							strcpy(item->file+4+prefixex_len -6,tmpitem.file);
-						}else{
+						}else*/{
 							strcpy(item->file,prefixex);
 							strcpy(item->file+prefixex_len,tmpitem.file);	
 						}

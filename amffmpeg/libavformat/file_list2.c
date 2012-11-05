@@ -542,7 +542,11 @@ reload:
         }
 
     }
-   
+    if(av_strstart(url,"shttps://", NULL)){
+        //av_log(NULL,AV_LOG_INFO,"Https url only use short tcp connect\n");
+        url_fclose(bio);
+        bio= NULL;
+    }
     *pbio = bio;
     return 0;
 error:
