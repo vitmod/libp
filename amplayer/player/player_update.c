@@ -946,11 +946,13 @@ static int  update_buffering_states(play_para_t *p_para,
     float avlevel;
     if (abuf->size > 0) {
         alevel = (float)abuf->data_len / abuf->size;
+        alevel =alevel>1?1:alevel;//maybe big than 1,when the limit buf < bufsize.		
     } else {
         alevel = 0;
     }
     if (vbuf->size > 0) {
         vlevel = (float)vbuf->data_len / vbuf->size;
+	 vlevel =vlevel>1?1:vlevel;			
     } else {
         vlevel = 0;
     }

@@ -2856,8 +2856,8 @@ int check_avbuffer_enough_for_ape(play_para_t *para)
     am_packet_t *pkt = para->p_pkt;
     int vbuf_enough = 1;
     int abuf_enough = 1;
-    int ret = 1;
-    float high_limit = (para->buffering_threshhold_max > 0) ? para->buffering_threshhold_max : 0.8;
+    int ret = 0;
+    float high_limit = 0.8;
     int nCurrentWriteCount = (pkt->data_size > AUDIO_WRITE_SIZE_PER_TIME) ? AUDIO_WRITE_SIZE_PER_TIME : pkt->data_size;
     if (pkt->type == CODEC_AUDIO) {
         /*
@@ -2870,6 +2870,14 @@ int check_avbuffer_enough_for_ape(play_para_t *para)
         }
 
         ret = vbuf_enough && abuf_enough;
+    }
+    else{ 
+		if((float)(para->abuffer.data_level/para->abuffer.buffer_size)>high_limit && para->astream_info.has_audio ){
+			abuf_enough=0;
+		}else if((float)(para->vbuffer.data_level/para->vbuffer.buffer_size)>high_limit && para->vstream_info.has_video){
+			vbuf_enough=0;
+		}
+		ret = vbuf_enough && abuf_enough;
     }
     /*if(!abuf_enough || !vbuf_enough) {
         log_print("check_avbuffer_enough abuflevel %f, vbuflevel %f, limit %f aenough=%d venought=%d\n",
