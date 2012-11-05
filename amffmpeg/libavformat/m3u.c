@@ -287,9 +287,22 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 			if(mgt->has_iv>0){
 				memcpy(key_priv_info->iv,iv,sizeof(key_priv_info->iv));
 			}			
-                    
-                    memcpy(key_priv_info->key_from, "s", 1);
-                    memcpy(key_priv_info->key_from+1, info.uri, MAX_URL_SIZE-1);
+                    char* ptr = NULL;
+                    int has_prefix = 0;
+                    if(!av_strstart(info.uri,"https://",ptr)){
+                        if(mgt->prefix!=NULL&&av_strstart(mgt->prefix,"https://",ptr)){//change to  shttps for using android streaming framework.           
+                            snprintf(key_priv_info->key_from,1,"s");
+                            has_prefix = 1;
+                        }
+                        if(has_prefix>0){
+                            ff_make_absolute_url(key_priv_info->key_from+1, sizeof(key_priv_info->key_from)-1, mgt->prefix, info.uri);
+                        }else{
+                            ff_make_absolute_url(key_priv_info->key_from, sizeof(key_priv_info->key_from), mgt->prefix, info.uri);
+                        }
+                    }else{//change to  shttps for using android streaming framework.       
+                        snprintf(key_priv_info->key_from,sizeof(key_priv_info->key_from),"s%s",info.uri);
+                    }
+
                   
                     //av_log(NULL,AV_LOG_INFO,"aes key location,before:%s,after:%s\n",info.uri,key_priv_info->key_from);
 			key_priv_info->is_have_key_file = 0;
