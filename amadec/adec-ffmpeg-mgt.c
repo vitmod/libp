@@ -1063,19 +1063,25 @@ exit_decode_loop:
 	      {
 	        if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
 	        {
-	            //adec_print("====Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
-	            if(aout_stop_mutex==0)
+	            adec_print("====Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
+				audec->format_changed_flag = 1;
+				g_bst->channels=audec->channels=g_AudioInfo.channels;
+				g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+				
+#if 0
+				if(aout_stop_mutex==0)
 	            {
         	            aout_stop_mutex=1;
-        	            g_bst->channels=audec->channels=g_AudioInfo.channels;
-                           g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
         	            //send Message
         	            //reset param
-        	            aout_ops->stop(audec);
-        	            aout_ops->init(audec);
-        	            aout_ops->start(audec);
+        	            
+    	            	aout_ops->stop(audec);
+						aout_ops->init(audec);
+						aout_ops->start(audec);
         	            aout_stop_mutex=0;
 	            }
+#endif				
+				
 	        }
 	      }
 	      //step 2  get read buffer size
@@ -1227,6 +1233,7 @@ void *adec_armdec_loop(void *args)
         //  continue;
         //}
         
+        adec_reset_track(audec);
         adec_flag_check(audec);
 
         msg = adec_get_message(audec);
