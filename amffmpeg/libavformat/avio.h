@@ -732,6 +732,7 @@ static inline int url_support_time_seek(AVIOContext *s)
  int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags);
  int url_buffering_data(AVIOContext *s,int size);
  int64_t url_ffulltime(ByteIOContext *s);
+ int64_t url_fseekitemtime(AVIOContext *s, int64_t pos);
  int64_t url_buffed_pos(ByteIOContext *s);
  int64_t url_fbuffered_time(ByteIOContext *s);
  int64_t url_fseekslicebytime(AVIOContext *s,int64_t timestamp, int flags);

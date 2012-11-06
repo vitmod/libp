@@ -355,6 +355,15 @@ int64_t url_ffulltime(AVIOContext *s)
 	return size;
 }
 
+int64_t url_fseekitemtime(AVIOContext *s, int64_t pos)
+{
+	int64_t size;
+	if (!s->exseek)
+        return AVERROR(EPIPE);
+	size = s->exseek(s->opaque, pos, AVSEEK_ITEM_TIME);
+	return size;
+}
+
 int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags)
 {
 	int64_t offset1;
