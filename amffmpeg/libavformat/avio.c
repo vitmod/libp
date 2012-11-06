@@ -336,32 +336,27 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
                                          int (*transfer_func)(URLContext *h, unsigned char *buf, int size))
 {
     int ret, len;
-    int fast_retries = 10;
-
+    int64_t timeouttime = av_gettime()+10*(1000*1000);/*10*1S.*/
+    int retry=0;
     len = 0;
     while (len < size_min) {
-        ret = transfer_func(h, buf+len, size-len);
+        ret = transfer_func(h, buf+len, size-len);/*low level retry 1S*/
         if (url_interrupt_cb())
             return AVERROR_EXIT;
         if (ret == AVERROR(EINTR))
             continue;
         if (h->flags & AVIO_FLAG_NONBLOCK)
             return ret;
-        if (ret == AVERROR(EAGAIN)) {            
-            if (fast_retries){
-				ret = 0;
-                fast_retries--;
-				usleep(1000);  
-			} else {                          	
-				return ret;
-            }
-			av_log(NULL,AV_LOG_INFO,"**read/write time out,retry=%d\n",fast_retries);
-        } else if (ret < 1)
+        if (ret == AVERROR(EAGAIN)) { 
+			if(av_gettime()>=timeouttime)
+				return AVERROR(EAGAIN);
+			av_log(NULL,AV_LOG_INFO,"retry_transfer_wrapper,retry=%d\n",retry++);
+        } else if (ret < 1){
             return ret < 0 ? ret : len;
-        if (ret)
-           fast_retries = FFMAX(fast_retries, 2);
-        len += ret;
-        if (/*len < size && fast_retries<8 &&*/ url_interrupt_cb()) /*at least try several times for some teardown cmd finished.*/
+        }else{
+        	len+=ret;
+        }
+        if (url_interrupt_cb()) /*at least try several times for some teardown cmd finished.*/
             return AVERROR_EXIT;
     }
     return len;

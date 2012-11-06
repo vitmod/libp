@@ -725,20 +725,32 @@ void ffio_init_checksum(AVIOContext *s,
 /* XXX: put an inline version */
 int avio_r8(AVIOContext *s)
 {
-    if (s->buf_ptr >= s->buf_end)
-        fill_buffer(s);
-    if (s->buf_ptr < s->buf_end)
-        return *s->buf_ptr++;
-    return 0;
+    int retry=20;//total 200S..
+	while (s->buf_ptr >= s->buf_end && retry>0){
+		fill_buffer(s);//low level retry..10S
+		if(url_interrupt_cb())
+			break;
+			retry--;   
+	}	 
+	if (s->buf_ptr < s->buf_end)
+		return *s->buf_ptr++;
+	return 0;
+
 }
 
 #if FF_API_OLD_AVIO
 int url_fgetc(AVIOContext *s)
 {
-    if (s->buf_ptr >= s->buf_end)
-        fill_buffer(s);
-    if (s->buf_ptr < s->buf_end)
-        return *s->buf_ptr++;
+    int retry=20;
+	while (s->buf_ptr >= s->buf_end && retry>0){
+		fill_buffer(s);
+		if(url_interrupt_cb())
+			break;
+			retry--;   
+	}	 
+	if (s->buf_ptr < s->buf_end)
+		return *s->buf_ptr++;
+
     return URL_EOF;
 }
 #endif
