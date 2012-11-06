@@ -1074,7 +1074,7 @@ reload:
         if (isNeedFetch == 0 || (ret = list_open_internet(&bio, mgt, url, mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
             goto switchnext;
         }
-      
+        mgt->cur_uio = bio;
         if (mgt->current_item && mgt->current_item->file) { /*current item,switch to next*/
             current = mgt->current_item;
             next = mgt->current_item->next;
