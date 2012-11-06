@@ -1240,6 +1240,22 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
     }
 
 #if 1
+    if(whence == AVSEEK_ITEM_TIME) {
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_ITEM_TIME");
+        if (pos >= 0 && pos < mgt->full_time) {
+            for (item = mgt->item_list; item; item = item->next) {
+                if (item->start_time <= pos && pos < item->start_time + item->duration) {
+                    if(!item->next) {
+                        return (int64_t)mgt->full_time;
+                    } else {
+                        item = item->next;
+                        return (int64_t)item->start_time;
+                    }
+                }
+            }
+        }
+    }
+    
     if(whence == SEEK_SET) {
         av_log(NULL, AV_LOG_INFO, "-----------> listseek SEEK_SET");
         for (item = mgt->item_list; item; item = item->next) {

@@ -544,6 +544,16 @@ int64_t url_lpexseek(URLContext *s, int64_t offset, int whence)
                lp_unlock(&lp->mutex);
                return ret;
        }
+      else if (whence == AVSEEK_ITEM_TIME)
+      {
+               ret= s->prot->url_seek(s, offset, AVSEEK_ITEM_TIME);
+               if (ret < 0){
+                    lp_unlock(&lp->mutex);
+                    return -1;
+               }
+               lp_unlock(&lp->mutex);
+               return ret;
+       }
 seek_end:
 	lp_unlock(&lp->mutex);
 	return ret;

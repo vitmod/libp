@@ -496,7 +496,8 @@ int avio_put_str16le(AVIOContext *s, const char *str);
 #define AVSEEK_FULLTIME 		0x50000
 
 #define AVSEEK_SLICE_BYINDEX	(0x80000+1)	
-#define AVSEEK_SLICE_BYTIME	(0x80000+2)	
+#define AVSEEK_SLICE_BYTIME	(0x80000+2)
+#define AVSEEK_ITEM_TIME            (0x80000+3)
 
 
 int64_t avio_seek(AVIOContext *s, int64_t offset, int whence);
