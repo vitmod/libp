@@ -49,7 +49,7 @@ static HANDLE con;
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 #define set_color(x) 
 #define reset_color()
-#define  LOG(tag,...)  __android_log_print(ANDROID_LOG_ERROR,tag,__VA_ARGS__)
+#define  LOG(tag,...)  __android_log_print(ANDROID_LOG_INFO,tag,__VA_ARGS__)
 #else
 static const uint8_t color[]={0x41,0x41,0x11,0x03,9,9,9};
 #define set_color(x)  fprintf(stderr, "\033[%d;3%dm", color[x]>>4, color[x]&15)

@@ -218,7 +218,9 @@ int list_test_and_add_item(struct list_mgt *mgt, struct list_item*item)
         //av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]", sameitem->file, sameitem->seq, item->file, item->seq);
         return -1;/*found same item,drop it */
     }
-    //av_log(NULL,AV_LOG_INFO,"add this item,seq number:%d,start:%.4lf,duration:%.4lf\n",item->seq,item->start_time,item->duration);
+    if(mgt->debug_level>2){
+        RLOG("Add item,url:%s,seq:%d,index:%d,start:%.4lf,duration:%.4lf\n",item->file,item->seq,item->index,item->start_time,item->duration);
+    }
     list_add_item(mgt, item);
     return 0;
 }
@@ -731,7 +733,7 @@ static int hls_base_info_dump(struct list_mgt*  c){
     }
     RLOG("**********************hls power info dump start************************\n");
     RLOG("***Playback url: %s\n",c->filename+1);
-    RLOG("***Is VOD Streaming?,%s\n",c->have_list_end>0?"yes":"no");
+    RLOG("***Is VOD or Live Streaming?,%s\n",c->have_list_end>0?"VOD":"Live");
     if(c->have_list_end>0){
         RLOG("***Duration:%d\n",c->full_time);
         RLOG("***Total segment:%d\n",c->item_num);
@@ -1008,7 +1010,14 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
     if (!mgt) {
         return NULL;
     }
-
+    int isNeedFetch = 1;
+    int64_t reload_interval = mgt->item_num > 0 && mgt->current_item != NULL ?\
+                              mgt->current_item->duration:mgt->target_duration;
+                              
+    if(reload_interval >0){ //to usec
+        reload_interval *= 1000000;
+    }
+    
     if (mgt->n_variants > 0&&mgt->codec_buf_level>=0) { //vod,have mulit-bandwidth streams
         //av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
         int is_switch = select_best_variant(mgt);
@@ -1034,19 +1043,19 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
                 url_fclose(mgt->cur_uio);
                 mgt->cur_uio = NULL;
             }
+            if(mgt->debug_level==1){
+                hls_base_info_dump(mgt);
+            }
         }
-        if(mgt->debug_level>0){
+        if(mgt->debug_level>1){
             hls_base_info_dump(mgt);
         }
 
         //av_log(NULL, AV_LOG_INFO, "select best variant,bandwidth: %d\n", mgt->playing_variant->bandwidth);
 
     }
-    int64_t reload_interval = mgt->item_num > 0 && mgt->current_item != NULL ?
-                              mgt->current_item->duration :
-                              mgt->target_duration;
-    reload_interval *= 1000000;
-    int isNeedFetch = 1;
+
+   
 
 reload:
     if (mgt->current_item == NULL || mgt->current_item->next == NULL) {
@@ -1064,7 +1073,7 @@ reload:
             //av_log(NULL, AV_LOG_INFO, "list open url:%s\n", url);
         }
 
-        if (!mgt->have_list_end && (av_gettime() - mgt->last_load_time < reload_interval)) {
+        if (!mgt->have_list_end && (av_gettime() - mgt->last_load_time < reload_interval)&&mgt->item_num>0) {
             //av_log(NULL, AV_LOG_INFO, "drop fetch playlist from server\n");
             isNeedFetch = 0;
         }
@@ -1116,11 +1125,17 @@ switchnext:
     }
     if (next){   
         if(next->file!=NULL){
-            RLOG("Player switch to new item,url =%s,total item=%d,start=%.4lf,duration=%.4lf,index:%d,seq:%d\n",
-               next->file+1, mgt->item_num, next->start_time, next->duration,next->index,next->seq);
+            if(mgt->debug_level>1){
+                RLOG("Player switch to new item,url =%s,total item=%d,start=%.4lf,duration=%.4lf,index:%d,seq:%d\n",
+                   next->file, mgt->item_num, next->start_time, next->duration,next->index,next->seq);
+
+            }
         }       
     }else {
-        RLOG("Player can't find new item,total=%d\n", mgt->item_num);
+        if(mgt->debug_level>1){
+            RLOG("Player can't find new item,total=%d\n", mgt->item_num);
+
+        }
         if (!mgt->have_list_end) {
 
 
@@ -1128,7 +1143,7 @@ switchnext:
                 return NULL;
             }
             usleep(100 * 1000);
-            reload_interval = mgt->target_duration * 250000;
+            reload_interval = mgt->target_duration * 500000;
             isNeedFetch = 1;
             goto reload;
         }

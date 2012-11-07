@@ -52,6 +52,10 @@
 #define is_TAG(l,tag)	(!strncmp(l,tag,strlen(tag)))
 #define is_NET_URL(url)		(!strncmp(url,"http://",7) || !strncmp(url,"shttp://",8)||!strncmp(url,"shttps://",9))
 
+#define HLS_RATETAG "hls-parser"
+
+#define RLOG(...) av_tag_log(HLS_RATETAG,__VA_ARGS__)
+
 struct m3u_info{
 	int duration;
 	int sequence;
@@ -217,20 +221,24 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 		int ret=0;
 		int slen = strlen("#EXT-X-MEDIA-SEQUENCE:");
 		ret=sscanf(p+slen,"%d",&seq); //skip strlen("#EXT-X-MEDIA-SEQUENCE:");	
+		if(mgt->debug_level>3){
+		    RLOG("Get item seq:%d,next seq:%d\n",seq,mgt->next_seq);
+             }
 		if(ret>0&&seq>=0&&seq>=mgt->next_seq){
-			if(mgt->start_seq<0){
-				mgt->start_seq=seq;	
-				if(seq>0){
-					mgt->flags |=REAL_STREAMING_FLAG;
-
-				}
-			}
+			//if(mgt->start_seq<0){
+			mgt->start_seq=seq;	
+			
+			//}
 			item->seq=seq;
 			mgt->next_seq=seq+1;
 			
 		}else{
-			item->seq = seq;
-			item->flags|=INVALID_ITEM_FLAG;
+		   if(mgt->debug_level>3){     
+                    RLOG("Invalid item flag,get item seq:%d,next seq:%d\n",seq,mgt->next_seq);
+                }
+                item->seq = seq;
+                mgt->start_seq=seq;
+                item->flags |=INVALID_ITEM_FLAG;
 		}
 	}
 	
@@ -471,11 +479,21 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 
 			}
 			if(mgt->next_seq>=0 && item->seq<0){
-					item->seq=mgt->next_seq;
-					mgt->next_seq++;
+                        item->seq=mgt->start_seq+1;
+                        mgt->start_seq++;
+                       
+                        if(item->seq<mgt->next_seq){
+                            item->flags|=INVALID_ITEM_FLAG;
+                            if(mgt->debug_level>3){
+                                RLOG("Drop this item,url:%s,seq:%d\n",item->file,item->seq);
+
+                            }
+                        }else{
+                            mgt->next_seq++;
+                        }
 			}
-                   
-			if(!(tmpitem.flags&INVALID_ITEM_FLAG)){
+
+                    if(!(item->flags&INVALID_ITEM_FLAG)){
 				
 				ret =list_test_and_add_item(mgt,item);
 				if(ret==0){
