@@ -684,6 +684,7 @@ int codec_init(codec_para_t *pcodec)
         a_ainfo.format=pcodec->audio_type;
         a_ainfo.handle=pcodec->handle;
 		a_ainfo.SessionID=pcodec->SessionID;
+		a_ainfo.dspdec_not_supported = pcodec->dspdec_not_supported;
         if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type))
         {
             a_ainfo.extradata_size=pcodec->audio_info.extradata_size;

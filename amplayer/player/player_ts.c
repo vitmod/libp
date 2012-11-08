@@ -74,6 +74,10 @@ static int stream_ts_init(play_para_t *p_para)
             codec->audio_info.valid = 1;
 
         }
+		if(IS_AUDIO_NOT_SUPPORTED_BY_AUDIODSP(codec->audio_type,pCodecCtx)){
+				codec->dspdec_not_supported = 1;
+				log_print("main profile aac not supported by dsp decoder,so set dspdec_not_supported flag\n");
+		}	
         codec->avsync_threshold = p_para->start_param->avsync_threshold;
         log_print("[%s:%d]audio bitrate=%d sample_rate=%d channels=%d codec_id=%x block_align=%d,extra size\n",
                   __FUNCTION__, __LINE__, codec->audio_info.bitrate, codec->audio_info.sample_rate, codec->audio_info.channels,

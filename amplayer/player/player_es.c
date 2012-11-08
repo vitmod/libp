@@ -72,11 +72,11 @@ static void acodec_info_init(play_para_t *p_para, codec_para_t *a_codec)
     log_print("[%s:%d]audio stream_type=%d afmt=%d apid=%d asample_rate=%d achannel=%d\n",
               __FUNCTION__, __LINE__, a_codec->stream_type, a_codec->audio_type, a_codec->audio_pid,
               a_codec->audio_samplerate, a_codec->audio_channels);
+	pCodecCtx = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec;
 
     /*if ((a_codec->audio_type == AFORMAT_ADPCM) || (a_codec->audio_type == AFORMAT_WMA) || (a_codec->audio_type == AFORMAT_WMAPRO) || (a_codec->audio_type == AFORMAT_PCM_S16BE) || (a_codec->audio_type == AFORMAT_PCM_S16LE) || (a_codec->audio_type == AFORMAT_PCM_U8) \
         ||(a_codec->audio_type == AFORMAT_AMR)) {*/
     if (IS_AUIDO_NEED_EXT_INFO(a_codec->audio_type)) {
-        pCodecCtx = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec;
         if ((a_codec->audio_type == AFORMAT_ADPCM) || (a_codec->audio_type == AFORMAT_ALAC)) {
             a_codec->audio_info.bitrate = pCodecCtx->sample_fmt;
         } else if (a_codec->audio_type == AFORMAT_APE) {
@@ -101,6 +101,11 @@ static void acodec_info_init(play_para_t *p_para, codec_para_t *a_codec)
                   a_codec->audio_info.sample_rate, a_codec->audio_info.channels, a_codec->audio_info.extradata_size, a_codec->audio_info.block_align, a_codec->audio_info.codec_id);
 
     }
+	a_codec->SessionID = p_para->start_param->SessionID;		
+	if(IS_AUDIO_NOT_SUPPORTED_BY_AUDIODSP(a_codec->audio_type,pCodecCtx)){
+			a_codec->dspdec_not_supported = 1;
+			log_print("main profile aac not supported by dsp decoder,so set dspdec_not_supported flag\n");
+	}	
 }
 
 static void scodec_info_init(play_para_t *p_para, codec_para_t *s_codec)
