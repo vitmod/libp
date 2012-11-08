@@ -1134,6 +1134,67 @@ static void update_av_sync_for_audio(play_para_t *p_para)
     }
 }
 
+static int check_avdiff_time(play_para_t *p_para)
+{
+    int ret;
+    unsigned int vpts = 0, apts = 0;
+    int diff_threshold = 90000 * 8;
+    AVFormatContext *pCtx = p_para->pFormatCtx;
+    int64_t time_point;
+
+    apts = get_pts_audio(p_para);
+    vpts = get_pts_video(p_para);
+
+    if ((((apts > vpts) && (apts - vpts > diff_threshold))
+        || ((apts < vpts) && (vpts - apts > diff_threshold)))
+        && (0 == p_para->playctrl_info.avdiff_next_reset_timepoint)
+        && (get_player_state(p_para) == PLAYER_RUNNING)) {
+        if (0 == p_para->playctrl_info.avdiff_check_old_time) {
+            log_print("[%s:%d]avsync diff started\n");
+            check_time_interrupt(&p_para->playctrl_info.avdiff_check_old_time, 0);
+            return 0;
+        } else {
+            if (check_time_interrupt(&p_para->playctrl_info.avdiff_check_old_time, 60*1000)) {
+                if (pCtx->pb && pCtx->pb->opaque) {
+                    time_point = url_lpexseek(pCtx->pb->opaque, p_para->state.current_time, AVSEEK_ITEM_TIME);
+                    if (-1 == time_point) {
+                        log_print("[%s:%d]avsync diff is -1\n");
+                        return 1;
+                    } else if (p_para->state.full_time == time_point) {
+                        log_print("[%s:%d]avsync diff is the full_time\n");
+                        p_para->playctrl_info.avdiff_check_old_time = 0;
+                        return 0;
+                    } else if (p_para->state.current_time == time_point) {
+                        log_print("[%s:%d]avsync diff is the current_time\n");
+                        return 1;
+                    } else if (p_para->state.current_time > time_point) {
+                        log_print("[%s:%d]avsync diff some error happened\n");
+                        return 1;
+                    } else {
+                        p_para->playctrl_info.avdiff_next_reset_timepoint = time_point;
+                        return 0;
+                    }
+                } else {
+                    return 1;
+                }
+            } else {
+                return 0;
+            }
+        }
+    } else if (p_para->playctrl_info.avdiff_next_reset_timepoint) {
+        if (p_para->state.current_time >= p_para->playctrl_info.avdiff_next_reset_timepoint) {
+            p_para->playctrl_info.avdiff_next_reset_timepoint =  0;
+            log_print("[%s:%d]avsync diff wait time out\n");
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        p_para->playctrl_info.avdiff_check_old_time = 0;
+        return 0;
+    }
+}
+
 int update_playing_info(play_para_t *p_para)
 {
     struct buf_status vbuf, abuf;
@@ -1288,5 +1349,26 @@ int player_hwbuflevel_update(play_para_t *player)
         }
     }
     return 0;
+}
+
+void check_avdiff_status(play_para_t *p_para)
+{
+    if (p_para->playctrl_info.audio_ready == 1 
+        && (!p_para->playctrl_info.search_flag)
+        && (!p_para->playctrl_info.fast_backward)
+        && (!p_para->playctrl_info.fast_forward)
+        && p_para->astream_info.has_audio
+        && p_para->vstream_info.has_video
+        && get_tsync_enable()) {
+        if (check_avdiff_time(p_para)) {
+            p_para->playctrl_info.time_point = p_para->state.current_time;
+            p_para->playctrl_info.reset_flag = 1;
+            set_black_policy(0);
+            p_para->playctrl_info.end_flag = 1;
+            log_print("[%s:%d]AV diff is too long, need reset\n", __FUNCTION__, __LINE__);
+        }
+    }
+
+    return;
 }
 

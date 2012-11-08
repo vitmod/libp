@@ -1085,6 +1085,10 @@ write_packet:
                     }
                 }
             }
+
+        #if 0  // no sync watchdog
+            check_avdiff_status(player);
+        #endif
         } while (!player->playctrl_info.end_flag);
 
         log_print("wait for play end...(sta:0x%x)\n", get_player_state(player));
