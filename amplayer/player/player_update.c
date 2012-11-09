@@ -1156,25 +1156,30 @@ static int check_avdiff_time(play_para_t *p_para)
         } else {
             if (check_time_interrupt(&p_para->playctrl_info.avdiff_check_old_time, 60*1000)) {
                 if (pCtx->pb && pCtx->pb->opaque) {
-                    time_point = url_lpexseek(pCtx->pb->opaque, p_para->state.current_time, AVSEEK_ITEM_TIME);
+                    time_point = url_fseekitemtime(pCtx->pb, p_para->state.current_time);
                     if (-1 == time_point) {
-                        log_print("[%s:%d]avsync diff is -1\n");
-                        return 1;
+                        log_print("[%s:%d]avsync diff is -1\n", __FUNCTION__, __LINE__);
+                        if (url_support_time_seek(pCtx->pb)) {
+                            return 0;
+                        } else {
+                            return 1;
+                        }
                     } else if (p_para->state.full_time == time_point) {
-                        log_print("[%s:%d]avsync diff is the full_time\n");
+                        log_print("[%s:%d]avsync diff is the full_time\n", __FUNCTION__, __LINE__);
                         p_para->playctrl_info.avdiff_check_old_time = 0;
                         return 0;
                     } else if (p_para->state.current_time == time_point) {
-                        log_print("[%s:%d]avsync diff is the current_time\n");
+                        log_print("[%s:%d]avsync diff is the current_time\n", __FUNCTION__, __LINE__);
                         return 1;
                     } else if (p_para->state.current_time > time_point) {
-                        log_print("[%s:%d]avsync diff some error happened\n");
+                        log_print("[%s:%d]avsync diff some error happened\n", __FUNCTION__, __LINE__);
                         return 1;
                     } else {
                         p_para->playctrl_info.avdiff_next_reset_timepoint = time_point;
                         return 0;
                     }
                 } else {
+                    log_print("[%s:%d]avsync diff no opaque\n", __FUNCTION__, __LINE__);
                     return 1;
                 }
             } else {
@@ -1183,8 +1188,8 @@ static int check_avdiff_time(play_para_t *p_para)
         }
     } else if (p_para->playctrl_info.avdiff_next_reset_timepoint) {
         if (p_para->state.current_time >= p_para->playctrl_info.avdiff_next_reset_timepoint) {
-            p_para->playctrl_info.avdiff_next_reset_timepoint =  0;
-            log_print("[%s:%d]avsync diff wait time out\n");
+            p_para->playctrl_info.avdiff_next_reset_timepoint = 0;
+			log_print("[%s:%d]avsync diff wait time out\n", __FUNCTION__, __LINE__);
             return 1;
         } else {
             return 0;
@@ -1360,8 +1365,9 @@ void check_avdiff_status(play_para_t *p_para)
         && p_para->astream_info.has_audio
         && p_para->vstream_info.has_video
         && get_tsync_enable()) {
-        if (check_avdiff_time(p_para)) {
-            p_para->playctrl_info.time_point = p_para->state.current_time;
+        if (check_avdiff_time(p_para) 
+            && (p_para->state.current_time < p_para->state.full_time - 1)) {
+            p_para->playctrl_info.time_point = p_para->state.current_time + 1;
             p_para->playctrl_info.reset_flag = 1;
             set_black_policy(0);
             p_para->playctrl_info.end_flag = 1;
