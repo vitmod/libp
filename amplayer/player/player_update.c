@@ -680,6 +680,7 @@ static unsigned int get_current_time(play_para_t *p_para)
         log_debug("[get_current_time] curtime=0x%x pcr=0x%x apts=0x%x vpts=0x%x\n", ctime, pcr_scr, apts, vpts);
     }
     log_debug("===[get_current_time] curtime=0x%x(%d) pcr=0x%x apts=0x%x vpts=0x%x\n", ctime, ctime / PTS_FREQ, pcr_scr, apts, vpts);
+    p_para->state.current_pts = pcr_scr;	
     return ctime;
 }
 
@@ -702,7 +703,6 @@ static void update_current_time(play_para_t *p_para)
 #endif
         } else  if (!p_para->playctrl_info.end_flag) {
             time = get_current_time(p_para);
-            p_para->state.current_pts = time;
             if (p_para->state.start_time == -1) {
                 if (p_para->astream_info.start_time != -1) {
                     p_para->state.start_time = p_para->astream_info.start_time;
