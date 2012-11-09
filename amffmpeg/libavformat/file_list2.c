@@ -457,7 +457,7 @@ static int switch_bw_level(struct list_mgt * mgt, int updown){
             av_log(NULL,AV_LOG_WARNING,"failed to switch bandwidth,down level:%d\n",updown);
         }else{        
             //RLOG("switch down level :%d ,org:%d\n",updown,mgt->playing_variant->priority);
-            priority = mgt->playing_variant->priority-updown;
+            priority = mgt->playing_variant->priority+updown;
 
         }        
     }
@@ -505,8 +505,9 @@ reload:
     
     if (ret != 0) {      
         if(bio!=NULL){
-            avio_close(bio);
+            avio_close(bio);            
             bio = NULL;
+            *pbio = NULL;
         }
         return AVERROR(EIO);
     }
@@ -530,6 +531,7 @@ reload:
             if (bio) {
                 url_fclose(bio);
                 bio = NULL;
+                
             }
             
             ret = fast_sort_streams(mgt);  
@@ -1081,6 +1083,9 @@ reload:
             return NULL;
         }
         if (isNeedFetch == 0 || (ret = list_open_internet(&bio, mgt, url, mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
+            if(ret!=0&&mgt->n_variants>1){
+                switch_bw_level(mgt,-1);
+            }
             goto switchnext;
         }
         mgt->cur_uio = bio;
@@ -1108,6 +1113,7 @@ reload:
         }
     }
 switchnext:
+
     if (mgt->current_item) {
         next = mgt->current_item->next;
 
