@@ -930,11 +930,11 @@ int player_dec_reset(play_para_t *p_para)
     const stream_decoder_t *decoder;
     int ret = PLAYER_SUCCESS;
     AVFormatContext *pFormatCtx = p_para->pFormatCtx;;
-    unsigned int time_point = p_para->playctrl_info.time_point;
+    float time_point = p_para->playctrl_info.time_point;
     int64_t timestamp = 0;
     int mute_flag = 0;
 
-    timestamp = (int64_t)time_point * AV_TIME_BASE;
+    timestamp = (int64_t)(time_point * AV_TIME_BASE);
     if (p_para->vstream_info.has_video
         && (timestamp != pFormatCtx->start_time)
         && (p_para->stream_type == STREAM_ES)) {
@@ -1018,8 +1018,11 @@ int player_dec_reset(play_para_t *p_para)
     if (p_para->stream_type == STREAM_AUDIO) {
         p_para->astream_info.check_first_pts = 0;
     }
-
-    ret = time_search(p_para);
+    if(p_para->playctrl_info.time_point>0){	
+    	 ret = time_search(p_para);
+    }else{
+        ret = PLAYER_SUCCESS;/*do reset only*/	
+    }
     if (ret != PLAYER_SUCCESS) {
         log_error("[player_dec_reset]time search failed !ret = -%x\n", -ret);
     } else {

@@ -287,7 +287,12 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
             para->playctrl_info.search_flag = 1;
             para->playctrl_info.time_point = msg->f_param;
             para->playctrl_info.end_flag = 1;
-        } else if (msg->f_param == para->state.full_time) {
+        } else if(msg->f_param < 0){
+            log_print("pid[%d]::seek reset\n", para->player_id);
+	     para->playctrl_info.reset_flag= 1;
+            para->playctrl_info.time_point = -1;
+            para->playctrl_info.end_flag = 1;
+	 }else if (msg->f_param == para->state.full_time) {
             para->playctrl_info.end_flag = 1;
             para->playctrl_info.search_flag = 0;
             set_player_state(para, PLAYER_PLAYEND);
@@ -996,7 +1001,7 @@ void *player_thread(play_para_t *player)
                         ///continue;
                     }
                 } else {
-                    player_thread_wait(player, 100 * 1000); //100ms
+                   /// player_thread_wait(player, 100 * 1000); //100ms
                 }
             }
             if ((player->playctrl_info.f_step == 0) &&

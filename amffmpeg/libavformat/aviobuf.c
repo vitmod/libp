@@ -29,7 +29,7 @@
 #include <stdarg.h>
 #include "amconfigutils.h"
 
-#define IO_BUFFER_SIZE 32768
+#define IO_BUFFER_SIZE 512
 #define IO_BUFFER_MIN_SIZE 1024
 /**
  * Do seeks within this distance ahead of the current buffer by skipping
@@ -767,7 +767,7 @@ int url_fgetc(AVIOContext *s)
 int avio_read(AVIOContext *s, unsigned char *buf, int size)
 {
     int len, size1;
-
+    int retry_num=20;
     if(size == 0)
         return 0;
 
@@ -787,6 +787,8 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
 			        	s->eof_reached = 1;
 			        if(len<0 && len !=AVERROR(EAGAIN))
 			            s->error= len;
+					if(len == AVERROR(EAGAIN) && retry_num-->0)
+						continue;
                     break;
                 } else {
                     s->pos += len;
@@ -1107,6 +1109,7 @@ int ffio_set_buf_size(AVIOContext *s, int buf_size)
     buffer = av_malloc(buf_size);
     if (!buffer)
         return AVERROR(ENOMEM);
+	av_log(NULL,AV_LOG_INFO,"url_resetbuf--%d\n",buf_size);
 	old_pos = url_ftell(s);
     av_free(s->buffer);
     s->buffer = buffer;
@@ -1129,6 +1132,7 @@ static int url_resetbuf(AVIOContext *s, int flags)
         s->buf_end = s->buffer;
         s->write_flag = 0;
     }
+
     return 0;
 }
 
