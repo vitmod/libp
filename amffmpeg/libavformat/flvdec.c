@@ -557,10 +557,10 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
             pts = dts + cts;
             if (cts < 0) { // dts are wrong
                 flv->wrong_dts = 1;
-                av_log(s, AV_LOG_WARNING, "negative cts, previous timestamps might be wrong\n");
+                av_log(s, AV_LOG_WARNING, "negative cts, previous timestamps might be wrong.cts=%d, dts=%lld, pts=%lld\n", cts, dts, pts);
             }
             if (flv->wrong_dts)
-                dts = AV_NOPTS_VALUE;
+                pts = AV_NOPTS_VALUE;
         }
         if (type == 0) {
             if ((ret = flv_get_extradata(s, st, size)) < 0)
