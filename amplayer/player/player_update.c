@@ -1331,7 +1331,7 @@ int player_hwbuflevel_update(play_para_t *player)
     hwbufstats_t hwbufs;
 
     sta = get_player_state(player);
-    if (sta < PLAYER_INITOK || sta == PLAYER_SEARCHING || sta >= PLAYER_ERROR) {
+    if (sta < PLAYER_INITOK  || sta >= PLAYER_ERROR) {
         return 0;
     }
     MEMSET(&vbuf, 0, sizeof(struct buf_status));
