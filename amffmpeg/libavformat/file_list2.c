@@ -1281,14 +1281,13 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
         av_log(NULL, AV_LOG_INFO, "-----------> listseek SEEK_SET");
         for (item = mgt->item_list; item; item = item->next) {
             if(mgt->cmf_item_index == item->index) {
-                    /*mgt->current_item = NULL;
-                    CacheHttp_Reset(mgt->cache_http_handle);
+                    mgt->current_item = NULL;
+                    int ret = CacheHttp_Seek(mgt->cache_http_handle, pos);
                     mgt->current_item = item;
-                    mgt->playing_item_index = item->index - 1;
-                    if (!mgt->have_list_end) {
-                        mgt->playing_item_seq = item->seq - 1;
-                    }*/
-                    return 0;
+                    if(!ret)
+                        return pos;
+                    else
+                        return -1;
             }
         }
     }

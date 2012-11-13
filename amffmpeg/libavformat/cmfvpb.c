@@ -173,7 +173,7 @@ static int64_t cmfvpb_seek(URLContext*v, int64_t offset, int whence)
         av_log(NULL, AV_LOG_INFO, "cmfvpb_seek failed\n");
         return -1;
     }
-  av_log(NULL, AV_LOG_INFO, "cmfvpb_seek cv->index [%lld] offset[%lld] whence[%d] cv->size[%lld]\n", cv->cur_index, offset, whence,cv->size);
+  av_log(NULL, AV_LOG_INFO, "cmfvpb_seek cv->index [%lld] offset[%lld]  start_offset[%lld] whence[%d] cv->size[%lld]\n", cv->cur_index, offset, cv->start_offset, whence,cv->size);
     if (whence == AVSEEK_SIZE) {
         if (cv->size <= 0) {
             av_log(NULL, AV_LOG_INFO, " cv->size error sieze=%lld\n", cv->size);

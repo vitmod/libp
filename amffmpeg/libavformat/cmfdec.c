@@ -232,10 +232,12 @@ retry_read:
         cmf_reset_packet(&cmf->pkt);
         url_lpreset(&ci->vlpcontext);
         cmf->parsering_index = cmf->parsering_index + 1;
+        #if 0
         if(!memcmp(cmf->sctx->iformat->name,"flv",3) && cmf->is_seeked) {
             cmf->parsering_index--;
             cmf->is_seeked = 0;
         }
+        #endif
         av_log(s, AV_LOG_INFO, "\n--cmf_read_packet parsernextslice cmf->parsering_index = %lld--\n", cmf->parsering_index);
         if (cmf->parsering_index >= ci->total_num){
             av_log(s, AV_LOG_INFO, " cmf_read_packet to lastindex,curindex [%lld] totalnum[%lld]\n", cmf->parsering_index,ci->total_num);

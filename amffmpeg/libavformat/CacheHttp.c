@@ -48,12 +48,14 @@ typedef struct {
     int RESET;
     int reset_flag;
     int finish_flag;
+    int seek_flag;
     int have_list_end;
     int circular_buffer_error; 
     double item_duration;
     double item_starttime;
     int64_t item_pos;
     int64_t item_size;
+    int64_t seek_pos;
     enum KeyType ktype;
     char key[33];
     char iv[33];
@@ -102,7 +104,7 @@ static int CacheHttp_ffurl_close(URLContext * h)
     return ffurl_close(h);
 }
 
-static int CacheHttp_ffurl_seek(URLContext *h, int64_t pos, int whence)
+static int64_t CacheHttp_ffurl_seek(URLContext *h, int64_t pos, int whence)
 {
     return ffurl_seek(h, pos, whence);
 }
@@ -123,6 +125,7 @@ int CacheHttp_Open(void ** handle,const char* headers)
     s->item_pos = 0;
     s->item_starttime = 0;
     s->finish_flag = 0;
+    s->seek_flag = 0;
     s->reset_flag = -1;
     s->have_list_end = -1;
     s->is_first_read = 1;
@@ -212,7 +215,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
 
 int CacheHttp_Reset(void * handle)
 {
-    av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset begin");
+    av_log(NULL, AV_LOG_INFO, "--------------- CacheHttp_Reset begin");
     if(!handle)
         return AVERROR(EIO);
 
@@ -221,13 +224,36 @@ int CacheHttp_Reset(void * handle)
     while(!s->EXITED && 0 == s->reset_flag) {
         usleep(1000);
     }
-    av_log(NULL, AV_LOG_ERROR, "--------------- CacheHttp_Reset suc !");
+    av_log(NULL, AV_LOG_INFO, "--------------- CacheHttp_Reset suc !");
     pthread_mutex_lock(&s->read_mutex);
     if(s->fifo)
         av_fifo_reset(s->fifo);
+    pthread_mutex_unlock(&s->read_mutex);
     s->RESET = 0;
     s->finish_flag = 0;
+    return 0;
+}
+
+int CacheHttp_Seek(void * handle, int64_t pos)
+{
+    av_log(NULL, AV_LOG_INFO, "--------------- CacheHttp_Seek begin");
+    if(!handle)
+        return AVERROR(EIO);
+
+    CacheHttpContext * s = (CacheHttpContext *)handle;
+    s->RESET = 1;
+    while(!s->EXITED && 0 == s->reset_flag) {
+        usleep(1000);
+    }
+    pthread_mutex_lock(&s->read_mutex);
+    if(s->fifo)
+        av_fifo_reset(s->fifo);
     pthread_mutex_unlock(&s->read_mutex);
+    s->RESET = 0;
+    s->finish_flag = 0;
+    s->seek_flag = 1;
+    s->seek_pos = pos;
+    av_log(NULL, AV_LOG_INFO, "--------------- CacheHttp_Seek suc !");
     return 0;
 }
 
@@ -297,7 +323,7 @@ static void *circular_buffer_task( void *_handle)
 		 s->circular_buffer_error = EINTR;
                goto FAIL;
 	}
-       
+
         if(h) {
             CacheHttp_ffurl_close(h);
             h = NULL;
@@ -372,6 +398,13 @@ OPEN_RETRY:
                 }
                  break;
              }          
+        }
+
+        if(h && s->seek_flag) {
+            int64_t cur_pos = CacheHttp_ffurl_seek(h, 0, SEEK_CUR);
+            int64_t pos_ret = CacheHttp_ffurl_seek(h, s->seek_pos-cur_pos, SEEK_CUR);
+            av_log(NULL,AV_LOG_INFO,"--------------> tao_cachehttp_seek   seek_pos=%lld, pos_ret=%lld", s->seek_pos, pos_ret);
+            s->seek_flag = 0;
         }
         
         s->hd = h;
