@@ -29,7 +29,7 @@
 #include <stdarg.h>
 #include "amconfigutils.h"
 
-#define IO_BUFFER_SIZE 512
+#define IO_BUFFER_SIZE 32768
 #define IO_BUFFER_MIN_SIZE 1024
 /**
  * Do seeks within this distance ahead of the current buffer by skipping
