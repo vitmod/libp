@@ -85,7 +85,7 @@ static int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
             if (q > line && q[-1] == '\r')
                 q--;
             *q = '\0';
-	     //av_log(NULL, AV_LOG_INFO, "m3u_format_get_line line %d=%s\n",sizeof(line),line);
+	     //RLOG("Process m3u in one line,detail: %s\n",line);
             return q-line;
         } else {
             if ((q - line) < line_size - 1)
@@ -181,6 +181,7 @@ static int parseDouble(const char *s, double *x) {
     return 0;
 }
 
+
 #define TRICK_LOGIC_BASE 200
 #ifndef INT_MAX
 #define INT_MAX   2147483647
@@ -244,10 +245,11 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 	
 	else if(av_strstart(p,"#EXT-X-STREAM-INF:",&ptr)){
 		struct variant_info info = {{0}};           
-		ff_parse_key_value(p, (ff_parse_key_val_cb) handle_variant_args,
-		           &info);
+            ff_parse_key_value(ptr, (ff_parse_key_val_cb) handle_variant_args,&info);
 		mgt->bandwidth = atoi(info.bandwidth);		
-		//av_log(NULL, AV_LOG_INFO, "get a stream info,bandwidth:%d\n",mgt->bandwidth);		
+            if(mgt->debug_level>3){
+                RLOG("Get a stream info,bandwidth:%d\n",mgt->bandwidth);	
+            }
 		mgt->is_variant = 1;
 		return -(TRICK_LOGIC_BASE+1);
 	}
@@ -517,7 +519,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 		else if(ret <0){
 			if(ret ==-(TRICK_LOGIC_BASE+0)&&(mgt->flags&KEY_FLAG)&&NULL!= mgt->key_tmp&&0==mgt->key_tmp->is_have_key_file){//get key from server
 				 URLContext *uc;
-			        if (ffurl_open(&uc, mgt->key_tmp->key_from, AVIO_FLAG_READ) == 0) {
+			        if (ffurl_open_h(&uc, mgt->key_tmp->key_from, AVIO_FLAG_READ,mgt->ipad_req_media_headers,NULL) == 0) {
 			            if (ffurl_read_complete(uc, mgt->key_tmp->key, sizeof(mgt->key_tmp->key))
 			                != sizeof(mgt->key_tmp->key)) {
 			                av_log(NULL, AV_LOG_ERROR, "Unable to read key file %s\n",
@@ -601,7 +603,7 @@ static int m3u_probe(ByteIOContext *s,const char *file)
 
 			if(memcmp(line,EXTM3U,strlen(EXTM3U))==0)
 			{				
-				//av_log(NULL, AV_LOG_INFO, "get m3u flags!!\n");
+				RLOG("Get m3u file tag\n");
 				return 100;
 			}
 		}	

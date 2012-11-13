@@ -333,10 +333,25 @@ static int  fast_sort_streams(struct list_mgt * mgt){
     int key,left,middle,right;  
     struct variant *var= NULL;
     int i,j,tmp,stuff[mgt->n_variants];
+    int has_bandwidth = -1;
     for (i=0; i < mgt->n_variants; i++){
         var = mgt->variants[i];
         stuff[i] = var->bandwidth;
+        if(has_bandwidth<0&&stuff[i] >0){
+            has_bandwidth = 1;
+        }
        
+    }
+
+    if(has_bandwidth<0){
+        for (i=0; i < mgt->n_variants; i++){
+            var = mgt->variants[i];
+            var->priority = i;           
+        }
+        
+        mgt->playing_variant= mgt->variants[mgt->n_variants/2];
+        RLOG("Invalid bandwidth streaming,choose url:%s\n",mgt->playing_variant->url);
+        return 0;        
     }
     for (i=1; i < mgt->n_variants; i++){
         key = stuff[i];
@@ -537,6 +552,7 @@ reload:
             ret = fast_sort_streams(mgt);  
             if(mgt->playing_variant==NULL||mgt->playing_variant->url==NULL||strlen(mgt->playing_variant->url)<4){
                 av_log(NULL,AV_LOG_ERROR,"failed to sort or get streams\n");
+                ret = -1;
                 goto error;
             }
             url = mgt->playing_variant->url;           
