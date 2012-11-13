@@ -1597,18 +1597,22 @@ static int mov_read_ctts(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         return AVERROR(ENOMEM);
     sc->ctts_count = entries;
 
-    for(i=0; i<entries; i++) {
+    for (i=0; i<entries; i++) {
         int count    =avio_rb32(pb);
         int duration =avio_rb32(pb);
 
         sc->ctts_data[i].count   = count;
         sc->ctts_data[i].duration= duration;
-        if (duration < 0 && i+1<entries)
+
+        if (FFABS(duration) > (1<<28) && i+2<entries) {
+            av_log(c->fc, AV_LOG_WARNING, "CTTS invalid\n");
+            av_freep(&sc->ctts_data);
+            sc->ctts_count = 0;
+            return 0;
+        }
+
+        if (duration < 0 && i+2<entries)
             sc->dts_shift = FFMAX(sc->dts_shift, -duration);
-	 if(url_interrupt_cb()) {
-	     av_log(NULL, AV_LOG_WARNING, "mov_read_stts interrupt, exit\n");
-	     return AVERROR_EXIT;
-         }		
     }
 
     av_dlog(c->fc, "dts shift %d\n", sc->dts_shift);
