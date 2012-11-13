@@ -1716,15 +1716,17 @@ int check_in_pts(play_para_t *para)
     if (para->stream_type == STREAM_ES && (pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO)) {
         if ((int64_t)INT64_0 != pkt->avpkt->pts) {
             pts = pkt->avpkt->pts * time_base_ratio;
-            if (pts < start_time) {
+/*** for mmsh,asf,the pts may rollback,so Don't care the pts < start time.,some other streams have the same problem.
+	 for numbric only pts,do mul on demux..
+	     if (pts < start_time) {
                 pts = pts * last_duration;
             }
-
+**/
             if (codec_checkin_pts(pkt->codec, pts) != 0) {
                 log_error("ERROR pid[%d]: check in pts error!\n", para->player_id);
                 return PLAYER_PTS_ERROR;
             }
-            //log_print("[check_in_pts:%d]type=%d pkt->pts=%llx pts=%llx start_time=%llx \n",__LINE__,pkt->type,pkt->avpkt->pts,pts, start_time);
+           ///log_print("[check_in_pts:%d]type=%d pkt->pts=%llx pts=%llx start_time=%llx \n",__LINE__,pkt->type,pkt->avpkt->pts,pts, start_time);
 
         } else if ((int64_t)INT64_0 != pkt->avpkt->dts) {
             pts = pkt->avpkt->dts * time_base_ratio * last_duration;
