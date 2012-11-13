@@ -346,7 +346,7 @@ static int mmsh_open_internal(URLContext *h, const char *uri, int flags, int tim
     if (err) {
           goto fail;
     }
-
+    h->is_slowmedia=1;
     err = get_http_header_data(mmsh);
     if (err) {
         av_log(NULL, AV_LOG_ERROR, "Get http header data failed!\n");
@@ -400,13 +400,17 @@ static int mmsh_read(URLContext *h, uint8_t *buf, int size)
     int res = 0;
     MMSHContext *mmsh = h->priv_data;
     MMSContext *mms   = &mmsh->mms;
+    int retry=10;	
     do {
         if (mms->asf_header_read_size < mms->asf_header_size) {
             // copy asf header into buffer
             res = ff_mms_read_header(mms, buf, size);
         } else {
-            if (!mms->remaining_in_len && (res = handle_chunk_type(mmsh)))
-                return res;
+            if (!mms->remaining_in_len && (res = handle_chunk_type(mmsh))){
+              	if(retry--<0)/*for loop play,we will get CHUNK_TYPE_END on read.*/
+				return res;
+			continue;	
+            }
             res = ff_mms_read_data(mms, buf, size);
         }
     } while (!res);

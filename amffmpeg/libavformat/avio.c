@@ -372,7 +372,8 @@ int ffurl_read(URLContext *h, unsigned char *buf, int size)
 
 int ffurl_read_complete(URLContext *h, unsigned char *buf, int size)
 {
-    int maxretry=10;
+#define MAX_RETRY (6*60) //10S*6*60=60MIN;
+    int maxretry=MAX_RETRY;
     int toread=size;
     int readedlen=0;
     if (!(h->flags & AVIO_FLAG_READ))
@@ -383,14 +384,16 @@ int ffurl_read_complete(URLContext *h, unsigned char *buf, int size)
 		if(ret>0){
 			toread-=ret;
 			readedlen+=ret;
+		}else if(ret!=AVERROR(EAGAIN)){
+			return ret;/*error of EOF*/
 		}
-		if(maxretry<=8  && url_interrupt_cb())
+		if(url_interrupt_cb())
 			return AVERROR_EXIT;
     }
     if((size-toread)!=0)
 		return (size-toread);
  	else
-		return AVERROR(EAGAIN);
+		return AVERROR(ETIMEDOUT);/*retry too long time,//time out...*/
 }
 
 int ffurl_write(URLContext *h, const unsigned char *buf, int size)
