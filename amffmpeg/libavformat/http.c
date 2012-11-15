@@ -66,10 +66,11 @@ typedef struct {
     HTTPAuthState auth_state;
     unsigned char headers[BUFFER_SIZE];
     int willclose;          /**< Set if the server correctly handles Connection: close and will close the connection after feeding us the content. */
-	int is_seek;
-	int canseek;
-	int max_connects;
-	int latest_get_time_ms;
+    int is_seek;
+    int canseek;
+    int max_connects;
+    int latest_get_time_ms;
+    int is_broadcast;
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
@@ -268,8 +269,9 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->hd = NULL;
 	
     s->filesize = -1;
-	s->is_seek=1;
-	s->canseek=1;
+    s->is_seek=1;
+    s->canseek=1;
+    s->is_broadcast = 0;
     av_strlcpy(s->location, uri, sizeof(s->location));
 	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
@@ -284,13 +286,14 @@ static int http_open(URLContext *h, const char *uri, int flags)
 static int shttp_open(URLContext *h, const char *uri, int flags)
 {
     HTTPContext *s = h->priv_data;
-	int ret;
-	int open_retry=0;
+    int ret;
+    int open_retry=0;
     h->is_streamed = 1;
-     s->hd = NULL;
+    s->hd = NULL;
     s->filesize = -1;
-	s->is_seek=1;
-	s->canseek=1;
+    s->is_seek=1;
+    s->canseek=1;
+    s->is_broadcast = 0;
     av_strlcpy(s->location, uri+1, sizeof(s->location));	
 	s->max_connects=MAX_CONNECT_LINKS;	
 	ret = http_open_cnx(h);
@@ -426,6 +429,27 @@ static int process_line(URLContext *h, char *line, int line_count,
             if (!strncmp(p, "Octoshape-Ondemand", strlen("Octoshape-Ondemand")))
                 h->is_streamed = 0;     /* Octoshape-Ondemand http server support seek */
                 av_log(h, AV_LOG_INFO, "Octoshape-Ondemand support seek!\n");
+        }else if(!strcasecmp (tag, "Pragma")){
+            if( strstr( p, "features" ) )
+            {
+                /* FIXME, it is a bit badly done here ..... */
+                if( strstr( p, "broadcast" ) )
+                {
+                    av_log(h, AV_LOG_INFO, "stream type = broadcast\n" );
+                    s->is_broadcast  = 1;                    
+                }
+                else if( strstr( p, "seekable" ) )
+                {
+                    av_log( h, AV_LOG_INFO, "stream type = seekable\n" );
+                    s->is_broadcast  = 0;
+                }
+                else
+                {
+                    av_log( h, AV_LOG_INFO, "unknow stream types (%s)\n", p );
+                    s->is_broadcast = 0;                    
+                }
+            }
+
         }
     }
     return 1;

@@ -21,6 +21,7 @@
 #include "avformat.h"
 #include "libavutil/parseutils.h"
 #include <unistd.h>
+#include <errno.h>
 #include "internal.h"
 #include "network.h"
 #include "os_support.h"
@@ -212,13 +213,16 @@ static int tcp_read(URLContext *h, uint8_t *buf, int size)
 
     if (!(h->flags & AVIO_FLAG_NONBLOCK)) {
         ret = ff_network_wait_fd(s->fd, 0);
-        if (ret < 0)
+        if (ret < 0){
+            av_log(h, AV_LOG_INFO,"ff_network_wait_fd return error %d,errmsg:%s \n",ret,strerror(errno)!=NULL?strerror(errno):"unkown");
             return ret;
+
+        }
     }
     ret = recv(s->fd, buf, size, 0);
-	if(ret<=0){
-		av_log(h, AV_LOG_INFO,"tcp_read return error %d \n",ret);
-	}
+    if(ret<=0){
+        av_log(h, AV_LOG_INFO,"tcp_read return error %d,errno:%d,errmsg:%s \n",ret,errno,strerror(errno)!=NULL?strerror(errno):"unkown");
+    }
     return ret < 0 ? ff_neterrno() : ret;
 }
 
