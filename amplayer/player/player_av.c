@@ -1248,7 +1248,7 @@ int time_search(play_para_t *am_p)
                     goto searchexit;
                 }
             } else {
-                if (time_point == 0 && am_p->file_type == MOV_FILE) { // maybe all file types can be seeked to dataoffset if timepoint==0
+                if (time_point == 0 && am_p->file_type == MOV_FILE && (!s->pb->is_slowmedia)) { // maybe all file types can be seeked to dataoffset if timepoint==0
                     ret = url_fseek(s->pb, s->media_dataoffset, SEEK_SET);
                 } else {
                     ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
