@@ -794,7 +794,17 @@ http_get_file_handle(URLContext *h)
     HTTPContext *s = h->priv_data;
     return ffurl_get_file_handle(s->hd);
 }
+int ff_http_get_broadcast_flag(URLContext *h){
+    if(h == NULL){
+        return 0;
+    }
+    HTTPContext *s = h->priv_data;
+    if(s!=NULL){
+        return s->is_broadcast;
+    }
+    return 0;
 
+}
 URLProtocol ff_http_protocol = {
     .name                = "http",
     .url_open            = http_open,
