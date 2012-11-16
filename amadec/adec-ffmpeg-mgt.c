@@ -893,7 +893,10 @@ static int get_frame_size(int format)
                 }
                 else{
                     start_code.size=3;
-                    memcpy(start_code.buff,&start_code.buff[1],3);
+                    //memcpy(start_code.buff,&start_code.buff[1],3);
+                    start_code.buff[0] = start_code.buff[1];
+                    start_code.buff[1] = start_code.buff[2];
+                    start_code.buff[2] = start_code.buff[3];
                     return 0;
                 }
               }

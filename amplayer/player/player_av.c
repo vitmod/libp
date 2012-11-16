@@ -500,7 +500,7 @@ static int raw_read(play_para_t *para)
     if (dump_data_mode == DUMP_READ_RAW_DATA) {
         if (fdr_raw == -1) {
             sprintf(dump_path, "/temp/pid%d_dump_read.dat", para->player_id);
-            fdr_raw = open(dump_path, O_CREAT | O_RDWR);
+            fdr_raw = open(dump_path, O_CREAT | O_RDWR, 0666);
             if (fdr_raw < 0) {
                 log_print("creat %s failed!fd=%d\n", dump_path, fdr_raw);
             }
@@ -737,7 +737,7 @@ static int non_raw_read(play_para_t *para)
             if (dump_data_mode == DUMP_READ_ES_VIDEO) {
                 if (fdr_video == -1) {
                     sprintf(dump_path, "/temp/pid%d_dump_vread.dat", para->player_id);
-                    fdr_video = open(dump_path, O_CREAT | O_RDWR);
+                    fdr_video = open(dump_path, O_CREAT | O_RDWR, 0666);
                     if (fdr_video < 0) {
                         log_print("creat %s failed!fd=%d\n", dump_path, fdr_video);
                     }
@@ -745,7 +745,7 @@ static int non_raw_read(play_para_t *para)
             } else if (dump_data_mode == DUMP_READ_ES_AUDIO) {
                 if (fdr_audio == -1) {
                     sprintf(dump_path, "/temp/pid%d_dump_aread.dat", para->player_id);
-                    fdr_audio = open(dump_path, O_CREAT | O_RDWR);
+                    fdr_audio = open(dump_path, O_CREAT | O_RDWR, 0666);
                     if (fdr_audio < 0) {
                         log_error("creat %s failed!fd=%d\n", dump_path, fdr_audio);
                     }
@@ -1391,21 +1391,21 @@ int write_av_packet(play_para_t *para)
 
     if (dump_data_mode == DUMP_WRITE_RAW_DATA && fdw_raw == -1) {
         sprintf(dump_path, "/temp/pid%d_dump_write.dat", para->player_id);
-        fdw_raw = open(dump_path, O_CREAT | O_RDWR);
+        fdw_raw = open(dump_path, O_CREAT | O_RDWR, 0666);
         if (fdw_raw < 0) {
             log_error("creat %s failed!fd=%d\n", dump_path, fdw_raw);
         }
     } else {
         if (dump_data_mode == DUMP_WRITE_ES_VIDEO && fdw_video == -1) {
             sprintf(dump_path, "/temp/pid%d_dump_vwrite.dat", para->player_id);
-            fdw_video = open(dump_path, O_CREAT | O_RDWR);
+            fdw_video = open(dump_path, O_CREAT | O_RDWR, 0666);
             if (fdw_video < 0) {
                 log_error("creat %s failed!fd=%d\n", dump_path, fdw_video);
             }
         }
         if (dump_data_mode == DUMP_WRITE_ES_AUDIO && fdw_audio == -1) {
             sprintf(dump_path, "/temp/pid%d_dump_awrite.dat", para->player_id);
-            fdw_audio = open(dump_path, O_CREAT | O_RDWR);
+            fdw_audio = open(dump_path, O_CREAT | O_RDWR, 0666);
             if (fdw_audio < 0) {
                 log_print("creat %s failed!fd=%d\n", dump_path, fdw_audio);
             }
