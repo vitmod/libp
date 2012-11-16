@@ -164,6 +164,7 @@ Retry_open:
 int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
 {
     AVFormatContext *pFCtx = am_p->pFormatCtx;
+	AVStream *sttmp=NULL;
     memset(type, 0, sizeof(*type));
     if (pFCtx->iformat != NULL) {
         unsigned int i;
@@ -191,11 +192,24 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
                 type->video_tracks++;
             } else if (st->codec->codec_type == CODEC_TYPE_AUDIO) {
                 type->audio_tracks++;
+                sttmp=st;
             } else if (st->codec->codec_type == CODEC_TYPE_SUBTITLE) {
                 type->subtitle_tracks++;
             }
         }
 
+		 //--------special process for m4a format with alac codec----------
+		 if((type->video_tracks==0) && (type->audio_tracks==1) && (sttmp!=NULL))
+		 {    if((strstr(type->fmt_string,"m4a")!=NULL) && (sttmp->codec->codec_id==CODEC_ID_ALAC))
+		 	  {
+			      memset(format_string, 0, sizeof(format_string));
+			      //memcpy(format_string,"alac",4);
+			      sprintf(format_string, "%s","alac");
+			      log_print("NOTE: change type->fmt_string=%s to alac\n", type->fmt_string);
+			      type->fmt_string = format_string;
+		  	  }
+		 }
+	   //-----------------------------------------------------
         // special process for webm and vpx
         if (matroska_flag || vpx_flag) {
             int length = 0;
