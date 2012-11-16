@@ -153,6 +153,7 @@ static ChunkType get_chunk_header(MMSHContext *mmsh, int *len)
     default:
         av_log(NULL, AV_LOG_ERROR, "Strange chunk type %d\n", chunk_type);
         ext_header_len = 0;
+        break;
         //return AVERROR_INVALIDDATA;
     }
 
@@ -261,7 +262,7 @@ static int get_http_header_data(MMSHContext *mmsh)
                     av_log(NULL, AV_LOG_ERROR, "Read other chunk type data failed!\n");
                     return AVERROR(EIO);
                 } else {
-                    av_dlog(NULL, "Skip chunk type %d \n", chunk_type);
+                    av_log(NULL,AV_LOG_WARNING,"Skip chunk type %d \n", chunk_type);
                     continue;
                 }
             }
