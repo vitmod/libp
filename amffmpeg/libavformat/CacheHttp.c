@@ -38,7 +38,7 @@
 #define CIRCULAR_BUFFER_SIZE (20*188*4096)
 #define WAIT_TIME (100*1000)
 #define TMP_BUFFER_SIZE (188*100)   
-
+#define LIVE_HTTP_RETRY_TIMES 20
 
 typedef struct {
     URLContext * hd;
@@ -373,7 +373,7 @@ static void *circular_buffer_task( void *_handle)
             filename = av_strdup(url);
             
         }
-
+        int retry_num = 0;
 OPEN_RETRY:
         err = CacheHttp_advanced_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers, &http_code,s);
         if (err) {
@@ -386,7 +386,12 @@ OPEN_RETRY:
              }
              if(1 == http_code && !s->have_list_end) {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
-                goto SKIP;
+                if(retry_num++ < LIVE_HTTP_RETRY_TIMES) {
+                    usleep(WAIT_TIME);
+                    goto OPEN_RETRY;
+                } else {
+                    goto SKIP;
+                }
              } else if(s->have_list_end || ((2 == http_code || 3 == http_code)&& !s->have_list_end)) {
                 usleep(1000*20);
                 goto OPEN_RETRY;
