@@ -312,7 +312,7 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
         para->playctrl_info.pause_flag = 1;
     } else if (msg->ctrl_cmd & CMD_RESUME) {
         para->playctrl_info.pause_flag = 0;
-    } else if (msg->ctrl_cmd & CMD_FF) {
+    } else if (msg->ctrl_cmd & CMD_FF) {         
         if (para->vstream_info.has_video) {
             para->playctrl_info.init_ff_fr = 0;
             if (msg->param == 0) {
@@ -321,7 +321,11 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
                 para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
                 para->playctrl_info.fast_forward = 1;
                 para->playctrl_info.fast_backward = 0;
+					        
                 if (para->playctrl_info.pause_flag) {
+		    if (para->codec->has_audio) {
+                        para->codec->has_audio = 0;
+     	            }	
                     codec_resume(para->codec);      //clear pause state
                     para->playctrl_info.pause_flag = 0;
                 }
@@ -331,7 +335,7 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
             log_error("pid[%d]::no video, can't support ff!\n", para->player_id);
             set_player_error_no(para, PLAYER_FFFB_UNSUPPORT);
         }
-    } else if (msg->ctrl_cmd & CMD_FB) {
+    } else if (msg->ctrl_cmd & CMD_FB) {         
         if (para->vstream_info.has_video) {
             para->playctrl_info.init_ff_fr = 0;
             if (msg->param == 0) {
@@ -339,8 +343,11 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
             } else {
                 para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
                 para->playctrl_info.fast_backward = 1;
-                para->playctrl_info.fast_forward = 0;
+                para->playctrl_info.fast_forward = 0;					        
                 if (para->playctrl_info.pause_flag) {
+		     if (para->codec->has_audio) {
+                         para->codec->has_audio = 0;
+     	             }	
                     codec_resume(para->codec);      //clear pause state
                     para->playctrl_info.pause_flag = 0;
                 }
