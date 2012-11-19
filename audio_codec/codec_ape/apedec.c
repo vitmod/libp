@@ -36,6 +36,9 @@
 #include "Ape_decoder.h"
 #include "../../amadec/adec-armdec-mgt.h"
 #include <android/log.h>
+#ifdef __ARM_HAVE_NEON
+#include <arm_neon.h>
+#endif
 
 #define  LOG_TAG    "audio_codec"
 #define audio_codec_print(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
@@ -675,22 +678,79 @@ static void init_filter(APE_COdec_Private_t * ctx, APEFilter *f, int16_t * buf, 
 static int32_t scalarproduct_int16_c(int16_t * v1, int16_t * v2, int order, int shift)
 {
     int res = 0;
+	
+#if !(defined  __ARM_HAVE_NEON)
 
     while (order--)
-        res += (*v1++ * *v2++) >> shift;
+        res += (*v1++ * *v2++)/* >> shift*/;
+
+#else
+	int j=order/4;
+	int k=order%4;
+	int32x4_t neonres=vdupq_n_s32(0);
+	
+	while(j--) {
+		neonres = vmlal_s16(neonres, vld1_s16(v1),vld1_s16(v2));
+		v1+=4;
+		v2+=4;
+	}
+
+	while(k--) {
+		res += (*v1++ * *v2++);
+	}
+
+	res += vgetq_lane_s32(neonres, 0) + vgetq_lane_s32(neonres, 1) +
+		vgetq_lane_s32(neonres, 2) + vgetq_lane_s32(neonres, 3);
+#endif
+
 
     return res;
 }
 static void add_int16_c(int16_t * v1, int16_t * v2, int order)
 {
+#if !(defined  __ARM_HAVE_NEON)
     while (order--)
        *v1++ += *v2++;
+#else	
+	int j=order/8;
+	int k=order%8;
+	int16x8_t neonv1;
+	
+	while(j--) {
+		neonv1 = vaddq_s16(vld1q_s16(v1), vld1q_s16(v2));
+		vst1q_s16(v1, neonv1);
+		v1+=8;
+		v2+=8;
+	}
+
+	while(k--) {
+		*v1++ += *v2++;
+	}
+#endif
+
 }
 
 static void sub_int16_c(int16_t * v1, int16_t * v2, int order)
 {
+#if !(defined  __ARM_HAVE_NEON)
     while (order--)
         *v1++ -= *v2++;
+#else
+	int j=order/8;
+	int k=order%8;
+	int16x8_t neonv1;
+	
+	while(j--) {
+		neonv1 = vsubq_s16(vld1q_s16(v1), vld1q_s16(v2));
+		vst1q_s16(v1, neonv1);
+		v1+=8;
+		v2+=8;
+	}
+
+	while(k--) {
+		 *v1++ -= *v2++;
+	}
+#endif
 }
 static inline int16_t av_clip_int16(int a)
 {
