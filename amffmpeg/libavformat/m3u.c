@@ -67,7 +67,21 @@ struct m3u_info{
 	char *file;
 };
 
-
+static int is_BOM_header(ByteIOContext *s)
+{
+    if(!s || s->eof_reached || s->error)
+	return -1;
+    int ch;
+    ch = get_byte(s);
+    if(ch == 0xEF && get_byte(s) == 0xBB && get_byte(s) == 0xBF) {// UTF-8
+        return get_byte(s);
+    } else if(ch == 0xFF && get_byte(s) == 0xFE) {// UTF-16LE
+        return get_byte(s);
+    } else if(ch == 0XFE && get_byte(s) ==0xFF) {// UTF-16BE
+        return get_byte(s);
+    }
+    return ch;
+}
 
 static int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
 {
@@ -77,7 +91,7 @@ static int m3u_format_get_line(ByteIOContext *s,char *line,int line_size)
 		return -1;
     q = line;
     for(;;) {
-        ch = get_byte(s);
+        ch = is_BOM_header(s);
         if (ch < 0)
             return AVERROR(EIO);
         if (ch == '\n' || ch == '\0') {
@@ -180,7 +194,6 @@ static int parseDouble(const char *s, double *x) {
 
     return 0;
 }
-
 
 #define TRICK_LOGIC_BASE 200
 #ifndef INT_MAX
