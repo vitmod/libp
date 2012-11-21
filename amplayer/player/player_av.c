@@ -1276,6 +1276,14 @@ int time_search(play_para_t *am_p)
                 if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
                     timestamp += s->start_time;
                 }
+				if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
+                    timestamp += s->start_time;
+                }
+				seek_flags &= ~AVSEEK_FLAG_BYTE;
+				if (!!(s->iformat->flags & AVFMT_TS_DISCONT)) {
+					seek_flags |= AVSEEK_FLAG_BYTE;
+				}
+				seek_flags |= (timestamp - INT64_MIN > (uint64_t)(INT64_MAX - timestamp) ? AVSEEK_FLAG_BACKWARD : 0);
                 log_info("av_seek_frame:time_point = %f  timestamp=%x, starttime=%xn", time_point, timestamp, s->start_time);
                 ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
                 if (ret >= 0) {
