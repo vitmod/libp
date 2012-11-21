@@ -743,6 +743,8 @@ int avio_r8(AVIOContext *s)
 	}	 
 	if (s->buf_ptr < s->buf_end)
 		return *s->buf_ptr++;
+
+    av_log(NULL, AV_LOG_ERROR, "[%s:%d]retry timeout, fill buffer failed\n", __FUNCTION__, __LINE__);
 	return 0;
 
 }
@@ -789,6 +791,9 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
 			            s->error= len;
 					if(len == AVERROR(EAGAIN) && retry_num-->0)
 						continue;
+                    if (len == AVERROR(EAGAIN)) {
+                        av_log(NULL, AV_LOG_ERROR, "[%s:%d]retry timeout, read packet failed\n", __FUNCTION__, __LINE__);
+                    }
                     break;
                 } else {
                     s->pos += len;
@@ -798,10 +803,15 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
                     s->buf_end = s->buffer/* + len*/;
                 }
             }else{
-                fill_buffer(s);
-                len = s->buf_end - s->buf_ptr;
-                if (len == 0)
+                do {
+                    fill_buffer(s);
+                    len = s->buf_end - s->buf_ptr;
+                } while ((len == 0) && (retry_num-- > 0));
+
+                if (len == 0) {
+                    av_log(NULL, AV_LOG_ERROR, "[%s:%d]retry timeout, fill buffer failed\n", __FUNCTION__, __LINE__);
                     break;
+                }
             }
         } else {
             memcpy(buf, s->buf_ptr, len);
