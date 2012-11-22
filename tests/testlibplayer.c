@@ -87,14 +87,31 @@ int am_config_test()
     return 0;
 }
 
-
+int am_mode_test()
+{
+	int ret;
+	struct ammodule_t *module;
+#define testmodule(name)\
+	ret=ammodule_load_module(name,&module);\
+	if(ret==0){\
+		ammodule_open_module(module);\
+		printf("testmodule %s ok\n",name);\
+	}
+	
+	testmodule("testmodule");
+	testmodule("testmodule.so");
+	testmodule("libtestmodule.so");
+	testmodule("/system/lib/libtestmodule.so");
+	testmodule("/system/lib/amplayer/libtestmodule");
+	return 0;
+}
 
 int main(int argc, char **argv)
 {
 
     printf("libplayer test start\n");
-    am_config_test();
-
+   // am_config_test();
+   am_mode_test();
     printf("libplayer test end\n\n");
     return 0;
 }
