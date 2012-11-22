@@ -109,6 +109,41 @@ static int64_t CacheHttp_ffurl_seek(URLContext *h, int64_t pos, int whence)
     return ffurl_seek(h, pos, whence);
 }
 
+static void * CacheHttp_dump_open(const char * url)
+{
+    if(!url)
+        return NULL;
+
+    char *ptr = strrchr(url, '/');
+    char * name = av_malloc(strlen(ptr) + 6);
+    strcpy(name, "/temp");
+    strcpy(name+5, ptr);
+    *(name+strlen(ptr) + 5) = '\0';
+    //av_log(NULL,AV_LOG_INFO,"---------------> cachehttp_dump name=%s", name);
+    FILE *fp = fopen(name, "w+");
+    av_free(name);
+    return fp;
+}
+
+static int CacheHttp_dump_write(void * handle, const char *buf, int size)
+{
+    if(!handle || !buf)
+        return -1;
+
+    int ret = fwrite(buf, 1, size, (FILE*)handle);
+    fflush((FILE*)handle);
+    return ret;
+}
+
+static int CacheHttp_dump_close(void * handle)
+{
+    if(!handle)
+        return -1;
+
+    int ret = fclose((FILE*)handle);
+    return ret;
+}
+
 static void *circular_buffer_task( void *_handle);
 
 int CacheHttp_Open(void ** handle,const char* headers)
@@ -324,8 +359,14 @@ static void *circular_buffer_task( void *_handle)
                goto FAIL;
 	}
 
+        float config_value = 0.0;
+        void * fp = NULL;
+        int config_ret = 0;
         if(h) {
             CacheHttp_ffurl_close(h);
+            config_ret = am_getconfig_float("libplayer.hls.dump",&config_value);
+            if(config_ret >= 0 && config_value > 0)
+                CacheHttp_dump_close(fp);
             h = NULL;
         }        
        
@@ -408,7 +449,7 @@ OPEN_RETRY:
         if(h && s->seek_flag) {
             int64_t cur_pos = CacheHttp_ffurl_seek(h, 0, SEEK_CUR);
             int64_t pos_ret = CacheHttp_ffurl_seek(h, s->seek_pos-cur_pos, SEEK_CUR);
-            av_log(NULL,AV_LOG_INFO,"--------------> tao_cachehttp_seek   seek_pos=%lld, pos_ret=%lld", s->seek_pos, pos_ret);
+            av_log(NULL,AV_LOG_INFO,"--------------> cachehttp_seek   seek_pos=%lld, pos_ret=%lld", s->seek_pos, pos_ret);
             s->seek_flag = 0;
         }
         
@@ -419,6 +460,9 @@ OPEN_RETRY:
         char tmpbuf[TMP_BUFFER_SIZE];
         int left = 0;
         int tmpdatasize = 0;
+        config_ret = am_getconfig_float("libplayer.hls.dump",&config_value);
+        if(config_ret >= 0 && config_value > 0)
+            fp = CacheHttp_dump_open(filename);
         
         while(!s->EXIT) {
 
@@ -460,6 +504,9 @@ OPEN_RETRY:
                     }
                    
                    if (left > 0) {
+                       config_ret = am_getconfig_float("libplayer.hls.dump",&config_value);
+                       if(config_ret >= 0 && config_value > 0)
+                            CacheHttp_dump_write(fp, s->fifo->wptr, left);
                 	  s->fifo->wptr += left;
                         if (s->fifo->wptr >= s->fifo->end)
                             s->fifo->wptr = s->fifo->buffer;

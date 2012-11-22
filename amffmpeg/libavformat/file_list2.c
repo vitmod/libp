@@ -1414,12 +1414,9 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
     av_log(NULL, AV_LOG_INFO, "list_getinfo enter\n");
     struct list_mgt *mgt = h->priv_data;
 
-    if (!mgt) {
+    if (!mgt || !mgt->have_list_end) {
         return 0;
     }
-
-    if(!mgt->have_list_end)
-        return 0;
     
     if (cmd == AVCMD_TOTAL_DURATION) {
         *info = mgt->full_time * 1000;
