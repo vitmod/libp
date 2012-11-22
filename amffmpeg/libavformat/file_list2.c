@@ -1483,6 +1483,10 @@ URLProtocol file_list_protocol = {
 };
 list_item_t* getCurrentSegment(void* hSession)
 {
+    if (gListMgt == NULL) {
+        return NULL;
+    }
+    
     struct list_item *item = gListMgt->current_item;
     if(item){
         item->have_list_end = gListMgt->have_list_end;
