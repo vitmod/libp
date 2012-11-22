@@ -11,8 +11,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
 
 LOCAL_SHARED_LIBRARIES += libutils
 LOCAL_SHARED_LIBRARIES += libandroid_runtime   libnativehelper
-LOCAL_SHARED_LIBRARIES +=  libcutils libc
-
+LOCAL_SHARED_LIBRARIES +=  libcutils libc libdl
 LOCAL_MODULE := libamavutils
 LOCAL_MODULE_TAGS := optional
 LOCAL_ARM_MODE := arm
