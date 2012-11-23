@@ -179,3 +179,42 @@ int ammodule_open_module(struct ammodule_t *module)
     }
     return 0;
 }
+int ammodule_match_check(const char *filefmtstr,const char *fmtsetting)
+{
+        const char * psets=fmtsetting;
+        const char *psetend;
+        int psetlen=0;
+        char codecstr[64]="";
+		if(filefmtstr==NULL || fmtsetting==NULL)
+			return 0;
+
+        while(psets && psets[0]!='\0'){
+                psetlen=0;
+                psetend=strchr(psets,',');
+                if(psetend!=NULL && psetend>psets && psetend-psets<64){
+                        psetlen=psetend-psets;
+                        memcpy(codecstr,psets,psetlen);
+                        codecstr[psetlen]='\0';
+                        psets=&psetend[1];//skip ";"
+                }else{
+                        strcpy(codecstr,psets);
+                        psets=NULL;
+                }
+                if(strlen(codecstr)>0){
+                        if(strstr(filefmtstr,codecstr)!=NULL)
+                                return 1;
+                }
+        }
+        return 0;
+}
+
+int  ammodule_simple_load_module(char* name){
+    int ret; 
+    struct ammodule_t *module;
+    ret=ammodule_load_module(name,&module);
+    if(ret==0){
+        ret = ammodule_open_module(module);	
+    }
+    return ret;
+        
+}

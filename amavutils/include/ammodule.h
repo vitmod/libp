@@ -49,5 +49,7 @@ typedef struct ammodule_methods_t {
 
 int ammodule_load_module(const char *modulename,const struct ammodule_t **module);
 int ammodule_open_module(struct ammodule_t *module);
+int  ammodule_simple_load_module(char* name);
+int ammodule_match_check(const char *allmodstr,const char *modname);
 #endif 
 

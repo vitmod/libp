@@ -14,7 +14,7 @@
 static struct itemlist kill_item_list;
 static char format_string[128] = {0};
 static char vpx_string[8] = {0};
-
+static int ffmpeg_load_external_module();
 int ffmpeg_lock(void **pmutex, enum AVLockOp op)
 {
     int r = 0;
@@ -86,6 +86,7 @@ int ffmpeg_init(void)
     }
     basic_init++;
     av_register_all();
+    ffmpeg_load_external_module();
     av_lockmgr_register(ffmpeg_lock);
     url_set_interrupt_cb(ffmpeg_interrupt_callback);
     kill_item_list.max_items = MAX_PLAYER_THREADS;
@@ -93,6 +94,7 @@ int ffmpeg_init(void)
     kill_item_list.muti_threads_access = 1;
     kill_item_list.reject_same_item_data = 1;
     itemlist_init(&kill_item_list);
+    
     return 0;
 }
 int ffmpeg_buffering_data(play_para_t *para)
@@ -247,4 +249,48 @@ int ffmpeg_parse_file(play_para_t *am_p)
     return FFMPEG_SUCCESS;
 }
 
+#include "amconfigutils.h"
+int ffmpeg_load_external_module(){
+    const char *mod_path ="media.libplayer.modules";
+    const int mod_item_max = 16;
+    char value[CONFIG_VALUE_MAX];
+    int ret = -1;
+    char mod[mod_item_max][CONFIG_VALUE_MAX];
+    //memset(value,0,CONFIG_VALUE_MAX);
+
+  
+    ret = am_getconfig(mod_path, value,NULL);
+    if(ret<=1){
+        log_print("Failed to find external module,path:%s\n",mod_path);
+        return -1;
+    }
+    log_print("Get modules:[%s],mod path:%s\n",value,mod_path);
+    int pos = 0;
+    const char * psets=value;
+    const char *psetend;
+    int psetlen=0;
+    int i = 0;
+    while(psets && psets[0]!='\0'&&i<mod_item_max){
+        psetlen=0;
+        psetend=strchr(psets,',');
+        if(psetend!=NULL && psetend>psets && psetend-psets<64){
+                psetlen=psetend-psets;
+                memcpy(mod[i],psets,psetlen);
+                mod[i][psetlen]='\0';
+                psets=&psetend[1];//skip ";"
+        }else{
+                strcpy(mod[i],psets);
+                psets=NULL;
+        }
+        if(strlen(mod[i])>0){             
+             ammodule_simple_load_module(mod[i]);
+             //log_print("load module:[%s]\n",mod[i]);
+             i++;  
+        }
+        
+    }
+
+    return 0;    
+
+}
 

@@ -747,8 +747,25 @@ static auto_switch_protol_t *try_get_mached_new_prot(ByteIOContext *pb,const cha
 }
 
 
+//add this api for open third-parts libmms supports,by peter,20121121
+#include "ammodule.h"
+static int is_use_external_module(const char* mod_name){
+    int ret = -1;      
+    const char* ex_mod = "media.libplayer.modules";
+    char value[CONFIG_VALUE_MAX];
+    ret = am_getconfig(ex_mod, value,NULL);
+    if(ret<1){
+        return 0;
+    }
+    ret = ammodule_match_check(value,mod_name);
+  
+    if(ret>0){
+        return 1;
+    }else{
+        return 0;
+    }
 
-
+}
 /* open input file and probe the format if necessary */
 static int init_input(AVFormatContext *s, const char *filename,const char * headers)
 {
@@ -772,11 +789,18 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
     if(newp!=NULL){
 			char *listfile;
 			int err;
+                    char* ptr = NULL;
 			listfile=av_malloc(strlen(filename)+10);
 			if(!listfile)
 				return AVERROR(ENOMEM);
-			strcpy(listfile,newp->prefix);
-			strcpy(listfile+strlen(newp->prefix),filename);
+                    if(av_strstart(newp->prefix,"mmsh:",&ptr)&&(is_use_external_module("mms_mod")>0)){                      
+                        strcpy(listfile,"mmsx:");
+                        strcpy(listfile+strlen("mmsx:"),filename);
+                        
+                    }else{
+                        strcpy(listfile,newp->prefix);
+                        strcpy(listfile+strlen(newp->prefix),filename);
+                    }
 			url_fclose(s->pb);
 			s->pb=NULL;
 			if ((err=avio_open_h(&s->pb,listfile, AVIO_FLAG_READ, headers)) < 0) {
