@@ -109,24 +109,31 @@ static int64_t CacheHttp_ffurl_seek(URLContext *h, int64_t pos, int whence)
     return ffurl_seek(h, pos, whence);
 }
 
-static void * CacheHttp_dump_open(const char * url)
+static int CacheHttp_dump_open(void ** handle, const char * url, int flag)
 {
     if(!url)
-        return NULL;
-
-    char *ptr = strrchr(url, '/');
-    char * name = av_malloc(strlen(ptr) + 6);
-    strcpy(name, "/temp");
-    strcpy(name+5, ptr);
-    *(name+strlen(ptr) + 5) = '\0';
-    //av_log(NULL,AV_LOG_INFO,"---------------> cachehttp_dump name=%s", name);
-    FILE *fp = fopen(name, "w+");
-    av_free(name);
-    return fp;
+        return -1;
+    
+    av_log(NULL,AV_LOG_INFO,"---------------> cachehttp_dump url=%s", url);
+    FILE * fp = NULL;
+    if(flag == 1 && !(*handle)) {
+        fp = fopen("/temp/cachehttp_dump.dat", "ab+");
+        *handle = (void*)fp;
+    } else if(flag == 2) {
+        char *ptr = strrchr(url, '/');
+        char * name = av_malloc(strlen(ptr) + 6);
+        strcpy(name, "/temp");
+        strcpy(name+5, ptr);
+        *(name+strlen(ptr) + 5) = '\0';
+        fp = fopen(name, "w+");
+        *handle = (void *)fp;
+        av_free(name);
+    }
+    return 0;
 }
 
 static int CacheHttp_dump_write(void * handle, const char *buf, int size)
-{
+{   
     if(!handle || !buf)
         return -1;
 
@@ -141,6 +148,7 @@ static int CacheHttp_dump_close(void * handle)
         return -1;
 
     int ret = fclose((FILE*)handle);
+    handle = NULL;
     return ret;
 }
 
@@ -349,6 +357,9 @@ static void *circular_buffer_task( void *_handle)
 {
     CacheHttpContext * s = (CacheHttpContext *)_handle; 
     URLContext *h = NULL;
+    float config_value = 0.0;
+    void * fp = NULL;
+    int config_ret = 0;
     
     while(!s->EXIT) {
 
@@ -359,13 +370,10 @@ static void *circular_buffer_task( void *_handle)
                goto FAIL;
 	}
 
-        float config_value = 0.0;
-        void * fp = NULL;
-        int config_ret = 0;
         if(h) {
             CacheHttp_ffurl_close(h);
             config_ret = am_getconfig_float("libplayer.hls.dump",&config_value);
-            if(config_ret >= 0 && config_value > 0)
+            if(config_ret >= 0 && (int)config_value == 2)
                 CacheHttp_dump_close(fp);
             h = NULL;
         }        
@@ -462,7 +470,7 @@ OPEN_RETRY:
         int tmpdatasize = 0;
         config_ret = am_getconfig_float("libplayer.hls.dump",&config_value);
         if(config_ret >= 0 && config_value > 0)
-            fp = CacheHttp_dump_open(filename);
+                CacheHttp_dump_open(&fp, filename, (int)config_value);
         
         while(!s->EXIT) {
 
@@ -542,8 +550,10 @@ FAIL:
         CacheHttp_ffurl_close(h);
     s->hd = NULL;
     s->EXITED = 1;
+    config_ret = am_getconfig_float("libplayer.hls.dump",&config_value);
+    if(config_ret >= 0 && config_value > 0)
+        CacheHttp_dump_close(fp);
     av_log(NULL, AV_LOG_ERROR, "---------> CacheHttp thread quit !");
-    
     return NULL;
 }
 
