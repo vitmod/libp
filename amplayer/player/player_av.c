@@ -1314,8 +1314,15 @@ int time_search(play_para_t *am_p)
             }
             log_info("time_point = %f  offset=%llx \n", time_point, offset);
             if (offset > s->valid_offset) {
+				if (time_point > am_p->state.full_time) {
                 offset = url_ftell(s->pb);
                 log_info("seek offset exceed, use current 0x%llx\n", offset);
+				} else {
+					timestamp = (int64_t)(time_point * AV_TIME_BASE);
+					offset = s->file_size * (timestamp - s->start_time)/(s->duration - s->start_time);
+					log_info("## file_size=%llx, time_point=%f, timestamp=%lld,s->duration=%lld,offset=%llx,--------\n",
+						s->file_size, time_point, timestamp, s->duration, offset);
+				}
             }
             ret = url_fseek(s->pb, offset, SEEK_SET);
             if (ret < 0) {
