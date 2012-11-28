@@ -51,6 +51,58 @@
 #define TRACE()
 #endif
 
+static int cmf_h264_add_header(unsigned char *buf, int size,  AVPacket *pkt)
+{
+    char nal_start_code[] = {0x0, 0x0, 0x0, 0x1};
+    int nalsize;
+    unsigned char* p;
+    int tmpi;
+    unsigned char* extradata = buf;
+    int header_len = 0;
+    char* buffer = pkt->data;
+
+    p = extradata;
+    if ((p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) && size < 1024) {
+        memcpy(buffer, buf, size);
+        pkt->size = size;
+        return 0;
+    }
+    
+    if (size < 10) {
+        return -1;
+    }
+
+    if (*p != 1) {
+        return -1;
+    }
+
+    int cnt = *(p + 5) & 0x1f; //number of sps
+    p += 6;
+    for (tmpi = 0; tmpi < cnt; tmpi++) {
+        nalsize = (*p << 8) | (*(p + 1));
+        memcpy(&(buffer[header_len]), nal_start_code, 4);
+        header_len += 4;
+        memcpy(&(buffer[header_len]), p + 2, nalsize);
+        header_len += nalsize;
+        p += (nalsize + 2);
+    }
+
+    cnt = *(p++); //Number of pps
+    for (tmpi = 0; tmpi < cnt; tmpi++) {
+        nalsize = (*p << 8) | (*(p + 1));
+        memcpy(&(buffer[header_len]), nal_start_code, 4);
+        header_len += 4;
+        memcpy(&(buffer[header_len]), p + 2, nalsize);
+        header_len += nalsize;
+        p += (nalsize + 2);
+    }
+    if (header_len >= 1024) {
+        return -1;
+    }
+    pkt->size = header_len;
+    return 0;
+}
+
 static int cmf_probe(AVProbeData *p)
 {
     if (p && p->s  && p->s->iscmf) {
@@ -135,6 +187,7 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
         /* Create new AVStreams for each stream in this chip
              Add into the Best format ;
         */
+        bs->next_mp4_flag = 1;
         for (j = 0; j < (int)bs->sctx->nb_streams ; j++)   {
             AVStream *st = av_new_stream(s, 0);
             if (!st) {
@@ -148,17 +201,73 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
             AVStream *sst = bs->sctx->streams[i];
             st->id=sst->id;
             if (st->codec->codec_type == CODEC_TYPE_AUDIO) {
-                st->time_base.den =   sst->time_base.den  ;
-                st->time_base.num = sst->time_base.num ;
+                st->time_base.den =  sst->time_base.den;
+                st->time_base.num = sst->time_base.num;
+                bs->first_mp4_audio_index = i;
             }
             if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
                 st->time_base.den = sst->time_base.den;
                 st->time_base.num = sst->time_base.num;
+                bs->first_mp4_video_base_time_num = sst->time_base.num;
+                bs->first_mp4_video_base_time_den = sst->time_base.den;
+                bs->first_mp4_video_index = i;
             }
         }
         s->duration = newvpb->total_duration*1000;
         av_log(s, AV_LOG_INFO, "get duration  [%lld]us [%lld]ms [%lld]s\n", s->duration,newvpb->total_duration,(newvpb->total_duration/1000));
-    }
+    }else {
+        bs->stream_index_changed = 0;
+        if (!memcmp(bs->sctx->iformat->name,"mov",3)) {
+            #if 1
+            /*
+            int audio_index = -1;
+            int video_index = -1;
+            AVStream *cmf_audio = NULL;
+            AVStream *cmf_video = NULL;
+            for (i = 0; i < (int)bs->sctx->nb_streams ; i++) {
+                if(bs->sctx->streams[i]->codec->codec_type == CODEC_TYPE_AUDIO)
+                    cmf_audio = bs->sctx->streams[i];
+                if(bs->sctx->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO)
+                    cmf_video = bs->sctx->streams[i];
+            }
+            if(cmf_audio && cmf_video) {*/
+                for (i = 0; i < (int)s->nb_streams ; i++) {
+                    AVStream *st = s->streams[i];
+                    AVStream *sst = bs->sctx->streams[i];
+                    if (st->codec->codec_type == CODEC_TYPE_AUDIO) {
+                        st->time_base.den =  sst->time_base.den;
+                        st->time_base.num = sst->time_base.num;
+                        //audio_index = i;
+                    }
+                    if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
+                        st->time_base.den = sst->time_base.den;
+                        st->time_base.num = sst->time_base.num;
+                        //video_index = i;
+                    }
+                    if(st->codec->extradata)
+                        av_freep(&(st->codec->extradata));
+                    if(sst->codec->extradata && sst->codec->extradata_size > 0) {
+                        st->codec->extradata = av_malloc(sst->codec->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+                        if(st->codec->extradata) {
+                             memcpy(st->codec->extradata, sst->codec->extradata, sst->codec->extradata_size);
+                             memset(((uint8_t *) st->codec->extradata) + sst->codec->extradata_size, 0, FF_INPUT_BUFFER_PADDING_SIZE);
+                        }
+                    }
+                }
+                /*
+                if(audio_index >= 0 && bs->sctx->streams[bs->first_mp4_audio_index]->codec->codec_type != s->streams[audio_index]->codec->codec_type) {
+                    bs->stream_index_changed = 1;
+                    AVStream *temp = NULL;
+                    AVStream *audio = s->streams[audio_index];
+                    temp = s->streams[video_index];
+                    s->streams[video_index] = audio;
+                    s->streams[audio_index] = temp;
+                    av_log(NULL,AV_LOG_INFO,"--------->tao_cmf_index_change first_mp4_audio_index=%d, audio_index=%d, video_index=%d",bs->first_mp4_audio_index,audio_index,video_index);
+                }*/
+                bs->next_mp4_flag = 1;
+                #endif
+            }
+        }
     if (memcmp(bs->sctx->iformat->name,"flv",3)) {
         ret = avio_seek(bs->sctx->pb, bs->sctx->media_dataoffset, SEEK_SET);
         if (ret < 0) {
@@ -191,6 +300,7 @@ static int cmf_read_header(AVFormatContext *s, AVFormatParameters *ap)
     return cmf_parser_next_slice(s, 0, 1);
 
 }
+
 static int cmf_read_packet(AVFormatContext *s, AVPacket *mpkt)
 {
     struct cmf *cmf = s->priv_data;
@@ -200,17 +310,50 @@ static int cmf_read_packet(AVFormatContext *s, AVPacket *mpkt)
    
 retry_read:
     ci = cmf->cmfvpb;
-	
+    /*
+    int stream_index = -1;
+    if(cmf->stream_index_changed == 1 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO) {
+        stream_index = cmf->first_mp4_audio_index;
+    }else if(cmf->stream_index_changed == 1 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_AUDIO) {
+        stream_index = cmf->first_mp4_video_index;
+    }else{
+        stream_index = cmf->pkt.stream_index;
+    }*/
 	if(cmf->sctx!=NULL) {
-    	    ret = av_read_frame(cmf->sctx, &cmf->pkt);
+           if(cmf->is_cached == 1 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO) {
+                *mpkt = cmf->cache_pkt;
+                cmf->is_cached = 0;
+                ret = 0;
+           }else{
+    	        ret = av_read_frame(cmf->sctx, &cmf->pkt);
+           }
+           if(ret >= 0 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO && cmf->next_mp4_flag == 1) {
+                const char * p = cmf->pkt.data;
+                if(!(p[0] == 0 && p[1] == 0 && p[2] == 0)) {
+                    AVPacket header_pkt;
+                    av_new_packet(&header_pkt, 1024);
+                    int cmf_ret = cmf_h264_add_header(s->streams[cmf->pkt.stream_index]->codec->extradata, s->streams[cmf->pkt.stream_index]->codec->extradata_size, &header_pkt);
+                    if(!cmf_ret) {
+                        if(!av_dup_packet(&cmf->pkt)) {
+                            cmf->cache_pkt = cmf->pkt;
+                            cmf->is_cached = 1;
+                            *mpkt = header_pkt;
+                            cmf->next_mp4_flag = 0;
+                            cmf->h264_header_feeding_flag = 1;
+                            return 0;
+                        }
+                    }
+                }
+           }
 #if 0
-           if(ret >= 0) {
+           if(ret >= 0 && count == 0 &&(s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO) && cmf->next_mp4_flag == 1) {
                 FILE * fp = NULL;
-                fp = fopen("/temp/cmf_1.ts", "ab+");
+                fp = fopen("/temp/cmf_3.dat", "ab+");
                 if(fp) {
                     fwrite(cmf->pkt.data, 1, cmf->pkt.size, fp);
                     fflush(fp);
                     fclose(fp);
+                    count++;
                 }
            }
 #endif
@@ -245,17 +388,23 @@ retry_read:
         }
         ret = cmf_parser_next_slice(s, cmf->parsering_index, 0);
         if (ret>=0) {
-               av_log(s, AV_LOG_INFO, " goto reread, ret=%d\n", ret);
+            av_log(s, AV_LOG_INFO, " goto reread, ret=%d\n", ret);
             goto retry_read;    
         }else{
 	    av_log(s, AV_LOG_INFO, "cmf_parser_next_slice failed..., ret=%d\n", ret);
 	    return ret;
 	}
     }
+
     st_parent = s->streams[cmf->pkt.stream_index];
     cmf->calc_startpts=av_rescale_rnd(ci->start_time,st_parent->time_base.den,1000*st_parent->time_base.num,AV_ROUND_ZERO);
+    if(cmf->h264_header_feeding_flag == 1 && cmf->parsering_index > 0 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO) {
+        cmf->pkt.pts=(cmf->pkt.pts*cmf->first_mp4_video_base_time_den*st_parent->time_base.num)/(cmf->first_mp4_video_base_time_num*st_parent->time_base.den);
+        cmf->calc_startpts=(cmf->calc_startpts*cmf->first_mp4_video_base_time_den*st_parent->time_base.num)/(cmf->first_mp4_video_base_time_num*st_parent->time_base.den);
+        //cmf->pkt.pts=av_rescale_rnd(cmf->pkt.pts,st_parent->time_base.den,1000*st_parent->time_base.num,AV_ROUND_ZERO);
+    }
     cmf->pkt.pts = cmf->calc_startpts + cmf->pkt.pts;
-    
+
     if (st_parent->start_time == AV_NOPTS_VALUE) {
         st_parent->start_time  = cmf->pkt.pts;
         av_log(s, AV_LOG_INFO, "first packet st->start_time [0x%llx] [0x%llx]\n", st_parent->start_time, cmf->pkt.stream_index);
@@ -265,7 +414,6 @@ retry_read:
     if(s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_AUDIO && (!memcmp(cmf->sctx->iformat->name,"mpegts",6)||!memcmp(cmf->sctx->iformat->name,"mpegps",6))) {
         mpkt->flags|=AV_PKT_FLAG_AAC_WITH_ADTS_HEADER;
     }
-    *mpkt = cmf->pkt;
     return 0;
 }
 static
