@@ -133,6 +133,9 @@ int list_add_item(struct list_mgt *mgt, struct list_item*item)
     item->next = NULL;
     mgt->item_num++;
     item->index = mgt->next_index;
+    if(mgt->debug_level>2){
+        RLOG("Add item,url:%s,seq:%d,index:%d,start:%.4lf,duration:%.4lf\n",item->file,item->seq,item->index,item->start_time,item->duration);
+    }	
     mgt->next_index++;
     //av_log(NULL, AV_LOG_INFO, "list_add_item:seq=%d,index=%d\n", item->seq, item->index);
     return 0;
@@ -218,9 +221,7 @@ int list_test_and_add_item(struct list_mgt *mgt, struct list_item*item)
         //av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]", sameitem->file, sameitem->seq, item->file, item->seq);
         return -1;/*found same item,drop it */
     }
-    if(mgt->debug_level>2){
-        RLOG("Add item,url:%s,seq:%d,index:%d,start:%.4lf,duration:%.4lf\n",item->file,item->seq,item->index,item->start_time,item->duration);
-    }
+
     list_add_item(mgt, item);
     return 0;
 }
@@ -513,18 +514,18 @@ reload:
         
     }else{
         avio_reset(bio,AVIO_FLAG_READ); 
-        URLContext* last = (URLContext*)bio->opaque;            
-        ret = ff_http_do_new_request(last,NULL);
+        URLContext* last = (URLContext*)bio->opaque;    
+	 if(last!=NULL){	
+        	ret = ff_http_do_new_request(last,NULL);
+
+	 }else{
+		ret = -1;
+	 }
         //av_log(NULL,AV_LOG_INFO,"do http request,return value: %d\n",ret);
     }
     
     if (ret != 0) {      
-        if(bio!=NULL){
-            avio_close(bio);            
-            bio = NULL;
-            *pbio = NULL;
-        }
-        return AVERROR(EIO);
+	goto error;
     }
     mgt->location = bio->reallocation;
     if (NULL == mgt->location && mgt->n_variants > 0) { //set location for multibandwidth streaming,such youtube,etc.
@@ -573,6 +574,7 @@ error:
     if (bio) {       
         url_fclose(bio);
         *pbio  = NULL;
+	 mgt->cur_uio = NULL;	
     }
     return ret;
 }
@@ -1079,7 +1081,7 @@ reload:
     if (mgt->current_item == NULL || mgt->current_item->next == NULL) {
         /*new refresh this mgtlist now*/
         ByteIOContext *bio = mgt->cur_uio;
-
+	 
         int ret;
         char* url = NULL;
 
