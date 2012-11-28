@@ -413,6 +413,31 @@ static void get_av_codec_type(play_para_t *p_para)
     return;
 }
 
+static void check_no_program(play_para_t *p_para)
+{
+    AVFormatContext *pFormat = p_para->pFormatCtx;
+    AVStream *pStream;
+
+    if (pFormat->nb_programs) {
+        unsigned int i, j, k;
+
+        /* set all streams to no_program */
+        for (i=0; i<pFormat->nb_streams; i++) {
+            pFormat->streams[i]->no_program = 1;
+        }
+
+        /* check program stream */
+        for (i=0; i<pFormat->nb_programs; i++) {
+            for(j=0; j<pFormat->programs[i]->nb_stream_indexes; j++) {
+                k = pFormat->programs[i]->stream_index[j];
+                pFormat->streams[k]->no_program = 0;
+            }
+        }
+    }
+
+    return;
+}
+
 static void get_stream_info(play_para_t *p_para)
 {
     unsigned int i;
@@ -439,8 +464,16 @@ static void get_stream_info(play_para_t *p_para)
     p_para->astream_num = 0;
     p_para->sstream_num = 0;
 
+    check_no_program(p_para);
+
     for (i = 0; i < pFormat->nb_streams; i++) {
         pStream = pFormat->streams[i];
+
+        if (pStream->no_program) {
+            log_print("[%s:%d]stream %d is no_program\n", __FUNCTION__, __LINE__, i);
+            continue;
+        }
+        
         pCodec = pStream->codec;
         if (pCodec->codec_type == CODEC_TYPE_VIDEO) {
             p_para->vstream_num ++;

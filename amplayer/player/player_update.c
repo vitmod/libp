@@ -82,8 +82,15 @@ static int set_vstream_info(play_para_t *p_para)
         unsigned int i;
         int vnum = 0;
         AVStream *pStream;
+        
         for (i = 0; i < pCtx->nb_streams; i ++) {
             pStream = pCtx->streams[i];
+
+            if (pStream->no_program) {
+                log_print("[%s:%d]stream %d is no_program\n", __FUNCTION__, __LINE__, i);
+                continue;
+            }
+
             if (pStream->codec->codec_type == CODEC_TYPE_VIDEO) {
                 vinfo = MALLOC(sizeof(mvideo_info_t));
                 MEMSET(vinfo, 0, sizeof(mvideo_info_t));
@@ -204,6 +211,12 @@ static int set_astream_info(play_para_t *p_para)
         AVStream *pStream;
         for (i = 0; i < pCtx->nb_streams; i ++) {
             pStream = pCtx->streams[i];
+
+            if (pStream->no_program) {
+                log_print("[%s:%d]stream %d is no_program\n", __FUNCTION__, __LINE__, i);
+                continue;
+            }
+            
             if (pStream->codec->codec_type == CODEC_TYPE_AUDIO) {
                 for (j = 0; j < p_para->media_info.stream_info.total_audio_num; j ++) {
                     if (p_para->media_info.audio_info[j]) {
@@ -267,6 +280,12 @@ static int set_sstream_info(play_para_t *p_para)
         AVStream *pStream;
         for (i = 0; i < pCtx->nb_streams; i ++) {
             pStream = pCtx->streams[i];
+
+            if (pStream->no_program) {
+                log_print("[%s:%d]stream %d is no_program\n", __FUNCTION__, __LINE__, i);
+                continue;
+            }
+            
             if (pStream->codec->codec_type == CODEC_TYPE_SUBTITLE) {
                 AVMetadataTag *lang = av_metadata_get(pStream->metadata, "language", NULL, 0);
                 sinfo = MALLOC(sizeof(msub_info_t));
