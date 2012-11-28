@@ -790,40 +790,46 @@ static int mpeg_add_header(play_para_t *para)
     pkt->avpkt_newflag = 1;
     return write_av_packet(para);
 }
-static int generate_vorbis_header(unsigned char *extra_data, unsigned size, unsigned char** vorbis_headers, unsigned *vorbis_header_sizes)
+static int generate_vorbis_header(unsigned char *extradata, unsigned extradata_size, unsigned char** header_start, unsigned *header_len)
 {
-    unsigned char *c;
-    uint32_t offset, length;
+#define RB16(x)             ((((const uint8_t*)(x))[0] << 8) | ((const uint8_t*)(x))[1])
     int i;
-
-    c = extra_data;
-    if (*c != 2) {
+    int first_header_size = 30;
+    if (extradata_size >= 6 && RB16(extradata) == first_header_size) {
+        int overall_len = 6;
+        for (i=0; i<3; i++) {
+            header_len[i] = RB16(extradata);
+            extradata += 2;
+            header_start[i] = extradata;
+            extradata += header_len[i];
+            if (overall_len > extradata_size - header_len[i])
+                return -1;
+            overall_len += header_len[i];
+        }
+    } else if (extradata_size >= 3 && extradata_size < INT_MAX - 0x1ff && extradata[0] == 2) {
+        int overall_len = 3;
+        extradata++;
+        for (i=0; i<2; i++, extradata++) {
+            header_len[i] = 0;
+            for (; overall_len < extradata_size && *extradata==0xff; extradata++) {
+                header_len[i] += 0xff;
+                overall_len   += 0xff + 1;
+            }
+            header_len[i] += *extradata;
+            overall_len   += *extradata;
+            if (overall_len > extradata_size)
+                return -1;
+        }
+        header_len[2] = extradata_size - overall_len;
+        header_start[0] = extradata;
+        header_start[1] = header_start[0] + header_len[0];
+        header_start[2] = header_start[1] + header_len[1];
+    } else {
         return -1;
     }
-
-    offset = 1;
-    for (i = 0; i < 2; i++) {
-        length = 0;
-        while (c[offset] == (unsigned char) 0xFF
-               && length < size) {
-            length += 255;
-            offset++;
-        }
-        if (offset >= (size - 1)) {
-            return -1;
-        }
-        length += c[offset];
-        offset++;
-        vorbis_header_sizes[i] = length;
-    }
-
-    vorbis_headers[0] = &c[offset];
-    vorbis_headers[1] = &c[offset + vorbis_header_sizes[0]];
-    vorbis_headers[2] = &c[offset + vorbis_header_sizes[0] + vorbis_header_sizes[1]];
-    vorbis_header_sizes[2] = size - offset - vorbis_header_sizes[0] - vorbis_header_sizes[1];
-
     return 0;
 }
+
 static int audio_add_header(play_para_t *para)
 {
     unsigned ext_size = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata_size;
