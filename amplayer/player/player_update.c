@@ -985,8 +985,6 @@ static int  update_buffering_states(play_para_t *p_para,
         minlevel = vlevel;
         maxlevel = vlevel;
     }
-    minlevel = MIN(alevel, vlevel);
-    maxlevel = MAX(alevel, vlevel);	
     avlevel=minlevel;
     if(maxlevel>0.8){
 	avlevel+=maxlevel-0.8;
