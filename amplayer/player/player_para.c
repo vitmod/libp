@@ -511,9 +511,16 @@ static void get_stream_info(play_para_t *p_para)
                 }
             }
         } else if (pCodec->codec_type == CODEC_TYPE_AUDIO) {
+        /*
+		* firstly get the disabled audio format, if the current format is disabled, parse the next directly
+		*/
+            int filter_afmt = PlayerGetAFilterFormat();
             p_para->astream_num ++;
             audio_format = audio_type_convert(pCodec->codec_id, p_para->file_type);
-
+			if (((1 << audio_format) & filter_afmt) != 0) {
+				log_print("## filtered format audio_format=%d,i=%d,----\n",audio_format,i);
+				continue;
+			}
 	    //not support blueray stream,one PID has two audio track(truehd+ac3)
 	    if(strcmp(pFormat->iformat->name, "mpegts") == 0){
 	       if(pCodec->codec_id==CODEC_ID_TRUEHD){
@@ -714,6 +721,11 @@ static int set_decode_para(play_para_t*am_p)
         set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
         update_player_states(am_p, 1);
     }
+#if 0
+	/*
+	* in the get_stream_info function,an enabled audio format would be selected according to the 
+	* media.amplayer.disable-vcodecs property
+	*/
     filter_afmt = PlayerGetAFilterFormat();
     if (((1 << am_p->astream_info.audio_format) & filter_afmt) != 0) {
         log_error("Can't support audio codec! filter_afmt=%x afmt=%x  (1<<afmt)=%x\n", \
@@ -722,7 +734,7 @@ static int set_decode_para(play_para_t*am_p)
         set_player_error_no(am_p, PLAYER_UNSUPPORT_ACODEC);
         update_player_states(am_p, 1);
     }
-
+#endif
     if (am_p->pFormatCtx->drmcontent) {
         set_player_error_no(am_p, DRM_UNSUPPORT);
         update_player_states(am_p, 1);
@@ -787,13 +799,13 @@ static int set_decode_para(play_para_t*am_p)
         log_print("[%s:%d]real ES not support!\n", __FUNCTION__, __LINE__);
         return PLAYER_UNSUPPORT;
     }
-
+#if 0
     if ((am_p->playctrl_info.no_audio_flag) ||
         ((!strcmp(dts_value, "true")) && (am_p->astream_info.audio_format == AFORMAT_DTS)) ||
         ((!strcmp(ac3_value, "true")) && (am_p->astream_info.audio_format == AFORMAT_AC3))) {
         am_p->astream_info.has_audio = 0;
     }
-
+#endif
     if (am_p->playctrl_info.no_video_flag) {
         am_p->vstream_info.has_video = 0;
     }
