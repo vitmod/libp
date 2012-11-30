@@ -1323,7 +1323,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
                     if (!mgt->have_list_end) {
                         mgt->playing_item_seq = item->seq - 1;
                     }                   
-                    while(item->item_size <= 0) {
+                    while(item->item_size <= 0 && !url_interrupt_cb()) {
                         usleep(200*1000);
                     }
                     return pos;
