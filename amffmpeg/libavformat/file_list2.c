@@ -35,6 +35,7 @@
 #include "hls_livesession.h"
 #include "CacheHttp.h"
 #include "libavutil/lfg.h"
+#include "libavutil/random_seed.h"
 #include "http.h"
 static struct list_demux *list_demux_list = NULL;
 #define unused(x)   (x=x)
@@ -60,7 +61,7 @@ int generate_playback_session_id(char * ssid, int size)
     char *ex_id = "314F1B49-AA3C-4715-950D-";
     unsigned int session_id = 0;
     char session_name[SESSLEN] = "";
-    av_lfg_init(&rnd, 0xDEADC0DE);
+    av_lfg_init(&rnd, av_get_random_seed());
     session_id =  av_lfg_get(&rnd);
     snprintf(session_name, SESSLEN, "%s%012u", ex_id, session_id);
     if (ssid != NULL) {
@@ -76,7 +77,7 @@ int generate_segment_session_id(char * ssid, int size)
     char *ex_id = "E4499E08-D4C5-4DB0-A21C-";
     unsigned int session_id = 0;
     char session_name[SESSLEN] = "";
-    av_lfg_init(&rnd, 0xDEADC0DE);
+    av_lfg_init(&rnd, av_get_random_seed());
     session_id =  av_lfg_get(&rnd);
     snprintf(session_name, SESSLEN, "%s%012u", ex_id, session_id);
     if (ssid != NULL) {

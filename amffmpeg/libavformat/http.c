@@ -657,10 +657,16 @@ retry:
 		len=-1;/*force to retry,if else data <10,don't do it*/
 	}
 errors:
-	if(len<0)
+	if(len<0){
 		av_log(h, AV_LOG_ERROR, "len=-%d err_retry=%d\n", -len, err_retry);	
+		if(s->off == s->filesize){
+			av_log(h, AV_LOG_INFO, "http_read maybe reach EOS,current: %lld,file size:%lld\n",s->off,s->filesize);
+			return 0;
+		}
+
+	}
 	if(len<0 && len!=AVERROR(EAGAIN)&& err_retry-->0 && !url_interrupt_cb())
-	{
+	{		
 		av_log(h, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
 		http_reopen_cnx(h,-1);
 		goto retry;

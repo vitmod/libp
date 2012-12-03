@@ -378,7 +378,7 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 			return -1;
 		}
 		size = s->prot->url_seek(s, 0, AVSEEK_SIZE);
-		if(size<0){
+		if(size<0&& size!=AVERROR_STREAM_SIZE_NOTVALID){
 			if ((size = s->prot->url_seek(s, -1, SEEK_END)) < 0)
 			{
 				lp_unlock(&lp->mutex);
