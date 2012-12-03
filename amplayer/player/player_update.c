@@ -745,7 +745,7 @@ static void update_current_time(play_para_t *p_para)
                 }
             }
             if ((unsigned int)time > 0 && (unsigned int)p_para->state.start_time > 0) {
-                if ((unsigned int)p_para->state.start_time < (unsigned int)time) {
+                if ((unsigned int)p_para->state.start_time <= (unsigned int)time) {
                     log_debug("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, p_para->state.start_time);
                     time -= p_para->state.start_time;
                     log_debug("[update_current_time:%d]time=0x%x (%d)\n", __LINE__, time, time / PTS_FREQ);
