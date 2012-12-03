@@ -1710,7 +1710,18 @@ int check_in_pts(play_para_t *para)
     int64_t pts;
     float time_base_ratio = 0;
     long long start_time = 0;
-
+	char value[PROPERTY_VALUE_MAX];
+	int ret;
+	int pts_offset = 0;
+	
+	ret = property_get("media.apts.offset",value,NULL);
+	
+	//log_error("pts_offset = %d, value = %s \n", pts_offset, value);
+	if (ret > 0)
+	{
+		pts_offset = atoi(value);
+	}	
+	//log_error("pts_offset = %d, value = %s, ret = %d \n", pts_offset, value, ret);
     if (pkt->type == CODEC_AUDIO) {
         time_base_ratio = para->astream_info.audio_duration;
         start_time = para->astream_info.start_time;
@@ -1730,6 +1741,10 @@ int check_in_pts(play_para_t *para)
                 pts = pts * last_duration;
             }
 **/
+			if (pkt->type == CODEC_AUDIO){
+				pts += pts_offset;				
+                //log_error("pts_offset = %d, pts = 0x%llx\n", pts_offset, pts);
+			}
             if (codec_checkin_pts(pkt->codec, pts) != 0) {
                 log_error("ERROR pid[%d]: check in pts error!\n", para->player_id);
                 return PLAYER_PTS_ERROR;
@@ -1739,6 +1754,10 @@ int check_in_pts(play_para_t *para)
         } else if ((int64_t)INT64_0 != pkt->avpkt->dts) {
             pts = pkt->avpkt->dts * time_base_ratio * last_duration;
             //log_print("[check_in_pts:%d]type=%d pkt->dts=%llx pts=%llx time_base_ratio=%.2f last_duration=%d\n",__LINE__,pkt->type,pkt->avpkt->dts,pts,time_base_ratio,last_duration);
+			if (pkt->type == CODEC_AUDIO){
+				pts += pts_offset;				
+                //log_error("pts_offset = %d, pts = 0x%llx\n", pts_offset, pts);
+			}
 
             if (codec_checkin_pts(pkt->codec, pts) != 0) {
                 log_error("ERROR pid[%d]: check in dts error!\n", para->player_id);
@@ -1777,6 +1796,10 @@ int check_in_pts(play_para_t *para)
                 para->playctrl_info.time_point = 0;
             }
             pts = para->playctrl_info.time_point * PTS_FREQ;
+			if (pkt->type == CODEC_AUDIO){
+				pts += pts_offset;				
+                //log_error("pts_offset = %d, pts = 0x%llx\n", pts_offset, pts);
+			}			
             if (codec_checkin_pts(pkt->codec, pts) != 0) {
                 log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);
                 return PLAYER_PTS_ERROR;
