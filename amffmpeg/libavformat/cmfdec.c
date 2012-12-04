@@ -329,6 +329,8 @@ retry_read:
            }
            if(ret >= 0 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO && cmf->next_mp4_flag == 1) {
                 const char * p = cmf->pkt.data;
+                if(!p)
+                    goto retry_read;
                 if(!(p[0] == 0 && p[1] == 0 && p[2] == 0)) {
                     AVPacket header_pkt;
                     av_new_packet(&header_pkt, 1024);
