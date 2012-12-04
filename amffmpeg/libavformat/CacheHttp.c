@@ -424,6 +424,8 @@ static void *circular_buffer_task( void *_handle)
         }
         int retry_num = 0;
 OPEN_RETRY:
+        if(s->RESET)
+            goto SKIP;
         err = CacheHttp_advanced_ffurl_open_h(&h, filename,AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK, s->headers, &http_code,s);
         if (err) {
             if(url_interrupt_cb()) {
