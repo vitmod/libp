@@ -743,6 +743,7 @@ static int set_decode_para(play_para_t*am_p)
     }
 
     if (am_p->playctrl_info.no_video_flag) {
+        am_p->vstream_info.has_video = 0;
         set_player_error_no(am_p, PLAYER_SET_NOVIDEO);
         update_player_states(am_p, 1);
     } else if (!am_p->vstream_info.has_video) {
@@ -776,6 +777,7 @@ static int set_decode_para(play_para_t*am_p)
     if ((am_p->playctrl_info.no_audio_flag) ||
         ((!strcmp(dts_value, "true")) && (am_p->astream_info.audio_format == AFORMAT_DTS)) ||
         ((!strcmp(ac3_value, "true")) && (am_p->astream_info.audio_format == AFORMAT_AC3))) {
+        am_p->astream_info.has_audio = 0;
         set_player_error_no(am_p, PLAYER_SET_NOAUDIO);
         update_player_states(am_p, 1);
     } else if (!am_p->astream_info.has_audio) {
@@ -806,10 +808,6 @@ static int set_decode_para(play_para_t*am_p)
         am_p->astream_info.has_audio = 0;
     }
 #endif
-    if (am_p->playctrl_info.no_video_flag) {
-        am_p->vstream_info.has_video = 0;
-    }
-
     if (!am_p->vstream_info.has_video) {
         am_p->vstream_num = 0;
     }
