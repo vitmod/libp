@@ -2777,4 +2777,5 @@ AVInputFormat ff_mov_demuxer = {
     mov_read_packet,
     mov_read_close,
     mov_read_seek,
+    .flags=AVFMT_NOGENSEARCH,
 };

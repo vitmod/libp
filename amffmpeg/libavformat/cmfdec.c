@@ -451,7 +451,14 @@ int cmf_read_seek(AVFormatContext *s, int stream_index, int64_t sample_time, int
         seektimestamp = seektimestamp - ci->start_time;
         seektimestamp = seektimestamp*1000;//ms->us
         av_log(NULL, AV_LOG_INFO, "cmf read_seek:index[%lld] curduration[%lld] seektimestamp[%lld]us\n", ci->cur_index, ci->curslice_duration,seektimestamp);
-        ret = av_seek_frame(cmf->sctx, stream_index, seektimestamp, flags);
+        int seek_unit = 1*1000*1000;
+        while((ret = av_seek_frame(cmf->sctx, stream_index, seektimestamp, flags)) < 0){
+            seektimestamp += seek_unit * (-1);
+            if(seektimestamp < 0)
+                seek_unit *= -1;
+            if(seektimestamp/1000 + ci->start_time > ci->end_time)
+                break;
+        }
         if (ret < 0) {
             av_log(s, AV_LOG_INFO, "cmf read_seek:av_seek_frame Failed in cur slice\n");
         }
@@ -490,7 +497,14 @@ int cmf_read_seek(AVFormatContext *s, int stream_index, int64_t sample_time, int
              remain_seektime=remain_seektime*1000;//ms->us;
              av_log(s, AV_LOG_INFO, "cmf read_seek:switchto incurindex:  index[%lld] remain_seektime[%lld]ms  start-end [%lld - %lld]ms calctoend[%lld]\n",ci->cur_index,remain_seektime/1000,ci->start_time,ci->end_time,(ci->end_time-seektimestamp));
              //seek to remainseektime;
-             ret = av_seek_frame(cmf->sctx, stream_index, remain_seektime, flags);
+             int seek_unit = 1*1000*1000;
+             while((ret = av_seek_frame(cmf->sctx, stream_index, remain_seektime, flags)) < 0){
+                remain_seektime += seek_unit * (-1);
+                if(remain_seektime < 0)
+                    seek_unit *= -1;
+                if(remain_seektime/1000 + ci->start_time > ci->end_time)
+                    break;
+            }
             if (ret < 0) {
                 av_log(s, AV_LOG_INFO, "cmf read_seek:out_curslice av_seek_frame Failed out of cur slice , cur_slice index [%lld]\n",ci->cur_index);
                 return -1;
@@ -530,5 +544,6 @@ AVInputFormat ff_cmf_demuxer = {
     cmf_read_packet,
     cmf_read_close,
     cmf_read_seek,
+    .flags=AVFMT_NOGENSEARCH,
 };
 
