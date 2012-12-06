@@ -12,27 +12,7 @@
 #include <stdlib.h>
 #include <itemlist.h>
 
-#ifdef ITEMLIST_WITH_LOCK
-#define ITEM_LOCK(pitems)\
-    do{if(pitems->muti_threads_access)\
-        pthread_mutex_lock(&pitems->list_mutex);\
-    }while(0);
 
-#define ITEM_UNLOCK(pitems)\
-    do{if(pitems->muti_threads_access)\
-        pthread_mutex_unlock(&pitems->list_mutex);\
-    }while(0);
-#define ITEM_LOCK_INIT(pitems)\
-    do{if(pitems->muti_threads_access)\
-        pthread_mutex_init(&pitems->list_mutex,NULL);\
-    }while(0);
-
-#else
-#define ITEM_LOCK(pitems)
-#define ITEM_UNLOCK(pitems)
-#define ITEM_LOCK_INIT(pitems)
-
-#endif
 
 
 int itemlist_init(struct itemlist *itemlist)
@@ -187,7 +167,34 @@ struct item *  itemlist_find_match_item(struct itemlist *itemlist, unsigned long
     return finditem;
 }
 
-
+/*
+we think the item->data is grow,
+we find the first item great or equal  item->data;
+*/
+struct item *  itemlist_find_match_item_ex(struct itemlist *itemlist,struct item *tomatch,item_is_match_fun match,int reveser) {
+    struct item *item = NULL;
+    struct list_head *llist, *tmplist;
+    struct item *finditem = NULL;
+    ITEM_LOCK(itemlist);
+    if(reveser){
+        list_for_each_entry_reverse(item, &itemlist->list,list) {
+            if (match(item,tomatch)) {
+                finditem = item;
+                break;
+            }
+        }
+    }else{
+        list_for_each_entry(item, &itemlist->list,list) {
+           if (match(item,tomatch)) {
+               finditem = item;
+               break;
+           }
+       }
+    }
+    	
+    ITEM_UNLOCK(itemlist);
+    return finditem;
+}
 
 int itemlist_add_tail_data(struct itemlist *itemlist, unsigned long data)
 {
@@ -284,5 +291,43 @@ int itemlist_del_match_data_item(struct itemlist *itemlist, unsigned long data)
     return -1;
 }
 
+/*
+postion must in the itemlist.
+flags: 1: before position;
+	  2: after postion;
+	  3: replace postion;
+	  else:
+	  	2:after postion;
+*/
+int itemlist_item_insert(struct itemlist *itemlist, struct itemlist *position,struct itemlist *newitem,int flags)
+{
+    ITEM_LOCK(itemlist);
+    if (flags!=3 && itemlist->max_items > 0 && itemlist->max_items <= itemlist->item_count) {
+        ITEM_UNLOCK(itemlist);
+        return -1;
+    }
+    if(flags==1)
+        list_add_tail(&newitem->list, &position->list);
+    else
+        list_add(&newitem->list, &position->list);
+    if(flags==3)
+        list_del(&position->list);
+    else
+        itemlist->item_count++;
+    ITEM_UNLOCK(itemlist);
+    return 0;	
+}
 
+int  itemlist_print(struct itemlist *itemlist,printitem_fun print)
+{
+    struct item *item = NULL;
+    struct list_head *llist, *tmplist;
+    ITEM_LOCK(itemlist);
+    list_for_each_safe(llist, tmplist, &itemlist->list) {
+        item = list_entry(llist, struct item, list);
+        print(item);
+    }
+    ITEM_UNLOCK(itemlist);
+    return 0;
+}
 

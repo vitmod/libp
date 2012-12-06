@@ -67,6 +67,10 @@ static inline int list_empty(const struct list_head *head)
 #define offsetof(TYPE, MEMBER) ((size_t) (&((TYPE *)0)->MEMBER))
 #endif
 #define prefetch(x) (x)
+
+#ifndef typeof
+#define typeof(T)	__typeof__(T)
+#endif
 /**
  * container_of - cast a member of a structure out to the containing structure
  * @ptr:    the pointer to the member.
