@@ -417,6 +417,7 @@ static void check_no_program(play_para_t *p_para)
 {
     AVFormatContext *pFormat = p_para->pFormatCtx;
     AVStream *pStream;
+    int get_audio_stream =0, get_video_stream = 0, get_sub_stream = 0;;
 
     if (pFormat->nb_programs) {
         unsigned int i, j, k;
@@ -431,6 +432,39 @@ static void check_no_program(play_para_t *p_para)
             for(j=0; j<pFormat->programs[i]->nb_stream_indexes; j++) {
                 k = pFormat->programs[i]->stream_index[j];
                 pFormat->streams[k]->no_program = 0;
+                if ((!get_video_stream) && (pFormat->streams[k]->codec->codec_type == CODEC_TYPE_VIDEO)) {
+                    get_video_stream = 1;
+                }
+                if ((!get_audio_stream) && (pFormat->streams[k]->codec->codec_type == CODEC_TYPE_AUDIO)) {
+                    get_audio_stream = 1;
+                }
+                if ((!get_sub_stream) && (pFormat->streams[k]->codec->codec_type == CODEC_TYPE_SUBTITLE)) {
+                    get_sub_stream = 1;
+                }
+            }
+        }
+
+        if (!get_video_stream) {
+            for (i=0; i<pFormat->nb_streams; i++) {
+                if (pFormat->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO) {
+                    pFormat->streams[i]->no_program = 0;
+                }
+            }
+        }
+
+        if (!get_audio_stream) {
+            for (i=0; i<pFormat->nb_streams; i++) {
+                if (pFormat->streams[i]->codec->codec_type == CODEC_TYPE_AUDIO) {
+                    pFormat->streams[i]->no_program = 0;
+                }
+            }
+        }
+
+        if (!get_sub_stream) {
+            for (i=0; i<pFormat->nb_streams; i++) {
+                if (pFormat->streams[i]->codec->codec_type == CODEC_TYPE_SUBTITLE) {
+                    pFormat->streams[i]->no_program = 0;
+                }
             }
         }
     }
