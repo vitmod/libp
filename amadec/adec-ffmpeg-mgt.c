@@ -966,7 +966,7 @@ exit_decode_loop:
                 int nRet=0;
                 int nReadErrCount=0;
                 int nCurrentReadCount=0;
-                int nReadSizePerTime=10*1024;
+                int nReadSizePerTime=1*1024;
                 rlen=0;
                 while(nNextReadSize>0)
                 {
@@ -991,7 +991,7 @@ exit_decode_loop:
                     //add failed
                     if(exit_decode_thread)
 	                goto exit_decode_loop;
-	             usleep(100000);
+	             usleep(1000);
                 }
                 inbuf=NULL;
         }
@@ -1185,7 +1185,7 @@ exit_decode_loop:
               else
               {
                    //get data failed,maybe at the end
-                   usleep(100000);
+                   usleep(1000);
                    continue;
               }
 	}
