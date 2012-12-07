@@ -107,8 +107,9 @@ static int check_decoder_worksta(play_para_t *para)
 #define PARSER_ERROR_WRONG_PACKAGE_SIZE 0x80
 #define PARSER_ERROR_WRONG_HEAD_VER     0x40
 #define DECODER_ERROR_VLC_DECODE_TBL    0x20
+#define PARSER_FATAL_ERROR   0x10
 
-#define DECODER_ERROR (PARSER_ERROR_WRONG_PACKAGE_SIZE | PARSER_ERROR_WRONG_HEAD_VER)
+#define DECODER_ERROR (PARSER_ERROR_WRONG_PACKAGE_SIZE | PARSER_ERROR_WRONG_HEAD_VER | PARSER_FATAL_ERROR)
 
     codec_para_t *codec;
     struct vdec_status vdec;
@@ -144,7 +145,8 @@ static int check_decoder_worksta(play_para_t *para)
                     } else {
                         para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
                     }
-                    if ((para->vbuffer.check_rp_change_cnt <= 0) /*||
+                    if ((para->vbuffer.check_rp_change_cnt <= 0) 
+                        || (((vdec.status >> 16) & PARSER_FATAL_ERROR) && (para->state.current_time < para->state.full_time - 5))/*||
                     (para->vbuffer.check_rp_change_cnt < CHECK_VIDEO_HALT_CNT && para->playctrl_info.video_low_buffer)) &&
                     ((para->state.full_time - para->state.current_time) > 10 )*/) {
                         para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
