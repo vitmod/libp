@@ -1336,7 +1336,7 @@ int player_dec_init(play_para_t *p_para)
                 full_time_ms = (int)(((p_para->file_size << 3) * 1000) / p_para->pFormatCtx->bit_rate);
                 log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld full_time=%d\n", __LINE__, p_para->pFormatCtx->bit_rate, p_para->file_size, full_time);
 
-                if (abs(p_para->state.full_time - full_time) > 600) {
+                if (p_para->state.full_time - full_time > 600) {
                     p_para->state.full_time = full_time;
                     p_para->state.full_time_ms = full_time_ms;
                 }
