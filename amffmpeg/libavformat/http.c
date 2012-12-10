@@ -414,7 +414,9 @@ static int process_line(URLContext *h, char *line, int line_count,
                 if ((slash = strchr(p, '/')) && strlen(slash) > 0)
                     s->filesize = atoll(slash+1);
             }
-            h->is_streamed = 0; /* we _can_ in fact seek */
+            /* seek when we get real file size */
+            if(s->filesize>0)
+                h->is_streamed = 0; /* we _can_ in fact seek */
         } else if (!strcasecmp (tag, "Transfer-Encoding") && !strncasecmp(p, "chunked", 7)) {
             s->filesize = -1;
             s->chunksize = 0;
