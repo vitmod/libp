@@ -124,7 +124,7 @@ int ff_raw_read_partial_packet(AVFormatContext *s, AVPacket *pkt)
         return AVERROR(ENOMEM);
     pkt->pos= avio_tell(s->pb);
     ptsinfo.offsetin=pkt->pos;
-    ret=avio_getinfo(s,AVCMD_GET_NEXT_PTS,0,&ptsinfo);
+    ret=avio_getinfo(s->pb,AVCMD_GET_NEXT_PTS,0,&ptsinfo);
     if(ret==0){
 	if(ptsinfo.offsetout==ptsinfo.offsetin){
 		pts=ptsinfo.pts;
