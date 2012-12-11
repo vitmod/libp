@@ -2130,7 +2130,10 @@ int set_header_info(play_para_t *para)
                 pkt->hdr->size = 6;
             }
 			if((!para->playctrl_info.raw_mode) &&((para->astream_info.audio_format == AFORMAT_PCM_S16LE)
-				||(para->astream_info.audio_format == AFORMAT_PCM_S16BE) ))
+				||(para->astream_info.audio_format == AFORMAT_PCM_S16BE)
+				||(para->astream_info.audio_format == AFORMAT_ALAW)
+				||(para->astream_info.audio_format == AFORMAT_MULAW)
+				||(para->astream_info.audio_format == AFORMAT_PCM_U8)) )
 			{
                 //log_print("## [%s:%d] write pcm header,111111111!\n", __FUNCTION__, __LINE__);
 					if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
