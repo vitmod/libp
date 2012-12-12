@@ -278,8 +278,7 @@ err:
 
 int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 {
-    int frameFinished = 0;
-    int count = 0;
+    int frameFinished = 0;  
     int tryNum = 0;
     int i = 0;
     int64_t ret;
@@ -315,13 +314,13 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 
     while (av_read_next_video_frame(pFormatCtx, &packet,stream->videoStream) >= 0) {
 	     AVFrame         *pFrame=NULL; 	
-	     log_print("[%s] av_read_frame frame===%d,pts=%lld\n", __FUNCTION__, packet.size,packet.pts);
+	     log_print("[%s] av_read_frame frame size=%d,pts=%lld\n", __FUNCTION__, packet.size,packet.pts);
 	     if(packet.size<1024)
 		 	continue;/*skip small size packets,it maybe a black frame*/
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
 	     pFrame=stream->pFrameYUV	;
-            log_print("[%s]decode a video frame, finish=%d key=%d count=%d offset=%llx type=%d pCodecCtx->codec_id=%x,quality=%d\n", __FUNCTION__,
-                      frameFinished, pFrame->key_frame, count, avio_tell(pFormatCtx->pb), pFrame->pict_type, pCodecCtx->codec_id,pFrame->quality);
+            log_print("[%s]decode video frame, finish=%d key=%d offset=%llx type=%dcodec_id=%x,quality=%d tryNum=%d\n", __FUNCTION__,
+                      frameFinished, pFrame->key_frame, avio_tell(pFormatCtx->pb), pFrame->pict_type, pCodecCtx->codec_id,pFrame->quality,tryNum);
          if (frameFinished && 
 		 ((pFrame->key_frame && pFrame->pict_type == AV_PICTURE_TYPE_I) ||
 		 (pFrame->key_frame && pFrame->pict_type == AV_PICTURE_TYPE_SI) ||
@@ -330,13 +329,12 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 		 (tryNum>5 && pFrame->pict_type == AV_PICTURE_TYPE_I) ||
 		 (tryNum>6 && pFrame->pict_type == AV_PICTURE_TYPE_SI) ||
 		 (tryNum>7 && pFrame->pict_type == AV_PICTURE_TYPE_BI) ||
-		 (tryNum>8 && pFrame->pict_type == AV_PICTURE_TYPE_P) || 
-		 (tryNum>8 && pFrame->pict_type == AV_PICTURE_TYPE_B) || 
-		 (tryNum>9 && pFrame->pict_type == AV_PICTURE_TYPE_S) || 
+		 (tryNum>(TRY_DECODE_MAX-1) && pFrame->pict_type == AV_PICTURE_TYPE_P) || 
+		 (tryNum>(TRY_DECODE_MAX-1) && pFrame->pict_type == AV_PICTURE_TYPE_B) || 
+		 (tryNum>(TRY_DECODE_MAX-1) && pFrame->pict_type == AV_PICTURE_TYPE_S) || 
 		 (0))) /*not find a I FRAME too long,try normal frame*/
-          {
-                count++;
-                log_print("[%s]pCodecCtx->codec_id=%x count==%d\n", __FUNCTION__, pCodecCtx->codec_id, count);
+          {                
+                log_print("[%s]pCodecCtx->codec_id=%x tryNum=%d\n", __FUNCTION__, pCodecCtx->codec_id, tryNum);
 
                 struct SwsContext *img_convert_ctx;
                 img_convert_ctx = sws_getContext(stream->pCodecCtx->width, stream->pCodecCtx->height,
