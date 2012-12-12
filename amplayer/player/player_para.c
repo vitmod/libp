@@ -325,11 +325,17 @@ static void get_av_codec_type(play_para_t *p_para)
 		//---------------------------------
 		
         if (p_para->astream_info.audio_format == AFORMAT_AAC || p_para->astream_info.audio_format == AFORMAT_AAC_LATM) {
-            pCodecCtx->profile = FF_PROFILE_UNKNOWN;
+			pCodecCtx->profile = FF_PROFILE_UNKNOWN;
             AVCodecContext  *pCodecCtx = p_para->pFormatCtx->streams[audio_index]->codec;
             uint8_t *ppp = pCodecCtx->extradata;
+			
             if (ppp != NULL) {
-                char profile = (*ppp) >> 3;
+				char profile;
+				if ((ppp[0] == 0xFF)&&((ppp[1] & 0xF0) == 0xF0)){
+					profile = (ppp[2]>>6)+1;
+				}
+				else
+                	profile = (*ppp) >> 3;
                 log_print(" aac profile = %d  ********* { MAIN, LC, SSR } \n", profile);
 
                 if (profile == 1) {

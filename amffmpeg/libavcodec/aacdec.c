@@ -2093,7 +2093,20 @@ static int aac_decode_frame_int(AVCodecContext *avctx, void *data,
     int samples = 0, multiplier;
 
     if (show_bits(gb, 12) == 0xfff) {
-        if (parse_adts_frame_header(ac, gb) < 0) {
+
+		int esize = 7;
+		if (avctx->extradata_size <= esize) {
+				av_free(avctx->extradata);
+				avctx->extradata = av_malloc(esize + FF_INPUT_BUFFER_PADDING_SIZE);
+				if (!avctx->extradata)
+					return AVERROR(ENOMEM);
+		}
+		
+		avctx->extradata_size = esize;
+		memcpy(avctx->extradata, gb->buffer, esize);
+		memset(avctx->extradata+esize, 0, FF_INPUT_BUFFER_PADDING_SIZE);
+
+		if (parse_adts_frame_header(ac, gb) < 0) {
             av_log(avctx, AV_LOG_ERROR, "Error decoding AAC frame header.\n");
             return -1;
         }
