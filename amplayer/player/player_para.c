@@ -19,6 +19,7 @@
 
 extern es_sub_t es_sub_buf[9];
 extern char sub_buf[9][SUBTITLE_SIZE];
+extern int sub_stream;
 DECLARE_ALIGNED(16, uint8_t, dec_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
 
 static int try_decode_picture(play_para_t *p_para, int video_index)
@@ -1222,6 +1223,7 @@ static void init_es_sub(void)
         es_sub_buf[i].sub_buf = &sub_buf[i][0];
         memset(&sub_buf[i][0], 0, SUBTITLE_SIZE);
     }
+	sub_stream = 0;
 }
 static void set_es_sub(play_para_t *p_para)
 {
@@ -1236,7 +1238,8 @@ static void set_es_sub(play_para_t *p_para)
         pCodec = pStream->codec;
         if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
             es_sub_buf[sub_index].subid = pStream->id;
-            log_print("[%s:%d]es_sub_buf[sub_index].subid = %d, sub_index =%d!\n", __FUNCTION__, __LINE__, es_sub_buf[sub_index].subid, sub_index);
+			sub_stream |= 1<<pStream->id;
+            log_print("[%s:%d]es_sub_buf[sub_index].i=%d,subid = %d, sub_index =%d pStream->id=%d, sub_stream=0x%x,!\n", __FUNCTION__, __LINE__, i, es_sub_buf[sub_index].subid, sub_index, pStream->id, sub_stream);
             sub_index++;
         }
     }

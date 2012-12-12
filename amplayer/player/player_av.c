@@ -32,6 +32,7 @@ int fdw_raw = -1, fdw_video = -1, fdw_audio = -1;
 
 es_sub_t es_sub_buf[9];
 char sub_buf[9][SUBTITLE_SIZE];
+int sub_stream;
 
 static const media_type media_array[] = {
     {"mpegts", MPEG_FILE, STREAM_TS},
@@ -787,7 +788,7 @@ static int non_raw_read(play_para_t *para)
                 pkt->codec = para->acodec;
                 pkt->type = CODEC_AUDIO;
                 para->read_size.apkt_num ++;
-            } else if (has_sub /*&& sub_idx == pkt->avpkt->stream_index*/) {
+            } else if (has_sub && ((1<<(pkt->avpkt->stream_index))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
 #if 0
                 /* here we get the subtitle data, something should to be done */
                 if (para->playctrl_info.audio_switch_smatch) {
