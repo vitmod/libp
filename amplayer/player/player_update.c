@@ -460,8 +460,9 @@ static unsigned int handle_current_time(play_para_t *para, unsigned int scr, uns
         return 0;
     }
     if (!para->playctrl_info.pts_valid) {
-        // The valid pts should be in range of total time duration
-        if (scr > 0 && abs(scr - pts) <= (para->state.full_time * PTS_FREQ)) { //in tsync_avevent, pts as u32
+        // when diff(pcr, apts/vpts)<1s, think as pcr valid and can used for 
+        // updating current time 
+        if (scr > 0 && abs(scr - pts) <= PTS_FREQ) { //in tsync_avevent, pts as u32
             para->playctrl_info.pts_valid = 1;
             log_print("[%s:%d]scr=0x%x pts=0x%x diff=0x%x \n", __FUNCTION__, __LINE__, scr, pts, (scr - pts));
         }
