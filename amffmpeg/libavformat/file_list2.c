@@ -646,10 +646,12 @@ static int list_open(URLContext *h, const char *filename, int flags)
 
             }else if(mgt->item_num>=10){
                 itemindex = mgt->item_num-3; //last item
-            }else if(mgt->item_num<10&&mgt->target_duration>5){
+            }else if(mgt->item_num<10&&mgt->target_duration>=5){
                 itemindex =  mgt->item_num -1;               
-            }
-            mgt->current_item = list_find_item_by_index(mgt,itemindex-1);
+            }else{
+		   itemindex =  mgt->item_num -1;         		
+	     }
+            mgt->current_item = list_find_item_by_index(mgt,itemindex);
         } else {
             mgt->current_item = mgt->item_list;
         }		
@@ -947,7 +949,7 @@ static int hls_mean_adaptive_bw_set(struct list_mgt* c,int flag){
         if(playing_index>=0)
             c->switch_down_num++;
     }
-    if(playing_index>0&&c->playing_variant->bandwidth!= c->variants[playing_index]->bandwidth){
+    if(playing_index>=0&&c->playing_variant->bandwidth!= c->variants[playing_index]->bandwidth){
         c->playing_variant = c->variants[playing_index];
         return 0;
 
@@ -1103,8 +1105,17 @@ reload:
         }
         if (isNeedFetch == 0 || (ret = list_open_internet(&bio, mgt, url, mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
             if(ret!=0&&mgt->n_variants>1){
-                switch_bw_level(mgt,-1);
+			int playing_index = -1;
+			playing_index = switch_bw_level(mgt,-1);
+			if(playing_index<0){
+				playing_index = switch_bw_level(mgt,1);
+			}
+			if(playing_index>=0&&mgt->playing_variant->bandwidth!= mgt->variants[playing_index]->bandwidth){
+			    mgt->playing_variant = mgt->variants[playing_index];			     
+
+			}				
             }
+	      mgt->cur_uio = bio;		
             goto switchnext;
         }
         mgt->cur_uio = bio;
