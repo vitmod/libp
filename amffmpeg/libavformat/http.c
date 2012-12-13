@@ -123,7 +123,7 @@ static int http_open_cnx(URLContext *h)
     const char *path, *proxy_path;
     char hostname[1024], hoststr[1024];
     char auth[1024];
-    char path1[1024];
+    char path1[MAX_URL_SIZE];
     char buf[1024];
     int port, use_proxy, err, location_changed = 0, redirects = 0;
     HTTPAuthType cur_auth_type;
@@ -398,6 +398,7 @@ static int process_line(URLContext *h, char *line, int line_count,
         while (isspace(*p))
             p++;
         if (!strcasecmp(tag, "Location")) {
+	      memset(s->location,0,MAX_URL_SIZE);		
             strcpy(s->location, p);
             *new_location = 1;
         } else if (!strcasecmp (tag, "Content-Length") && s->filesize == -1) {
@@ -468,13 +469,11 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 {
     HTTPContext *s = h->priv_data;
     int post, err;
-    char line[1024];
+    char line[MAX_URL_SIZE];
     char headers[1024*4] = "";
     char *authstr = NULL;
     int64_t off = s->off;
-    int len = 0;
-
-
+    int len = 0;    	
     /* send http header */
     post = h->flags & AVIO_FLAG_WRITE;
     authstr = ff_http_auth_create_response(&s->auth_state, auth, path,
