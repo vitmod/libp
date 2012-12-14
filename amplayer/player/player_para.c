@@ -356,7 +356,10 @@ static void get_av_codec_type(play_para_t *p_para)
                 }
                 //else
                 //  p_para->astream_info.has_audio = 0;
-            } else {
+            }
+            /* First packet would lose if enable this code when mpegts goes through cmf. By senbai.tao, 2012.12.14 */
+            #if 0
+            else {
 
                 AVCodec * aac_codec;
                 if (pCodecCtx->codec_id == CODEC_ID_AAC_LATM) {
@@ -384,6 +387,7 @@ static void get_av_codec_type(play_para_t *p_para)
                     avcodec_close(pCodecCtx);
                 }
             }
+            #endif
         }
         if ((p_para->astream_info.audio_format < 0) ||
             (p_para->astream_info.audio_format >= AFORMAT_MAX)) {

@@ -621,6 +621,9 @@ static unsigned int is_chapter_discontinue(play_para_t *p_para)
         url_support_time_seek(p_para->pFormatCtx->pb)) {
         return 1;
     }
+    if(!strncmp(p_para->pFormatCtx->iformat->name, "cmf", 3)) {
+        return 1;
+    }
     for (i = 0; i < 4; i ++) {
         //log_print("[%s]file_name=%s ext=%s\n", __FUNCTION__, p_para->file_name, extensions[i]);
 

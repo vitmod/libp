@@ -400,12 +400,14 @@ retry_read:
 
     st_parent = s->streams[cmf->pkt.stream_index];
     cmf->calc_startpts=av_rescale_rnd(ci->start_time,st_parent->time_base.den,1000*st_parent->time_base.num,AV_ROUND_ZERO);
-    if(cmf->h264_header_feeding_flag == 1 && cmf->parsering_index > 0 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO) {
-        cmf->pkt.pts=(cmf->pkt.pts*cmf->first_mp4_video_base_time_den*st_parent->time_base.num)/(cmf->first_mp4_video_base_time_num*st_parent->time_base.den);
-        cmf->calc_startpts=(cmf->calc_startpts*cmf->first_mp4_video_base_time_den*st_parent->time_base.num)/(cmf->first_mp4_video_base_time_num*st_parent->time_base.den);
-        //cmf->pkt.pts=av_rescale_rnd(cmf->pkt.pts,st_parent->time_base.den,1000*st_parent->time_base.num,AV_ROUND_ZERO);
+    if(memcmp(cmf->sctx->iformat->name,"mpegts",6)) {
+        if(cmf->h264_header_feeding_flag == 1 && cmf->parsering_index > 0 && s->streams[cmf->pkt.stream_index]->codec->codec_type == CODEC_TYPE_VIDEO) {
+            cmf->pkt.pts=(cmf->pkt.pts*cmf->first_mp4_video_base_time_den*st_parent->time_base.num)/(cmf->first_mp4_video_base_time_num*st_parent->time_base.den);
+            cmf->calc_startpts=(cmf->calc_startpts*cmf->first_mp4_video_base_time_den*st_parent->time_base.num)/(cmf->first_mp4_video_base_time_num*st_parent->time_base.den);
+            //cmf->pkt.pts=av_rescale_rnd(cmf->pkt.pts,st_parent->time_base.den,1000*st_parent->time_base.num,AV_ROUND_ZERO);
+        }
+        cmf->pkt.pts = cmf->calc_startpts + cmf->pkt.pts;
     }
-    cmf->pkt.pts = cmf->calc_startpts + cmf->pkt.pts;
 
     if (st_parent->start_time == AV_NOPTS_VALUE) {
         st_parent->start_time  = cmf->pkt.pts;
