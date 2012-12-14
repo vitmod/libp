@@ -616,7 +616,12 @@ static int mov_read_mdat(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     if(atom.size == 0) /* wrong one (MP4) */
         return 0;
     c->found_mdat=1;
-    c->fc->media_dataoffset = url_ftell(pb);
+    /*
+    * Lujian.Hu 2012-12-14
+    * only use media_dataoffset to time_search(player_av.c) can not work correctly, because in mov_read_seek not only modify the pos to 
+    * media data offset but reset the sample pointer to the correct position according to the very timestamp
+    */
+    //c->fc->media_dataoffset = url_ftell(pb); 
     return 0; /* now go for moov */
 }
 
