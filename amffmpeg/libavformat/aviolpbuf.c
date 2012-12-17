@@ -452,9 +452,9 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 		
 	}else if( (s->is_streamed && offset1>0) || /*can't suport seek,and can support read seek.*/
 			((offset1>0 &&  s->is_slowmedia) && 	/*is slowmedia and seek formard*/
-			(offset1<lp->buffer_size-lp->block_read_size && offset1<=lp->max_read_seek) &&/*don't do too big size seek*/ 
-			(lp->file_size<=0 || (lp->file_size>0 && offset1<lp->file_size/2)) &&/*if offset1>filesize/2,thendo first seek end,don't buffer*/
-			(offset1<=((lp->seekflags&LESS_READ_SEEK)?lp->max_read_seek/16:lp->max_read_seek))))/*do less readseek,if have less seek flags*/
+			(offset1<lp->buffer_size-lp->block_read_size && offset1<=((lp->seekflags&MORE_READ_SEEK)?lp->max_read_seek*4:lp->max_read_seek)) &&/*don't do too big size seek*/ 
+			(lp->file_size<=0 || (lp->file_size>0 && offset1<(3*lp->file_size/4))) &&/*if offset1>filesize*3/4,thendo first seek end,don't buffer*/
+			(offset1<=((lp->seekflags&LESS_READ_SEEK)?lp->max_read_seek/16:((lp->seekflags&MORE_READ_SEEK)?lp->max_read_seek*4:lp->max_read_seek)))))/*do less readseek,if have less seek flags*/
 	{/*seek to buffer end,but buffer is not full,do read seek*/
 		int read_offset,ret;
 		lp_sprint( AV_LOG_INFO, "url_lpseek:buffer read seek forward offset=%lld offset1=%lld  whence=%d\n",offset,offset1,whence);

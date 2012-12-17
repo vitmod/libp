@@ -54,6 +54,7 @@ if user seek.
 try less read seek,for fast seek..
 */
 #define LESS_READ_SEEK	(0x1000)
+#define MORE_READ_SEEK	(0x2000) 
 
 typedef struct {
     unsigned char *buffer;  /**< Start of the buffer. */

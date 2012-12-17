@@ -78,6 +78,7 @@ typedef struct MOVParseTableEntry {
 } MOVParseTableEntry;
 
 static const MOVParseTableEntry mov_default_parse_table[];
+#define MAX_READ_SEEK (1024*1024*5)
 
 static int mov_metadata_track_or_disc_number(MOVContext *c, AVIOContext *pb, unsigned len, const char *type)
 {
@@ -2556,7 +2557,37 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
     if (pb->seekable && mov->chapter_track > 0)
         mov_read_chapters(s);
+	
+#if FF_API_OLD_AVIO 
+    if(s->pb->is_slowmedia==1&&s->pb->enabled_lp_buffer==1){//slowmedia  check interlace
+          int64_t amin_pos=INT64_MAX,vmin_pos=INT64_MAX,min=INT64_MAX;
+          int64_t amax_pos=0,vmax_pos=0,max=0;
 
+          for (int i = 0; i < s->nb_streams; i++) {
+	       AVStream *avst = s->streams[i];
+                min=INT64_MAX;
+                max=0;	 
+	      if(avst->nb_index_entries>0&&avst->index_entries[avst->nb_index_entries-1].pos>max)
+		max=avst->index_entries[avst->nb_index_entries-1].pos;
+	      if(avst->nb_index_entries>0&&avst->index_entries[0].pos<min)
+		min=avst->index_entries[0].pos;
+		
+	      if(avst->codec->codec_type==AVMEDIA_TYPE_AUDIO&&min<amin_pos&&max>amax_pos){
+		amin_pos=min;
+		amax_pos=max;
+	      }
+	      if(avst->codec->codec_type==AVMEDIA_TYPE_VIDEO&&min<vmin_pos&&max>vmax_pos){
+		vmin_pos=min;
+		vmax_pos=max;
+	     }	
+         }
+         if((vmin_pos>amax_pos&&abs(vmin_pos-amin_pos)>MAX_READ_SEEK&&amin_pos>=0&&amin_pos!=INT64_MAX)||
+	     (amin_pos>vmax_pos&&abs(amin_pos-vmin_pos)>MAX_READ_SEEK&&vmin_pos>=0&&vmin_pos!=INT64_MAX)){	     
+		url_lp_set_seekflags(s->pb->opaque,MORE_READ_SEEK);
+		av_log(NULL,AV_LOG_WARNING, "May need cache more for smooth playback on line\n");
+         }
+    }
+#endif
     return 0;
 }
 
