@@ -727,10 +727,10 @@ static void update_current_time(play_para_t *p_para)
         } else  if (!p_para->playctrl_info.end_flag) {
             time = get_current_time(p_para);
             if (p_para->state.start_time == -1) {
-                if (p_para->astream_info.start_time != -1) {
-                    p_para->state.start_time = p_para->astream_info.start_time;
-                } else if (p_para->vstream_info.start_time != -1) {
+                if (p_para->vstream_info.start_time != -1) {
                     p_para->state.start_time = p_para->vstream_info.start_time;
+                } else if (p_para->astream_info.start_time != -1) {
+                    p_para->state.start_time = p_para->astream_info.start_time;
                 }
             }
             log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d\n", time / PTS_FREQ, ((unsigned int)p_para->astream_info.start_time / PTS_FREQ), ((unsigned int)p_para->vstream_info.start_time / PTS_FREQ), p_para->state.last_time);
