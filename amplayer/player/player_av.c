@@ -1393,11 +1393,18 @@ int write_av_packet(play_para_t *para)
     char dump_path[128];
 	
 	signed short audio_idx = para->astream_info.audio_index;
-	if (pkt->type == CODEC_AUDIO && pkt->avpkt->stream_index!=audio_idx)
+	if (pkt->avpkt_newflag && pkt->avpkt_isvalid &&
+		pkt->type == CODEC_AUDIO && pkt->avpkt->stream_index!=audio_idx)
 	{
-		log_print("## [%s:%d] free packet switchaid:%d,pktaid:%d,curaid:%d,-----------------\n", __FUNCTION__, __LINE__,
-			para->playctrl_info.switch_audio_id, pkt->avpkt->stream_index, audio_idx);
-		av_free_packet(pkt->avpkt);
+		log_print("[%s:%d] free packet pkttype=%d,switchaid:%d,pktaid:%d,curaid:%d,valid=%d,newflag=%d,size=%d,\n", __FUNCTION__, __LINE__,
+			pkt->type, para->playctrl_info.switch_audio_id, pkt->avpkt->stream_index, audio_idx,
+			pkt->avpkt_isvalid,pkt->avpkt_newflag,pkt->data_size);
+		if ((pkt->type == CODEC_AUDIO) && (!para->playctrl_info.raw_mode)) {
+            para->write_size.apkt_num ++;
+        }
+        if (pkt->avpkt) {
+            av_free_packet(pkt->avpkt);
+        }
         pkt->avpkt_isvalid = 0;
         pkt->avpkt_newflag= 0;
 		pkt->data_size = 0;
