@@ -78,7 +78,7 @@ typedef struct MOVParseTableEntry {
 } MOVParseTableEntry;
 
 static const MOVParseTableEntry mov_default_parse_table[];
-#define MAX_READ_SEEK (1024*1024*5)
+#define MAX_READ_SEEK (1024*1024*3-32*1024)//DEF_MAX_READ_SEEK-block_read_size
 
 static int mov_metadata_track_or_disc_number(MOVContext *c, AVIOContext *pb, unsigned len, const char *type)
 {
@@ -2559,7 +2559,7 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
         mov_read_chapters(s);
 	
 #if FF_API_OLD_AVIO 
-    if(s->pb->is_slowmedia==1&&s->pb->enabled_lp_buffer==1){//slowmedia  check interlace
+    if(s->pb->is_slowmedia==1){//slowmedia  check interlace
           int64_t amin_pos=INT64_MAX,vmin_pos=INT64_MAX,min=INT64_MAX;
           int64_t amax_pos=0,vmax_pos=0,max=0;
 
@@ -2583,7 +2583,7 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
          }
          if((vmin_pos>amax_pos&&abs(vmin_pos-amin_pos)>MAX_READ_SEEK&&amin_pos>=0&&amin_pos!=INT64_MAX)||
 	     (amin_pos>vmax_pos&&abs(amin_pos-vmin_pos)>MAX_READ_SEEK&&vmin_pos>=0&&vmin_pos!=INT64_MAX)){	     
-		url_lp_set_seekflags(s->pb->opaque,MORE_READ_SEEK);
+		url_set_more_data_seek(s->pb);
 		av_log(NULL,AV_LOG_WARNING, "May need cache more for smooth playback on line\n");
          }
     }

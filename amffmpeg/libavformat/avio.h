@@ -759,6 +759,8 @@ int url_lp_clear_seekflags(URLContext *s,int seekflagmask);
 
 int url_start_user_seek(AVIOContext *s);
 int url_finished_user_seek(AVIOContext *s);
+int url_set_more_data_seek(AVIOContext *s);
+int url_clear_more_data_seek(AVIOContext *s);
 int url_setcmd(AVIOContext *s, int cmd,int flag,unsigned long info);
 int avio_getinfo(AVIOContext *s, int cmd,int flag,void*info);
 #include "libavformat/url.h"
