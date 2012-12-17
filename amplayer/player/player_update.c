@@ -969,6 +969,8 @@ static int  update_buffering_states(play_para_t *p_para,
     float avlevel;
     if (abuf->size > 0) {
         alevel = (float)abuf->data_len / abuf->size;
+	  ffmepg_seturl_codec_buf_info(p_para,2,abuf->size);	
+	  ffmepg_seturl_codec_buf_info(p_para,4,abuf->data_len);
         alevel =alevel>1?1:alevel;//maybe big than 1,when the limit buf < bufsize.		
     } else {
         alevel = 0;
@@ -976,6 +978,8 @@ static int  update_buffering_states(play_para_t *p_para,
     if (vbuf->size > 0) {
         vlevel = (float)vbuf->data_len / vbuf->size;
 	 vlevel =vlevel>1?1:vlevel;			
+	  ffmepg_seturl_codec_buf_info(p_para,1,vbuf->size);
+	  ffmepg_seturl_codec_buf_info(p_para,3,vbuf->data_len);
     } else {
         vlevel = 0;
     }

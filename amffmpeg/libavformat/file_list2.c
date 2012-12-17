@@ -607,6 +607,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->codec_buf_level=-1;
     mgt->switch_down_num = 0;
     mgt->switch_up_num = 0;
+    mgt->codec_vbuf_size = -1;
+    mgt->codec_vdat_size = -1;
+    mgt->codec_abuf_size = -1;
+    mgt->codec_adat_size = -1;
     mgt->debug_level = (int)get_adaptation_ex_para(4);
     char headers[1024];
     char sess_id[40];
@@ -836,9 +840,9 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
     float net_sensitivity=get_adaptation_ex_para(0);
      
     ret =CacheHttp_GetSpeed(c->cache_http_handle, &fast_bps, &mean_bps, &avg_bps);
-    measure_bw = mean_bps;
+    measure_bw = fast_bps;
     if(c->debug_level>0){
-        RLOG("Player current measured bandwidth: %d bps,(%.3f kbps)",measure_bw,(float)measure_bw/1024);
+        RLOG("Player current measured bandwidth: %d bps,(%.3f kbps)",measure_bw,(float)measure_bw/1000);
     }
     if(net_sensitivity>0){
         measure_bw*=net_sensitivity;
@@ -925,30 +929,38 @@ static int hls_aggressive_adaptive_bw_set(struct list_mgt* c,int bw){
     return -1;
 }
 
-#define CODEC_BUFFER_LOW_FLAG  5
-#define CODEC_BUFFER_HIGH_FLAG 10
+#define CODEC_BUFFER_LOW_FLAG  (2)			// 2s
+#define CODEC_BUFFER_HIGH_FLAG (8)			 //8s
 
+static int hls_calculate_buffer_time(struct list_mgt* mgt,int cur_bw){
+	int dat_len = 0;	
+	int buffer_t = 0;
+	if(mgt->codec_buf_level>0&&cur_bw>0){
+		dat_len = mgt->codec_vdat_size+mgt->codec_adat_size;
+		buffer_t = dat_len*8/cur_bw;
+	}
+	if(mgt->debug_level>3){
+		RLOG("Current stream in codec buffer can last %d seconds for playback\n",buffer_t);
+	}
+	return buffer_t;
+}
 static int hls_mean_adaptive_bw_set(struct list_mgt* c,int flag){
-    int cache_buf_level = 0,codec_buf_level = 0;
-    CacheHttp_GetBufferPercentage(c->cache_http_handle,&cache_buf_level);
-    codec_buf_level = c->codec_buf_level/100;
-    //av_log(NULL,AV_LOG_INFO,"cache http buffer pecentage:%% %d,av buffer level:%%%d \%\n",cache_buf_level,codec_buf_level);
+    int  codec_buf_time= 0;   
+    int cur_bw = c->playing_variant!=NULL?c->playing_variant->bandwidth:0;	
+    codec_buf_time =hls_calculate_buffer_time(c,cur_bw);   
     int playing_index = -1;
     
-    if(flag<0&&codec_buf_level<CODEC_BUFFER_LOW_FLAG){  
+    if(flag<0&&codec_buf_time<FFMAX(c->target_duration/2,CODEC_BUFFER_LOW_FLAG)){  
         playing_index = switch_bw_level(c,-1);     
         if(playing_index>=0)
             c->switch_down_num++;
 
-    }else if(flag>0&&codec_buf_level>CODEC_BUFFER_HIGH_FLAG){
+    }else if(flag>0&&codec_buf_time>FFMIN(c->target_duration,CODEC_BUFFER_HIGH_FLAG)){
         playing_index = switch_bw_level(c,1); 
         if(playing_index>=0)
             c->switch_up_num++;
-    }else if(codec_buf_level <CODEC_BUFFER_LOW_FLAG/2){
-        playing_index = switch_bw_level(c,-1);  
-        if(playing_index>=0)
-            c->switch_down_num++;
     }
+	
     if(playing_index>=0&&c->playing_variant->bandwidth!= c->variants[playing_index]->bandwidth){
         c->playing_variant = c->variants[playing_index];
         return 0;
@@ -1046,7 +1058,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
         int is_switch = select_best_variant(mgt);
         if (is_switch>0) { //will remove this tricks.
             
-            if (mgt->item_num > 0) {
+            if (mgt->item_num > 0) {		   	
                 list_delall_item(mgt);
             }
 
@@ -1413,14 +1425,26 @@ static int list_get_handle(URLContext *h)
 }
 static int list_setcmd(URLContext *h, int cmd,int flag,unsigned long info)
 {
-    struct list_mgt *mgt = h->priv_data;
-    int ret=-1;
-    if(AVCMD_SET_CODEC_DATA_LEVEL==cmd){
-        mgt->codec_buf_level=info;
-	 //av_log(NULL, AV_LOG_INFO, "list_setcmd codec buf level=%d\n",(int)info);
-        ret=0;
-    }
-    return ret;
+	struct list_mgt *mgt = h->priv_data;
+	int ret=-1;
+	if(AVCMD_SET_CODEC_BUFFER_INFO==cmd){
+		if(flag ==0){	
+			mgt->codec_buf_level=info;
+		}else if(flag ==1){
+			mgt->codec_vbuf_size = info;
+ 		}else if(flag ==2){
+			mgt->codec_abuf_size = info;
+		}else if(flag ==3){
+			mgt->codec_vdat_size = info;
+		}else if(flag ==4){
+			mgt->codec_adat_size = info;
+		}
+		if(mgt->debug_level>5){
+			RLOG("set codec buffer,type = %d,info=%d\n",flag,(int)info);
+		}
+		ret=0;
+	}
+	return ret;
 }
 
 static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *info)

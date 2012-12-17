@@ -182,7 +182,7 @@ typedef struct URLProtocol {
 #define AVCMD_GET_NEXT_PTS			        (1100+1)
     int (*url_getinfo)(URLContext *h, int cmd,int flag,void*info);
 
- #define AVCMD_SET_CODEC_DATA_LEVEL		(3000+1)//info=buffer data level*10000,-1 is codec not init.
+ #define AVCMD_SET_CODEC_BUFFER_INFO		(3000+1)
     int (*url_setcmd)(URLContext *h, int cmd,int flag,unsigned long info);
 } URLProtocol;
 /*

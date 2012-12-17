@@ -116,9 +116,26 @@ int ffmpeg_buffering_data(play_para_t *para)
 }
 int ffmpeg_seturl_buffered_level(play_para_t *para,int levelx10000)
 {
-    if(para&& para->pFormatCtx && para->pFormatCtx->pb)
-        url_setcmd(para->pFormatCtx->pb,AVCMD_SET_CODEC_DATA_LEVEL,0,levelx10000);	
+    if(para&& para->pFormatCtx && para->pFormatCtx->pb)//info=buffer data level*10000,-1 is codec not init.
+        url_setcmd(para->pFormatCtx->pb,AVCMD_SET_CODEC_BUFFER_INFO,0,levelx10000);	
     return 0;
+}
+
+int ffmepg_seturl_codec_buf_info(play_para_t *para,int type,int value){
+    if(para&& para->pFormatCtx && para->pFormatCtx->pb&&type>0&&value>=0){
+        if(type == 1){//video buffer size
+            url_setcmd(para->pFormatCtx->pb,AVCMD_SET_CODEC_BUFFER_INFO,1,value);	
+        }else if(type == 2){//audio buffer size
+            url_setcmd(para->pFormatCtx->pb,AVCMD_SET_CODEC_BUFFER_INFO,2,value);	
+        }else if(type == 3){//video data size
+            url_setcmd(para->pFormatCtx->pb,AVCMD_SET_CODEC_BUFFER_INFO,3,value);	
+        }else if(type == 4){//audio data size
+            url_setcmd(para->pFormatCtx->pb,AVCMD_SET_CODEC_BUFFER_INFO,4,value);	
+        }
+    }
+
+    return 0;
+
 }
 int ffmpeg_close_file(play_para_t *am_p)
 {

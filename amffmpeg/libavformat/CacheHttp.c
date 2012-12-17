@@ -190,18 +190,10 @@ int CacheHttp_Open(void ** handle,const char* headers)
     if(headers){
         av_strlcpy(s->headers,headers,BUFFER_SIZE);
     }
-    int ret = am_getconfig_float("libplayer.hls.measured_buffer",&value);
-    int  meause_unit_max = 1024*1024*10;//10M
-    if(ret>=0){
-        meause_unit_max = (int)value*1024;
-    }
-    
-    if(meause_unit_max/TMP_BUFFER_SIZE<100){
-        s->bandwidth_measure=bandwidth_measure_alloc(100,0);        
+    int ret =-1;    
 
-    }else{
-        s->bandwidth_measure=bandwidth_measure_alloc(meause_unit_max/TMP_BUFFER_SIZE,0); 
-    }
+    s->bandwidth_measure=bandwidth_measure_alloc(100,0); 
+    
     ret = ffmpeg_pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
     av_log(NULL, AV_LOG_INFO, "----------- pthread_create ret=%d\n",ret);
 
@@ -423,6 +415,8 @@ static void *circular_buffer_task( void *_handle)
             
         }
         int retry_num = 0;
+	 bandwidth_measure_start_read(s->bandwidth_measure);    	
+	 int rsize = 0;
 OPEN_RETRY:
         if(s->RESET)
             goto SKIP;
@@ -501,9 +495,9 @@ OPEN_RETRY:
                 break;
 
            if(s->hd && tmpdatasize <= 0) {
-                bandwidth_measure_start_read(s->bandwidth_measure);                 
+                             
                 tmpdatasize = CacheHttp_ffurl_read(s->hd, tmpbuf, TMP_BUFFER_SIZE);
-                bandwidth_measure_finish_read(s->bandwidth_measure,tmpdatasize);
+                rsize +=tmpdatasize;
            }
 
             //if(tmpdatasize > 0) {
@@ -555,8 +549,17 @@ SKIP:
             av_free(filename);
             filename = NULL;
         }
-	 if(!s->RESET)
+
+	if(s->item_size>0)	{
+		bandwidth_measure_finish_read(s->bandwidth_measure,FFMIN(s->item_size,rsize));	
+	}else{
+		bandwidth_measure_finish_read(s->bandwidth_measure,rsize);	
+	}		
+	 if(!s->RESET){
+	 	
         	switchNextSegment(NULL);
+
+	 }
     }
     
 FAIL:

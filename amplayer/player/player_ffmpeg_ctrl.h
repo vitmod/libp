@@ -14,5 +14,6 @@ void ffmpeg_interrupt(pthread_t thread_id);
 void ffmpeg_uninterrupt(pthread_t thread_id);
 int ffmpeg_buffering_data(play_para_t *para);
 int ffmpeg_seturl_buffered_level(play_para_t *para,int levelx1000);
+int ffmepg_seturl_codec_buf_info(play_para_t *para,int type,int value);
 #endif
 

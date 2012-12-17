@@ -142,6 +142,10 @@ typedef struct list_mgt
     int switch_up_num;
     int switch_down_num;
     int debug_level;
+    int codec_vbuf_size;
+    int codec_abuf_size;	
+    int codec_vdat_size;
+    int codec_adat_size;	 	
 }list_mgt_t;
 
 typedef struct list_demux
