@@ -653,6 +653,12 @@ static int decode_frame(FLACContext *s)
     return 0;
 }
 
+static inline int av_clipf1(float a, int amin, int amax)
+{
+    if      (a < amin) return (int)amin;
+    else if (a > amax) return (int)amax;
+    else               return (int)a;
+}
 int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *outlen, char *inbuf, int inlen)
 {
 	AVCodecContext *avctx	 = &acodec;
@@ -736,7 +742,7 @@ decodecontinue:
 	bytes_read = (get_bits_count(&s->gb)+7)/8;
 
 	/* check if allocated data size is large enough for output */
-	output_size = s->blocksize * s->channels * (s->is32 ? 4 : 2);
+	output_size = s->blocksize * (s->channels>2? 2:s->channels) * (s->is32 ? 4 : 2);
 	if (output_size > DefaultOutBufSize) {
 		   audio_codec_print( "output data size is larger than allocated data size\n");
 		goto end;
@@ -766,17 +772,51 @@ decodecontinue:
 
 	switch (s->ch_mode) {
 	case FLAC_CHMODE_INDEPENDENT:
-		for (j = 0; j < s->blocksize; j++) {
-			for (i = 0; i < s->channels; i++) {
-				if (s->is32)
-					*samples_32++ = s->decoded[i][j] << s->sample_shift;
-				else 
+		if (s->channels <= 2)
+		{
+			for (j = 0; j < s->blocksize; j++) 
+			{
+				for (i = 0; i < s->channels; i++) 
 				{
-				    if(s->sample_shift>=0)
-	                            *samples_16++ = s->decoded[i][j] << s->sample_shift;
-	                        else
-	                            *samples_16++ = s->decoded[i][j] >> (-1*s->sample_shift);
-	                        }
+					if (s->is32)
+						*samples_32++ = s->decoded[i][j] << s->sample_shift;
+					else {
+				    	if(s->sample_shift>=0)
+	                   		*samples_16++ = s->decoded[i][j] << s->sample_shift;
+	                	else
+	                   		*samples_16++ = s->decoded[i][j] >> (-1*s->sample_shift);
+	            	}
+				}
+			}
+		}else{
+			float sum0=0,sum1=0;
+		    for (j = 0; j < s->blocksize; j++) 
+			{   
+				sum0=s->decoded[0][j];
+				sum1=s->decoded[1][j];
+				for (i = 2; i <s->channels; i++) 
+				{
+					if (s->is32){
+						sum0+= s->decoded[i][j] << s->sample_shift;
+					    sum1+= s->decoded[i][j] << s->sample_shift;
+					}else {
+				    	if(s->sample_shift>=0){
+	                   		sum0 += s->decoded[i][j] << s->sample_shift;
+							sum1 += s->decoded[i][j] << s->sample_shift;
+	                	}else{
+	                   		sum0 += s->decoded[i][j] >> (-1*s->sample_shift);
+							sum1 += s->decoded[i][j] >> (-1*s->sample_shift);
+	                	}
+	            	}
+				}
+				
+				if (s->is32){
+					*samples_32++=av_clipf1(sum0,-0x80000000,0x7fffffff);
+					*samples_32++=av_clipf1(sum1,-0x80000000,0x7fffffff);
+				}else{
+					*samples_16++=av_clipf1(sum0,-32768,32767);
+					*samples_16++=av_clipf1(sum1,-32768,32767);
+				}					
 			}
 		}
 		break;
@@ -993,7 +1033,8 @@ int audio_dec_init(audio_decoder_operations_t *adec_ops)
 		avctx->sample_fmt = SAMPLE_FMT_S16;
 	allocate_buffers(s);
 	s->got_streaminfo = 1;
-	audio_codec_print("flac  sr %d,ch num %d\n",avctx->sample_rate,avctx->channels);	
+	avctx->channels=(avctx->channels>2?2:avctx->channels);
+	audio_codec_print("applied flac  sr %d,ch num %d\n",avctx->sample_rate,avctx->channels);	
 
 	adec_ops->nInBufSize=DefaultReadSize;
     adec_ops->nOutBufSize=DefaultOutBufSize;

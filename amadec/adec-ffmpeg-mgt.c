@@ -507,10 +507,12 @@ static int audio_codec_init(aml_audio_dec_t *audec)
             usleep(100000);
         }
        
+        adec_print("==param= data_width:%d samplerate:%d channel:%d \n",audec->data_width,audec->samplerate,audec->channels);
 	audec->data_width=AV_SAMPLE_FMT_S16;
-        if(audec->channels>0)
+        if(audec->channels>0){
+			audec->channels=(audec->channels>2? 2:audec->channels);
             audec->adec_ops->channels=audec->channels;
-        else
+        }else
             audec->adec_ops->channels=audec->channels=2;
         if(audec->samplerate>0)
             audec->adec_ops->samplerate=audec->samplerate;
@@ -530,7 +532,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
             default:
                 audec->adec_ops->bps=16;
         }
-        adec_print("==param= bps:%d samplerate:%d channel:%d \n",audec->adec_ops->bps,audec->adec_ops->samplerate,audec->adec_ops->channels);
+        adec_print("==param_applied= bps:%d samplerate:%d channel:%d \n",audec->adec_ops->bps,audec->adec_ops->samplerate,audec->adec_ops->channels);
         audec->adec_ops->extradata_size=audec->extradata_size;
         if(audec->extradata_size>0)
             memcpy(audec->adec_ops->extradata,audec->extradata,audec->extradata_size);
