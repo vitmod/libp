@@ -570,6 +570,7 @@ reload:
         bio= NULL;
     }
     *pbio = bio;
+    mgt->parser_finish_flag = 1;
     return 0;
 error:
     if (bio) {       
@@ -1046,6 +1047,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
             
             if (mgt->item_num > 0) {
                 list_delall_item(mgt);
+                mgt->parser_finish_flag = 0;
             }
 
             mgt->current_item = mgt->current_item->next = NULL;
@@ -1313,6 +1315,9 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 
     if (whence == AVSEEK_SLICE_BYINDEX) {
         av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_SLICE_BYINDEX");
+        while(mgt->parser_finish_flag != 1 && !url_interrupt_cb()) {
+            usleep(10*1000);
+        }
         if(pos >= 0 && pos < mgt->item_num) {
             for (item = mgt->item_list; item; item = item->next) {
                 if(pos == item->index) {

@@ -142,6 +142,7 @@ typedef struct list_mgt
     int switch_up_num;
     int switch_down_num;
     int debug_level;
+    int parser_finish_flag;
 }list_mgt_t;
 
 typedef struct list_demux

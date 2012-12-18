@@ -18,8 +18,8 @@ typedef struct cmf {
     int stream_index_changed;
     int h264_header_feeding_flag;
     int is_cached;
-    int first_mp4_video_index;
-    int first_mp4_audio_index;
+    int first_slice_video_index;
+    int first_slice_audio_index;
     int first_mp4_video_base_time_num;
     int first_mp4_video_base_time_den;
     int64_t parsering_index;
