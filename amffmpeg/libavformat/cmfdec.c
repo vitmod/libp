@@ -187,7 +187,8 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
         /* Create new AVStreams for each stream in this chip
              Add into the Best format ;
         */
-        bs->next_mp4_flag = 1;
+        if (!memcmp(bs->sctx->iformat->name,"mov",3))
+            bs->next_mp4_flag = 1;
         for (j = 0; j < (int)bs->sctx->nb_streams ; j++)   {
             AVStream *st = av_new_stream(s, 0);
             if (!st) {
@@ -203,20 +204,30 @@ static int cmf_parser_next_slice(AVFormatContext *s, int index, int first)
             if (st->codec->codec_type == CODEC_TYPE_AUDIO) {
                 st->time_base.den =  sst->time_base.den;
                 st->time_base.num = sst->time_base.num;
-                bs->first_mp4_audio_index = i;
+                bs->first_slice_audio_index = i;
             }
             if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
                 st->time_base.den = sst->time_base.den;
                 st->time_base.num = sst->time_base.num;
                 bs->first_mp4_video_base_time_num = sst->time_base.num;
                 bs->first_mp4_video_base_time_den = sst->time_base.den;
-                bs->first_mp4_video_index = i;
+                bs->first_slice_video_index = i;
             }
         }
         s->duration = newvpb->total_duration*1000;
         av_log(s, AV_LOG_INFO, "get duration  [%lld]us [%lld]ms [%lld]s\n", s->duration,newvpb->total_duration,(newvpb->total_duration/1000));
-    }else {
+    } else {
         bs->stream_index_changed = 0;
+        if (!memcmp(bs->sctx->iformat->name,"mpegts",6)) {
+            if(bs->sctx->streams[bs->first_slice_audio_index]->codec->codec_type != s->streams[bs->first_slice_audio_index]->codec->codec_type) {
+                bs->stream_index_changed = 1;
+                AVStream *temp = NULL;
+                AVStream *audio = bs->sctx->streams[bs->first_slice_audio_index];
+                temp = bs->sctx->streams[bs->first_slice_video_index];
+                bs->sctx->streams[bs->first_slice_video_index] = audio;
+                bs->sctx->streams[bs->first_slice_audio_index] = temp;
+            }
+        }
         if (!memcmp(bs->sctx->iformat->name,"mov",3)) {
             #if 1
             /*
