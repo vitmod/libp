@@ -18,6 +18,7 @@
 #include <audio-dec.h>
 #include <adec-pts-mgt.h>
 #include <cutils/properties.h>
+#include <dts_enc.h>
 
 /**
  * \brief set audio output mode.
@@ -326,6 +327,9 @@ static void *adec_message_loop(void *args)
             audec->state = INITTED;
             adec_print("Audio out device init ok!");
             start_adec(audec);
+            if(dtsenc_init()!=-1)
+                dtsenc_start();
+            
             break;
         }
 
@@ -355,24 +359,28 @@ static void *adec_message_loop(void *args)
 
             adec_print("Receive START Command!\n");
             start_adec(audec);
+            dtsenc_start();
             break;
 
         case CMD_PAUSE:
 
             adec_print("Receive PAUSE Command!");
             pause_adec(audec);
+            dtsenc_pause();
             break;
 
         case CMD_RESUME:
 
             adec_print("Receive RESUME Command!");
             resume_adec(audec);
+            dtsenc_resume();
             break;
 
         case CMD_STOP:
 
             adec_print("Receive STOP Command!");
             stop_adec(audec);
+            dtsenc_stop();
             break;
 
         case CMD_MUTE:
@@ -426,6 +434,7 @@ static void *adec_message_loop(void *args)
 
             adec_print("Receive RELEASE Command!");
             release_adec(audec);
+            dtsenc_release();
             break;
 
         default:

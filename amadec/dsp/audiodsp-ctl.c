@@ -21,6 +21,7 @@
 #include <audio-dec.h>
 #include <audiodsp.h>
 #include <log-print.h>
+#include <cutils/properties.h>
 
 firmware_s_t firmware_list[] = {
     {0, MCODEC_FMT_MPEG123, "audiodsp_codec_mad.bin"},
@@ -150,6 +151,21 @@ static firmware_s_t * find_firmware_by_fmt(int m_fmt)
 }
 
 /**
+ * \brief init get_cpu_type
+ * \return 1 if cpu type=m6 otherwise 0 
+ */
+
+static int get_cpu_type(void)
+{
+    char value[PROPERTY_VALUE_MAX];
+    int ret = property_get("ro.board.platform",value,NULL);
+    adec_print("ro.board.platform = %s\n", value);
+    if (ret>0 && match_types("meson6",value))
+    	return 1;
+    return 0;
+}
+
+/**
  * \brief init audiodsp
  * \param dsp_ops pointer to dsp operation struct
  * \return 0 on success otherwise -1 if an error occurred
@@ -172,7 +188,13 @@ int audiodsp_init(dsp_operations_t *dsp_ops)
         adec_print("unable to open audio dsp  %s,err: %s", DSP_DEV_NOD, strerror(errno));
         return -1;
     }
-
+    int type_m6=get_cpu_type();
+    if(type_m6)
+    {
+        adec_print("register audiodsp_codec_dtshd.bin as dts decoder \n");
+        char * dts_dec_name="audiodsp_codec_dtshd.bin";
+        strcpy(firmware_list[3].name,dts_dec_name);
+    }
     ioctl(fd, AUDIODSP_UNREGISTER_ALLFIRMWARE, 0);
     for (i = 0; i < num; i++) {
         f = &firmware_list[i];

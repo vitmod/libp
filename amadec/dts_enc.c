@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include "dts_enc.h"
 #include "dts_transenc_api.h"
+#include <cutils/properties.h>
 typedef enum {
     IDLE,
     TERMINATED,
@@ -75,6 +76,15 @@ static int get_dts_format(void)
     return 0;
 }
 
+static int get_cpu_type(void)
+{
+    char value[PROPERTY_VALUE_MAX];
+    int ret = property_get("ro.board.platform",value,NULL);
+    adec_print("ro.board.platform = %s\n", value);
+    if (ret>0 && match_types("meson6",value))
+    	return 1;
+    return 0;
+}
 int dtsenc_init()
 {
     int ret;
@@ -86,6 +96,9 @@ int dtsenc_init()
     //dtsenc_info.raw_mode=1;//default open
     if(!dtsenc_info.raw_mode)
         return -1;
+    if(!get_cpu_type()) //if cpu !=m6 ,skip
+        return -1;
+    
    //adec_print("====dts_flag:%d raw_mode:%d \n",dtsenc_info.dts_flag,dtsenc_info.raw_mode);
     
     ret=dts_transenc_init();
