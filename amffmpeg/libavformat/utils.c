@@ -343,8 +343,7 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened, int *score
             int cmf_config=am_getconfig_bool("media.libplayer.tsincmf");
             if(score == AVPROBE_SCORE_MAX) {
                 if(!strncmp(fmt->name, "cmf", 3)) {
-                    if(cmf_config) {
-                        if(!strncmp(fmt1->name, "mpegts", 6))
+                    if(cmf_config && !strncmp(fmt1->name, "mpegts", 6)) {
                             continue;
                     } else if(!strncmp(fmt1->name, "flv", 3) || !strncmp(fmt1->name, "mov", 3)) {
                         continue;
