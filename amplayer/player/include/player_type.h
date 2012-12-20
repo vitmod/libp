@@ -181,6 +181,7 @@ typedef struct player_info
 	int64_t	bufed_pos;
 	int	bufed_time;/* Second*/
     unsigned int drm_rental;
+	int64_t download_speed; //download speed
 }player_info_t;
 
 typedef struct pid_info

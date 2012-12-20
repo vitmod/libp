@@ -845,6 +845,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
     if(c->debug_level>0){
         RLOG("Player current measured bandwidth: %d bps,(%.3f kbps)",measure_bw,(float)measure_bw/1000);
     }
+    c->measure_bw = measure_bw;	
     if(net_sensitivity>0){
         measure_bw*=net_sensitivity;
     }
@@ -1456,7 +1457,7 @@ static int list_setcmd(URLContext *h, int cmd,int flag,unsigned long info)
 
 static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *info)
 {
-    av_log(NULL, AV_LOG_INFO, "list_getinfo enter\n");
+    //av_log(NULL, AV_LOG_INFO, "list_getinfo enter,cmd:%u\n",cmd);
     struct list_mgt *mgt = h->priv_data;
 
     if (!mgt) {
@@ -1494,7 +1495,13 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
         *info = mgt->cmf_item_index;
         av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_INDEX=%d", *info);
         return 0;
-    } else {
+    } else if(cmd == AVCMD_GET_NETSTREAMINFO){
+        if(flag == 1){			
+            *info = mgt->measure_bw;
+        }
+        return 0;
+
+    }else {
         struct list_item *item;
          for (item = mgt->item_list; item; item = item->next) {
                 if(mgt->cmf_item_index == item->index) {

@@ -311,3 +311,16 @@ int ffmpeg_load_external_module(){
 
 }
 
+int ffmpeg_geturl_netstream_info(play_para_t* para,int type,void* value){
+
+	if(para&& para->pFormatCtx && para->pFormatCtx->pb){
+		if(type == 1){
+			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,1,value);
+		}
+		return 0;
+	}
+	return -1;
+	
+
+}
+

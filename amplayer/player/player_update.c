@@ -960,6 +960,12 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
     }
 }
 
+static int64_t get_measured_bandwidth(play_para_t *p_para){
+	int64_t value = 0;
+	ffmpeg_geturl_netstream_info(p_para,1,&value);
+	//log_print("Get measured bandwidth: %lld\n",value);
+	return value;
+}
 static int  update_buffering_states(play_para_t *p_para,
                                     struct buf_status *vbuf,
                                     struct buf_status *abuf)
@@ -1038,6 +1044,7 @@ static int  update_buffering_states(play_para_t *p_para,
     if (p_para->pFormatCtx && p_para->pFormatCtx->pb) {
         int buftime = -1;;
         p_para->state.bufed_pos = url_buffed_pos(p_para->pFormatCtx->pb);
+	  p_para->state.download_speed = get_measured_bandwidth(p_para);	
         buftime = (int)url_fbuffered_time(p_para->pFormatCtx->pb);
         if (buftime < 0) {
             buftime = (int)av_buffering_data(p_para->pFormatCtx, -1);

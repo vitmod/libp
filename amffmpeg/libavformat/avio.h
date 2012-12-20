@@ -181,6 +181,9 @@ typedef struct URLProtocol {
 
 
 #define AVCMD_GET_NEXT_PTS			        (1100+1)
+
+#define AVCMD_GET_NETSTREAMINFO			(1200+1)
+
     int (*url_getinfo)(URLContext *h, int cmd,int flag,void*info);
 
  #define AVCMD_SET_CODEC_BUFFER_INFO		(3000+1)
