@@ -41,6 +41,27 @@
 
 #define MAX_PES_PAYLOAD 200*1024
 
+#define PES_STREAM_AUDIO 0xF
+#define PES_STREAM_VIDEO 0x1B
+
+#define MAX_VPTSJUMPNUM 0x03
+#define MAX_APTSJUMPNUM 0x03
+#define MAX_STOREPSTNUM 0x2000
+#define MAX_SEG_DURATION 0x7530 //30s 
+
+
+#define DIFF_PTS_MIN  (int)4000//ms
+#define JUMP_PTS  (int64_t)(200*90*1000)
+#define BASE_PTS_MAX (int64_t)(0xfffffffffffffff-0x1B7740)//20s
+#define RECALC_DISPTS_TAG ("amlogictsdiscontinue")
+
+//#define TS_DEBUG
+
+#ifdef TS_DEBUG
+#define ts_print(level,fmt...) av_log(NULL,level,##fmt)
+#else
+#define ts_print(level,fmt...)
+#endif
 enum MpegTSFilterType {
     MPEGTS_PES,
     MPEGTS_SECTION,
@@ -112,6 +133,24 @@ struct MpegTSContext {
     AVPacket *pkt;
     /** to detect seek                                       */
     int64_t last_pos;
+	
+//*************************************************/	
+	/*
+	soft demux qq/pplive living ts; segment duration is 5-10s;
+
+	*/
+    int64_t jumppts;
+	int64_t basepts;
+	int64_t pts[32];
+	int64_t dts[32];
+	unsigned int  pts_nb[32];
+	unsigned char start_calcpts;
+	unsigned char pownon_recalcpts;
+	unsigned int apts_jump_count;
+	unsigned int vpts_jump_count;
+	unsigned int store_pts_count;
+	unsigned int segment_duration;//ms
+//*************************************************/	
 
     /******************************************/
     /* private mpegts data */
@@ -1270,6 +1309,148 @@ static void sdt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
     }
 }
 
+static int recalcpts_resetinfo(MpegTSContext *ts)
+{
+	if (ts->pownon_recalcpts != 1){
+		return 0x01;
+	}
+	ts->start_calcpts=0;
+	ts->basepts =0;
+	ts->jumppts=0;
+	ts->basepts=0;
+	ts->start_calcpts=0;
+	ts->pownon_recalcpts=0;//?
+	ts->segment_duration=0;
+    ts->apts_jump_count=0;
+	ts->vpts_jump_count=0;
+	ts->store_pts_count=0;
+	return 0;
+}
+/*
+cachhttp.c will add a packet size of 188byte before every segment ,int the head we will
+add some info 
+0-4 byte                      4-8                                     8- 188;
+0x47,0x00,0x1f,0xff       segment duration         "amlogictsdiscontinue"
+in the function wil get it and check it;
+*/
+static int recalcpts_checkheadergetinfo(MpegTSContext *ts, const uint8_t *packet)
+{
+	if (ts->pownon_recalcpts != 1){
+		return 0x01;
+	}
+	unsigned int tmp_duration;
+	int taglen = strlen(RECALC_DISPTS_TAG);
+	char* gettag[30];
+	if ((*packet == 0x47) && (*(packet + 1)== 0x00) && (*(packet + 2)== 0x1f) && (*(packet + 3)== 0xff)){
+			memcpy(&tmp_duration,(packet + 4),4); 
+			ts->segment_duration = tmp_duration;
+			memcpy(gettag,(packet + 8),taglen);
+			if(!strncmp(gettag, RECALC_DISPTS_TAG,taglen)){
+				if (ts->start_calcpts==1){
+					ts->jumppts = JUMP_PTS;
+					ts->basepts = ts->basepts + ts->jumppts;
+					if (ts->basepts > BASE_PTS_MAX){
+						av_log(NULL,AV_LOG_ERROR,"RESET_BASE_PTS\n");
+						ts->basepts =0;
+					}
+				}
+				ts_print(AV_LOG_INFO,"CHECK_SEGMENT_HEAD basepts[%lld]jumppts[%lld]duration[%u]\n",ts->basepts,ts->jumppts,ts->segment_duration);
+				return 0x02;
+			}
+	}
+	return 0;
+}
+/*
+recalc the pts and dts base on ts->basepts (200s)
+avoid the s
+*/
+static int recalcpts_pts(AVFormatContext *s,AVPacket *pkt)
+{
+	MpegTSContext *ts = s->priv_data;
+
+	if (ts->pownon_recalcpts != 1){
+		return 0x01;
+	}
+	if ((pkt->pts == AV_NOPTS_VALUE)||(pkt->dts == AV_NOPTS_VALUE)){
+		return -1;
+	}
+
+	if (ts->start_calcpts==1){
+		pkt->pts = pkt->pts + ts->basepts;
+		pkt->dts = pkt->dts + ts->basepts;
+		//ts_print(AV_LOG_INFO,"pkt->dts[%lld] pkt->pts[%lld] ts->base[%lld]\n",pkt->dts,pkt->pts,ts->basepts);
+	}
+
+	return 0;
+}
+/*
+judge if the pts jump every segment ;
+curpts- oldpts (jumppts < 0 ,int the segmentduration ,30s> |jumppts|> 4s ,)
+jumpcount ++;
+*/
+static int recalcpts_startwhetherornot(AVFormatContext *s,AVPacket *pkt)
+{
+	MpegTSContext *ts = s->priv_data;
+
+	if (ts->pownon_recalcpts != 1){
+		return 0x01;
+	}
+	
+	if (ts->start_calcpts==1){
+		return 0;
+	}
+	if ((pkt->pts == AV_NOPTS_VALUE)||(pkt->dts == AV_NOPTS_VALUE)){
+		return -1;
+	}
+
+	int64_t vjump_val=0;
+	int64_t ajump_val=0;
+	int vjump_ms=0;
+	int ajump_ms=0;
+	int i;
+
+	AVStream *st = s->streams[pkt->stream_index];
+	ts->store_pts_count++;
+	if ((ts->pts_nb[pkt->stream_index]>2)&&(st->codec->codec_type == AVMEDIA_TYPE_VIDEO)){
+		vjump_val = pkt->pts-ts->pts[pkt->stream_index]; 
+		vjump_ms = ((abs(pkt->dts-ts->dts[pkt->stream_index])*1000)/90000);	
+		if ((vjump_val< 0) && (vjump_ms <= (ts->segment_duration*2))&&(vjump_ms>DIFF_PTS_MIN)&&(ts->segment_duration < MAX_SEG_DURATION )){
+			ts->vpts_jump_count++;
+		}
+		ts_print(AV_LOG_ERROR,"vjump_val[%lld] pts:cur-old[%lld,%lld] duration[%u]ms vjump_ms[%u]ms vjumpcou[%d]\n",\
+		vjump_val,pkt->pts,ts->pts[pkt->stream_index],ts->segment_duration,vjump_ms,ts->vpts_jump_count);	
+	}
+	if ((ts->pts_nb[pkt->stream_index]>2)&&(st->codec->codec_type == AVMEDIA_TYPE_AUDIO)){
+		ajump_val = pkt->dts-ts->dts[pkt->stream_index];
+		ajump_ms = ((abs(pkt->dts-ts->dts[pkt->stream_index])*1000)/90000);	
+		if ((ajump_val < 0)&&(ajump_ms <= (ts->segment_duration*2))&&(ajump_ms>DIFF_PTS_MIN)&&(ts->segment_duration < MAX_SEG_DURATION )){
+			ts->apts_jump_count++;
+		}
+		ts_print(AV_LOG_INFO,"ajump_val[%lld] pts:cur-old[%lld,%lld] duration[%u]ms ajump_ms[%u]ms  ajumpcou[%d]\n",\
+		ajump_val,pkt->pts,ts->pts[pkt->stream_index],ts->segment_duration,ajump_ms,ts->apts_jump_count);	
+	}
+	ts->pts[pkt->stream_index] = pkt->pts; 
+	ts->dts[pkt->stream_index] = pkt->dts;
+	ts->pts_nb[pkt->stream_index]++;
+
+	if ((ts->vpts_jump_count > MAX_VPTSJUMPNUM)||(ts->apts_jump_count > MAX_APTSJUMPNUM)){
+		ts_print(AV_LOG_INFO,"start_calcpts\n");
+		ts->start_calcpts=1;
+	}
+		
+	if (ts->store_pts_count > MAX_STOREPSTNUM ){
+		ts->vpts_jump_count=0;
+		ts->apts_jump_count=0;
+		ts->store_pts_count=0;
+		ts->start_calcpts=0;//switch ;
+		for(i=0;i<32;i++){
+			ts->pts_nb[i]=0;
+		}
+		ts_print(AV_LOG_INFO,"not_calc\n");
+	}
+
+	return 0;
+}
 /* handle one TS packet */
 static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
 {
@@ -1279,6 +1460,11 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
     const uint8_t *p, *p_end;
     int64_t pos;
 
+	int ret=-1 ;
+	ret=recalcpts_checkheadergetinfo(ts,packet);
+	if(ret == 0x02){
+		return 0;
+	}
     pid = AV_RB16(packet + 1) & 0x1fff;
     if(pid && discard_pid(ts, pid))
         return 0;
@@ -1560,6 +1746,15 @@ static int mpegts_read_header(AVFormatContext *s,
     int len;
     int64_t pos;
 
+ 	
+    recalcpts_resetinfo(ts);
+
+
+	if(am_getconfig_bool("libplayer.netts.recalcpts")){
+		ts->pownon_recalcpts=1;
+	}
+
+	av_log(NULL,AV_LOG_ERROR,"livingstream ts->pownon_recalcpts[%d]\n",ts->pownon_recalcpts);
 #if FF_API_FORMAT_PARAMETERS
     if (ap) {
         if (ap->mpeg2ts_compute_pcr)
@@ -1710,7 +1905,7 @@ static int mpegts_raw_read_packet(AVFormatContext *s,
     return 0;
 }
 
-static int mpegts_read_packet(AVFormatContext *s,
+static int mpegts_read_packet_inside(AVFormatContext *s,
                               AVPacket *pkt)
 {
     MpegTSContext *ts = s->priv_data;
@@ -1756,11 +1951,24 @@ static int mpegts_read_packet(AVFormatContext *s,
     return ret;
 }
 
+static int mpegts_read_packet(AVFormatContext *s,
+                              AVPacket *pkt)
+{
+
+	int ret;
+	ret = mpegts_read_packet_inside(s,pkt);
+	if (ret == 0){
+		recalcpts_startwhetherornot(s,pkt);
+		recalcpts_pts(s,pkt);
+	}			
+
+	return ret;
+}
 static int mpegts_read_close(AVFormatContext *s)
 {
     MpegTSContext *ts = s->priv_data;
     int i;
-
+    recalcpts_resetinfo(ts);
     clear_programs(ts);
 
     for(i=0;i<NB_PID_MAX;i++)

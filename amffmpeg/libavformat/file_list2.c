@@ -1459,13 +1459,17 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
     av_log(NULL, AV_LOG_INFO, "list_getinfo enter\n");
     struct list_mgt *mgt = h->priv_data;
 
-    if (!mgt || !mgt->have_list_end) {
+    if (!mgt) {
         return 0;
     }
     
     if (cmd == AVCMD_TOTAL_DURATION) {
         *info = mgt->full_time * 1000;
         av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_TOTAL_DURATION=%lld", *info);
+        return 0;
+    } else if (cmd == AVCMD_HLS_STREAMTYPE) {
+		*info = mgt->have_list_end;
+		 av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_HLS_STREAMTYPE=%lld", *info);
         return 0;
     } else if (cmd == AVCMD_TOTAL_NUM) {
         *info = mgt->item_num - 1;

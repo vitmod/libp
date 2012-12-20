@@ -40,6 +40,8 @@
 #define TMP_BUFFER_SIZE (188*100)   
 #define LIVE_HTTP_RETRY_TIMES 20
 
+#define ADD_TSHEAD_RECALC_DISPTS_TAG 	("amlogictsdiscontinue")
+static const uint8_t ts_segment_lead[188] = {0x47,0x00,0x1F,0xFF,0,}; 
 typedef struct {
     URLContext * hd;
     unsigned char headers[BUFFER_SIZE];    
@@ -64,6 +66,8 @@ typedef struct {
     pthread_t circular_buffer_thread;
     pthread_mutex_t  read_mutex;    
     int is_first_read;
+	int is_ts_file;
+	int livets_addhead;
 
 } CacheHttpContext;
 
@@ -172,6 +176,8 @@ int CacheHttp_Open(void ** handle,const char* headers)
     s->reset_flag = -1;
     s->have_list_end = -1;
     s->is_first_read = 1;
+	s->livets_addhead=0;
+	s->is_ts_file=0;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     float value=0.0;
@@ -183,8 +189,13 @@ int CacheHttp_Open(void ** handle,const char* headers)
     	s->fifo = av_fifo_alloc(value);
     }
     pthread_mutex_init(&s->read_mutex,NULL);
-    
-    s->EXIT = 0;
+
+
+	if ((am_getconfig_bool("libplayer.netts.recalcpts"))){
+		s->livets_addhead=1;
+	}
+
+	s->EXIT = 0;
     s->EXITED = 0;
     s->RESET = 0;
     if(headers){
@@ -345,6 +356,51 @@ int CacheHttp_GetBuffedTime(void * handle)
     return buffed_time;
 }
 
+//just a strange function for sepcific purpose
+static int ts_simple_analyze(int packetnum,const uint8_t *buf, int size){
+	int i;
+	int isTs = 0;
+ 
+	for(i=0; i<size-3; i++){
+		if(buf[i] == 0x47 && !(buf[i+1] & 0x80) && (buf[i+3] != 0x47)){
+		   isTs++;
+		}
+	}
+	av_log(NULL,AV_LOG_ERROR,"ts_simple_analyze isTs is [%d]\n",isTs);
+
+	if (isTs >=packetnum){
+		return 0x01;
+	}else{
+		return -1;
+	}
+}
+static int tsstream_add_fakehead(CacheHttpContext * s)
+{
+
+	int taglen = strlen(ADD_TSHEAD_RECALC_DISPTS_TAG);
+	int left = 0;
+
+	if (s->have_list_end==0 && (s->is_ts_file >0 )){//live ,  //copy fake header to segment head for soft demux segment 
+		int duration_add = (int)(s->item_duration*1000);   
+		do{ 
+			pthread_mutex_lock(&s->read_mutex); 
+			left = av_fifo_space(s->fifo);
+			left = FFMIN(left, s->fifo->end - s->fifo->wptr);	  
+			if(left<=188){
+				pthread_mutex_unlock(&s->read_mutex);	
+				usleep(100*1000);
+				continue;
+			}
+			memcpy(s->fifo->wptr, ts_segment_lead , 188);
+			memcpy((s->fifo->wptr+4),&duration_add,4);
+			memcpy((s->fifo->wptr+8),ADD_TSHEAD_RECALC_DISPTS_TAG,taglen);
+			s->fifo->wptr += 188;
+			pthread_mutex_unlock(&s->read_mutex);	
+			break;
+		}while(1);
+	}
+	return 0;
+}
 static void *circular_buffer_task( void *_handle)
 {
     CacheHttpContext * s = (CacheHttpContext *)_handle; 
@@ -352,6 +408,8 @@ static void *circular_buffer_task( void *_handle)
     float config_value = 0.0;
     void * fp = NULL;
     int config_ret = 0;
+    int ts_parser_finised =-1;
+	int checkpacketnum=0;
     
     while(!s->EXIT) {
 
@@ -480,7 +538,11 @@ OPEN_RETRY:
         config_ret = am_getconfig_float("libplayer.hls.dump",&config_value);
         if(config_ret >= 0 && config_value > 0)
                 CacheHttp_dump_open(&fp, filename, (int)config_value);
-        
+
+		if (s->livets_addhead){
+			tsstream_add_fakehead(s);
+		}
+		
         while(!s->EXIT) {
 
            if(s->RESET)
@@ -498,6 +560,17 @@ OPEN_RETRY:
                              
                 tmpdatasize = CacheHttp_ffurl_read(s->hd, tmpbuf, TMP_BUFFER_SIZE);
                 rsize +=tmpdatasize;
+			  	if(ts_parser_finised<0&&tmpdatasize>4){
+					if (tmpdatasize>= (188*4)){
+						checkpacketnum = 4;
+					}else{
+						checkpacketnum = 1;
+					}
+					s->is_ts_file = ts_simple_analyze(checkpacketnum, tmpbuf, FFMIN(tmpdatasize,188*checkpacketnum));
+					av_log(h,AV_LOG_INFO,"ts_simple_analyze Is a ts file?,%s  url:%s\n",s->is_ts_file>0?"YES":"NO",filename);
+					ts_parser_finised = 1;
+		   		}
+					
            }
 
             //if(tmpdatasize > 0) {

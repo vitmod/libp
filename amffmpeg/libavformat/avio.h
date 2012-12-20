@@ -177,6 +177,7 @@ typedef struct URLProtocol {
 #define AVCMD_SLICE_ENDTIME                   (1000+7)
 #define AVCMD_TOTAL_DURATION			 (1000+8)
 #define AVCMD_TOTAL_NUM			        (1000+9)
+#define AVCMD_HLS_STREAMTYPE                 (1000+10)
 
 
 #define AVCMD_GET_NEXT_PTS			        (1100+1)

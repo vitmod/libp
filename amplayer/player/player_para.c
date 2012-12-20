@@ -1264,6 +1264,7 @@ int player_dec_init(play_para_t *p_para)
     int i;
     int wvenable = 0;
     AVStream *st;
+	int64_t streamtype=-1;
 
     init_es_sub();
     ret = ffmpeg_parse_file(p_para);
@@ -1282,10 +1283,23 @@ int player_dec_init(play_para_t *p_para)
 	   	file_type=STREAM_FILE;
 		stream_type=STREAM_ES;
 		ret = PLAYER_SUCCESS;
+	   }else if(am_getconfig_bool("libplayer.livets.softdemux")){
+	   		avio_getinfo(p_para->pFormatCtx->pb,AVCMD_HLS_STREAMTYPE,0,&streamtype);
+			log_print("livingstream [%d]\n",streamtype);
+		 	if( p_para->pFormatCtx->pb && p_para->pFormatCtx->pb->is_slowmedia &&  //is network...
+				(streamtype==0)){
+			   log_print("livingstream configned network tsstreaming used soft demux,used soft demux now.\n");
+			   file_type=STREAM_FILE;
+			   stream_type=STREAM_ES;
+			   ret = PLAYER_SUCCESS;
+			}
 	   }
     }
+   
 
-	
+
+ 
+  
     if (ret != PLAYER_SUCCESS) {
         set_player_state(p_para, PLAYER_ERROR);
         p_para->state.status = PLAYER_ERROR;
