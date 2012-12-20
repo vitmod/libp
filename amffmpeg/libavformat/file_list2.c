@@ -1118,7 +1118,8 @@ reload:
             return NULL;
         }
         if (isNeedFetch == 0 || (ret = list_open_internet(&bio, mgt, url, mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
-            if(ret!=0&&mgt->n_variants>1){
+#if 0 //remove codes,just TBD.20121220
+		if(ret!=0&&mgt->n_variants>1){
 			int playing_index = -1;
 			playing_index = switch_bw_level(mgt,-1);
 			if(playing_index<0){
@@ -1129,6 +1130,7 @@ reload:
 
 			}				
             }
+#endif		
 	      mgt->cur_uio = bio;		
             goto switchnext;
         }
