@@ -66,9 +66,9 @@ typedef struct {
     pthread_t circular_buffer_thread;
     pthread_mutex_t  read_mutex;    
     int is_first_read;
-	int is_ts_file;
-	int livets_addhead;
-
+    int is_ts_file;
+    int livets_addhead;
+    struct list_mgt *m3u_mgt;
 } CacheHttpContext;
 
 static int CacheHttp_ffurl_open_h(URLContext ** h, const char * filename, int flags, const char * headers, int * http)
@@ -158,14 +158,19 @@ static int CacheHttp_dump_close(void * handle)
 
 static void *circular_buffer_task( void *_handle);
 
-int CacheHttp_Open(void ** handle,const char* headers)
+int CacheHttp_Open(void ** handle,const char* headers,void* arg)
 {
     CacheHttpContext * s = (CacheHttpContext *)av_malloc(sizeof(CacheHttpContext));
     if(!s) {
         *handle = NULL;
         return AVERROR(EIO);
     }
-
+    s->m3u_mgt = (struct list_mgt*)arg;
+    if(!s->m3u_mgt){
+	 av_free(s);	
+	 s = NULL;
+	 return AVERROR(EIO); 
+    }
     *handle = (void *)s;
     s->hd  = NULL;
     s->item_duration = 0;
@@ -319,6 +324,8 @@ int CacheHttp_Close(void * handle)
     }
     pthread_mutex_destroy(&s->read_mutex);    
     bandwidth_measure_free(s->bandwidth_measure);
+    av_free(s);
+    s = NULL;	
     return 0;
 }
 
@@ -348,7 +355,7 @@ int CacheHttp_GetBuffedTime(void * handle)
     } else {
         buffed_time = s->item_starttime;
         if(s->finish_flag>0) {
-            int64_t full_time = getTotalDuration(NULL);
+            int64_t full_time = getTotalDuration((void*)s->m3u_mgt);
             buffed_time = full_time;
         }
     }   
@@ -428,7 +435,7 @@ static void *circular_buffer_task( void *_handle)
             h = NULL;
         }        
        
-        list_item_t * item = getCurrentSegment(NULL);
+        list_item_t * item = getCurrentSegment((void*)s->m3u_mgt);
         if(!item||(!item->file&&!item->flags&ENDLIST_FLAG)) {
             usleep(WAIT_TIME);
             continue;
@@ -630,7 +637,7 @@ SKIP:
 	}		
 	 if(!s->RESET){
 	 	
-        	switchNextSegment(NULL);
+        	switchNextSegment((void*)s->m3u_mgt);
 
 	 }
     }

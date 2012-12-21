@@ -582,7 +582,7 @@ error:
 }
 
 
-static struct list_mgt* gListMgt = NULL;
+
 static int list_open(URLContext *h, const char *filename, int flags)
 {
     struct list_mgt *mgt;
@@ -634,7 +634,6 @@ static int list_open(URLContext *h, const char *filename, int flags)
     
     mgt->ipad_req_media_headers = strndup(headers, 1024);
 
-    gListMgt = mgt;
     if ((ret = list_open_internet(&mgt->cur_uio, mgt, mgt->filename, flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
         av_free(mgt);
         return ret;
@@ -672,7 +671,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
     h->priv_data = mgt;
     mgt->cache_http_handle = NULL;
     
-    ret = CacheHttp_Open(&mgt->cache_http_handle,mgt->ipad_req_media_headers);
+    ret = CacheHttp_Open(&mgt->cache_http_handle,mgt->ipad_req_media_headers,(void*)mgt);
+    if(ret<0){	
+	return -1;
+    }
     if(mgt->debug_level>0){
         hls_base_info_dump(mgt);
     }
@@ -1423,8 +1425,7 @@ static int list_close(URLContext *h)
         mgt->cur_uio = NULL;
     }
     av_free(mgt);
-    unused(h);
-    gListMgt = NULL;
+    unused(h);    
     return 0;
 }
 static int list_get_handle(URLContext *h)
@@ -1536,42 +1537,47 @@ URLProtocol file_list_protocol = {
 };
 list_item_t* getCurrentSegment(void* hSession)
 {
-    if (gListMgt == NULL) {
+    if (hSession == NULL) {		
         return NULL;
     }
-    
-    struct list_item *item = gListMgt->current_item;
+    struct list_mgt* mgt = (struct list_mgt_t*)hSession;
+    struct list_item *item = mgt->current_item;
     if(item){
-        item->have_list_end = gListMgt->have_list_end;
-        gListMgt->playing_item_index = item->index;
-        gListMgt->playing_item_seq = item->seq;
+        item->have_list_end = mgt->have_list_end;
+        mgt->playing_item_index = item->index;
+        mgt->playing_item_seq = item->seq;
     }
     return item;
 
 }
 const char* getCurrentSegmentUrl(void* hSession)
 {
-    if (gListMgt == NULL) {
-        return NULL;
-    }
+	if (hSession == NULL) {
+		return NULL;
+	}
+	struct list_mgt* mgt = (struct list_mgt_t*)hSession;
+	const char* url = getCurrentSegment(mgt)->file;
 
-    const char* url = getCurrentSegment(gListMgt)->file;
-
-    return url;
+   	return url;
 }
 
 long long getTotalDuration(void* hSession)
 {
-    if (gListMgt == NULL) {
-        return NULL;
-    }
-    return gListMgt->full_time;
+	if (hSession == NULL) {
+	    return 0;
+	}
+	struct list_mgt* mgt = (struct list_mgt_t*)hSession;	
+    	return mgt->full_time;
 }
 
 int switchNextSegment(void* hSession)
 {
-    gListMgt->current_item = switchto_next_item(gListMgt);
-    return 0;
+	if(hSession == NULL){
+		return 0;
+	}
+	struct list_mgt* mgt = (struct list_mgt_t*)hSession;		
+	mgt->current_item = switchto_next_item(mgt);
+	return 0;
 }
 URLProtocol *get_file_list_protocol(void)
 {

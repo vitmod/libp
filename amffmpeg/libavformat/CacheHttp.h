@@ -24,7 +24,7 @@
 
 #include "url.h"
 
- int CacheHttp_Open(void ** handle,const char* headers);
+ int CacheHttp_Open(void ** handle,const char* headers,void* arg);
  int CacheHttp_Read(void * handle, uint8_t * cache, int size);
  int CacheHttp_Close(void * handle);
  int CacheHttp_GetSpeed(void * handle, int * arg1, int * arg2, int * arg3);
