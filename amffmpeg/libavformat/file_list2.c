@@ -836,16 +836,13 @@ static int hls_base_info_dump(struct list_mgt*  c){
 
 
 static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
-    int mean_bps, fast_bps, avg_bps,ret = -1;
+    int ret = -1;
     int measure_bw =0;
     float net_sensitivity=get_adaptation_ex_para(0);
-     
-    ret =CacheHttp_GetSpeed(c->cache_http_handle, &fast_bps, &mean_bps, &avg_bps);
-    measure_bw = fast_bps;
+    measure_bw = c->measure_bw;
     if(c->debug_level>0){
         RLOG("Player current measured bandwidth: %d bps,(%.3f kbps)",measure_bw,(float)measure_bw/1000);
     }
-    c->measure_bw = measure_bw;	
     if(net_sensitivity>0){
         measure_bw*=net_sensitivity;
     }
@@ -1054,7 +1051,10 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
     if(reload_interval >0){ //to usec
         reload_interval *= 1000000;
     }
-    
+    int mean_bps, fast_bps, avg_bps,ret = -1;     
+    ret =CacheHttp_GetSpeed(mgt->cache_http_handle, &fast_bps, &mean_bps, &avg_bps);
+    mgt->measure_bw = fast_bps;
+	
     if (mgt->n_variants > 0&&mgt->codec_buf_level>=0) { //vod,have mulit-bandwidth streams
         //av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
         int is_switch = select_best_variant(mgt);
