@@ -31,7 +31,7 @@
 #include "httpauth.h"
 #include "url.h"
 #include "libavutil/opt.h"
-
+#include "bandwidth_measure.h" 
 /* XXX: POST protocol is not completely implemented because ffmpeg uses
    only a subset of it. */
 
@@ -71,6 +71,7 @@ typedef struct {
     int max_connects;
     int latest_get_time_ms;
     int is_broadcast;
+    void * bandwidth_measure;	
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
@@ -274,6 +275,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->is_broadcast = 0;
     av_strlcpy(s->location, uri, sizeof(s->location));
 	s->max_connects=MAX_CONNECT_LINKS;	
+    s->bandwidth_measure=bandwidth_measure_alloc(100,0); 	
 	ret = http_open_cnx(h);
 	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb() && (s->http_code != 404 ||s->http_code != 503 || s->http_code != 500)){
 		s->is_seek=0;
@@ -296,6 +298,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     s->is_broadcast = 0;
     av_strlcpy(s->location, uri+1, sizeof(s->location));	
 	s->max_connects=MAX_CONNECT_LINKS;	
+    s->bandwidth_measure=bandwidth_measure_alloc(100,0); 		
 	ret = http_open_cnx(h);
 	while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
 		s->is_seek=0;
@@ -578,9 +581,11 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
     HTTPContext *s = h->priv_data;
     int len;
     int err_retry=READ_RETRY_MAX;
+    bandwidth_measure_start_read(s->bandwidth_measure);	
 retry:
     if (url_interrupt_cb()) {
         av_log(h, AV_LOG_INFO, "http_read interrupt, err :-%d\n", AVERROR(EIO));
+        bandwidth_measure_finish_read(s->bandwidth_measure,0);		
         return AVERROR(EIO);
     }
     if (s->chunksize >= 0) {
@@ -591,6 +596,7 @@ retry:
                 do {
                     if (http_get_line(s, line, sizeof(line)) < 0){
                         av_log(h, AV_LOG_ERROR, "http_read failed\n");
+			     bandwidth_measure_finish_read(s->bandwidth_measure,0);			
                         return AVERROR(EIO);
                     }   
                 } while (!*line);    /* skip CR LF from last chunk */
@@ -601,6 +607,7 @@ retry:
 
                 if (!s->chunksize){
                     av_log(h, AV_LOG_ERROR, "http_read s->chunksize failed\n");
+			 bandwidth_measure_finish_read(s->bandwidth_measure,0);		
                     return 0;
                 }	
                 break;
@@ -618,6 +625,7 @@ retry:
     } else {
         if (!s->willclose && s->filesize >= 0 && s->off >= s->filesize){
             av_log(h, AV_LOG_ERROR, "http_read eof len=%d\n",len);
+	      bandwidth_measure_finish_read(s->bandwidth_measure,0);	
             return 0;
         }
         if(s->hd){
@@ -662,6 +670,7 @@ errors:
 		av_log(h, AV_LOG_ERROR, "len=-%d err_retry=%d\n", -len, err_retry);	
 		if(s->off == s->filesize){
 			av_log(h, AV_LOG_INFO, "http_read maybe reach EOS,current: %lld,file size:%lld\n",s->off,s->filesize);
+			bandwidth_measure_finish_read(s->bandwidth_measure,0);
 			return 0;
 		}
 
@@ -683,6 +692,7 @@ errors:
 			goto retry;
 		}
 	}
+	bandwidth_measure_finish_read(s->bandwidth_measure,len);
 	return len;
 
 }
@@ -754,6 +764,7 @@ static int http_close(URLContext *h)
 
     if (s->hd)
         ffurl_close(s->hd);
+    bandwidth_measure_free(s->bandwidth_measure);	
     return ret;
 }
 
@@ -812,6 +823,23 @@ int ff_http_get_broadcast_flag(URLContext *h){
     return 0;
 
 }
+
+static int http_get_info(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *info){
+	if(h == NULL){
+		return -1;		
+	}
+	HTTPContext *s = h->priv_data;
+	if(s!=NULL&&cmd == AVCMD_GET_NETSTREAMINFO){
+		if(flag == 1){//download speed
+			int mean_bps, fast_bps, avg_bps,ret = -1;     
+			ret = bandwidth_measure_get_bandwidth(s->bandwidth_measure,&fast_bps, &mean_bps, &avg_bps);
+			*info = avg_bps;
+		}
+		return 0;	
+	}
+	return -1;    
+
+}
 URLProtocol ff_http_protocol = {
     .name                = "http",
     .url_open            = http_open,
@@ -819,6 +847,7 @@ URLProtocol ff_http_protocol = {
     .url_write           = http_write,
     .url_seek            = http_seek,
     .url_close           = http_close,
+    .url_getinfo 	  = http_get_info,    
     .url_get_file_handle = http_get_file_handle,
     .priv_data_size      = sizeof(HTTPContext),
     .priv_data_class     = &httpcontext_class,
@@ -830,6 +859,7 @@ URLProtocol ff_shttp_protocol = {
     .url_write           = http_write,
     .url_seek            = http_seek,
     .url_close           = http_close,
+    .url_getinfo 	  = http_get_info,     
     .url_get_file_handle = http_get_file_handle,
     .priv_data_size      = sizeof(HTTPContext),
     .priv_data_class     = &shttpcontext_class,
