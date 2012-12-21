@@ -301,12 +301,13 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
             update_playing_info(para);
             update_player_states(para, 1);
         } else {
-            log_print("pid[%d]::seek time overspill!\n", para->player_id);
+            log_print("pid[%d]::seek time out of range!\n", para->player_id);
             set_player_error_no(para, PLAYER_SEEK_OVERSPILL);
+            /*
             //set playend state when seek time overspill
             para->playctrl_info.end_flag = 1;
             para->playctrl_info.search_flag = 0;
-            set_player_state(para, PLAYER_PLAYEND);
+            set_player_state(para, PLAYER_PLAYEND);*/
             update_playing_info(para);
             update_player_states(para, 1);
         }
