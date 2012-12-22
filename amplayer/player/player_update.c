@@ -17,7 +17,7 @@
 
 void media_info_init(media_info_t *info)
 {
-    MEMSET(info, 0, sizeof(media_info_t));
+    //MEMSET(info, 0, sizeof(media_info_t));
     info->stream_info.filename = NULL;
     info->stream_info.cur_audio_index   = -1;
     info->stream_info.cur_sub_index     = -1;

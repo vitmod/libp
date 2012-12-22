@@ -147,6 +147,7 @@ typedef struct
     int cur_sub_index;	
     int seekable;
     int drm_check;
+	int adif_file_flag;
 }mstream_info_t;
 
 typedef struct
