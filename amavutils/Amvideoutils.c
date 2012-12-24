@@ -299,16 +299,14 @@ int amvideo_utils_get_video_angle(int *angle)
 int amvideo_utils_get_hdmi_authenticate(void)
 {
     LOG_FUNCTION_NAME    
-    int fd;
-    int val = 0;
+    int fd = -1;
+    int val = -1;
     char  bcmd[16];
     fd = open(HDMI_AUTHENTICATE_PATH, O_RDONLY);
     if (fd >= 0) {
         read(fd, bcmd, sizeof(bcmd));
         val = strtol(bcmd, NULL, 10);
         close(fd);
-    }else {
-        val = -1;
     }
     return val;   
 }
