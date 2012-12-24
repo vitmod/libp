@@ -1617,6 +1617,28 @@ int write_av_packet(play_para_t *para)
                 pkt->data_size = 0;
                 break;
             }
+
+			/*
+			* add two property media.amplayer.vbufthreshold and media.amplayer.abufthreshold to control the a-v-buf data 
+			* level, for some raw read file, the audio data would be dropped after switch audio stream, if the abuf level is too big, 
+			* the dropped audio data would be too much and lead to apts bigger than vpts
+			*/
+			if (para->vstream_info.has_video && para->astream_info.has_audio
+				&& para->astream_num > 1 && para->playctrl_info.raw_mode) {
+				char value[PROPERTY_VALUE_MAX]={0};
+				float vbuf_threshold = 0.5;
+				float abuf_threshold = 0.2;
+				
+				if (property_get("media.amplayer.vbufthreshold", value, NULL) > 0) 
+					vbuf_threshold = atof(value);
+				memset(value,0,sizeof(value));
+				if (property_get("media.amplayer.abufthreshold", value, NULL) > 0) 
+					abuf_threshold = atof(value);
+				
+				if (para->state.video_bufferlevel >= vbuf_threshold || para->state.audio_bufferlevel >= abuf_threshold)
+					return PLAYER_SUCCESS;
+			}
+			
             write_bytes = codec_write(pkt->codec, (char *)buf, size);
             if (write_bytes < 0 || write_bytes > size) {
                 if (-errno != AVERROR(EAGAIN)) {
