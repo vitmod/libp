@@ -457,6 +457,9 @@ int cmf_read_seek(AVFormatContext *s, int stream_index, int64_t sample_time, int
     seektimestamp=av_rescale_rnd(sample_time,st->time_base.num*1000,st->time_base.den,AV_ROUND_ZERO);//pts->ms
     
     av_log(s, AV_LOG_INFO, "cmf read_seek: checkin pts [%lld] seektimestamp[%lld]ms streamindex [%d]\n",sample_time,seektimestamp,stream_index);
+    if (!memcmp(cmf->sctx->iformat->name,"mpegts",6)) {
+        flags = AVSEEK_CMF_TS_TIME;
+    }
               
     if ((seektimestamp >= ci->start_time)&&(seektimestamp <= ci->end_time )){
         //in cur slice;

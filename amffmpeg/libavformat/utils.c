@@ -2022,6 +2022,11 @@ int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int f
 
     ff_read_frame_flush(s);
 
+   #if 1
+    if(!memcmp(s->iformat->name,"mpegts",6)){
+        return url_fseektotime(s->pb, timestamp/(1000*1000), flags);
+    }
+   #endif
     if(flags & AVSEEK_FLAG_BYTE)
         return av_seek_frame_byte(s, stream_index, timestamp, flags);
 
@@ -2033,7 +2038,7 @@ int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int f
     st= s->streams[stream_index];
    /* timestamp for default must be expressed in AV_TIME_BASE units */
     timestamp = av_rescale(timestamp, st->time_base.den, AV_TIME_BASE * (int64_t)st->time_base.num);
-   
+
     /* first, we try the format specific seek */
     if (s->iformat->read_seek)
         ret = s->iformat->read_seek(s, stream_index, timestamp, flags);

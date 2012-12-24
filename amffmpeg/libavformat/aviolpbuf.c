@@ -534,6 +534,19 @@ int64_t url_lpexseek(URLContext *s, int64_t offset, int whence)
 	 	}
 		ret= AVERROR(EPIPE);
 	}
+        else if(whence == AVSEEK_CMF_TS_TIME ){
+	 	if(s->prot->url_exseek){
+			if((ret=s->prot->url_exseek(s, offset, AVSEEK_CMF_TS_TIME))>=0)
+			{
+				lp->rp=lp->buffer;
+				lp->wp=lp->buffer;
+				lp->valid_data_size=0;
+				lp->pos=0; 
+				goto seek_end;
+			}
+	 	}
+		ret= AVERROR(EPIPE);
+	}
       else if (whence == AVSEEK_SLICE_BYTIME)
       {
                ret= s->prot->url_seek(s, offset, AVSEEK_SLICE_BYTIME);
