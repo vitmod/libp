@@ -185,6 +185,7 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
     AVFormatContext *pFCtx = am_p->pFormatCtx;
 	AVStream *sttmp=NULL;
     memset(type, 0, sizeof(*type));
+	memset(&am_p->media_info, 0, sizeof(media_info_t));
     if (pFCtx->iformat != NULL) {
         unsigned int i;
         int matroska_flag = 0;
@@ -234,7 +235,6 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
 				if((buf[0]=='A' && buf[1]=='D' && buf[2]=='I' && buf[3]=='F'))
 				{   
 					log_print("the stream is pure adif: set adif_ctrl_flag=1\n");
-					MEMSET(&am_p->media_info, 0, sizeof(media_info_t));
 					am_p->media_info.stream_info.adif_file_flag=1;
 				}
 			  }
