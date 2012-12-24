@@ -1310,6 +1310,20 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
     }
 
 #if 1
+    if(whence == AVSEEK_CMF_TS_TIME) {
+        av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_CMF_TS_TIME");
+        if(pos >= 0) {
+            for (item = mgt->item_list; item; item = item->next) {
+                if(mgt->cmf_item_index == item->index) {
+                        mgt->current_item = NULL;
+                        CacheHttp_Reset(mgt->cache_http_handle);
+                        mgt->current_item = item;;
+                        return (int64_t)(item->start_time);
+                }
+            }
+        }
+    }
+
     if(whence == AVSEEK_ITEM_TIME) {
         av_log(NULL, AV_LOG_INFO, "-----------> listseek AVSEEK_ITEM_TIME");
         if (pos >= 0 && pos < mgt->full_time) {

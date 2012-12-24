@@ -194,7 +194,21 @@ static int64_t cmfvpb_seek(URLContext*v, int64_t offset, int whence)
 	          return -1;
             }
             return 0;
-    }else{
+    } else if(whence == AVSEEK_TO_TIME){
+            ret = cv->input->prot->url_seek(cv->input,offset, AVSEEK_TO_TIME);
+            if(ret < 0){
+                av_log(NULL, AV_LOG_INFO, " AVSEEK_TO_TIME failed [%x]\n",ret);
+	          return -1;
+            }
+            return 0;
+    } else if(whence == AVSEEK_CMF_TS_TIME){
+            ret = cv->input->prot->url_seek(cv->input,offset, AVSEEK_CMF_TS_TIME);
+            if(ret < 0){
+                av_log(NULL, AV_LOG_INFO, " AVSEEK_CMF_TS_TIME failed [%x]\n",ret);
+	          return -1;
+            }
+            return 0;
+    } else{
         av_log(NULL, AV_LOG_INFO, " un support seek cmd else whence  [%x]\n",whence);
 	 return -1;
     }

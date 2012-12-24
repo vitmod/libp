@@ -386,8 +386,16 @@ int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags)
 {
 	int64_t offset1;
 	if(s->exseek){
-		if((offset1=s->exseek(s->opaque, totime_s, AVSEEK_TO_TIME))>=0)
-		{
+              if(flags == AVSEEK_CMF_TS_TIME) {
+                    if((offset1=s->exseek(s->opaque, totime_s, flags))>=0) {
+                            if (!s->write_flag)
+    				    s->buf_end = s->buffer;
+    			        s->buf_ptr = s->buffer;
+    			        s->pos = 0;/*I think it is the first,pos now*/
+    			        s->eof_reached=0;/*clear eof error*/
+    			        return offset1;
+                    }
+              }else if((offset1=s->exseek(s->opaque, totime_s, AVSEEK_TO_TIME))>=0){
 			if (!s->write_flag)
 				s->buf_end = s->buffer;
 			s->buf_ptr = s->buffer;
