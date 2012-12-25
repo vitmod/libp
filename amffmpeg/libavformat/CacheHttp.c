@@ -264,7 +264,7 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     return 0;
 }
 
-int CacheHttp_Reset(void * handle)
+int CacheHttp_Reset(void * handle, int cmf_flag)
 {
     av_log(NULL, AV_LOG_INFO, "--------------- CacheHttp_Reset begin");
     if(!handle)
@@ -272,6 +272,8 @@ int CacheHttp_Reset(void * handle)
 
     CacheHttpContext * s = (CacheHttpContext *)handle;
     s->RESET = 1;
+    if(cmf_flag)
+        s->seek_flag = 0;
     while(!s->EXITED && 0 == s->reset_flag) {
         usleep(1000);
     }

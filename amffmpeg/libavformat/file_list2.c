@@ -1289,7 +1289,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
 
                 if (item->start_time <= pos && pos < item->start_time + item->duration) {
                     mgt->current_item = NULL;
-                    CacheHttp_Reset(mgt->cache_http_handle);
+                    CacheHttp_Reset(mgt->cache_http_handle, 0);
                     mgt->current_item = item;
                     #if 0
                     mgt->playing_item_index = item->index - 1;
@@ -1316,7 +1316,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
             for (item = mgt->item_list; item; item = item->next) {
                 if(mgt->cmf_item_index == item->index) {
                         mgt->current_item = NULL;
-                        CacheHttp_Reset(mgt->cache_http_handle);
+                        CacheHttp_Reset(mgt->cache_http_handle, 1);
                         mgt->current_item = item;;
                         return (int64_t)(item->start_time);
                 }
@@ -1365,7 +1365,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
                 if(pos == item->index) {
                     mgt->cmf_item_index = pos;                  
                     mgt->current_item = NULL;
-                    CacheHttp_Reset(mgt->cache_http_handle);
+                    CacheHttp_Reset(mgt->cache_http_handle, 1);
                     mgt->current_item = item;
                     mgt->playing_item_index = item->index - 1;
                     if (!mgt->have_list_end) {
