@@ -629,38 +629,48 @@ static int mpegts_set_stream_info(AVStream *st, PESContext *pes,
     pes->st = st;
     pes->stream_type = stream_type;
 
-    av_log(pes->stream, AV_LOG_DEBUG,
+    av_log(pes->stream, AV_LOG_INFO,
            "stream=%d stream_type=%x pid=%x prog_reg_desc=%.4s\n",
            st->index, pes->stream_type, pes->pid, (char*)&prog_reg_desc);
 
     st->codec->codec_tag = pes->stream_type;
 
     mpegts_find_stream_type(st, pes->stream_type, ISO_types);
-    if (((prog_reg_desc == AV_RL32("HDMV")) || (prog_reg_desc == AV_RL32("HDPR"))) &&
-        st->codec->codec_id == CODEC_ID_NONE) {
+    if (st->codec->codec_id == CODEC_ID_NONE) {
         mpegts_find_stream_type(st, pes->stream_type, HDMV_types);
-        if (pes->stream_type == 0x83) {
-            // HDMV TrueHD streams also contain an AC3 coded version of the
-            // audio track - add a second stream for this
-            AVStream *sub_st;
-            // priv_data cannot be shared between streams
-            PESContext *sub_pes = av_malloc(sizeof(*sub_pes));
-            if (!sub_pes)
-                return AVERROR(ENOMEM);
-            memcpy(sub_pes, pes, sizeof(*sub_pes));
+        if ((prog_reg_desc == AV_RL32("HDMV")) || (prog_reg_desc == AV_RL32("HDPR"))) {
+            if (pes->stream_type == 0x83) {
+                // HDMV TrueHD streams also contain an AC3 coded version of the
+                // audio track - add a second stream for this
+                AVStream *sub_st;
+                // priv_data cannot be shared between streams
+                PESContext *sub_pes = av_malloc(sizeof(*sub_pes));
+                if (!sub_pes)
+                    return AVERROR(ENOMEM);
+                memcpy(sub_pes, pes, sizeof(*sub_pes));
 
-            sub_st = av_new_stream(pes->stream, pes->pid);
-            if (!sub_st) {
-                av_free(sub_pes);
-                return AVERROR(ENOMEM);
+                sub_st = av_new_stream(pes->stream, pes->pid);
+                if (!sub_st) {
+                    av_free(sub_pes);
+                    return AVERROR(ENOMEM);
+                }
+
+                av_set_pts_info(sub_st, 33, 1, 90000);
+                sub_st->priv_data = sub_pes;
+                sub_st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
+                sub_st->codec->codec_id   = CODEC_ID_AC3;
+                sub_st->need_parsing = AVSTREAM_PARSE_FULL;
+                sub_pes->sub_st = pes->sub_st = sub_st;
             }
-
-            av_set_pts_info(sub_st, 33, 1, 90000);
-            sub_st->priv_data = sub_pes;
-            sub_st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-            sub_st->codec->codec_id   = CODEC_ID_AC3;
-            sub_st->need_parsing = AVSTREAM_PARSE_FULL;
-            sub_pes->sub_st = pes->sub_st = sub_st;
+        } 
+        else {
+            if (st->codec->codec_id != CODEC_ID_NONE) {
+                /* wrong case, don't have to probe */
+                st->codec->codec_type = AVMEDIA_TYPE_DATA;
+                st->codec->codec_id   = CODEC_ID_NONE;
+                st->request_probe = -1;
+                av_log(NULL, AV_LOG_ERROR, "stream %d request probe %d\n", st->index, st->request_probe);
+            }
         }
     }
     if (st->codec->codec_id == CODEC_ID_NONE)
