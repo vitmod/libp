@@ -38,14 +38,17 @@
 #include "cmfvpb.h"
 
 
-static int cmfvpb_open(struct cmfvpb *cv , int index)
+static int cmfvpb_open(struct cmfvpb *cv , int *index)
 {
     int ret = 0;
     if (!cv ||  !cv->input || !cv->input->prot->url_seek || !cv->input->prot->url_getinfo) {
         av_log(NULL, AV_LOG_INFO, "cmfvpb_open is NULL\n");
         return -1;
     }
-    ret = cv->input->prot->url_seek(cv->input, (int64_t)index, AVSEEK_SLICE_BYINDEX);
+    ret = cv->input->prot->url_getinfo(cv->input, AVCMD_HLS_STREAMTYPE, 0 , &cv->hls_stream_type);
+    ret = cv->input->prot->url_seek(cv->input, (int64_t)(*index), AVSEEK_SLICE_BYINDEX);
+    if(!cv->hls_stream_type)
+        *index = ret;
     if (ret < 0){
         av_log(NULL, AV_LOG_INFO, "seek failed %s---%d \n",__FUNCTION__,__LINE__);
         return -1;
@@ -56,7 +59,7 @@ static int cmfvpb_open(struct cmfvpb *cv , int index)
     ret = cv->input->prot->url_getinfo(cv->input, AVCMD_SLICE_SIZE, 0 , &cv->size);
     ret = cv->input->prot->url_getinfo(cv->input, AVCMD_SLICE_STARTTIME, 0 , &cv->start_time);
     ret = cv->input->prot->url_getinfo(cv->input, AVCMD_SLICE_ENDTIME, 0 , &cv->end_time);
-
+    
     if(cv->start_offset == -1)
         cv->start_offset = 0;
     if(cv->size == -1)
@@ -64,7 +67,7 @@ static int cmfvpb_open(struct cmfvpb *cv , int index)
     cv->end_offset = cv->start_offset + cv->size;
     cv->curslice_duration=cv->end_time-cv->start_time;
     cv->seg_pos = 0;
-    cv->cur_index = index;
+    cv->cur_index = *index;
     av_log(NULL, AV_LOG_INFO, "cmf  vpb_TOTALINFO  index[%lld] total_num [%lld] total_duration [%lld] \n",cv->cur_index,cv->total_num, cv->total_duration);
     av_log(NULL, AV_LOG_INFO, "cmf  vpb_SIZEINFO    index[%lld]  start_offset [%llx] end_offset [%llx] slice_size[%llx] \n", cv->cur_index, cv->start_offset, cv->end_offset, cv->size);
     av_log(NULL, AV_LOG_INFO, "cmf  vpb_TIMEINFO    index[%lld]  start_time[%lld]ms end_time[%lld]ms curslice_duration[%lld]ms\n", cv->cur_index, cv->start_time, cv->end_time, cv->curslice_duration);
@@ -249,7 +252,7 @@ static int64_t cmfvpb_lpexseek(void *opaque, int64_t offset, int whence)
     return url_lpexseek(&cv->vlpcontext, offset, whence);
 }
 
-int cmfvpb_dup_pb(AVIOContext *pb, struct cmfvpb **cmfvpb, int index)
+int cmfvpb_dup_pb(AVIOContext *pb, struct cmfvpb **cmfvpb, int *index)
 {
     struct cmfvpb *cv ;
     AVIOContext *vpb;
