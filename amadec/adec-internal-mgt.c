@@ -127,7 +127,12 @@ static void start_adec(aml_audio_dec_t *audec)
             adec_print("wait first pts checkin complete !");
             usleep(100000);
         }
-
+         /*Since audio_track->start consumed too much time 
+        *for the first time after platform restart, 
+        *so execute start cmd before adec_pts_start
+        */
+        aout_ops->start(audec);
+        aout_ops->pause(audec);
         /*start  the  the pts scr,...*/
         ret = adec_pts_start(audec);
 
@@ -149,7 +154,7 @@ static void start_adec(aml_audio_dec_t *audec)
             audec->auto_mute = 0;
         }
 
-        aout_ops->start(audec);
+        aout_ops->resume(audec);
 
     }
 }
