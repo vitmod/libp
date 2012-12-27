@@ -2886,7 +2886,12 @@ static int has_codec_parameters(AVCodecContext *enc)
     return enc->codec_id != CODEC_ID_NONE && val != 0;
 }
 
-//fastmode == 2,refer to ts streaming mode
+//fastmode refer to different mode
+#define PARSE_MODE_BASE 8
+#define ASF_PARSE_MODE  8
+#define SPEED_PARSE_MODE 9
+#define WFD_PARSE_MODE  10
+
 static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 {
     int val;
@@ -2936,7 +2941,12 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 		    break;
 		}
     }
-    return enc->codec_id != CODEC_ID_NONE && val != 0;
+
+    if (WFD_PARSE_MODE == fastmode) {
+        return val != 0;
+    } else {
+        return enc->codec_id != CODEC_ID_NONE && val != 0;
+    }
 }
 
 
@@ -3087,7 +3097,12 @@ int av_find_stream_info(AVFormatContext *ic)
     int64_t file_size = 0;
     int bit_rate = 0;
     int64_t old_offset=-1;
-    int fast_switch=am_getconfig_bool_def("media.libplayer.fastswitch",1);
+    int fast_switch = 1;
+    float value;
+
+    if (am_getconfig_float("media.libplayer.fastswitch", &value) == 0) {
+        fast_switch = (int)value;
+    }
     av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d\n", __FUNCTION__, fast_switch);
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
@@ -3184,13 +3199,18 @@ int av_find_stream_info(AVFormatContext *ic)
             st = ic->streams[i];
             int parse_mode = fast_switch;
             if(ic->pb && ic->pb->is_streamed ==1&&!strcmp(ic->iformat->name, "mpegts")){
-                parse_mode = SPEED_PARSE_MODE;
+                parse_mode = PARSE_MODE_BASE + fast_switch;
             }
 	   if(!strcmp(ic->iformat->name, "asf")){
 	        parse_mode = ASF_PARSE_MODE ;
 		av_log(NULL, AV_LOG_INFO, "parse_mode=%d\n",parse_mode);
 	    }
-	    st->codec->durcount=st->info->duration_count;
+            if ((parse_mode == WFD_PARSE_MODE) && (st->request_probe >= 0)) {
+                parse_mode = SPEED_PARSE_MODE;
+            }
+       		//av_log(NULL, AV_LOG_INFO, "parse_mode=%d\n",parse_mode);
+            st->codec->durcount=st->info->duration_count;
+
             if (!has_codec_parameters_ex(st->codec,parse_mode)){
                 break;
             }else{
