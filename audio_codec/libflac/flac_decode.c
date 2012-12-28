@@ -670,21 +670,23 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
 	unsigned char *buf;
 	unsigned buf_size;
 
-	if (inlen < s->max_framesize) {
-		audio_codec_print("not enough data. max framesize=%d,para=%x, --------------------------------\n",s->max_framesize, inbuf[2]);
+	unsigned int max_framesize = FFMAX(17*s->max_framesize/16 + 32, s->max_framesize);
+	if (inlen < max_framesize) {
 		int  inbufindex = 0;
 		char *pinbufptr = inbuf;
 		char para = *(pinbufptr+2);
+		int frame_num = 0;
 
 		inbufindex += 11;
 		pinbufptr += 11;
-		while (inbufindex < inlen-1)
+		while (inbufindex < inlen-FLAC_MIN_FRAME_SIZE+2)
 		{
 			if ((AV_RB16(pinbufptr) & 0xFFFF) != 0xFFF8 || AV_RB8(pinbufptr+2) != para) {
 				pinbufptr++;
 				inbufindex++;
 			} else {
-				//audio_codec_print("## next frame found, inbufindex=%d,-------\n", inbufindex);
+				inlen = inbufindex;
+				frame_num++;
 #if 0
 				int k=0;
 				for (k=0; k<16; k+=4) {
@@ -696,7 +698,10 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
 						inbuf[inbufindex+k], inbuf[inbufindex+k+1], inbuf[inbufindex+k+2], inbuf[inbufindex+k+3]);
 				}		
 #endif
-				goto decodecontinue;
+				if (frame_num>1) {
+					audio_codec_print("## next frame found, inbufindex=%d, frame_num=%d,-------\n", inbufindex, frame_num);
+					goto decodecontinue;
+				}
 			}
 		}
 		//audio_codec_print("##inlen=%d, diff=%d,-------------------\n", inlen, pinbufptr-inbuf);
@@ -705,7 +710,7 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
 	
 decodecontinue:
 	s->bitstream = inbuf;
-	s->bitstream_size += inlen;
+	s->bitstream_size = inlen;
 	s->bitstream_index = 0;
 	
 	buf = s->bitstream;
