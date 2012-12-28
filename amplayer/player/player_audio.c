@@ -28,6 +28,7 @@ static int stream_audio_init(play_para_t *p_para)
         codec->audio_pid = ainfo->audio_pid;
         codec->audio_channels = ainfo->audio_channel;
         codec->audio_samplerate = ainfo->audio_samplerate;
+		codec->switch_audio_flag = 0;
     }
     codec->stream_type = stream_type_convert(p_para->stream_type, codec->has_video, codec->has_audio);
 	pCodecCtx = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec;

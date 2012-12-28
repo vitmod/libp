@@ -82,6 +82,7 @@ unsigned int noblock:
     void * adec_priv;          ///<for adec>
     int SessionID;
 	int dspdec_not_supported;//check some profile that audiodsp decoder can not support,we switch to arm decoder
+	int switch_audio_flag;		//<switch audio flag switching(1) else(0)
 } codec_para_t;
 
 typedef struct 
@@ -108,6 +109,7 @@ typedef struct {
     char extradata[AUDIO_EXTRA_DATA_SIZE];
 	int SessionID;
 	int dspdec_not_supported;//check some profile that audiodsp decoder can not support,we switch to arm decoder	
+	int droppcm_flag;				// drop pcm flag, if switch audio (1)
 } arm_audio_info;
 
 //audio decoder type, default arc

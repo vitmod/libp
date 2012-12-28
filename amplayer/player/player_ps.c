@@ -49,6 +49,7 @@ static int stream_ps_init(play_para_t *p_para)
         codec->audio_channels = ainfo->audio_channel;
         codec->audio_samplerate = ainfo->audio_samplerate;
         codec->avsync_threshold = p_para->start_param->avsync_threshold;
+		codec->switch_audio_flag = 0;
 
         /*if ((codec->audio_type == AFORMAT_ADPCM) ||
             (codec->audio_type == AFORMAT_WMA) ||

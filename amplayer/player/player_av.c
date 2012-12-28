@@ -2552,6 +2552,7 @@ void player_switch_audio(play_para_t *para)
     pcodec->audio_pid = pstream->id;
     pcodec->audio_channels = para->astream_info.audio_channel;
     pcodec->audio_samplerate = para->astream_info.audio_samplerate;
+	pcodec->switch_audio_flag = 1;
 
     /*if ((pcodec->audio_type == AFORMAT_ADPCM) || (pcodec->audio_type == AFORMAT_WMA)
      || (pcodec->audio_type == AFORMAT_WMAPRO) || (pcodec->audio_type == AFORMAT_PCM_S16BE)

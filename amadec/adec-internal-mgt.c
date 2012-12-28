@@ -19,6 +19,21 @@
 #include <adec-pts-mgt.h>
 #include <cutils/properties.h>
 #include <dts_enc.h>
+static int set_tsync_enable(int enable)
+{
+    int fd;
+    char *path = "/sys/class/tsync/enable";
+    char  bcmd[16];
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        sprintf(bcmd, "%d", enable);
+        write(fd, bcmd, strlen(bcmd));
+        close(fd);
+        return 0;
+    }
+    
+    return -1;
+}
 
 /**
  * \brief set audio output mode.
@@ -910,16 +925,43 @@ int get_audio_decoder(void)
 #endif	
 }
 
+int vdec_pts_pause(void)
+{
+    int fd;
+    char buf[32];
+
+    fd = open(TSYNC_EVENT, O_WRONLY);
+    if (fd < 0) {
+        adec_print("unable to open file %s,err: ", TSYNC_EVENT/*, strerror(errno)*/);
+        return -1;
+    }
+
+    sprintf(buf, "VIDEO_PAUSE:0x1");
+    write(fd, buf, strlen(buf));
+    close(fd);
+
+    return 0;
+}
 int audiodec_init(aml_audio_dec_t *audec)
 {
     int ret = 0;
     pthread_t    tid;
+	char value[PROPERTY_VALUE_MAX]={0};
     adec_print("audiodec_init!");
     adec_message_pool_init(audec);
     get_output_func(audec);
     int nCodecType=audec->format;
     set_audio_decoder(audec);
     audec->format_changed_flag=0;
+	
+	property_set("sys.amplayer.drop_pcm", "true");
+	if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
+		if((!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag))
+		{
+			set_tsync_enable(0);
+			vdec_pts_pause();
+		}
+		
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
     		audec->adsp_ops.dsp_file_fd = -1;
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);

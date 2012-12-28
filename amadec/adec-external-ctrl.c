@@ -52,6 +52,11 @@ int audio_decode_init(void **handle, arm_audio_info *a_ainfo)
     audec->extradata_size=a_ainfo->extradata_size;
 	audec->SessionID=a_ainfo->SessionID;
 	audec->dspdec_not_supported = a_ainfo->dspdec_not_supported;
+	audec->droppcm_flag = 0;	
+	if (a_ainfo->droppcm_flag) {
+		audec->droppcm_flag = a_ainfo->droppcm_flag;
+		a_ainfo->droppcm_flag = 0;
+	}
     if(a_ainfo->extradata_size>0&&a_ainfo->extradata_size<=AUDIO_EXTRA_DATA_SIZE)
         memcpy((char*)audec->extradata,(char*)a_ainfo->extradata,a_ainfo->extradata_size);
    

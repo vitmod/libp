@@ -15,7 +15,29 @@
 #include <errno.h>
 
 #include <adec-pts-mgt.h>
+#include <cutils/properties.h>
+#include <sys/time.h>
 
+
+int adec_pts_droppcm(aml_audio_dec_t *audec);
+int vdec_pts_resume(void);
+static int vdec_pts_pause(void);
+
+static int set_tsync_enable(int enable)
+{
+    int fd;
+    char *path = "/sys/class/tsync/enable";
+    char  bcmd[16];
+    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd >= 0) {
+        sprintf(bcmd, "%d", enable);
+        write(fd, bcmd, strlen(bcmd));
+        close(fd);
+        return 0;
+    }
+    
+    return -1;
+}
 /**
  * \brief calc current pts
  * \param audec pointer to audec
@@ -65,6 +87,7 @@ int adec_pts_start(aml_audio_dec_t *audec)
     int fd;
     char buf[64];
     dsp_operations_t *dsp_ops;
+	char value[PROPERTY_VALUE_MAX]={0};
 
     adec_print("adec_pts_start");
     dsp_ops = &audec->adsp_ops;
@@ -77,6 +100,14 @@ int adec_pts_start(aml_audio_dec_t *audec)
     adec_print("av sync threshold is %d \n", audec->avsync_threshold);
 
     dsp_ops->last_pts_valid = 0;
+	
+	if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
+		if((!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag))
+		{
+			adec_pts_droppcm(audec);
+			vdec_pts_resume();
+			set_tsync_enable(1);
+		}
     // before audio start or pts start
     fd = open(TSYNC_EVENT, O_WRONLY);
     if(fd < 0){
@@ -131,7 +162,79 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
     int ret;
     char buf[32];
     char buffer[8*1024];
+	char value[PROPERTY_VALUE_MAX]={0};
+	
+    fd = open(TSYNC_VPTS, O_RDONLY);
+    if (fd < 0) {
+        adec_print("unable to open file %s,err: %s", TSYNC_VPTS, strerror(errno));
+        return -1;
+    }
 
+    read(fd, buf, sizeof(buf));
+    if (sscanf(buf, "0x%lx", &vpts) < 1) {
+        adec_print("unable to get vpts from: %s", buf);
+        return -1;
+    }
+    close(fd);
+
+    apts = adec_calc_pts(audec);
+	int diff = (apts > vpts)?(apts-vpts):(vpts-apts);
+	adec_print("before drop --apts 0x%x,vpts 0x%x,apts %s, diff 0x%x\n",apts,vpts,(apts>vpts)?"big":"small",diff);
+	int audio_ahead = 0;
+	unsigned pts_ahead_val = SYSTIME_CORRECTION_THRESHOLD;
+	if(property_get("media.amplayer.apts",value,NULL) > 0){
+		if(!strcmp(value,"slow")){
+			audio_ahead = -1;
+		}
+		else if(!strcmp(value,"fast")){
+			audio_ahead = 1;
+		}
+	}
+	memset(value,0,sizeof(value));
+	if(property_get("media.amplayer.apts_val",value,NULL) > 0){
+		pts_ahead_val = atoi(value);
+	}	
+	adec_print("audio ahead %d,ahead pts value %d \n",	audio_ahead,pts_ahead_val);
+
+	struct timeval  new_time,old_time;
+    long new_time_mseconds;
+    long old_time_mseconds;
+    //old time
+    gettimeofday(&old_time, NULL);
+    old_time_mseconds = (old_time.tv_usec / 1000 + old_time.tv_sec * 1000);
+#if 1
+    if(apts < vpts){
+        drop_size = ((vpts - apts+pts_ahead_val*audio_ahead)/90) * (audec->samplerate/1000) * audec->channels *2;
+    	
+		int nDropCount=0;
+		adec_print("==drop_size=%d, nDropCount:%d -----------------\n",drop_size, nDropCount);
+		while(drop_size > 0){
+			ret = audec->adsp_ops.dsp_read(&audec->adsp_ops, buffer, MIN(drop_size, 8192));
+			//apts = adec_calc_pts(audec);
+			//adec_print("==drop_size=%d, ret=%d, nDropCount:%d apts=0x%x,-----------------\n",drop_size, ret, nDropCount,apts);
+			if(ret==0)//no data in pcm buf
+			{
+				if(nDropCount>=5)
+					break;
+				else 
+					nDropCount++;
+				adec_print("==ret:0 no pcm nDropCount:%d \n",nDropCount);
+			}
+			else
+			{
+				nDropCount=0;
+				drop_size -= ret;
+			}
+		}
+    }
+#endif	
+
+	    //new time 
+    gettimeofday(&new_time, NULL);
+    new_time_mseconds = (new_time.tv_usec / 1000 + new_time.tv_sec * 1000);
+    adec_print("==old time  sec :%d usec:%d \n", old_time.tv_sec  ,old_time.tv_usec );
+    adec_print("==new time  sec:%d usec:%d \n", new_time.tv_sec  ,new_time.tv_usec  ); 
+    adec_print("==old time ms is :%d  new time ms is:%d   diff:%d  \n",old_time_mseconds ,new_time_mseconds ,new_time_mseconds- old_time_mseconds);
     fd = open(TSYNC_VPTS, O_RDONLY);
     if (fd < 0) {
         adec_print("unable to open file %s,err: %s", TSYNC_VPTS, strerror(errno));
@@ -146,14 +249,8 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
     }
 
     apts = adec_calc_pts(audec);
-
-    if(apts < vpts){
-        drop_size = ((vpts - apts)/90) * (audec->samplerate/1000) * audec->channels *2;
-	 while(drop_size > 0){
-	 	ret = audec->adsp_ops.dsp_read(&audec->adsp_ops, buffer, MIN(drop_size, 8192));
-	       drop_size -= ret;
-	 }
-    }
+	diff = (apts > vpts)?(apts-vpts):(vpts-apts);
+	adec_print("after drop pcm:--apts 0x%x,vpts 0x%x,apts %s, diff 0x%x\n",apts,vpts,(apts>vpts)?"big":"small",diff);
 	
 #if 0
     while(apts < vpts){
@@ -390,4 +487,41 @@ int track_switch_pts(aml_audio_dec_t *audec)
         return 1;
     }
 
+}
+static int vdec_pts_pause(void)
+{
+    int fd;
+    char buf[32];
+
+    fd = open("/sys/class/video_pause", O_WRONLY);
+    if (fd < 0) {
+        adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
+        return -1;
+    }
+
+    sprintf(buf, "1");
+    write(fd, buf, strlen(buf));
+    close(fd);
+
+    return 0;
+}
+int vdec_pts_resume(void)
+{
+    int fd;
+    char buf[32];
+
+    adec_print("vdec_pts_resume\n");
+    memset(buf, 0, sizeof(buf));
+
+    fd = open(TSYNC_EVENT, O_WRONLY);
+    if (fd < 0) {
+        adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
+        return -1;
+    }
+
+    sprintf(buf, "VIDEO_PAUSE:0x0");
+    write(fd, buf, strlen(buf));
+    close(fd);
+
+    return 0;
 }
