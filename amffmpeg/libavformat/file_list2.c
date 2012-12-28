@@ -1360,7 +1360,7 @@ static int64_t list_seek(URLContext *h, int64_t pos, int whence)
         while(mgt->parser_finish_flag != 1 && !url_interrupt_cb()) {
             usleep(10*1000);
         }
-        if(!mgt->have_list_end && !pos) { //need to relocate when live streaming 
+        if(!mgt->have_list_end && (!pos||mgt->current_item->index == 0)) { //need to relocate when live streaming 
             for (item = mgt->item_list; item; item = item->next) {
                 if(item == mgt->current_item) {
                     pos = item->index;
@@ -1382,9 +1382,6 @@ RETRY:
                         mgt->playing_item_seq = item->seq - 1;
                     }
                     #endif
-                    while(item->item_size <= 0 && !url_interrupt_cb()) {
-                        usleep(200*1000);
-                    }
                     return pos;
                 }
             }
@@ -1520,6 +1517,9 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
         av_log(NULL,AV_LOG_INFO,"----------> list_getinfo, cmf_item_index=%d", mgt->cmf_item_index);
         for (item = mgt->item_list; item; item = item->next) {
                 if(mgt->cmf_item_index == item->index) {
+                    while(item->item_size <= 0 && !url_interrupt_cb()) {
+                        usleep(200*1000);
+                    }
                     *info = item->item_size;
                     av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_SIZE=%lld", *info);
                     return 0;

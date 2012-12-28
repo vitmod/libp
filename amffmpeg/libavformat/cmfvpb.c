@@ -60,9 +60,9 @@ static int cmfvpb_open(struct cmfvpb *cv , int *index)
     ret = cv->input->prot->url_getinfo(cv->input, AVCMD_SLICE_STARTTIME, 0 , &cv->start_time);
     ret = cv->input->prot->url_getinfo(cv->input, AVCMD_SLICE_ENDTIME, 0 , &cv->end_time);
     
-    if(cv->start_offset == -1)
+    if(cv->start_offset <= 0)
         cv->start_offset = 0;
-    if(cv->size == -1)
+    if(cv->size <= 0)
         cv->size =0;
     cv->end_offset = cv->start_offset + cv->size;
     cv->curslice_duration=cv->end_time-cv->start_time;
