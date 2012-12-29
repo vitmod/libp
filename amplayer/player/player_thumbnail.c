@@ -428,6 +428,15 @@ int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
         return 0;
     }
 
+    if(!memcmp(key, "rotate", 6)) {
+            int rot;
+            thumbnail_get_video_rotation(handle,&rot);
+            char *tmp = (char*)av_malloc(32);
+            memset(tmp, 0x00, 32);
+            sprintf(tmp, "%d", rot);
+            *value = tmp;
+            return 1;
+    } 
     tag = av_dict_get(stream->pFormatCtx->metadata, key, tag, 0);
     if (tag) {
         *value = tag->value;
