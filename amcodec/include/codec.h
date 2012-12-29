@@ -86,7 +86,10 @@ int codec_set_sync_audio_discont(codec_para_t *pcodec, int discontinue);
 int codec_get_sync_audio_discont(codec_para_t *pcodec);
 int codec_set_sync_video_discont(codec_para_t *pcodec, int discontinue);
 int codec_get_sync_video_discont(codec_para_t *pcodec);
-
+unsigned long codec_get_sync_audio_discont_diff(codec_para_t *pcodec);
+unsigned long codec_get_sync_video_discont_diff(codec_para_t *pcodec);
+int codec_set_sync_audio_discont_diff(codec_para_t *pcodec, unsigned long discontinue_diff);
+int codec_set_sync_video_discont_diff(codec_para_t *pcodec, unsigned long discontinue_diff);
 int codec_get_sub_num(codec_para_t *pcodec);
 int codec_get_sub_info(codec_para_t *pcodec, subtitle_info_t *sub_info);
 

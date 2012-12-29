@@ -1784,6 +1784,78 @@ int codec_get_sync_video_discont(codec_para_t *pcodec)
 
 /* --------------------------------------------------------------------------*/
 /**
+* @brief  codec_get_sync_audio_discont_diff  get audio sync discontinue state
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+*
+* @return     discontiue diff, or fail if < 0
+*/
+/* --------------------------------------------------------------------------*/
+unsigned long codec_get_sync_audio_discont_diff(codec_para_t *pcodec)
+{
+    unsigned long discontinue_diff = 0;
+    int ret;
+
+    ret = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_SYNC_ADISCON_DIFF, (unsigned long)&discontinue_diff);
+    if (ret < 0) {
+        return ret;
+    }	
+    return discontinue_diff;   
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_sync_video_discont_diff  get audio sync discontinue state
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+*
+* @return     discontiue diff, or fail if < 0
+*/
+/* --------------------------------------------------------------------------*/
+unsigned long codec_get_sync_video_discont_diff(codec_para_t *pcodec)
+{
+    unsigned long discontinue_diff = 0;
+    int ret;
+
+    ret = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_SYNC_VDISCON_DIFF, (unsigned long)&discontinue_diff);
+    if (ret < 0) {
+        return ret;
+    }	
+    return discontinue_diff;   
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_sync_audio_discont_diff  set sync discontinue diff
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+* @param[in]  discontinue_diff  Discontinue diff to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_sync_audio_discont_diff(codec_para_t *pcodec, unsigned long discontinue_diff)
+{
+    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_SYNC_ADISCON_DIFF, discontinue_diff);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_sync_video_discont_diff  set sync discontinue diff
+*
+* @param[in]  pcodec       Pointer of codec parameter structure
+* @param[in]  discontinue_diff  Discontinue diff to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_sync_video_discont_diff(codec_para_t *pcodec, unsigned long discontinue_diff)
+{
+    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_SYNC_VDISCON_DIFF, discontinue_diff);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
 * @brief  codec_get_sub_num  get the number of subtitle
 *
 * @param[in]  pcodec       Pointer of codec parameter structure
