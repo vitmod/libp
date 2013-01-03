@@ -661,8 +661,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 
     if (video_pts_discontinue > 0) {
 		log_info("video pts discontinue!!!, adiff=%lu,vdiff=%lu,\n",audio_pts_discontinue_diff,video_pts_discontinue_diff);		
-		if(!set_discontinue && is_chapter_discontinue(p_para) 
-			&& (video_pts_discontinue_diff<CHAPTER_DISCONTINUE_THRESHOLD))
+		if(!set_discontinue && is_chapter_discontinue(p_para))
 		{
             p_para->discontinue_point = p_para->state.current_time;
             set_discontinue = 1;
@@ -679,8 +678,7 @@ static unsigned int get_current_time(play_para_t *p_para)
     if (audio_pts_discontinue > 0) {
         log_info("audio pts discontinue, curtime=%d lasttime=%d\n", p_para->state.current_time, p_para->state.last_time);
         if (!set_discontinue && is_chapter_discontinue(p_para) &&
-			(p_para->state.current_time < p_para->state.last_time)
-			&& (audio_pts_discontinue_diff<CHAPTER_DISCONTINUE_THRESHOLD))
+			(p_para->state.current_time < p_para->state.last_time))
 		{
             p_para->discontinue_point = p_para->state.current_time;
             set_discontinue = 1;
