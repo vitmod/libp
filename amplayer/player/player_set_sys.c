@@ -965,6 +965,8 @@ int enable_freescale_MBX()
     char ppmgr_rect_str[32];
     int vaxis_x, vaxis_y, vaxis_width, vaxis_height, vaxis_right, vaxis_bottom;
 
+	int ret;
+	char buf[32]={0};
     property_get("ro.platform.has.1080scale", m1080scale, "fail");
     if (!strncmp(m1080scale, "fail", 4)) {
         return 0;
@@ -974,10 +976,15 @@ int enable_freescale_MBX()
         log_print("[enable_freescale_MBX]not freescale mode!\n");
         return 0;
     }
-
+	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
+    if((ret>=0) && strstr(buf, "1")){
+        log_print("[enable_freescale_MBX] already enabled,no need to set again!\n");
+        return 0;
+    }
     if ((freeScaleOsd0File = open("/sys/class/graphics/fb0/free_scale", O_RDWR)) < 0) {
         log_print("open /sys/class/graphics/fb0/free_scale fail.");
     }
+
     if ((freeScaleOsd1File = open("/sys/class/graphics/fb1/free_scale", O_RDWR)) < 0) {
         log_print("open /sys/class/graphics/fb1/free_scale fail.");
     }
@@ -1013,7 +1020,7 @@ int enable_freescale_MBX()
             return 0;
         }
     }
-    log_print("display mode: %d", disp_mode);
+    log_print("[enable_freescale_MBX] display mode: %d", disp_mode);
     switch (disp_mode) {
     case DISP_MODE_480I:
         property_get("ubootenv.var.480ioutputx", vaxis_x_str, "0");
@@ -1228,74 +1235,266 @@ int enable_2XYscale()
 
 int GL_2X_scale(int mSwitch)
 {
-    char mode[16];
-    char m1080scale[8];
-    int request2XScaleFile = -1, scaleOsd1File = -1, scaleaxisOsd1File = -1, Fb0Blank = -1, Fb1Blank = -1;
-    char raxis_str[32], saxis_str[32];
-
-    property_get("ro.platform.has.1080scale", m1080scale, "fail");
-    if (!strncmp(m1080scale, "fail", 4)) {
+  	char mode[16];
+	char m1080scale[8];
+	int ScaleOsd0File = -1, displayAxis = -1, scaleaxisOsd0File = -1, request2XScaleFile = -1, scaleOsd1File = -1, scaleaxisOsd1File = -1, Fb0Blank = -1, Fb1Blank = -1;
+	char raxis_str[32],saxis_str[32];
+	
+	char writedata[40] = {0};
+    char vaxis_newx_str[10] = {0};
+	char vaxis_newy_str[10] = {0};
+	char vaxis_width_str[10] = {0};
+	char vaxis_height_str[10] = {0};
+    int vaxis_newx= -1,vaxis_newy = -1,vaxis_width= -1,vaxis_height= -1;
+    int ret = 0;
+    char buf[32];
+        
+    property_get("ro.platform.has.1080scale",m1080scale,"fail");
+    if(!strncmp(m1080scale, "fail", 4))
+    {
         return 0;
     }
     get_display_mode(mode);
-    if (strncmp(m1080scale, "2", 1) && (strncmp(m1080scale, "1", 1) || (strncmp(mode, "1080i", 5) && strncmp(mode, "1080p", 5)))) {
+    if(strncmp(m1080scale, "2", 1) && (strncmp(m1080scale, "1", 1) || (strncmp(mode, "1080i", 5) && strncmp(mode, "1080p", 5))))
+    {
         log_print("[enable_2XYscale]not freescale mode!\n");
         return 0;
     }
+    
+    ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
+    if((mSwitch==0)&&(ret>=0)&&strstr(buf, "1")){
+        log_print("[GL_2X_scale] already enabled,no need to set again!\n");
+        return 0;
+    }
+	if((ScaleOsd0File = open("/sys/class/graphics/fb0/scale", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/scale fail.");
+	}  
+	if((displayAxis = open("/sys/class/display/axis", O_RDWR)) < 0) {
+		log_print("open /sys/class/display/axis.");
+	}
+	if((request2XScaleFile = open("/sys/class/graphics/fb0/request2XScale", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/request2XScale fail.");
+	}
+	if((scaleOsd1File = open("/sys/class/graphics/fb1/scale", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb1/scale fail.");
+	}
+	if((scaleaxisOsd1File = open("/sys/class/graphics/fb1/scale_axis", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb1/scale_axis fail.");
+	}
+	if((scaleaxisOsd0File = open("/sys/class/graphics/fb0/scale_axis", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/scale_axis fail.");
+	}
+	if((Fb0Blank = open("/sys/class/graphics/fb0/blank", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb0/blank fail.");
+	}
+	if((Fb1Blank = open("/sys/class/graphics/fb1/blank", O_RDWR)) < 0) {
+		log_print("open /sys/class/graphics/fb1/blank fail.");
+	}
+	
+	if(mSwitch == 0)
+	{
+    	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb1/scale", buf, 32);
+		if((ret >=0) && strncmp(buf, "scale:[0x10001]", strlen("scale:[0x10001]"))==0){
+			write(Fb0Blank, "1", strlen("1"));
+			//log_print("write 1 to Fb0Blank");
+		}
+		//log_print("scaleOsd1File is %s!!", buf);
+    	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/request2XScale", buf, 32);
+		if((ret >=0) && strncmp(buf, "2", strlen("2"))==0){
+			write(request2XScaleFile, "4", strlen("4"));
+			log_print("write 4 to request2XScaleFile!!");
+		}
+		else {
+			write(request2XScaleFile, "2", strlen("2"));
+			log_print("write 2 to request2XScaleFile!!");
+		}
 
-    if ((request2XScaleFile = open("/sys/class/graphics/fb0/request2XScale", O_RDWR)) < 0) {
-        log_print("open /sys/class/graphics/fb0/scale fail.");
-    }
-    if ((scaleOsd1File = open("/sys/class/graphics/fb1/scale", O_RDWR)) < 0) {
-        log_print("open /sys/class/graphics/fb1/scale fail.");
-    }
-    if ((scaleaxisOsd1File = open("/sys/class/graphics/fb1/scale_axis", O_RDWR)) < 0) {
-        log_print("open /sys/class/graphics/fb1/scale_axis fail.");
-    }
-    if ((Fb0Blank = open("/sys/class/graphics/fb0/blank", O_RDWR)) < 0) {
-        log_print("open /sys/class/graphics/fb0/blank fail.");
-    }
-    if ((Fb1Blank = open("/sys/class/graphics/fb1/blank", O_RDWR)) < 0) {
-        log_print("open /sys/class/graphics/fb1/blank fail.");
-    }
-    if (mSwitch == 0) {
-        write(request2XScaleFile, "2", strlen("2"));
-        write(scaleOsd1File, "0", strlen("0"));
-    } else if (mSwitch == 1) {
-        //write(Fb1Blank, "1", strlen("1"));
-        if (!strncmp(mode, "480i", 4) || !strncmp(mode, "480p", 4)) {
-            write(request2XScaleFile, "16 720 480", strlen("16 720 480"));
-            write(scaleaxisOsd1File, "1280 720 720 480", strlen("1280 720 720 480"));
-            write(scaleOsd1File, "0x10001", strlen("0x10001"));
-        } else if (!strncmp(mode, "576i", 4) || !strncmp(mode, "576p", 4)) {
-            write(request2XScaleFile, "16 720 576", strlen("16 720 576"));
-            write(scaleaxisOsd1File, "1280 720 720 576", strlen("1280 720 720 576"));
-            write(scaleOsd1File, "0x10001", strlen("0x10001"));
-        } else if (!strncmp(mode, "720p", 4)) {
-            write(request2XScaleFile, "16 1280 720", strlen("16 1280 720"));    //for setting blank to 0
-        } else if (!strncmp(mode, "1080i", 5) || !strncmp(mode, "1080p", 5)) {
-            write(request2XScaleFile, "8", strlen("8"));
-            write(scaleaxisOsd1File, "1280 720 1920 1080", strlen("1280 720 1920 1080"));
-            write(scaleOsd1File, "0x10001", strlen("0x10001"));
-        }
-    }
+    	if(!strncmp(mode, "1080i", 5) || !strncmp(mode, "1080p", 5))
+		{
+			write(ScaleOsd0File, "0", strlen("0"));
+			write(scaleaxisOsd0File, "0 0 959 1079", strlen("0 0 959 1079"));          
+		}
+		write(displayAxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
+		write(scaleOsd1File, "0", strlen("0"));
+	}
+	else if(mSwitch == 1)
+	{
+	
+    	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb1/scale", buf, 32);
+		if((ret >=0) && strncmp(buf, "scale:[0x0]", strlen("scale:[0x0]"))==0){
+			write(Fb0Blank, "1", strlen("1"));
+			//log_print("write 1 to Fb0Blank");
+		}
+		//log_print("scaleOsd1File is %s!!", buf);
+		
+		//write(Fb1Blank, "1", strlen("1"));
+		if(!strncmp(mode, "480i", 4) || !strncmp(mode, "480p", 4))
+		{
+		    if(!strncmp(mode, "480i", 4))
+		    {
+               	property_get("ubootenv.var.480ioutputx",vaxis_newx_str,"0");			  
+			    property_get("ubootenv.var.480ioutputy",vaxis_newy_str,"0");			  
+			    property_get("ubootenv.var.480ioutputwidth",vaxis_width_str,"720");			  
+			    property_get("ubootenv.var.480ioutputheight",vaxis_height_str,"480");
 
-    if (request2XScaleFile >= 0) {
-        close(request2XScaleFile);
-    }
-    if (scaleOsd1File >= 0) {
-        close(scaleOsd1File);
-    }
-    if (scaleaxisOsd1File >= 0) {
-        close(scaleaxisOsd1File);
-    }
-    if (Fb0Blank >= 0) {
-        close(Fb0Blank);
-    }
-    if (Fb1Blank >= 0) {
-        close(Fb1Blank);
-    }
-    return 0;
+			}
+			else
+		    {            
+               	property_get("ubootenv.var.480poutputx",vaxis_newx_str,"0");			  
+			    property_get("ubootenv.var.480poutputy",vaxis_newy_str,"0");			  
+			    property_get("ubootenv.var.480poutputwidth",vaxis_width_str,"720");			  
+			    property_get("ubootenv.var.480poutputheight",vaxis_height_str,"480");        
+			}
+
+			vaxis_newx = atoi(vaxis_newx_str);
+			vaxis_newy = atoi(vaxis_newy_str);
+			vaxis_width = atoi(vaxis_width_str);
+			vaxis_height = atoi(vaxis_height_str);
+
+			log_print("vaxis_newx:%d vaxis_newy:%d vaxis_width:%d vaxis_height:%d\n",
+				                                  vaxis_newx,vaxis_newy,vaxis_width,vaxis_height);
+			
+			sprintf(writedata,"%d %d 1280 720 0 0 18 18",
+				             vaxis_newx,
+				             vaxis_newy);
+			write(displayAxis, writedata, strlen(writedata));
+
+			memset(writedata,0,strlen(writedata));
+			sprintf(writedata,"16 %d %d",
+				           vaxis_width,
+				           vaxis_height);
+			write(request2XScaleFile, writedata, strlen(writedata));        	
+			write(scaleaxisOsd1File, "1280 720 720 480", strlen("1280 720 720 480"));
+			write(scaleOsd1File, "0x10001", strlen("0x10001"));
+		}
+		else if(!strncmp(mode, "576i", 4) || !strncmp(mode, "576p", 4))
+		{
+		    if(!strncmp(mode, "576i", 4))
+		    {
+               	property_get("ubootenv.var.576ioutputx",vaxis_newx_str,"0");			  
+			    property_get("ubootenv.var.576ioutputy",vaxis_newy_str,"0");			  
+			    property_get("ubootenv.var.576ioutputwidth",vaxis_width_str,"720");			  
+			    property_get("ubootenv.var.576ioutputheight",vaxis_height_str,"576");
+
+			}
+			else
+		    {            
+               	property_get("ubootenv.var.576poutputx",vaxis_newx_str,"0");			  
+			    property_get("ubootenv.var.576poutputy",vaxis_newy_str,"0");			  
+			    property_get("ubootenv.var.576poutputwidth",vaxis_width_str,"720");			  
+			    property_get("ubootenv.var.576poutputheight",vaxis_height_str,"576");        
+			}
+
+			vaxis_newx = atoi(vaxis_newx_str);
+			vaxis_newy = atoi(vaxis_newy_str);
+			vaxis_width = atoi(vaxis_width_str);
+			vaxis_height = atoi(vaxis_height_str);
+			log_print("vaxis_newx:%d vaxis_newy:%d vaxis_width:%d vaxis_height:%d\n",
+				                                  vaxis_newx,vaxis_newy,vaxis_width,vaxis_height);
+			
+			sprintf(writedata,"%d %d 1280 720 0 0 18 18",
+										 vaxis_newx,
+										 vaxis_newy);
+			write(displayAxis, writedata, strlen(writedata));
+						
+			memset(writedata,0,strlen(writedata));
+			sprintf(writedata,"16 %d %d",
+							vaxis_width,
+							vaxis_height);
+			write(request2XScaleFile, writedata, strlen(writedata));
+			write(scaleaxisOsd1File, "1280 720 720 576", strlen("1280 720 720 576"));
+			write(scaleOsd1File, "0x10001", strlen("0x10001"));
+		}
+		else if(!strncmp(mode, "720p", 4))
+		{
+        	property_get("ubootenv.var.720poutputx",vaxis_newx_str,"0");			  
+			property_get("ubootenv.var.720poutputy",vaxis_newy_str,"0");			  
+			property_get("ubootenv.var.720poutputwidth",vaxis_width_str,"1280"); 		  
+			property_get("ubootenv.var.720poutputheight",vaxis_height_str,"720");
+			
+			vaxis_newx = atoi(vaxis_newx_str);
+			vaxis_newy = atoi(vaxis_newy_str);
+			vaxis_width = atoi(vaxis_width_str);
+			vaxis_height = atoi(vaxis_height_str);
+			log_print("vaxis_newx:%d vaxis_newy:%d vaxis_width:%d vaxis_height:%d\n",
+				                                  vaxis_newx,vaxis_newy,vaxis_width,vaxis_height);
+		    
+			sprintf(writedata,"%d %d 1280 720 0 0 18 18",
+										 vaxis_newx,
+										 vaxis_newy);
+			write(displayAxis, writedata, strlen(writedata));
+
+			memset(writedata,0,strlen(writedata));
+			sprintf(writedata,"16 %d %d",
+							vaxis_width,
+							vaxis_height);
+			write(request2XScaleFile, writedata, strlen(writedata));
+			write(scaleOsd1File, "0x10001", strlen("0x10001"));
+		}
+		else if(!strncmp(mode, "1080i", 5) || !strncmp(mode, "1080p", 5))
+		{
+			if(!strncmp(mode, "1080i", 5))
+		    {
+               	property_get("ubootenv.var.1080ioutputx",vaxis_newx_str,"0");			  
+			    property_get("ubootenv.var.1080ioutputy",vaxis_newy_str,"0");			  
+			    property_get("ubootenv.var.1080ioutputwidth",vaxis_width_str,"1920");			  
+			    property_get("ubootenv.var.1080ioutputheight",vaxis_height_str,"1080");
+
+			}
+			else
+		    {            
+               	property_get("ubootenv.var.1080poutputx",vaxis_newx_str,"0");			  
+			    property_get("ubootenv.var.1080poutputy",vaxis_newy_str,"0");			  
+			    property_get("ubootenv.var.1080poutputwidth",vaxis_width_str,"1920");			  
+			    property_get("ubootenv.var.1080poutputheight",vaxis_height_str,"1080");        
+			}
+
+			vaxis_newx = atoi(vaxis_newx_str);
+			vaxis_newy = atoi(vaxis_newy_str);
+			vaxis_width = atoi(vaxis_width_str);
+			vaxis_height = atoi(vaxis_height_str);
+
+			log_print("vaxis_newx:%d vaxis_newy:%d vaxis_width:%d vaxis_height:%d\n",
+				                                  vaxis_newx,vaxis_newy,vaxis_width,vaxis_height);
+
+			sprintf(writedata,"%d %d 1280 720 0 0 18 18",
+								(vaxis_newx/2)*2,
+								(vaxis_newy/2)*2);						 										 
+			write(displayAxis, writedata, strlen(writedata));
+
+			memset(writedata,0,strlen(writedata));
+			sprintf(writedata,"0 0 %d %d",
+								960-(vaxis_newx/2)-1,
+								1080-(vaxis_newy/2)-1);		
+			write(scaleaxisOsd0File, writedata, strlen(writedata));
+
+			memset(writedata,0,strlen(writedata));
+			sprintf(writedata,"8 %d %d",
+							  (vaxis_width/2),
+							  vaxis_height);
+			write(request2XScaleFile, writedata, strlen(writedata));
+			write(scaleaxisOsd1File, "1280 720 1920 1080", strlen("1280 720 1920 1080"));
+			write(scaleOsd1File, "0x10001", strlen("0x10001"));
+		}
+	}
+
+	if(ScaleOsd0File >= 0)
+		close(ScaleOsd0File);
+	if(displayAxis >= 0)
+		close(displayAxis);
+	if(request2XScaleFile >= 0)
+		close(request2XScaleFile);
+	if(scaleOsd1File >= 0)
+		close(scaleOsd1File);
+	if(scaleaxisOsd1File >= 0)
+		close(scaleaxisOsd1File);
+	if(scaleaxisOsd0File >= 0)
+		close(scaleaxisOsd0File);
+	if(Fb0Blank >= 0)
+		close(Fb0Blank);
+	if(Fb1Blank >= 0)
+		close(Fb1Blank);
+	return 0;
 }
 
 /*

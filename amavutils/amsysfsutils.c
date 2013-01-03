@@ -35,6 +35,7 @@ int  amsysfs_get_sysfs_str(const char *path, char *valstr, int size)
     int fd;
     fd = open(path, O_RDONLY);
     if (fd >= 0) {
+		memset(valstr,0,size);
         read(fd, valstr, size - 1);
         valstr[strlen(valstr)] = '\0';
         close(fd);
