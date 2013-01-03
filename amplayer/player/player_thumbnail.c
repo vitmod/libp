@@ -291,7 +291,7 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
     AVFormatContext *pFormatCtx = stream->pFormatCtx;
     AVPacket        packet;
     AVCodecContext *pCodecCtx = pFormatCtx->streams[stream->videoStream]->codec;
-    time = 12000000;
+  
     if (time >= 0) {
         if (av_seek_frame(pFormatCtx, stream->videoStream, time-100, 0) < 0) {
             log_error("[thumbnail_extract_video_frame]av_seek_frame failed!");
