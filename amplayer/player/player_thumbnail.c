@@ -41,7 +41,8 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
     AVPacket packet;
     int r = 0;
     int find_ok = 0;
-    int keyframe_index=0;	
+    int keyframe_index=0;
+    AVStream *st=pFormatCtx->streams[video_index];
 
     if(count<=0){
 	   float newcnt=-0.1;	
@@ -58,6 +59,7 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
 	   if (packet.size > maxFrameSize && packet.pts>=0) { //packet.pts>=0 can used for seek.
 		maxFrameSize = packet.size;
 		thumbTime = packet.pts;
+		thumbOffset = avio_tell(pFormatCtx->pb) - packet.size;
 		keyframe_index=i;
 		find_ok=1;
 	   }        	   
@@ -68,8 +70,8 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
 
     if(find_ok){
 	 log_print("[%s]return thumbTime=%lld thumbOffset=%llx\n", __FUNCTION__, thumbTime, thumbOffset);		
-    	*time = thumbTime;
-    	*offset = 0;
+    	*time = av_rescale_q(thumbTime, st->time_base, AV_TIME_BASE_Q);
+    	*offset = thumbOffset;
 	r=0;
     }else{
     	log_print("[%s]find_best_keyframe failed\n", __FUNCTION__);		
@@ -95,11 +97,12 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
 			init_seek_time=duration-1;
 		if(init_seek_time<=0)
 			init_seek_time=0;
-    }	
+    }	 
+    init_seek_time *= AV_TIME_BASE;
     log_print("[find_thumbnail_frame]duration=%lld init_seek_time=%lld\n", pFormatCtx->duration, init_seek_time);
     //init_seek_time = av_rescale_q(init_seek_time, st->time_base, AV_TIME_BASE_Q);
     //log_print("[find_thumbnail_frame]init_seek_time=%lld timebase=%d:%d video_index=%d\n",init_seek_time,st->time_base.num,st->time_base.den, video_index);
-    ret = av_seek_frame(pFormatCtx, video_index, init_seek_time * AV_TIME_BASE-100, 0);
+    ret = av_seek_frame(pFormatCtx, video_index,init_seek_time -100, 0);
     if (ret < 0) {
         avio_seek(pFormatCtx->pb, 0, SEEK_SET);
         log_error("[%s]seek error, reset offset to 0\n", __FUNCTION__);
@@ -288,14 +291,14 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
     AVFormatContext *pFormatCtx = stream->pFormatCtx;
     AVPacket        packet;
     AVCodecContext *pCodecCtx = pFormatCtx->streams[stream->videoStream]->codec;
-
+    time = 12000000;
     if (time >= 0) {
-        //thumbTime = av_rescale_q(time, AV_TIME_BASE_Q, stream->pFormatCtx->streams[stream->videoStream]->time_base);
         if (av_seek_frame(pFormatCtx, stream->videoStream, time-100, 0) < 0) {
             log_error("[thumbnail_extract_video_frame]av_seek_frame failed!");
         }
         find_best_keyframe(pFormatCtx, stream->videoStream, 0, &frame->thumbNailTime, &frame->thumbNailOffset);
-        log_print("[thumbnail_extract_video_frame]time=%lld time=%lld offset=%lld!ret=%\n", time, frame->thumbNailTime, frame->thumbNailOffset);
+        log_print("[thumbnail_extract_video_frame:%d]time=%lld time=%lld  offset=%lld!ret=%d\n", 
+                __LINE__,time, frame->thumbNailTime, frame->thumbNailOffset, ret);
     }
 
     if (frame->thumbNailTime != AV_NOPTS_VALUE) {
