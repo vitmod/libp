@@ -670,7 +670,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     }
     h->priv_data = mgt;
     mgt->cache_http_handle = NULL;
-    
+    h->is_segment_media = 1;
     ret = CacheHttp_Open(&mgt->cache_http_handle,mgt->ipad_req_media_headers,(void*)mgt);
     if(ret<0){	
 	return -1;

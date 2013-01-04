@@ -618,7 +618,7 @@ static unsigned int is_chapter_discontinue(play_para_t *p_para)
     char *extensions[4] = {"vob", "VOB", "iso", "ISO"};
     int i = 0;
     if (p_para->pFormatCtx && p_para->pFormatCtx->pb &&
-        url_support_time_seek(p_para->pFormatCtx->pb)) {
+        url_is_segment_media(p_para->pFormatCtx->pb)) {
         return 1;
     }
     if(!strncmp(p_para->pFormatCtx->iformat->name, "cmf", 3)) {

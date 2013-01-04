@@ -106,7 +106,7 @@ typedef struct {
     int seekable;
 	int enabled_lp_buffer;
 	int support_time_seek;
-	int is_encrypted_media;
+	int is_segment_media;
 	int iscmf;
 	int flags;
 	int seekflags;
@@ -142,6 +142,7 @@ typedef struct URLContext {
 	int support_time_seek;
 	char *location;
 	int seekflags;
+	int is_segment_media;
 } URLContext;
 
 #define URL_PROTOCOL_FLAG_NESTED_SCHEME 1 /*< The protocol name can be the first part of a nested protocol scheme */
@@ -748,6 +749,23 @@ static inline int url_support_time_seek(AVIOContext *s)
 	}
 #endif
 	return s->support_time_seek;
+}
+
+static inline int url_is_segment_media(AVIOContext *s)
+{
+	URLContext *h;	
+	if (!s)
+		return 0;
+
+	if(!s->is_segment_media&& s->opaque){
+		h = (URLContext *)s->opaque;
+		if(h && h->is_segment_media){
+			s->is_segment_media = 1;
+			av_log(NULL,AV_LOG_INFO,"Get segment media flag,will use discontinue policy\n");
+		}
+	}
+
+	return s->is_segment_media;	
 }
  int64_t url_fseektotime(AVIOContext *s,int totime_s,int flags);
  int url_buffering_data(AVIOContext *s,int size);
