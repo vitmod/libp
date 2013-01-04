@@ -21,7 +21,7 @@ static int av_read_next_video_frame(AVFormatContext *pFormatCtx, AVPacket *pkt,i
 	int retry=500;
 	do{
 		r = av_read_frame(pFormatCtx,pkt);
-		if(r==0 && pkt->stream_index==vindex){
+		if(r==0 && pkt->stream_index==vindex){		       
 			break;	
 		}
 		av_free_packet(pkt);
@@ -304,7 +304,8 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
     if (frame->thumbNailTime != AV_NOPTS_VALUE) {
         log_print("seek to thumbnail frame by timestamp(%lld)!curoffset=%llx\n", frame->thumbNailTime, avio_tell(pFormatCtx->pb));
         if (av_seek_frame(pFormatCtx, stream->videoStream, frame->thumbNailTime-100, 0) < 0) {
-            log_error("[thumbnail_extract_video_frame]av_seek_frame failed!");
+            av_seek_frame(pFormatCtx, stream->videoStream, 0, 0);
+            log_error("[thumbnail_extract_video_frame]av_seek_frame failed!seek to 0\n");
         }
         log_print("after seek by time, offset=%llx!\n", avio_tell(pFormatCtx->pb));
     } else {
