@@ -73,6 +73,7 @@ static int get_dts_format(void)
         close(fd);
         return 1;
     }
+    close(fd);
     return 0;
 }
 
