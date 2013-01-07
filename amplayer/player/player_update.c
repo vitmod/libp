@@ -624,14 +624,7 @@ static unsigned int is_chapter_discontinue(play_para_t *p_para)
     if(!strncmp(p_para->pFormatCtx->iformat->name, "cmf", 3)) {
         return 1;
     }
-#if 0
-	/*
-	* Lujian.Hu 2013-01-04
-	* for vob file, after seek the first check in pts is 0(so as to other format which is demuxed using the hardware), 
-	* which could leading to video discontinue in vpts_expire(video.c) function, in get_current_time the 
-	* discontinue_point is added to the ctime, so the display time is two times the correct time. after comment the 
-	* following can avoid the error.
-	*/
+
     for (i = 0; i < 4; i ++) {
         //log_print("[%s]file_name=%s ext=%s\n", __FUNCTION__, p_para->file_name, extensions[i]);
 
@@ -640,7 +633,6 @@ static unsigned int is_chapter_discontinue(play_para_t *p_para)
             return 1;
         }
     }
-#endif
     return 0;
 }
 
