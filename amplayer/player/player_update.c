@@ -624,7 +624,14 @@ static unsigned int is_chapter_discontinue(play_para_t *p_para)
     if(!strncmp(p_para->pFormatCtx->iformat->name, "cmf", 3)) {
         return 1;
     }
-
+#if 0
+	/*
+	* Lujian.Hu 2013-01-04
+	* for vob file, after seek the first check in pts is 0(so as to other format which is demuxed using the hardware), 
+	* which could leading to video discontinue in vpts_expire(video.c) function, in get_current_time the 
+	* discontinue_point is added to the ctime, so the display time is two times the correct time. after comment the 
+	* following can avoid the error.
+	*/
     for (i = 0; i < 4; i ++) {
         //log_print("[%s]file_name=%s ext=%s\n", __FUNCTION__, p_para->file_name, extensions[i]);
 
@@ -633,6 +640,7 @@ static unsigned int is_chapter_discontinue(play_para_t *p_para)
             return 1;
         }
     }
+#endif
     return 0;
 }
 
@@ -645,7 +653,9 @@ static unsigned int get_current_time(play_para_t *p_para)
 	unsigned long video_pts_discontinue_diff = 0;
 	unsigned long audio_pts_discontinue_diff = 0;
     codec_para_t *codec = NULL;
-
+    int use_apts_as_time = 0;
+    int time_adjust_flag = 0;
+    
     if (p_para->vstream_info.has_video) {
         if (p_para->vcodec) {
             codec = p_para->vcodec;
@@ -659,25 +669,38 @@ static unsigned int get_current_time(play_para_t *p_para)
 		audio_pts_discontinue_diff = codec_get_sync_audio_discont_diff(codec);
 		video_pts_discontinue_diff = codec_get_sync_video_discont_diff(codec);
     }
-
     if (video_pts_discontinue > 0) {
-		log_info("video pts discontinue!!!, adiff=%lu,vdiff=%lu,\n",audio_pts_discontinue_diff,video_pts_discontinue_diff);		
-		if(!set_discontinue && is_chapter_discontinue(p_para))
-		{
-            p_para->discontinue_point = p_para->state.current_time;
-            set_discontinue = 1;
-            p_para->discontinue_flag = 0;
-            log_info("vpts discontinue, point=%d\n", p_para->discontinue_point);
+	//log_info("video pts discontinue!, adiff=%lu,vdiff=%lu,\n",audio_pts_discontinue_diff,video_pts_discontinue_diff);		
+        if (p_para->astream_info.has_audio) {
+	    use_apts_as_time = 1;
+            if (check_time_interrupt(&p_para->playctrl_info.pts_discontinue_check_time, video_pts_discontinue_diff)){
+                time_adjust_flag = 1;
+                use_apts_as_time = 0;
+            }
         }
-        if (codec) {
-            codec_set_sync_video_discont(codec, 0);
-			codec_set_sync_video_discont_diff(codec, 0);
+        else {
+            time_adjust_flag = 1;
         }
-        log_info("vpts discontinue, vpts=0x%x scr=0x%x apts=0x%x\n", get_pts_video(p_para), get_pts_pcrscr(p_para), get_pts_audio(p_para));
+        if (time_adjust_flag == 1){
+            if(!set_discontinue && is_chapter_discontinue(p_para))
+    	    {
+                p_para->discontinue_point = p_para->state.current_time;
+                set_discontinue = 1;
+                p_para->discontinue_flag = 0;
+                log_info("vpts discontinue, point=%d\n", p_para->discontinue_point);
+            }
+            if (codec) {
+                codec_set_sync_video_discont(codec, 0);
+    		codec_set_sync_video_discont_diff(codec, 0);
+            }           
+        }        
+        log_info("vpts discontinue, vpts=0x%x scr=0x%x apts=0x%x vdiff=%lu\n", 
+                    get_pts_video(p_para), get_pts_pcrscr(p_para), get_pts_audio(p_para),video_pts_discontinue_diff);
     }
 
     if (audio_pts_discontinue > 0) {
-        log_info("audio pts discontinue, curtime=%d lasttime=%d\n", p_para->state.current_time, p_para->state.last_time);
+        //log_info("audio pts discontinue, curtime=%d lasttime=%d\n", p_para->state.current_time, p_para->state.last_time);
+        use_apts_as_time = 0;
         if (!set_discontinue && is_chapter_discontinue(p_para) &&
 			(p_para->state.current_time < p_para->state.last_time))
 		{
@@ -690,14 +713,19 @@ static unsigned int get_current_time(play_para_t *p_para)
             codec_set_sync_audio_discont(codec, 0);
 			codec_set_sync_audio_discont_diff(codec, 0);
         }
-        log_info("apts discontinue, vpts=0x%x scr=0x%x apts=0x%x\n", get_pts_video(p_para), get_pts_pcrscr(p_para), get_pts_audio(p_para));
+        log_info("apts discontinue, vpts=0x%x scr=0x%x apts=0x%x adiff=%lu\n", 
+                    get_pts_video(p_para), get_pts_pcrscr(p_para), get_pts_audio(p_para),audio_pts_discontinue_diff);
     }
 
     if (p_para->vstream_info.has_video && p_para->astream_info.has_audio) {
         pcr_scr = get_pts_pcrscr(p_para);
         apts = get_pts_audio(p_para);
         vpts = get_pts_video(p_para);
-        ctime = handle_current_time(p_para, pcr_scr, apts);
+        if(p_para->playctrl_info.pts_valid && use_apts_as_time == 1) {
+            ctime = apts;
+        } else {
+            ctime = handle_current_time(p_para, pcr_scr, apts);        
+        }
         log_debug("***[get_current_time:%d]ctime=0x%x\n", __LINE__, ctime);
     } else if (p_para->astream_info.has_audio)/* &&
             (p_para->stream_type == STREAM_ES) &&

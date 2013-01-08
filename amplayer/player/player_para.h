@@ -121,6 +121,7 @@ typedef  struct {
     long vbuf_rpchanged_Old_time;
     long avdiff_check_old_time;
     int avdiff_next_reset_timepoint;
+    int pts_discontinue_check_time;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);
