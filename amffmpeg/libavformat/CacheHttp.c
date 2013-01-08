@@ -38,7 +38,7 @@
 #define CIRCULAR_BUFFER_SIZE (20*188*4096)
 #define WAIT_TIME (100*1000)
 #define TMP_BUFFER_SIZE (188*100)   
-#define LIVE_HTTP_RETRY_TIMES 20
+#define HTTP_RETRY_TIMES 20
 
 #define ADD_TSHEAD_RECALC_DISPTS_TAG 	("amlogictsdiscontinue")
 static const uint8_t ts_segment_lead[188] = {0x47,0x00,0x1F,0xFF,0,}; 
@@ -496,19 +496,19 @@ OPEN_RETRY:
                 }
                 break;
              }
-             if(1 == http_code && !s->have_list_end) {
+             if(1 == http_code || s->have_list_end) {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
-                if(retry_num++ < LIVE_HTTP_RETRY_TIMES) {
+                if(retry_num++ < HTTP_RETRY_TIMES) {
                     usleep(WAIT_TIME);
                     goto OPEN_RETRY;
                 } else {
                     goto SKIP;
                 }
-             } else if(s->have_list_end || ((2 == http_code || 3 == http_code)&& !s->have_list_end)) {
+             } else if((2 == http_code || 3 == http_code) && !s->have_list_end) {
                 usleep(1000*20);
                 goto OPEN_RETRY;
              } else if(!s->have_list_end&&err ==AVERROR(EIO)){
-                if(retry_num++ < LIVE_HTTP_RETRY_TIMES) {//if live streaming,just keep on 2s.
+                if(retry_num++ < HTTP_RETRY_TIMES) {//if live streaming,just keep on 2s.
                     usleep(WAIT_TIME);
                     goto OPEN_RETRY;
                 } else {
