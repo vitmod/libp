@@ -2122,7 +2122,7 @@ static void av_update_stream_timings(AVFormatContext *ic)
         
         /* added by Z.C. to set start time */
         if (st->start_time == 0) {
-            if (st->nb_index_entries) {
+            if (st->nb_index_entries && st->index_entries[0].timestamp > 0) {
                 st->start_time = st->index_entries[0].timestamp;
                 av_log(NULL, AV_LOG_INFO, "[%s:%d] set stream %d start_time to first pts 0x%llx\n", 
                     __FUNCTION__, __LINE__, i, st->start_time);
