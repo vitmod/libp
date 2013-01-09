@@ -572,7 +572,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 		/*server can't support seek,the off is ignored.we do read seek later;*/
 		s->do_readseek_size=off-s->off;
 		s->off=off;
-		if(s->do_readseek_size >= s->filesize - 100) // we could not get rest data sometime when server in problem, this can prevent unlimited retry.
+		if(s->do_readseek_size >= s->filesize - 1024) // we could not get rest data sometime when server in problem, this can prevent unlimited retry.
 			s->read_seek_count++;
 		av_log(h, AV_LOG_INFO, "Server Can't support SEEK,we try do read seek to resume playing readseek size=%lld\n",s->do_readseek_size);
      }
