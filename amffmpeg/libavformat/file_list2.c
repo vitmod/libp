@@ -839,9 +839,9 @@ static int hls_base_info_dump(struct list_mgt*  c){
 
 static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
     int ret = -1;
-    int measure_bw,org_bw =0;
+    int measure_bw =0;
     float net_sensitivity=get_adaptation_ex_para(0);
-    org_bw = measure_bw = c->measure_bw;
+    measure_bw = c->measure_bw;
     if(c->debug_level>0){
         RLOG("Player current measured bandwidth: %d bps,(%.3f kbps)",measure_bw,(float)measure_bw/1000);
     }
@@ -881,7 +881,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
             return -1;
         }           
     }else{//keep original speed
-        *measued_bw  = org_bw;
+        *measued_bw  = measure_bw;
         return 0;
     }
 
