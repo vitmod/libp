@@ -45,6 +45,7 @@
 #define OPEN_RETRY_MAX 3
 #define READ_RETRY_MAX 3
 #define MAX_CONNECT_LINKS 1
+#define READ_SEEK_TIMES 10
 
 #define READ_RETRY_MAX_TIME_MS (120*1000) 
 /*60 seconds no data get,we will reset it*/
@@ -71,6 +72,7 @@ typedef struct {
     int max_connects;
     int latest_get_time_ms;
     int is_broadcast;
+    int read_seek_count;
     void * bandwidth_measure;	
 } HTTPContext;
 
@@ -273,6 +275,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->is_seek=1;
     s->canseek=1;
     s->is_broadcast = 0;
+    s->read_seek_count = 0;
     av_strlcpy(s->location, uri, sizeof(s->location));
 	s->max_connects=MAX_CONNECT_LINKS;	
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 	
@@ -296,6 +299,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     s->is_seek=1;
     s->canseek=1;
     s->is_broadcast = 0;
+    s->read_seek_count = 0;
     av_strlcpy(s->location, uri+1, sizeof(s->location));	
 	s->max_connects=MAX_CONNECT_LINKS;	
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 		
@@ -568,6 +572,8 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 		/*server can't support seek,the off is ignored.we do read seek later;*/
 		s->do_readseek_size=off-s->off;
 		s->off=off;
+		if(s->do_readseek_size >= s->filesize - 100) // we could not get rest data sometime when server in problem, this can prevent unlimited retry.
+			s->read_seek_count++;
 		av_log(h, AV_LOG_INFO, "Server Can't support SEEK,we try do read seek to resume playing readseek size=%lld\n",s->do_readseek_size);
      }
 	return (off == s->off) ? 0 : -1;
@@ -661,7 +667,7 @@ retry:
 	}else{
 		s->latest_get_time_ms=0;/*0 means have  just get data*/
 	}
-	if(len==0 && (s->off < s->filesize-10)){
+	if(len==0 && (s->off < s->filesize-10) && s->read_seek_count < READ_SEEK_TIMES){
 		av_log(h, AV_LOG_INFO, "http_read return 0,but off not reach filesize,maybe close by server try again\n");
 		len=-1;/*force to retry,if else data <10,don't do it*/
 	}
