@@ -147,7 +147,8 @@ typedef struct list_mgt
     int codec_vdat_size;
     int codec_adat_size;	 	
     int parser_finish_flag;
-    int measure_bw;		
+    int measure_bw;
+    int read_eof_flag;	
 }list_mgt_t;
 
 typedef struct list_demux

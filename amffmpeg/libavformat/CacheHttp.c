@@ -568,6 +568,14 @@ OPEN_RETRY:
            if(s->hd && tmpdatasize <= 0) {
                              
                 tmpdatasize = CacheHttp_ffurl_read(s->hd, tmpbuf, TMP_BUFFER_SIZE);
+		   #if 0		
+		   if(s->hd->prot!=NULL&&s->hd->prot->url_getinfo!=NULL){
+			 int64_t speed = -1;
+			 int rv=s->hd->prot->url_getinfo(s->hd,AVCMD_GET_NETSTREAMINFO,1,&speed);
+			 //s->m3u_mgt->measure_bw = speed;
+			 av_log(h,AV_LOG_INFO,"http download real-time data:%0.3f kbps\n",(float)speed/1000.000);
+		   }	
+		   #endif
                 rsize +=tmpdatasize;
 			  	if(ts_parser_finised<0&&tmpdatasize>4){
 					if (tmpdatasize>= (188*4)){

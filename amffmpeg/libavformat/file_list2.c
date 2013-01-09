@@ -839,9 +839,9 @@ static int hls_base_info_dump(struct list_mgt*  c){
 
 static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
     int ret = -1;
-    int measure_bw =0;
+    int measure_bw,org_bw =0;
     float net_sensitivity=get_adaptation_ex_para(0);
-    measure_bw = c->measure_bw;
+    org_bw = measure_bw = c->measure_bw;
     if(c->debug_level>0){
         RLOG("Player current measured bandwidth: %d bps,(%.3f kbps)",measure_bw,(float)measure_bw/1000);
     }
@@ -865,7 +865,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
             return 1;
         }        
         
-    }else if(measure_bw<c->playing_variant){
+    }else if(measure_bw<c->playing_variant->bandwidth){
         c->strategy_down_counts++;
         if(c->strategy_up_counts>0){
             c->strategy_up_counts=0;
@@ -881,7 +881,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
             return -1;
         }           
     }else{//keep original speed
-        *measued_bw  = measure_bw;
+        *measued_bw  = org_bw;
         return 0;
     }
 
@@ -930,8 +930,8 @@ static int hls_aggressive_adaptive_bw_set(struct list_mgt* c,int bw){
     return -1;
 }
 
-#define CODEC_BUFFER_LOW_FLAG  (2)			// 2s
-#define CODEC_BUFFER_HIGH_FLAG (8)			 //8s
+#define CODEC_BUFFER_LOW_FLAG  (4)			// 4s
+#define CODEC_BUFFER_HIGH_FLAG (10)			 //10s
 
 static int hls_calculate_buffer_time(struct list_mgt* mgt,int cur_bw){
 	int dat_len = 0;	
@@ -951,7 +951,7 @@ static int hls_mean_adaptive_bw_set(struct list_mgt* c,int flag){
     codec_buf_time =hls_calculate_buffer_time(c,cur_bw);   
     int playing_index = -1;
     
-    if(flag<0&&codec_buf_time<FFMAX(c->target_duration/2,CODEC_BUFFER_LOW_FLAG)){  
+    if(flag<0&&codec_buf_time<FFMAX(c->target_duration,CODEC_BUFFER_LOW_FLAG)){  
         playing_index = switch_bw_level(c,-1);     
         if(playing_index>=0)
             c->switch_down_num++;
@@ -1232,6 +1232,11 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
             break;
         }
     } while (counts-- > 0);
+    if(len>0){
+        mgt->read_eof_flag = 0;
+    }else if(len == 0){
+        mgt->read_eof_flag = 1;
+    }
     return len;
 }
 
@@ -1530,8 +1535,15 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
         av_log(NULL, AV_LOG_INFO, " ----------> list_getinfo, AVCMD_SLICE_INDEX=%d", *info);
         return 0;
     } else if(cmd == AVCMD_GET_NETSTREAMINFO){
-        if(flag == 1){			
-            *info = mgt->measure_bw;
+        if(flag == 1){
+		if(mgt->read_eof_flag == 0){	
+                *info = mgt->measure_bw;
+		}else{
+		   *info = 0;	
+		}
+		if(mgt->debug_level>3){
+			RLOG("Get measured bandwidth: %0.3f kbps\n",(float)*info/1000.000);
+		}
         }
         return 0;
 
@@ -1583,6 +1595,13 @@ list_item_t* getCurrentSegment(void* hSession)
         item->have_list_end = mgt->have_list_end;
         mgt->playing_item_index = item->index;
         mgt->playing_item_seq = item->seq;
+	  if(mgt->debug_level>3){
+		RLOG("Get current segment,segment url:%s",item->file!=NULL?item->file:"Just End item");
+	  }
+    }else{
+	  if(mgt->debug_level>3){
+		RLOG("Can't get segment,just waiting playlist refresh\n");
+	  }
     }
     return item;
 
