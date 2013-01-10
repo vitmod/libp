@@ -57,6 +57,7 @@ void *player_mate_init(play_para_t *player, int intervals)
     log_print("player mate init ok mate=%x(%d)\n", mate, sizeof(struct player_mate));
     player->player_mate = mate;
     ret = pthread_create(&tid, &pthread_attr, (void*)&player_mate_thread_run, (void*)player);
+    pthread_setname_np(tid,"AmplayerMate");
     mate->pthread_id = tid;
     return (void *)mate;
 }

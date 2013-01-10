@@ -965,12 +965,14 @@ int audiodec_init(aml_audio_dec_t *audec)
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
     		audec->adsp_ops.dsp_file_fd = -1;
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);
+		pthread_setname_np(tid,"AmadecMsgloop");
     }
     else 
     {
 		int codec_type=get_audio_decoder();
 		RegisterDecode(audec,codec_type);
 		ret = pthread_create(&tid, NULL, (void *)adec_armdec_loop, (void *)audec);
+		pthread_setname_np(tid,"AmadecArmdecLP");
     }
     if (ret != 0) {
         adec_print("Create adec main thread failed!\n");

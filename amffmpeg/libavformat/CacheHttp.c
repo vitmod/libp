@@ -211,6 +211,7 @@ int CacheHttp_Open(void ** handle,const char* headers,void* arg)
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 
     
     ret = ffmpeg_pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
+    pthread_setname_np(s->circular_buffer_thread,"AmffmpegHTTP");	
     av_log(NULL, AV_LOG_INFO, "----------- pthread_create ret=%d\n",ret);
 
     return ret;

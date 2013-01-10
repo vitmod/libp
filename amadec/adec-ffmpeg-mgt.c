@@ -835,6 +835,7 @@ static void start_decode_thread(aml_audio_dec_t *audec)
         	return ret;
     	}
     	sn_threadid=tid;
+	pthread_setname_np(tid,"AmadecDecodeLP");
     	adec_print("Create ffmpeg decode thread success! tid = %d\n", tid);
 	}else{
         int ret = pthread_create(&tid, NULL, (void *)audio_dtsdecode_loop, (void *)audec);
@@ -843,6 +844,7 @@ static void start_decode_thread(aml_audio_dec_t *audec)
         	return ret;
     	}
     	sn_threadid=tid;
+	pthread_setname_np(tid,"AmadecDtsLP");
     	adec_print("Create DTS_ARM_DECODER thread success! tid = %d\n", tid);
 	}
     

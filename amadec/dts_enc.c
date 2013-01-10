@@ -116,6 +116,7 @@ int dtsenc_init()
            dtsenc_release();
            return -1;
        }
+	pthread_setname_np(tid,"AmadecDtsEncLP");	
        dtsenc_info.thread_pid = tid;
     adec_print("====dts_enc init success \n");
     return 0;
