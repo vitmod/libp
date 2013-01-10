@@ -46,6 +46,7 @@ Package_List pack_list;
 
 
 void *audio_decode_loop(void *args);
+void *audio_dtsdecode_loop(void *args);
 void *audio_getpackage_loop(void *args);
 
 static int set_sysfs_int(const char *path, int val);
@@ -71,6 +72,7 @@ audio_lib_t audio_lib_list[] =
 	{ACODEC_FMT_APE, "libape.so"},
 	{ACODEC_FMT_MPEG, "libmad.so"},
 	{ACODEC_FMT_FLAC, "libflac.so"},
+	{ACODEC_FMT_DTS, "libdtsdec.so"},	
 	NULL
 } ;
 
@@ -822,26 +824,41 @@ static void start_decode_thread(aml_audio_dec_t *audec)
         return -1;
     }
     pthread_t    tid;
-    int ret = pthread_create(&tid, NULL, (void *)audio_getpackage_loop, (void *)audec);
-    sn_getpackage_threadid=tid;
-    adec_print("Create get package thread success! tid = %d\n", tid);
-    //thread need to sync
-    ret = pthread_create(&tid, NULL, (void *)audio_decode_loop, (void *)audec);
-    if (ret != 0) {
-        adec_print("Create ffmpeg decode thread failed!\n");
-        return ret;
-    }
-    sn_threadid=tid;
-    adec_print("Create ffmpeg decode thread success! tid = %d\n", tid);
+	if(audec->format!=ACODEC_FMT_DTS){
+    	int ret = pthread_create(&tid, NULL, (void *)audio_getpackage_loop, (void *)audec);
+    	sn_getpackage_threadid=tid;
+    	adec_print("Create get package thread success! tid = %d\n", tid);
+    	//thread need to sync
+    	ret = pthread_create(&tid, NULL, (void *)audio_decode_loop, (void *)audec);
+    	if (ret != 0) {
+        	adec_print("Create ffmpeg decode thread failed!\n");
+        	return ret;
+    	}
+    	sn_threadid=tid;
+    	adec_print("Create ffmpeg decode thread success! tid = %d\n", tid);
+	}else{
+        int ret = pthread_create(&tid, NULL, (void *)audio_dtsdecode_loop, (void *)audec);
+    	if (ret != 0) {
+        	adec_print("Create DTS_ARM_DECODER thread failed!\n");
+        	return ret;
+    	}
+    	sn_threadid=tid;
+    	adec_print("Create DTS_ARM_DECODER thread success! tid = %d\n", tid);
+	}
     
 }
 static void stop_decode_thread(aml_audio_dec_t *audec)
 {
     exit_decode_thread=1;
-    int ret = pthread_join(sn_threadid, NULL);
-    adec_print("decode thread exit success \n");
-    ret = pthread_join(sn_getpackage_threadid, NULL);
-    adec_print("get package thread exit success \n");
+	if(audec->format!=ACODEC_FMT_DTS){
+    	int ret = pthread_join(sn_threadid, NULL);
+    	adec_print("decode thread exit success \n");
+    	ret = pthread_join(sn_getpackage_threadid, NULL);
+    	adec_print("get package thread exit success \n");
+	}else{
+        int ret = pthread_join(sn_threadid, NULL);
+    	adec_print("DTS_ARM_DECODER thread exit success \n");
+	}
     exit_decode_thread=0;
     sn_threadid=-1;
     sn_getpackage_threadid=-1;
@@ -1199,6 +1216,72 @@ error:
     return NULL;
 }
 
+extern int read_buffer(unsigned char *buffer,int size);
+void *audio_dtsdecode_loop(void *args)
+{
+    int ret,dlen;
+    aml_audio_dec_t *audec;
+    audio_out_operations_t *aout_ops;
+    audio_decoder_operations_t *adec_ops;       
+    char *outbuf=pcm_buf_tmp;
+    int outlen = 0;
+    adec_print("adec_DtsArmDec_loop start!\n");
+    audec = (aml_audio_dec_t *)args;
+    adec_ops=audec->adec_ops;
+    memset(outbuf, 0, AVCODEC_MAX_AUDIO_FRAME_SIZE);
+    while (1){
+exit_decode_loop:
+          //detect quit condition
+          if(exit_decode_thread){
+        	  exit_decode_thread_success=1;
+        	  break;
+	      }
+	      //detect audio info changed
+	      memset(&g_AudioInfo,0,sizeof(AudioInfo));
+	      adec_ops->getinfo(audec->adec_ops, &g_AudioInfo);
+	      if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
+		  {
+	         if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
+	         {
+	            adec_print("====Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
+				audec->format_changed_flag = 1;
+				g_bst->channels=audec->channels=g_AudioInfo.channels;
+				g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;				
+	         }
+	      } 
+            
+		  if(exit_decode_thread)
+    		  goto exit_decode_loop;
+    	  
+    	  outlen = AVCODEC_MAX_AUDIO_FRAME_SIZE;
+		  adec_print("[TRACE]: start decoder!%s %d \n",__FUNCTION__,__LINE__);
+    	  dlen=adec_ops->decode(audec->adec_ops, outbuf, &outlen,(void*)read_buffer,0);
+		  adec_print("[TRACE]:g_bst->buf_length=%d g_bst->buf_level=%d outlen=%d %s %d \n",
+		  	        g_bst->buf_length,g_bst->buf_level,outlen,__FUNCTION__,__LINE__);
+    	  decode_offset+=dlen;
+    	  pcm_cache_size=outlen;
+    	  if(g_bst)
+    	  {
+              while(g_bst->buf_length-g_bst->buf_level<outlen){
+            	  if(exit_decode_thread)
+            		  goto exit_decode_loop;
+            	  usleep(100000);
+              }
+              int wlen=0;
+              while(outlen){
+            	 wlen=write_pcm_buffer(outbuf, g_bst,outlen); 
+            	 outlen-=wlen;
+            	 pcm_cache_size-=wlen;
+              }
+    	  }
+		  adec_print("[TRACE]: finish write pcm!%s %d \n",__FUNCTION__,__LINE__);
+    }
+    adec_print("Exit adec_DtsArmDec_loop Thread!");
+    pthread_exit(NULL);
+error:	
+    pthread_exit(NULL);
+    return NULL;
+}
 void *adec_armdec_loop(void *args)
 {
     int ret;
