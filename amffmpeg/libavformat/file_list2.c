@@ -861,7 +861,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
         }
         if(c->strategy_up_counts>=upcounts){//increase speed
             *measued_bw = measure_bw;
-            c->strategy_up_counts = 0;
+            //c->strategy_up_counts = 0;
             return 1;
         }        
         
@@ -877,7 +877,7 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
         }
         if(c->strategy_down_counts>=downcounts){//decrease speed
             *measued_bw  = measure_bw;
-            c->strategy_down_counts = 0;
+            //c->strategy_down_counts = 0;
             return -1;
         }           
     }else{//keep original speed
@@ -921,10 +921,16 @@ static int hls_aggressive_adaptive_bw_set(struct list_mgt* c,int bw){
     if(c->playing_variant->bandwidth > var->bandwidth){
         c->switch_down_num++;
         c->playing_variant = var;
+        if(c->strategy_down_counts>0){
+            c->strategy_down_counts=0;
+        }		
         return 0;
     }else if(c->playing_variant->bandwidth < var->bandwidth){
         c->switch_up_num++;
         c->playing_variant = var;
+        if(c->strategy_up_counts>0){
+            c->strategy_up_counts=0;
+        }		
         return 0;
     }
     return -1;
@@ -955,11 +961,17 @@ static int hls_mean_adaptive_bw_set(struct list_mgt* c,int flag){
         playing_index = switch_bw_level(c,-1);     
         if(playing_index>=0)
             c->switch_down_num++;
+        if(c->strategy_down_counts>0){
+            c->strategy_down_counts=0;
+        }		
 
     }else if(flag>0&&codec_buf_time>FFMIN(c->target_duration,CODEC_BUFFER_HIGH_FLAG)){
         playing_index = switch_bw_level(c,1); 
         if(playing_index>=0)
             c->switch_up_num++;
+        if(c->strategy_up_counts>0){
+            c->strategy_up_counts=0;
+        }
     }
 	
     if(playing_index>=0&&c->playing_variant->bandwidth!= c->variants[playing_index]->bandwidth){
