@@ -912,8 +912,11 @@ static  struct variant* hls_get_right_variant(struct list_mgt* c,int bw){
     if (best_index < 0) { /*no low rate streaming found,used the lowlest*/
         best_index = min_index;
     }
-    /*av_log(NULL, AV_LOG_INFO, "select best bandwidth,index:%d,bandwidth:%d,priority:%d\n", \
-        best_index, c->variants[best_index]->bandwidth, c->variants[best_index]->priority);*/
+	
+    if(c->debug_level>3){	
+        RLOG("Measured bw:%d,select best bandwidth,index:%d,bandwidth:%d,priority:%d\n", \
+            bw,best_index, c->variants[best_index]->bandwidth, c->variants[best_index]->priority);
+    }
     return c->variants[best_index];
 }
 static int hls_aggressive_adaptive_bw_set(struct list_mgt* c,int bw){
@@ -1248,6 +1251,8 @@ static int list_read(URLContext *h, unsigned char *buf, int size)
         mgt->read_eof_flag = 0;
     }else if(len == 0){
         mgt->read_eof_flag = 1;
+    }else if(len<0){
+	 mgt->read_eof_flag = 2;
     }
     return len;
 }
