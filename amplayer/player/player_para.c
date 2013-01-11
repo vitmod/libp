@@ -1461,9 +1461,12 @@ int player_decoder_init(play_para_t *p_para)
 	   Web live playback need small threshold for discontinuity judgement. Web live threshold:1 
 */
 #if FF_API_OLD_AVIO 
-		if(p_para->pFormatCtx->pb->is_slowmedia!=1){
-		set_sysfs_int("/sys/class/tsync/av_threshold_min",90000*8); 
-	   }
+    if(p_para->pFormatCtx->pb->is_slowmedia!=1){
+        set_sysfs_int("/sys/class/tsync/av_threshold_min",90000*8); 
+    }
+    else{
+        set_sysfs_int("/sys/class/tsync/av_threshold_min",90000); 
+    }
 #endif
 
     decoder = find_stream_decoder(p_para->stream_type);
