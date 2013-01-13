@@ -88,6 +88,7 @@ static int get_cpu_type(void)
 }
 int dtsenc_init()
 {
+    return 0;
     int ret;
     memset(&dtsenc_info,0,sizeof(dtsenc_info_t));
     dtsenc_info.dts_flag = get_dts_format();
@@ -123,6 +124,7 @@ int dtsenc_init()
 }
 int dtsenc_start()
 {
+    return 0;
     int ret;
     if(dtsenc_info.state!=INITTED)
            return -1;
@@ -132,18 +134,21 @@ int dtsenc_start()
 }
 int dtsenc_pause()
 {
+    return 0;
     if(dtsenc_info.state==ACTIVE)
         dtsenc_info.state=PAUSED;
     return 0;
 }
 int dtsenc_resume()
 {
+    return 0;
     if(dtsenc_info.state==PAUSED)
         dtsenc_info.state=ACTIVE;
     return 0;
 }
 int dtsenc_stop()
 {
+    return 0;
     if(dtsenc_info.state<INITTED)
            return -1;
     dtsenc_info.state=STOPPED;
@@ -160,6 +165,7 @@ int dtsenc_stop()
 }
 int dtsenc_release()
 {
+    return 0;
     memset(&dtsenc_info,0,sizeof(dtsenc_info_t));
     // dtsenc_info.state=TERMINATED;
      adec_print("====dts_enc release ok\n");
@@ -168,6 +174,7 @@ int dtsenc_release()
 
 static void *dts_enc_loop()
 {
+    return 0;
     int ret;
     while(1)
     {
