@@ -889,7 +889,7 @@ static int ebml_parse_elem(MatroskaDemuxContext *matroska,
 		offset_next=pos+length;
 		if (matroska->num_levels > 0) {
 		    MatroskaLevel *level = &matroska->levels[matroska->num_levels - 1];
-		    if ((offset_next>level->start)&&(offset_next - level->start) > level->length) { 
+		    if ((offset_next>level->start)&&((offset_next - level->start) > level->length)&&(level->start+level->length>pos)) { 
 		        av_log(matroska->ctx, AV_LOG_ERROR, "Invalid EBML data length, exceed top master size\n");
 		        return avio_skip(pb,level->start+level->length-pos)<0 ? AVERROR(EIO) : 0;			  	
 		   }
