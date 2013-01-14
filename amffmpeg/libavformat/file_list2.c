@@ -482,7 +482,7 @@ static int switch_bw_level(struct list_mgt * mgt, int updown){
     struct variant *v = NULL;
     //RLOG("switch bandwidth to :%d \n",priority);
     if(priority>=0){
-        for (i = 0; i < mgt->n_variants-1; i++) {
+        for (i = 0; i < mgt->n_variants; i++) {
             v = mgt->variants[i];
             if (priority == v->priority) {
                 playing_index = i;
