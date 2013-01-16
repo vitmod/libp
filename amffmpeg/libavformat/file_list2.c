@@ -1092,7 +1092,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
             }
             mgt->next_index = 0;
             mgt->item_num = 0;
-           // mgt->full_time = 0;         
+            mgt->full_time = 0;            
 
             if(mgt->cur_uio){
                 url_fclose(mgt->cur_uio);
