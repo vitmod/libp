@@ -745,6 +745,12 @@ static float get_adaptation_ex_para(int type){
             value = 0;
         }
 
+    }else if(type == 7){
+        ret = am_getconfig_float("libplayer.hls.up_scale", &value);
+        if(ret<0){
+            ret = 0;
+            value = 0.9;
+        }
     }
     if(ret < 0 || value <0){
         ret = -1;
@@ -848,8 +854,16 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
     if(net_sensitivity>0){
         measure_bw*=net_sensitivity;
     }
-    
-    if(measure_bw>c->playing_variant->bandwidth){
+    float up_scale=get_adaptation_ex_para(7);
+    if(c->playing_variant->priority<c->variants[c->n_variants-1]->priority&&measure_bw>c->playing_variant->bandwidth){
+        float scaleup_per = (float)(measure_bw-c->playing_variant->bandwidth)/(float)(c->variants[c->playing_variant->priority+1]->bandwidth-c->playing_variant->bandwidth);
+	  if(c->debug_level>0){
+		RLOG("Player bandwidth scale up,target:%0.3f,current:%0.3f\n",up_scale,scaleup_per);
+	  }
+	  if(scaleup_per<up_scale){
+		*measued_bw  = measure_bw;
+		return 0;
+	  }
         c->strategy_up_counts++;
         if(c->strategy_down_counts>0){
             c->strategy_down_counts=0;
