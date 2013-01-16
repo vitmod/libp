@@ -767,6 +767,8 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
                          uint32_t id, void *data)
 {
     int i;
+    AVIOContext *pb = matroska->ctx->pb;
+    int64_t pos;
     for (i=0; syntax[i].id; i++)
         if (id == syntax[i].id)
             break;
@@ -774,7 +776,7 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
         matroska->num_levels > 0 &&
         matroska->levels[matroska->num_levels-1].length == 0xffffffffffffff)
         return 0;  // we reached the end of an unknown size cluster
-    if (!syntax[i].id && id != EBML_ID_VOID && id != EBML_ID_CRC32)
+    if (!syntax[i].id && id != EBML_ID_VOID && id != EBML_ID_CRC32 && id != EBML_ID_HEADER)
         av_log(matroska->ctx, AV_LOG_INFO, "Unknown entry 0x%X\n", id);
 
     if ((matroska->media_offset == MAX_OFFSET)
@@ -788,8 +790,14 @@ static int ebml_parse_id(MatroskaDemuxContext *matroska, EbmlSyntax *syntax,
     /*if (matroska->in_read_header && (MATROSKA_ID_TRACKS == id) && (url_ftell(matroska->ctx->pb) > matroska->media_offset)) {
 		av_log(matroska->ctx, AV_LOG_ERROR, "Track exceed media offset %llx > %llx\n", url_ftell(matroska->ctx->pb), matroska->media_offset);
 		return -1;
-    }*/
-    
+    }*/    
+
+    //add by X.H. mkv file have only one EBML_ID_HEADER
+    pos = avio_tell(pb);
+    if(id == EBML_ID_HEADER && pos  > matroska->media_offset) {
+        av_log(matroska->ctx, AV_LOG_INFO, "find EBML_HEADER 0x%X, offset=%lld exceed media_offset %lld treat as end\n", id, pos, matroska->media_offset);
+        return AVERROR_EOF;
+    }
     return ebml_parse_elem(matroska, &syntax[i], data);
 }
 
