@@ -683,9 +683,9 @@ static int list_open(URLContext *h, const char *filename, int flags)
     return 0;
 }
 
-#define ADAPTATION_PROFILE_DEFAULT 1  //AGREESSIVE_ADAPTIVE
+#define ADAPTATION_PROFILE_DEFAULT  2  //MEAN_ADAPTIVE
 
-#define DEF_UP_COUNTS  1
+#define DEF_UP_COUNTS 3 
 #define DEF_DOWN_COUNTS 1
 static int get_adaptation_profile(){
     float value = 0.0;
