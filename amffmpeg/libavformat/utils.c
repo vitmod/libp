@@ -2887,6 +2887,7 @@ static int has_codec_parameters(AVCodecContext *enc)
 }
 
 //fastmode refer to different mode
+#define LIVEING_PARSE_MODE  0
 #define PARSE_MODE_BASE 8
 #define ASF_PARSE_MODE  8
 #define SPEED_PARSE_MODE 9
@@ -3099,11 +3100,18 @@ int av_find_stream_info(AVFormatContext *ic)
     int64_t old_offset=-1;
     int fast_switch = 1;
     float value;
+	int64_t streamtype = -1;
 
     if (am_getconfig_float("media.libplayer.fastswitch", &value) == 0) {
         fast_switch = (int)value;
     }
-    av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d\n", __FUNCTION__, fast_switch);
+	
+	avio_getinfo(ic->pb,AVCMD_HLS_STREAMTYPE,0,&streamtype);
+	if (streamtype==0){
+		fast_switch=LIVEING_PARSE_MODE;
+	}
+	
+    av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d streamtype=%lld\n", __FUNCTION__, fast_switch,streamtype);
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       
