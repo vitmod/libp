@@ -2889,7 +2889,7 @@ static int has_codec_parameters(AVCodecContext *enc)
 }
 
 //fastmode refer to different mode
-#define LIVEING_PARSE_MODE  0
+#define SOFTDEMUX_PARSE_MODE  0
 #define PARSE_MODE_BASE 8
 #define ASF_PARSE_MODE  8
 #define SPEED_PARSE_MODE 9
@@ -2934,7 +2934,7 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 		case AVMEDIA_TYPE_VIDEO:
 			if(fastmode == 8){
 			   val = (enc->durcount>15?1:0)&&enc->width;
-			   av_log(NULL, AV_LOG_INFO, "[%s]enc->durcount=%d\n", __FUNCTION__, enc->durcount);
+			 //  av_log(NULL, AV_LOG_INFO, "[%s]enc->durcount=%d\n", __FUNCTION__, enc->durcount);
 			}else{
 		           val = enc->width;
 			}
@@ -3107,13 +3107,23 @@ int av_find_stream_info(AVFormatContext *ic)
     if (am_getconfig_float("media.libplayer.fastswitch", &value) == 0) {
         fast_switch = (int)value;
     }
-	
-	avio_getinfo(ic->pb,AVCMD_HLS_STREAMTYPE,0,&streamtype);
-	if (streamtype==0){
-		fast_switch=LIVEING_PARSE_MODE;
+
+
+
+	if ((!strcmp(ic->iformat->name, "mpegts"))){
+		if (ic->pb&&ic->pb->is_slowmedia&&am_getconfig_bool("libplayer.netts.softdemux")){
+				fast_switch=SOFTDEMUX_PARSE_MODE;
+		}else if (am_getconfig_bool("libplayer.livets.softdemux")){
+			avio_getinfo(ic->pb,AVCMD_HLS_STREAMTYPE,0,&streamtype);
+	    	if (ic->pb&&ic->pb->is_slowmedia&&(streamtype==0)){
+				fast_switch=SOFTDEMUX_PARSE_MODE;
+			}
+		}
 	}
+
+    av_log(NULL, AV_LOG_INFO, "[%s]iformat->name[%s]fast_switch=%d streamtype=%lld\n", \
+		__FUNCTION__,ic->iformat->name,fast_switch,streamtype);
 	
-    av_log(NULL, AV_LOG_INFO, "[%s]fast_switch=%d streamtype=%lld\n", __FUNCTION__, fast_switch,streamtype);
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
     if(!strcmp(ic->iformat->name, "DRMdemux")) {       
