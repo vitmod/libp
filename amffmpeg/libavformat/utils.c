@@ -777,6 +777,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
     AVProbeData pd = {filename, NULL, 0,NULL};
     auto_switch_protol_t* newp=NULL;
     if (s->pb) {
+	  s->pb->is_segment_media = 0;	
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
         if (!s->iformat)
             return av_probe_input_buffer(s->pb, &s->iformat, filename, s, 0, 0);
@@ -789,6 +790,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
         return 0;
     if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
        return ret;
+    s->pb->is_segment_media = 0;		
     newp=try_get_mached_new_prot(s->pb,filename);
     if(newp!=NULL){
 			char *listfile;
