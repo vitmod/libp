@@ -1293,6 +1293,11 @@ int player_dec_init(play_para_t *p_para)
 			   stream_type=STREAM_ES;
 			   ret = PLAYER_SUCCESS;
 			}
+	   }else if(am_getconfig_bool("libplayer.ts.softdemux")){
+	   	log_print("configned all ts streaming used soft demux,used soft demux now.\n");
+	   	file_type=STREAM_FILE;
+		stream_type=STREAM_ES;
+		ret = PLAYER_SUCCESS;
 	   }
     }
    
