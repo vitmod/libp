@@ -25,7 +25,7 @@ int amlv4l_init(amvideo_dev_t *dev, int type,int width,int height,int fmt)
     v4l->type=V4L2_BUF_TYPE_VIDEO_CAPTURE;
     v4l->width=width;
     v4l->height=height;
-    v4l->pixformat=V4L2_PIX_FMT_RGB32;
+    v4l->pixformat=fmt;
     v4lfmt.type = v4l->type;
     v4lfmt.fmt.pix.width       = v4l->width; 
     v4lfmt.fmt.pix.height      =  v4l->height;
