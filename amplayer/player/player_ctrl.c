@@ -1457,3 +1457,145 @@ char *player_status2str(player_status status)
     }
 }
 
+static char* player_vformat2str(vformat_t value)
+{
+    switch(value) {
+        case VFORMAT_MPEG12:
+            return "VFORMAT_MPEG12";
+            
+        case VFORMAT_MPEG4:
+            return "VFORMAT_MPEG4";
+            
+        case VFORMAT_H264:
+            return "VFORMAT_H264";
+            
+        case VFORMAT_MJPEG:
+            return "VFORMAT_MJPEG";
+            
+        case VFORMAT_REAL:
+            return "VFORMAT_REAL";
+            
+        case VFORMAT_JPEG:
+            return "VFORMAT_JPEG";
+            
+        case VFORMAT_VC1:
+            return "VFORMAT_VC1";
+            
+        case VFORMAT_AVS:
+            return "VFORMAT_AVS";
+            
+        case VFORMAT_SW:
+            return "VFORMAT_SW";
+            
+        case VFORMAT_H264MVC:
+            return "VFORMAT_H264MVC";
+            
+        default:
+            return "NOT_SUPPORT VFORMAT";
+    }
+    return NULL;
+}
+
+static char* player_aformat2str(aformat_t value)
+{
+    switch(value) {
+        case AFORMAT_MPEG:
+            return "AFORMAT_MPEG";
+            
+        case AFORMAT_PCM_S16LE:
+            return "AFORMAT_PCM_S16LE";
+            
+        case AFORMAT_AAC:
+            return "AFORMAT_AAC";
+            
+        case AFORMAT_AC3:
+            return "AFORMAT_AC3";
+            
+        case AFORMAT_ALAW:
+            return "AFORMAT_ALAW";
+            
+        case AFORMAT_MULAW:
+            return "AFORMAT_MULAW";
+            
+        case AFORMAT_DTS:
+            return "AFORMAT_DTS";
+            
+       case AFORMAT_PCM_S16BE:
+            return "AFORMAT_PCM_S16BE";
+            
+        case AFORMAT_FLAC:
+            return "AFORMAT_FLAC";
+            
+        case AFORMAT_COOK:
+            return "AFORMAT_COOK";
+            
+        case AFORMAT_PCM_U8:
+            return "AFORMAT_PCM_U8";
+            
+        case AFORMAT_ADPCM:
+            return "AFORMAT_ADPCM";        
+            
+         case AFORMAT_AMR:
+            return "AFORMAT_AMR";
+            
+        case AFORMAT_RAAC:
+            return "AFORMAT_RAAC";
+            
+        case AFORMAT_WMA:
+            return "AFORMAT_WMA";   
+            
+        case AFORMAT_WMAPRO:
+            return "AFORMAT_WMAPRO";
+            
+        case AFORMAT_PCM_BLURAY:
+            return "AFORMAT_PCM_BLURAY";
+            
+        case AFORMAT_ALAC:
+            return "AFORMAT_ALAC";
+            
+        case AFORMAT_VORBIS:
+            return "AFORMAT_VORBIS";
+            
+        case AFORMAT_AAC_LATM:
+            return "AFORMAT_AAC_LATM";
+            
+        case AFORMAT_APE:
+            return "AFORMAT_APE";       
+            
+        case AFORMAT_EAC3:
+            return "AFORMAT_EAC3";       
+        
+        default:
+            return "NOT_SUPPORT AFORMAT";
+    } 
+    return NULL;
+}
+/* --------------------------------------------------------------------------*/
+/**
+ * @function    player_value2str
+ *
+ * @brief       convert player state value to string
+ *
+ * @param[in]  char *key valuetype
+ *                       key:  status  player status; 
+*                                vformat video format; 
+*                                aformat aduio format
+ * @param[in]  int value   which need convert to string  
+ *
+ * @return      player status details strings
+ *
+ * @details
+ */
+/* --------------------------------------------------------------------------*/
+char *player_value2str(char *key, int value)
+{
+    if(strcasecmp(key, "status") == 0)         
+        return player_status2str((player_status)value);
+    else if(strcasecmp(key, "vformat") == 0) 
+        return player_vformat2str((vformat_t)value);
+    else if(strcasecmp(key, "aformat") == 0)
+        return player_aformat2str((aformat_t)value);
+     else
+        return ("INVALID KEYWORDS");    
+}
+
