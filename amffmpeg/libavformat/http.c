@@ -681,7 +681,7 @@ errors:
 		}
 
 	}
-	if(len<0 && len!=AVERROR(EAGAIN)&& err_retry-->0 && !url_interrupt_cb())
+	if(len<0 && len!=AVERROR(EAGAIN)&&!h->is_segment_media&&err_retry-->0 && !url_interrupt_cb())
 	{		
 		av_log(h, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
 		http_reopen_cnx(h,-1);
