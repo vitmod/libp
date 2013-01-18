@@ -1469,9 +1469,7 @@ int GL_2X_scale(int mSwitch)
 			write(scaleaxisOsd0File, writedata, strlen(writedata));
 
 			memset(writedata,0,strlen(writedata));
-			sprintf(writedata,"8 %d %d",
-							  (vaxis_width/2),
-							  vaxis_height);
+			sprintf(writedata,"8");
 			write(request2XScaleFile, writedata, strlen(writedata));
 			write(scaleaxisOsd1File, "1280 720 1920 1080", strlen("1280 720 1920 1080"));
 			write(scaleOsd1File, "0x10001", strlen("0x10001"));
