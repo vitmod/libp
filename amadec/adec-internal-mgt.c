@@ -954,7 +954,6 @@ int audiodec_init(aml_audio_dec_t *audec)
     set_audio_decoder(audec);
     audec->format_changed_flag=0;
 	
-	property_set("sys.amplayer.drop_pcm", "true");
 	if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
 		if((!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag))
 		{
