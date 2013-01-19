@@ -70,6 +70,7 @@ struct aml_audio_dec {
 	int format_changed_flag;
 	unsigned dspdec_not_supported;//check some profile that audiodsp decoder can not support,we switch to arm decoder	
 	int droppcm_flag;				// drop pcm flag, if switch audio (1)
+	int no_first_apts;				// if can't get the first apts (1), default (0)
 };
 
 //from amcodec

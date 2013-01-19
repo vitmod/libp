@@ -97,7 +97,7 @@ int adec_pts_start(aml_audio_dec_t *audec)
         audec->avsync_threshold = SYSTIME_CORRECTION_THRESHOLD;
         adec_print("use default av sync threshold!\n");
     }
-    adec_print("av sync threshold is %d \n", audec->avsync_threshold);
+    adec_print("av sync threshold is %d , no_first_apts=%d,\n", audec->avsync_threshold, audec->no_first_apts);
 
     dsp_ops->last_pts_valid = 0;
 	
@@ -120,24 +120,42 @@ int adec_pts_start(aml_audio_dec_t *audec)
 
     usleep(1000);
 
-    pts = adec_calc_pts(audec);
-    if (pts == -1) {
+	if (audec->no_first_apts) {
+		fd = open(TSYNC_APTS, O_RDONLY);
+		if (fd < 0) {
+			adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
+			return -1;
+		}
+		
+		read(fd, buf, sizeof(buf));
+		if (sscanf(buf, "0x%lx", &pts) < 1) {
+			adec_print("unable to get vpts from: %s", buf);
+			return -1;
+		}
+		close(fd);
 
-        adec_print("pts==-1");
+		set_tsync_enable(0);
+	} else {
+	    pts = adec_calc_pts(audec);
+		
+	    if (pts == -1) {
 
-        fd = open(TSYNC_APTS, O_RDONLY);
-        if (fd < 0) {
-            adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
-            return -1;
-        }
+	        adec_print("pts==-1");
 
-        read(fd, buf, sizeof(buf));
-        close(fd);
-        if (sscanf(buf, "0x%lx", &pts) < 1) {
-            adec_print("unable to get apts from: %s", buf);
-            return -1;
-        }
-    }
+	        fd = open(TSYNC_APTS, O_RDONLY);
+	        if (fd < 0) {
+	            adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
+	            return -1;
+	        }
+
+	        read(fd, buf, sizeof(buf));
+	        close(fd);
+	        if (sscanf(buf, "0x%lx", &pts) < 1) {
+	            adec_print("unable to get apts from: %s", buf);
+	            return -1;
+	        }
+	    }
+	}
 
     adec_print("audio pts start from 0x%lx", pts);
 

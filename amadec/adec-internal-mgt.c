@@ -134,12 +134,49 @@ static void start_adec(aml_audio_dec_t *audec)
     int ret;
     audio_out_operations_t *aout_ops = &audec->aout_ops;
     dsp_operations_t *dsp_ops = &audec->adsp_ops;
+	int fd=0;
+	unsigned long  vpts,apts;
+	int times=0;
+    char buf[32];
+	apts = vpts = 0;
 
+	audec->no_first_apts = 0;
     if (audec->state == INITTED) {
         audec->state = ACTIVE;
 
-        while ((!audiodsp_get_first_pts_flag(dsp_ops)) && (!audec->need_stop)) {
-            adec_print("wait first pts checkin complete !");
+        while ((!audiodsp_get_first_pts_flag(dsp_ops)) && (!audec->need_stop) && (!audec->no_first_apts)) {
+            adec_print("wait first pts checkin complete times=%d,!\n",times);
+			times++;
+
+			if (times>=5) {
+				// read vpts
+				fd = open(TSYNC_VPTS, O_RDONLY);
+				if (fd < 0) {
+					adec_print("unable to open file %s,\n", TSYNC_VPTS);
+					return -1;
+				}
+				
+				read(fd, buf, sizeof(buf));
+				if (sscanf(buf, "0x%lx", &vpts) < 1) {
+					adec_print("unable to get vpts from: %s", buf);
+					return -1;
+				}
+				close(fd);
+
+				// save vpts to apts
+				adec_print("## can't get first apts, save vpts to apts,vpts=%lx, \n",vpts);
+				fd = open(TSYNC_APTS, O_RDWR);
+			    if (fd < 0) {
+			        adec_print("unable to open file %s,\n", TSYNC_APTS);
+			        return -1;
+			    }
+
+			    sprintf(buf, "0x%lx", vpts);
+			    write(fd, buf, strlen(buf));
+				close(fd);
+
+				audec->no_first_apts = 1;
+			}
             usleep(100000);
         }
          /*Since audio_track->start consumed too much time 
