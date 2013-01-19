@@ -313,6 +313,11 @@ int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *h
 	if(headers){
 		(*puc)->headers=av_strdup(headers);
 	}
+    if(flags&URL_SEGMENT_MEDIA){	 
+        (*puc)->is_segment_media = 1;
+    }else{       
+	 (*puc)->is_segment_media = 0;
+    }
     ret = ffurl_connect(*puc);
     if(http_error_flag) {
         *http_error_flag = 0;

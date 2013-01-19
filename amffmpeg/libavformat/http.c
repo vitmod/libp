@@ -502,7 +502,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);	
     if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek)
-        &&!has_header(headers, "\r\nRange: ")/*&&!s->hd->is_streamed*/)
+        &&!has_header(headers, "\r\nRange: ")&&!h->is_segment_media/*&&!s->hd->is_streamed*/)
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: ")&&!has_header(headers, "\r\nConnection: "))
@@ -681,7 +681,7 @@ errors:
 		}
 
 	}
-	if(len<0 && len!=AVERROR(EAGAIN)&& err_retry-->0 && !url_interrupt_cb())
+	if(len<0 && len!=AVERROR(EAGAIN)&&!h->is_segment_media&&err_retry-->0 && !url_interrupt_cb())
 	{		
 		av_log(h, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
 		http_reopen_cnx(h,-1);

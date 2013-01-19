@@ -68,6 +68,7 @@ typedef struct {
     int is_first_read;
     int is_ts_file;
     int livets_addhead;
+    int ignore_http_range_req;
     struct list_mgt *m3u_mgt;
 } CacheHttpContext;
 
@@ -78,6 +79,9 @@ static int CacheHttp_ffurl_open_h(URLContext ** h, const char * filename, int fl
 
 static int CacheHttp_advanced_ffurl_open_h(URLContext ** h,const char * filename, int flags, const char * headers, int * http,CacheHttpContext* ctx){
     if(ctx->ktype == KEY_NONE){
+	  if(ctx->ignore_http_range_req){
+		flags|=URL_SEGMENT_MEDIA;
+	  }
         return CacheHttp_ffurl_open_h(h, filename, flags,headers, http);
     }else{//crypto streaming
         int ret = -1;
@@ -85,7 +89,9 @@ static int CacheHttp_advanced_ffurl_open_h(URLContext ** h,const char * filename
         if ((ret = ffurl_alloc(&input, filename, AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK)) < 0){
             return ret;    
         }
-        
+        if(ctx->ignore_http_range_req){
+		input->is_segment_media = 1;
+	  }
         av_set_string3(input->priv_data, "key", ctx->key, 0, NULL);
         av_set_string3(input->priv_data, "iv", ctx->iv, 0, NULL);
         if ((ret = ffurl_connect(input)) < 0) {
@@ -183,6 +189,7 @@ int CacheHttp_Open(void ** handle,const char* headers,void* arg)
     s->is_first_read = 1;
 	s->livets_addhead=0;
 	s->is_ts_file=0;
+    s->ignore_http_range_req = 0;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     float value=0.0;
@@ -199,7 +206,9 @@ int CacheHttp_Open(void ** handle,const char* headers,void* arg)
 	if ((am_getconfig_bool("libplayer.netts.recalcpts"))){
 		s->livets_addhead=1;
 	}
-
+    if ((am_getconfig_bool("libplayer.hls.ignore_range"))){
+        s->ignore_http_range_req=1;
+    }
 	s->EXIT = 0;
     s->EXITED = 0;
     s->RESET = 0;
@@ -531,7 +540,7 @@ OPEN_RETRY:
              }          
         }
 
-        if(h && s->seek_flag) {
+        if(h && s->seek_flag&&!s->ignore_http_range_req) {
             int64_t cur_pos = CacheHttp_ffurl_seek(h, 0, SEEK_CUR);
             int64_t pos_ret = CacheHttp_ffurl_seek(h, s->seek_pos-cur_pos, SEEK_CUR);
             av_log(NULL,AV_LOG_INFO,"--------------> cachehttp_seek   seek_pos=%lld, pos_ret=%lld", s->seek_pos, pos_ret);
@@ -620,7 +629,7 @@ OPEN_RETRY:
                             s->fifo->wptr = s->fifo->buffer;
                         s->fifo->wndx += left;
                         s->item_pos += left;
-                   } else if(left == AVERROR(EAGAIN) || (left < 0 && s->have_list_end&& left != AVERROR_EOF)) {
+                   } else if(left == AVERROR(EAGAIN) || (left < 0 &&!s->ignore_http_range_req&& s->have_list_end&& left != AVERROR_EOF)) {
                         pthread_mutex_unlock(&s->read_mutex);
                         continue;
                    } else {
