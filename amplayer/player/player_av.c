@@ -1626,8 +1626,8 @@ int write_av_packet(play_para_t *para)
 			if (para->vstream_info.has_video && para->astream_info.has_audio
 				&& para->astream_num > 1 && para->playctrl_info.raw_mode) {
 				char value[PROPERTY_VALUE_MAX]={0};
-				float vbuf_threshold = 0.5;
-				float abuf_threshold = 0.2;
+				float vbuf_threshold = 0.8;
+				float abuf_threshold = 0.6;
 				
 				if (property_get("media.amplayer.vbufthreshold", value, NULL) > 0) 
 					vbuf_threshold = atof(value);
