@@ -74,6 +74,7 @@ typedef struct {
     int is_broadcast;
     int read_seek_count;
     void * bandwidth_measure;	
+    char hosname[1024];    
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
@@ -156,8 +157,10 @@ static int http_open_cnx(URLContext *h)
     }
     if (port < 0)
         port = 80;
- 
+    
     ff_url_join(buf, sizeof(buf), "tcp", NULL, hostname, port, NULL);
+    strcpy(s->hosname, hostname);
+    av_log(h, AV_LOG_INFO, "s->hostname ,%s\n",s->hosname);
     if (!s->hd) {      
         err = ffurl_open(&hd, buf, AVIO_FLAG_READ_WRITE);
         if (err < 0){
@@ -405,8 +408,16 @@ static int process_line(URLContext *h, char *line, int line_count,
         while (isspace(*p))
             p++;
         if (!strcasecmp(tag, "Location")) {
-	      memset(s->location,0,MAX_URL_SIZE);		
-            strcpy(s->location, p);
+	      memset(s->location,0,MAX_URL_SIZE);
+	     if(strncmp(p,"http",4)==0)  
+             strcpy(s->location, p);
+           else{
+              strcpy(s->location,"http://");
+              av_strlcat(s->location, s->hosname,sizeof(s->location));
+              av_strlcat(s->location, p,sizeof(s->location));
+           }
+            av_log(h, AV_LOG_ERROR, "s->location=%s\n",s->location);
+      
             *new_location = 1;
         } else if (!strcasecmp (tag, "Content-Length") && s->filesize == -1) {
             s->filesize = atoll(p);
@@ -557,6 +568,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
             return AVERROR(EIO);
 
         av_dlog(NULL, "header='%s'\n", line);
+		av_dlog(NULL, "hostname='%s'\n", s->hostname);
 		
         err = process_line(h, line, s->line_count, new_location);
 		
