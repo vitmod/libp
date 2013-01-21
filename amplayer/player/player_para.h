@@ -39,7 +39,6 @@ typedef struct {
     unsigned int    video_rotation_degree;
     unsigned int    video_codec_rate;
     vdec_type_t     video_codec_type;
-    int             vdec_buf_len;
     int             extradata_size;
     uint8_t             *extradata;
 } v_stream_info_t;
@@ -54,7 +53,6 @@ typedef struct {
     int             audio_samplerate;
     int             check_first_pts;
     int64_t         start_time;
-    int             adec_buf_len;
     float           audio_duration;
     int             extradata_size;
     uint8_t         *extradata;

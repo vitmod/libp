@@ -547,7 +547,7 @@ unsigned int get_pts_video(play_para_t *p_para)
     return value;
 }
 
-static unsigned int get_pts_audio(play_para_t *p_para)
+unsigned int get_pts_audio(play_para_t *p_para)
 {
     int handle;
     int size;
@@ -794,7 +794,7 @@ static void update_current_time(play_para_t *p_para)
             }
             log_debug("[update_current_time:%d]time=%d discontinue=%d\n", __LINE__, time / PTS_FREQ, p_para->discontinue_point);
             if (p_para->discontinue_point != 0) {
-                log_print("[update_current_time:%d]time=%d dpoint=%d  p_para->discontinue_flag=%d\n", __LINE__, time / PTS_FREQ,
+                log_debug("[update_current_time:%d]time=%d dpoint=%d  p_para->discontinue_flag=%d\n", __LINE__, time / PTS_FREQ,
                           p_para->discontinue_point, p_para->discontinue_flag);
                 if (p_para->pFormatCtx && p_para->pFormatCtx->pb &&
                     url_support_time_seek(p_para->pFormatCtx->pb) &&
@@ -865,33 +865,39 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
     int vlimit = 0;
 
     if (p_para->vstream_info.has_video) {
-        if ((p_para->vstream_info.video_format == VFORMAT_MPEG4) &&
-            (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_H263)) {
-            vlimit = RESERVE_VIDEO_SIZE << 2;
-        } else if (p_para->vstream_info.video_format == VFORMAT_MJPEG) {
-            vlimit = RESERVE_VIDEO_SIZE >> 2;
-        } else {
-            vlimit = RESERVE_VIDEO_SIZE;
-        }
-        if (vbuf->data_len < vlimit) {
-            log_print("[%s:%d]vbuf=0x%x	(limit=0x%x) video_low_buffer\n", __FUNCTION__, __LINE__, vbuf->data_len, vlimit);
-            p_para->playctrl_info.video_low_buffer = 1;
+        if (!p_para->playctrl_info.video_low_buffer ) {
+            if ((p_para->vstream_info.video_format == VFORMAT_MPEG4) &&
+                (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_H263)) {
+                vlimit = RESERVE_VIDEO_SIZE << 2;
+            } else if (p_para->vstream_info.video_format == VFORMAT_MJPEG) {
+                vlimit = RESERVE_VIDEO_SIZE >> 2;
+            } else {
+                vlimit = RESERVE_VIDEO_SIZE;
+            }
+            if (vbuf->data_len < vlimit) {
+                log_print("[%s:%d]vbuf=0x%x	(limit=0x%x) video_low_buffer\n", __FUNCTION__, __LINE__, vbuf->data_len, vlimit);
+                p_para->playctrl_info.video_low_buffer = 1;
+            }
         }
     } else {
         p_para->playctrl_info.video_end_flag = 1;
     }
 
-    if ((p_para->astream_info.has_audio && abuf->data_len < RESERVE_AUDIO_SIZE) ||
-        (!p_para->astream_info.has_audio)) {
-        if (p_para->astream_info.has_audio) {
-            log_print("[%s:%d]abuf=0x%x	(limit=0x%x) audio_low_buffer\n", __FUNCTION__, __LINE__, abuf->data_len, RESERVE_AUDIO_SIZE);
+    if (p_para->astream_info.has_audio) {
+        if(!p_para->playctrl_info.audio_low_buffer) {
+            if(abuf->data_len < RESERVE_AUDIO_SIZE) {        
+                log_print("[%s:%d]abuf=0x%x	(limit=0x%x) audio_low_buffer\n", __FUNCTION__, __LINE__, abuf->data_len, RESERVE_AUDIO_SIZE);
+                p_para->playctrl_info.audio_low_buffer = 1;
+            } else if (p_para->astream_info.audio_format == AFORMAT_WMAPRO) {
+                int frame_size = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->block_align;
+                if (abuf->data_len < frame_size) {
+                    p_para->playctrl_info.audio_low_buffer = 1;
+                    log_print("[%s:%d]wmapro audio audio low buffer\n", __FUNCTION__, __LINE__);
+                }
+            }
         }
-        p_para->playctrl_info.audio_low_buffer = 1;
-    } else if (p_para->astream_info.has_audio && p_para->astream_info.audio_format == AFORMAT_WMAPRO) {
-        int frame_size = p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->block_align;
-        if (abuf->data_len < frame_size) {
-            p_para->playctrl_info.audio_low_buffer = 1;
-        }
+    } else{
+        p_para->playctrl_info.audio_end_flag = 1;
     }
     //log_print("[%s:%d]abuf=0x%x   vbuf=0x%x\n", __FUNCTION__, __LINE__, abuf->data_len, abuf->data_len);
 
@@ -927,34 +933,49 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
 
 static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct buf_status *abuf)
 {
-    int check_flag = 0;
-    //log_print("[%s]vlevel=%.03f alevel=%.03f count=%d\n", __FUNCTION__, p_para->state.video_bufferlevel,p_para->state.audio_bufferlevel, p_para->check_end.end_count);
-    //if (check_time_interrupt(&p_para->check_end.old_time_ms, p_para->check_end.interval)) {
-    if (!p_para->playctrl_info.end_flag && (
-            (p_para->vstream_info.has_video && (p_para->state.video_bufferlevel < 0.04)) ||
-            (p_para->astream_info.has_audio && (p_para->state.audio_bufferlevel < 0.04)) ||
-            (p_para->astream_info.has_audio && p_para->astream_info.audio_format == AFORMAT_WMAPRO && abuf->data_len < p_para->pFormatCtx->streams[p_para->astream_info.audio_index]->codec->block_align)
-        )) {
+    int check_flag = 0;    
+    int result = 0;
+    int has_video = p_para->vstream_info.has_video;
+    int has_audio = p_para->astream_info.has_audio;   
+    int aidx = p_para->astream_info.audio_index;   
+    float vbuf_level = p_para->state.video_bufferlevel;
+    float abuf_level = p_para->state.audio_bufferlevel;
+    aformat_t audio_fmt = p_para->astream_info.audio_format;
+    AVStream *astream = p_para->pFormatCtx->streams[aidx];
+    int abuf_datalen= abuf->data_len;    
+    int aframe_size =astream->codec->block_align;
+
+    result = ((audio_fmt == AFORMAT_WMAPRO) &&(abuf_datalen <aframe_size));
+    result = result || (has_audio && (abuf_level < 0.04));
+    result = result || (has_video && (vbuf_level < 0.04));   
+    result = !p_para->playctrl_info.end_flag && result; 
+    if ( result) {
         //log_print("v:%d vlen=0x%x a:%d alen=0x%x count=%d, vrp 0x%x, arp 0x%x\n",
         //    p_para->vstream_info.has_video,vbuf->data_len, p_para->astream_info.has_audio,abuf->data_len,p_para->check_end.end_count,vbuf->read_pointer,abuf->read_pointer);
-        if (p_para->vstream_info.has_video) {
+        if (has_video) {
             if (p_para->vbuffer.rp_is_changed) {
                 p_para->check_end.end_count = CHECK_END_COUNT;
-            } else {
+            } else {    //video buffer rp not move
                 check_flag = 1;
-                log_print("[%s]vrp not move,vrp=vbufrp=0x%x,vlevel=%.03f cnt=%d\n", __FUNCTION__, vbuf->read_pointer, p_para->state.video_bufferlevel, p_para->check_end.end_count);
+                log_print("[%s]vrp not move,vrp=vbufrp=0x%x,vlevel=%.03f cnt=%d\n", __FUNCTION__, vbuf->read_pointer, vbuf_level, p_para->check_end.end_count);
             }
         }
-        if (p_para->astream_info.has_audio) {
-            if (p_para->astream_info.audio_format == AFORMAT_AMR || AFORMAT_PCM_S16LE == p_para->astream_info.audio_format || AFORMAT_APE == p_para->astream_info.audio_format || AFORMAT_MPEG == p_para->astream_info.audio_format || AFORMAT_AAC == p_para->astream_info.audio_format || AFORMAT_FLAC	== p_para->astream_info.audio_format)
+        if (has_audio) {
+            if (audio_fmt == AFORMAT_AMR || 
+                audio_fmt ==AFORMAT_PCM_S16LE || 
+                audio_fmt == AFORMAT_APE  ||
+                audio_fmt == AFORMAT_MPEG  || 
+                audio_fmt == AFORMAT_AAC  || 
+                audio_fmt == AFORMAT_FLAC){
                 if (p_para->state.current_time < p_para->state.full_time && check_audio_output()) {
                     p_para->check_end.end_count = CHECK_END_COUNT;
                 }
-            if (p_para->abuffer.rp_is_changed) {
-                p_para->check_end.end_count = CHECK_END_COUNT;
-            } else {
-                check_flag = 1;
-                log_print("[%s]arp not move,arp=abufrp=0x%x alevel=%.03f cnt=%d\n", __FUNCTION__, abuf->read_pointer, p_para->state.audio_bufferlevel, p_para->check_end.end_count);
+                if (p_para->abuffer.rp_is_changed) {
+                    p_para->check_end.end_count = CHECK_END_COUNT;
+                } else {
+                    check_flag = 1;
+                    log_print("[%s]arp not move,arp=abufrp=0x%x alevel=%.03f cnt=%d\n", __FUNCTION__, abuf->read_pointer, p_para->state.audio_bufferlevel, p_para->check_end.end_count);
+                }
             }
         }
 
@@ -1171,6 +1192,11 @@ static void update_av_sync_for_audio(play_para_t *p_para)
     if (!p_para->abuffer.rp_is_changed && !check_time_interrupt(&p_para->playctrl_info.avsync_check_old_time, 20)) {
         return ;    //no changed and time is no changed.do count---,1S no changesd..20*50
     }
+    if(p_para->playctrl_info.video_low_buffer == 1 || 
+        p_para->playctrl_info.audio_low_buffer == 1) {
+        return;
+    }
+    
     if (p_para->playctrl_info.audio_ready &&
         p_para->vstream_info.has_video &&
         p_para->astream_info.has_audio &&
