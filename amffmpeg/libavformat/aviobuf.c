@@ -1133,9 +1133,10 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
        (*s)->url_setcmd = h->prot->url_setcmd;
 	(*s)->url_getinfo = h->prot->url_getinfo;
 	(*s)->reallocation=h->location;
-	 if (h->prot&&h->prot->name &&(!strncmp( h->prot->name, "cmf", 3) || !strncmp( h->prot->name, "list", 4))) {
-	 	(*s)->iscmf=1;
-	 }
+	
+	if (h->prot&&h->prot->name &&(!strncmp( h->prot->name, "cmf", 3) || !strncmp( h->prot->name, "list", 4) || ((h->priv_flags&0xFFFF)==FLAGS_ISCMF))) {
+		(*s)->iscmf=1;
+	}
     (*s)->seekable = h->is_streamed ? 0 : AVIO_SEEKABLE_NORMAL;
     (*s)->max_packet_size = max_packet_size;
     if(h->prot) {

@@ -143,7 +143,12 @@ typedef struct URLContext {
 	char *location;
 	int seekflags;
 	int is_segment_media;
+    int priv_flags;	
 } URLContext;
+
+#define FLAGS_ISCMF	1<<0 
+
+
 
 #define URL_PROTOCOL_FLAG_NESTED_SCHEME 1 /*< The protocol name can be the first part of a nested protocol scheme */
 
