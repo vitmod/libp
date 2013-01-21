@@ -861,6 +861,9 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
 		RLOG("Player bandwidth scale up,target:%0.3f,current:%0.3f\n",up_scale,scaleup_per);
 	  }
 	  if(scaleup_per<up_scale){
+		if(c->strategy_down_counts>0){
+			c->strategy_down_counts=0;
+		}	  	
 		*measued_bw  = measure_bw;
 		return 0;
 	  }
