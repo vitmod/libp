@@ -567,8 +567,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
         if (http_get_line(s, line, sizeof(line)) < 0)
             return AVERROR(EIO);
 
-        av_dlog(NULL, "header='%s'\n", line);
-		av_dlog(NULL, "hostname='%s'\n", s->hostname);
+        av_dlog(NULL, "header='%s'\n", line);	
 		
         err = process_line(h, line, s->line_count, new_location);
 		
