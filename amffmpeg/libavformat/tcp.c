@@ -71,7 +71,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
         }
     }
     memset(&hints, 0, sizeof(hints));
-    if(am_getconfig_bool("media.libplayer.ipv4only"))	
+    if(am_getconfig_bool_def("media.libplayer.ipv4only",1))	
     		hints.ai_family = AF_INET;
     else
 		hints.ai_family = AF_UNSPEC;	
