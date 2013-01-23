@@ -633,8 +633,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
     //av_log(NULL, AV_LOG_INFO, "Generate ipad http request media headers,\r\n%s\n", headers);
     
     mgt->ipad_req_media_headers = strndup(headers, 1024);
-
-    if ((ret = list_open_internet(&mgt->cur_uio, mgt, mgt->filename, flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
+    if ((am_getconfig_bool("libplayer.hls.ignore_range"))){
+        mgt->flags|=URL_SEGMENT_MEDIA;
+    }
+    if ((ret = list_open_internet(&mgt->cur_uio, mgt, mgt->filename, mgt->flags | URL_MINI_BUFFER | URL_NO_LP_BUFFER)) != 0) {
         av_free(mgt);
         return ret;
     }

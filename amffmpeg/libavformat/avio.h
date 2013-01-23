@@ -228,7 +228,9 @@ attribute_deprecated int url_poll(URLPollEntry *poll_table, int n, int timeout);
 
 #define URL_MINI_BUFFER	0x20000000
 #define URL_NO_LP_BUFFER	0x40000000
-#define URL_SEGMENT_MEDIA  0x50000000
+
+
+#define URL_SEGMENT_MEDIA  0x2000
 
 /**
  * @}
