@@ -544,7 +544,7 @@ reload:
         goto error;
     } else {
        
-        if (mgt->item_num == 0 && mgt->n_variants > 0) { //simplely choose server,mabye need sort variants when got it from server.
+        if (mgt->item_num == 0 && mgt->n_variants > 0&&NULL== mgt->playing_variant) { //simplely choose server,mabye need sort variants when got it from server.
             if (bio) {
                 url_fclose(bio);
                 bio = NULL;
@@ -1090,7 +1090,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
     mgt->measure_bw = fast_bps;
 	
     if (mgt->n_variants > 0&&mgt->codec_buf_level>=0) { //vod,have mulit-bandwidth streams
-        //av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
+        av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
         int is_switch = select_best_variant(mgt);
         if (is_switch>0) { //will remove this tricks.
             
@@ -1139,10 +1139,10 @@ reload:
 
         if (mgt->n_variants > 0 && NULL != mgt->playing_variant) {
             url = mgt->playing_variant->url;
-            //av_log(NULL, AV_LOG_INFO, "list open variant url:%s,bandwidth:%d\n", url, mgt->playing_variant->bandwidth);
+            av_log(NULL, AV_LOG_INFO, "list open variant url:%s,bandwidth:%d\n", url, mgt->playing_variant->bandwidth);
         } else {
             url = mgt->filename;
-            //av_log(NULL, AV_LOG_INFO, "list open url:%s\n", url);
+            av_log(NULL, AV_LOG_INFO, "list open url:%s\n", url);
         }
 
         if (!mgt->have_list_end && (av_gettime() - mgt->last_load_time < reload_interval)&&mgt->item_num>0) {
