@@ -943,13 +943,14 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
     aformat_t audio_fmt = p_para->astream_info.audio_format;
     AVStream *astream = p_para->pFormatCtx->streams[aidx];
     int abuf_datalen= abuf->data_len;    
-    int aframe_size =astream->codec->block_align;
 
-    result = ((audio_fmt == AFORMAT_WMAPRO) &&(abuf_datalen <aframe_size));
-    result = result || (has_audio && (abuf_level < 0.04));
-    result = result || (has_video && (vbuf_level < 0.04));   
-    result = !p_para->playctrl_info.end_flag && result; 
-    if ( result) {
+    if(has_video)
+        result = vbuf_level < 0.04;
+    if(has_audio)
+        result = result && (abuf_level < 0.04);
+    if(has_audio && audio_fmt == AFORMAT_WMAPRO)
+        result = result && (abuf_datalen < astream->codec->block_align);    
+    if (!p_para->playctrl_info.end_flag && result) {
         //log_print("v:%d vlen=0x%x a:%d alen=0x%x count=%d, vrp 0x%x, arp 0x%x\n",
         //    p_para->vstream_info.has_video,vbuf->data_len, p_para->astream_info.has_audio,abuf->data_len,p_para->check_end.end_count,vbuf->read_pointer,abuf->read_pointer);
         if (has_video) {
