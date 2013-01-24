@@ -535,13 +535,22 @@ static int avi_write_header(play_para_t *para)
     int ret = -1;
     int index = para->vstream_info.video_index;
     am_packet_t *pkt = para->p_pkt;
-
+    AVCodecContext *avcodec;
+    
     if (-1 == index) {
         return PLAYER_ERROR_PARAM;
     }
 
     pStream = para->pFormatCtx->streams[index];
-    ret = avi_add_seqheader(pStream, pkt);
+    avcodec = pStream->codec;
+    
+    AVIStream *avi_stream = pStream->priv_data;
+    int seq_size = avi_stream->sequence_head_size;
+    if (seq_size > 0) 
+        ret = avi_add_seqheader(pStream, pkt);
+    else if(avcodec->extradata_size > 4)
+        ret = m4s2_dx50_mp4v_add_header(avcodec->extradata, avcodec->extradata_size, pkt);
+
     if (ret == PLAYER_SUCCESS) {
         if (para->vcodec) {
             pkt->codec = para->vcodec;
