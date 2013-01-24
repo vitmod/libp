@@ -84,6 +84,11 @@ static int player_para_release(play_para_t *para)
         }
     }
     ffmpeg_close_file(para);
+
+    if (para->playctrl_info.pause_flag) {
+        codec_resume(para->codec);     //clear pause state
+        para->playctrl_info.pause_flag = 0;
+    }
     if (para->decoder && para->decoder->release) {
         para->decoder->release(para);
         para->decoder = NULL;
@@ -1207,10 +1212,7 @@ release:
 release0:
     player_mate_release(player);
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
-    if (player->playctrl_info.pause_flag) {
-        codec_resume(player->codec);     //clear pause state
-        player->playctrl_info.pause_flag = 0;
-    }
+
     if (get_player_state(player) == PLAYER_ERROR) {
         if (player->playctrl_info.request_end_flag || check_stop_cmd(player) == 1) {
             /*we have a player end msg,ignore the error*/
