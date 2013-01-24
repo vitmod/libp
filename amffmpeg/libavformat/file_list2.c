@@ -770,7 +770,7 @@ static int hls_base_info_dump(struct list_mgt*  c){
         return -1;
     }
     RLOG("**********************hls power info dump start************************\n");
-    RLOG("***Playback url: %s\n",c->filename+1);
+    RLOG("***Playback url: %s\n",c->filename[0]=='s'?c->filename+1:c->filename);
     RLOG("***Is VOD or Live Streaming?,%s\n",c->have_list_end>0?"VOD":"Live");
     if(c->have_list_end>0){
         RLOG("***Duration:%d\n",c->full_time);
@@ -788,13 +788,13 @@ static int hls_base_info_dump(struct list_mgt*  c){
         RLOG("******Variants details:******\n");
         for(i = 0;i<c->n_variants;i++){
             if(c->variants[i]->priority>=0){
-                RLOG("***Index:%d,url:%s,bandwidth:%d\n",i,c->variants[i]->url+1,c->variants[i]->bandwidth);
+                RLOG("***Index:%d,url:%s,bandwidth:%d\n",i,c->variants[i]->url[0]=='s'?c->variants[i]->url+1:c->variants[i]->url,c->variants[i]->bandwidth);
 
             }else{
-                RLOG("***This variant can't playback,url:%s,bandwidth:%d\n",c->variants[i]->url,c->variants[i]->bandwidth);
+                RLOG("***This variant can't playback,index:%d,url:%s,bandwidth:%d\n",i,c->variants[i]->url[0]=='s'?c->variants[i]->url+1:c->variants[i]->url,c->variants[i]->bandwidth);
             }
         }
-        RLOG("***Current playing bandwidth:%d,index:%d\n",
+        RLOG("***Current playing bandwidth:%d,priority:%d\n",
             c->playing_variant->bandwidth,c->playing_variant->priority);
         int rpolicy = 0;
         rpolicy = get_adaptation_profile();
@@ -857,12 +857,20 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
         measure_bw*=net_sensitivity;
     }
     float up_scale=get_adaptation_ex_para(7);
-    if(c->playing_variant->priority<c->variants[c->n_variants-1]->priority&&measure_bw>c->playing_variant->bandwidth){
-        float scaleup_per = (float)(measure_bw-c->playing_variant->bandwidth)/(float)(c->variants[c->playing_variant->priority+1]->bandwidth-c->playing_variant->bandwidth);
+    if(measure_bw>c->playing_variant->bandwidth){
+	  struct variant* next_variant = NULL;
+	  if(c->variants[c->n_variants-1]->priority<0||c->variants[0]->priority<0||c->playing_variant->priority==(c->n_variants-1)){//included invalid item for playback.the variant priority will unequal to index.
+		next_variant = c->variants[c->playing_variant->priority]; 
+	  }else{
+		next_variant = c->variants[c->playing_variant->priority+1];
+	  }
+        float scaleup_per = (float)(measure_bw-c->playing_variant->bandwidth)/(float)(next_variant->bandwidth-c->playing_variant->bandwidth);
 	  if(c->debug_level>0){
 		RLOG("Player bandwidth scale up,target:%0.3f,current:%0.3f\n",up_scale,scaleup_per);
 	  }
-	  if(scaleup_per<up_scale){
+	  //ugly codes,just causes by variants included only audio track.
+	  if(scaleup_per<up_scale||(c->variants[c->n_variants-1]->priority>=0&&c->playing_variant->priority==c->variants[c->n_variants-1]->priority)
+	  	||(c->variants[c->n_variants-1]->priority<0&&c->n_variants-2>0&&c->playing_variant->priority==c->variants[c->n_variants-2]->priority)){
 		if(c->strategy_down_counts>0){
 			c->strategy_down_counts=0;
 		}	  	
@@ -1092,7 +1100,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
     mgt->measure_bw = fast_bps;
 	
     if (mgt->n_variants > 0&&mgt->codec_buf_level>=0) { //vod,have mulit-bandwidth streams
-        av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
+        //av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
         int is_switch = select_best_variant(mgt);
         if (is_switch>0) { //will remove this tricks.
             
@@ -1141,10 +1149,10 @@ reload:
 
         if (mgt->n_variants > 0 && NULL != mgt->playing_variant) {
             url = mgt->playing_variant->url;
-            av_log(NULL, AV_LOG_INFO, "list open variant url:%s,bandwidth:%d\n", url, mgt->playing_variant->bandwidth);
+            //av_log(NULL, AV_LOG_INFO, "list open variant url:%s,bandwidth:%d\n", url, mgt->playing_variant->bandwidth);
         } else {
             url = mgt->filename;
-            av_log(NULL, AV_LOG_INFO, "list open url:%s\n", url);
+            //av_log(NULL, AV_LOG_INFO, "list open url:%s\n", url);
         }
 
         if (!mgt->have_list_end && (av_gettime() - mgt->last_load_time < reload_interval)&&mgt->item_num>0) {
@@ -1216,7 +1224,7 @@ switchnext:
         if(next->file!=NULL){
             if(mgt->debug_level>1){
                 RLOG("Player switch to new item,url =%s,total item=%d,start=%.4lf,duration=%.4lf,index:%d,seq:%d\n",
-                   next->file, mgt->item_num, next->start_time, next->duration,next->index,next->seq);
+                   next->file[0]=='s'?next->file+1:next->file, mgt->item_num, next->start_time, next->duration,next->index,next->seq);
 
             }
         }       
