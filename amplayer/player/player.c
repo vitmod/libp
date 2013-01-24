@@ -262,11 +262,7 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
         para->playctrl_info.end_flag = 1;
         para->playctrl_info.loop_flag = 0;
         para->playctrl_info.search_flag = 0;
-        para->playctrl_info.request_end_flag = 1;
-        if (para->playctrl_info.pause_flag) {
-            codec_resume(para->codec);     //clear pause state
-            para->playctrl_info.pause_flag = 0;
-        }
+        para->playctrl_info.request_end_flag = 1;      
         para->playctrl_info.fast_forward = 0;
         para->playctrl_info.fast_backward = 0;
     } else if (msg->ctrl_cmd & CMD_SEARCH) {
@@ -1211,6 +1207,10 @@ release:
 release0:
     player_mate_release(player);
     log_print("\npid[%d]player_thread release0 begin...(sta:0x%x)\n", player->player_id, get_player_state(player));
+    if (player->playctrl_info.pause_flag) {
+        codec_resume(player->codec);     //clear pause state
+        player->playctrl_info.pause_flag = 0;
+    }
     if (get_player_state(player) == PLAYER_ERROR) {
         if (player->playctrl_info.request_end_flag || check_stop_cmd(player) == 1) {
             /*we have a player end msg,ignore the error*/
