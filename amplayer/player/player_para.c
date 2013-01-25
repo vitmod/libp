@@ -598,8 +598,11 @@ static void get_stream_info(play_para_t *p_para)
                     
                 }
             }
+			char prop_value[PROPERTY_VALUE_MAX];
+			property_get("audio.track.default.chinese", prop_value, NULL);
+			//log_print("[%s:%d]audio.track.default.chinese is %s\n", __FUNCTION__,  __LINE__, prop_value);
             /* find chinese language audio track */
-            if (t = av_dict_get(pStream->metadata, "language", NULL, 0)) {
+            if (strncmp(prop_value, "false", 5)&&(t = av_dict_get(pStream->metadata, "language", NULL, 0))) {
                 if (audio_format != AFORMAT_UNSUPPORT && !strncmp(t->value, "chi", 3)) {
                     if (t = av_dict_get(pFormat->streams[temp_aidx]->metadata, "language", NULL, 0)) {
                         if (!strncmp(t->value, "chi", 3)) {
