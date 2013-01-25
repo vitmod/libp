@@ -92,7 +92,7 @@ int codec_set_sync_audio_discont_diff(codec_para_t *pcodec, unsigned long discon
 int codec_set_sync_video_discont_diff(codec_para_t *pcodec, unsigned long discontinue_diff);
 int codec_get_sub_num(codec_para_t *pcodec);
 int codec_get_sub_info(codec_para_t *pcodec, subtitle_info_t *sub_info);
-
 int codec_set_av_threshold(codec_para_t *pcodec, int threshold);
+void codec_tsync_init(codec_para_t *pcodec);
 
 #endif
