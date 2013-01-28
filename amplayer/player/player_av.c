@@ -2499,6 +2499,7 @@ void player_switch_audio(play_para_t *para)
     para->astream_info.audio_channel = pCodecCtx->channels;
     para->astream_info.audio_samplerate = pCodecCtx->sample_rate;
     para->astream_info.audio_index = audio_index;
+    para->media_info.stream_info.cur_audio_index = audio_index;
     para->astream_info.audio_pid = pstream->id;
 
     if (!para->playctrl_info.raw_mode
