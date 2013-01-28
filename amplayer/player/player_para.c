@@ -1526,7 +1526,7 @@ int player_decoder_init(play_para_t *p_para)
         log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
 
-
+	codec_tsync_init(p_para->codec);
     return PLAYER_SUCCESS;
 failed:
     ffmpeg_close_file(p_para);
