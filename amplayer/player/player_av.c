@@ -158,7 +158,9 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
     case CODEC_ID_APE:
         format =    AFORMAT_APE;
         break;
-
+    case CODEC_ID_PCM_WIFIDISPLAY:
+    	format = AFORMAT_PCM_WIFIDISPLAY;
+        break;
     default:
         format = AFORMAT_UNSUPPORT;
         log_print("audio codec_id=0x%x\n", id);

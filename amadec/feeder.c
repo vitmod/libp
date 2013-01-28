@@ -171,7 +171,12 @@ static adec_audio_format_t get_audio_format(void)
         close(fd);
         return ADEC_AUDIO_FORMAT_APE;
     }
-
+    if (strncmp(format, "amadec_pcm_widi", 15) == 0) {
+        /*TODO: get format/channel numer/sample rate etc */
+        close(fd);
+        return ADEC_AUDIO_FORMAT_PCM_WIFIDISPLAY;
+    }
+    
     close(fd);
 
     adec_print("audio format unknow.");

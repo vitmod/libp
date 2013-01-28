@@ -109,6 +109,7 @@ static int switch_audiodsp(adec_audio_format_t fmt)
     case ADEC_AUDIO_FORMAT_PCM_S16LE:
     case ADEC_AUDIO_FORMAT_PCM_U8:
     case ADEC_AUDIO_AFORMAT_PCM_BLURAY:
+    case ADEC_AUDIO_FORMAT_PCM_WIFIDISPLAY:
         return MCODEC_FMT_PCM;
 
     case ADEC_AUDIO_FORMAT_WMA:
