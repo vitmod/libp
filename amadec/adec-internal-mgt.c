@@ -318,7 +318,8 @@ static void adec_flag_check(aml_audio_dec_t *audec)
 
     if (audec->auto_mute && (audec->state > INITTED) &&(audec->state != PAUSED)) {
         aout_ops->pause(audec);
-        adec_print("automute, puase audio out!\n");
+        adec_print("automute, pause audio out!\n");
+	 usleep(10000);			
         while ((!audec->need_stop) && track_switch_pts(audec)) {
             usleep(1000);
         }
