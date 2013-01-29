@@ -517,7 +517,7 @@ OPEN_RETRY:
              } else if((2 == http_code || 3 == http_code) && !s->have_list_end) {
                 usleep(1000*20);
                 goto OPEN_RETRY;
-             } else if(!s->have_list_end&&err ==AVERROR(EIO)){
+             } else if(!s->have_list_end&&!(1 == http_code ||2 == http_code||3 == http_code)&&err ==AVERROR(EIO)){
                 if(retry_num++ < HTTP_RETRY_TIMES) {//if live streaming,just keep on 2s.
                     usleep(WAIT_TIME);
                     goto OPEN_RETRY;
