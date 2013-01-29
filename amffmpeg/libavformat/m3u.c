@@ -430,7 +430,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
                if (url_interrupt_cb()) {
                        return -1;
                }
-		tmpitem.ktype = KEY_NONE;
+		tmpitem.ktype = KEY_NONE;	
 		ret = m3u_parser_line(mgt,line,&tmpitem);
 		if(ret>0)
 		{		
@@ -446,14 +446,18 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				need_prefix=1;
 				size_file+=prefixex_len;
 			}
-			item=av_malloc(sizeof(struct list_item)+size_file);
+			item=av_malloc(sizeof(struct list_item));
 			if(!item)
 				return AVERROR(ENOMEM);
 			memcpy(item,&tmpitem,sizeof(tmpitem));
 			item->file=NULL;
 			if(tmpitem.file)
 			{
-				item->file=&item[1];
+				item->file=av_mallocz(size_file);
+				if(item->file == NULL){
+					av_free(item);
+					return AVERROR(ENOMEM);
+				}
 				if(need_prefix){
 					if(tmpitem.file[0]=='/'){/*has '/',not need the dir */
 						strcpy(item->file,prefix);
@@ -514,9 +518,17 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				if(ret==0){
 					getnum++;
 					start_time+=item->duration;
-				}else{				      
+				}else{	
+					if(item->ktype == KEY_AES_128){
+						av_free(item->key_ctx);
+						item->key_ctx = NULL;
+					}
+					if(item->file!=NULL){
+						av_free(item->file);
+					}
 					av_free(item);
-                                 mgt->next_seq--;
+					item = NULL;
+                                mgt->next_seq--;
 				}
 				
 			}
@@ -524,7 +536,18 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			if((item->flags &ENDLIST_FLAG) && (item->flags < (1<<12)))
 			{
 				mgt->have_list_end=1;
+			}
 				break;
+			if(item->flags&INVALID_ITEM_FLAG){
+				if(item->ktype == KEY_AES_128){
+					av_free(item->key_ctx);
+					item->key_ctx = NULL;
+				}
+				if(item->file!=NULL){
+					av_free(item->file);
+				}
+				av_free(item);
+				item = NULL;				
 			}
 			memset(&tmpitem,0,sizeof(tmpitem));
 			tmpitem.seq=-1;

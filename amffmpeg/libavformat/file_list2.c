@@ -40,10 +40,6 @@
 static struct list_demux *list_demux_list = NULL;
 #define unused(x)   (x=x)
 
-#define LIVE_LIST_MAX 120
-#define SHRINK_LIVE_LIST_THRESHOLD (LIVE_LIST_MAX/3)
-static int list_shrink_live_list(struct list_mgt *mgt);
-
 
 #define SESSLEN 256
 static int generate_playback_session_id(char * ssid, int size);
@@ -216,13 +212,15 @@ static struct list_item* list_find_item_by_seq(struct list_mgt *mgt, int seq) {
 }
 int list_test_and_add_item(struct list_mgt *mgt, struct list_item*item)
 {
+#if 0 
+    /*don't judge same filename,just by seqence*/
     struct list_item *sameitem;
     sameitem = list_test_find_samefile_item(mgt, item);
     if (sameitem) {
         //av_log(NULL, AV_LOG_INFO, "list_test_and_add_item found same item\nold:%s[seq=%d]\nnew:%s[seq=%d]", sameitem->file, sameitem->seq, item->file, item->seq);
         return -1;/*found same item,drop it */
     }
-
+#endif
     list_add_item(mgt, item);
     return 0;
 }
@@ -247,16 +245,23 @@ static int list_del_item(struct list_mgt *mgt, struct list_item*item)
             item->next->prev = tmp;
         }
     }
+    if(mgt->debug_level>4){
+        RLOG("Remove this segment from list,index:%d,seq:%d,url:%s\n",item->index,item->seq,item->file[0]=='s'?item->file+1:item->file);
+    }
     mgt->item_num--;
     if (item->ktype == KEY_AES_128) {
         av_free(item->key_ctx);
     }
-
+    if(item->file!=NULL){
+        av_free(item->file);
+    }
+	
     av_free(item);
     item = NULL;
     return 0;
 }
 
+#define SEGMENT_SHRINK_THRESHOLD 1000  
 static int list_shrink_live_list(struct list_mgt *mgt)
 {
     struct list_item **tmp = NULL;
@@ -264,13 +269,16 @@ static int list_shrink_live_list(struct list_mgt *mgt)
         return -1;
     }
     tmp = &mgt->item_list;
-    if (!mgt->have_list_end) { //not have list end,just refer to live streaming
-        while (mgt->item_num > SHRINK_LIVE_LIST_THRESHOLD && *tmp != mgt->current_item) {
+    if (!mgt->have_list_end&&mgt->item_num > SEGMENT_SHRINK_THRESHOLD) { //not have list end,just refer to live streaming
+        while (*tmp != mgt->current_item) {
             list_del_item(mgt, *tmp);
             tmp = &mgt->item_list;
         }
+	  if(mgt->debug_level>4){
+	       RLOG( "shrink live segments from list,total:%d\n", mgt->item_num);
+	  }		
     }
-    //av_log(NULL, AV_LOG_INFO, "shrink live item from list,total:%d\n", mgt->item_num);
+
     return 0;
 }
 
@@ -290,7 +298,9 @@ static int list_delall_item(struct list_mgt *mgt)
         if (p->ktype == KEY_AES_128) {           
             av_free(p->key_ctx);
         }
-
+	  if(p->file!=NULL){
+		av_free(p->file);
+	  }	
         av_free(p);
 
         p = NULL;
@@ -298,7 +308,9 @@ static int list_delall_item(struct list_mgt *mgt)
         p = t;
     }
     mgt->item_list = NULL;
-    //av_log(NULL, AV_LOG_INFO, "delete all items from list,total:%d\n", mgt->item_num);
+    if(mgt->debug_level>4){	
+        RLOG("delete all items from list,total:%d\n", mgt->item_num);
+    }
     return 0;
 
 }
@@ -864,6 +876,16 @@ static int hls_common_bw_adaptive_check(struct list_mgt *c,int* measued_bw){
 	  }else{
 		next_variant = c->variants[c->playing_variant->priority+1];
 	  }
+	  if(next_variant->bandwidth <=c->playing_variant->bandwidth){
+	  	if(c->debug_level>3){
+			RLOG("Current bandwidth equal to next bandwidth,just drop switch\n");
+		}
+		if(c->strategy_down_counts>0){
+			c->strategy_down_counts=0;
+		}		
+		*measued_bw  = measure_bw;
+		return 0;		
+	  }
         float scaleup_per = (float)(measure_bw-c->playing_variant->bandwidth)/(float)(next_variant->bandwidth-c->playing_variant->bandwidth);
 	  if(c->debug_level>0){
 		RLOG("Player bandwidth scale up,target:%0.3f,current:%0.3f\n",up_scale,scaleup_per);
@@ -1099,7 +1121,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
     ret =CacheHttp_GetSpeed(mgt->cache_http_handle, &fast_bps, &mean_bps, &avg_bps);
     mgt->measure_bw = fast_bps;
 	
-    if (mgt->n_variants > 0&&mgt->codec_buf_level>=0) { //vod,have mulit-bandwidth streams
+    if (mgt->n_variants > 1&&mgt->codec_buf_level>=0) { //vod,have mulit-bandwidth streams
         //av_log(NULL, AV_LOG_INFO, "current playing item index: %d,current playing seq:%d\n", mgt->playing_item_index, mgt->playing_item_seq);
         int is_switch = select_best_variant(mgt);
         if (is_switch>0) { //will remove this tricks.
@@ -1135,9 +1157,7 @@ static struct list_item * switchto_next_item(struct list_mgt *mgt) {
 
         //av_log(NULL, AV_LOG_INFO, "select best variant,bandwidth: %d\n", mgt->playing_variant->bandwidth);
 
-    }
-
-   
+    }   
 
 reload:
     if (mgt->current_item == NULL || mgt->current_item->next == NULL) {
@@ -1198,13 +1218,13 @@ reload:
 #endif
 
             mgt->current_item = current; /*switch to new current;*/
-            if (!mgt->have_list_end && mgt->item_num > LIVE_LIST_MAX) {
-                list_shrink_live_list(mgt);
-            }
+
         }
     }
 switchnext:
-
+    if (!mgt->have_list_end) {
+        list_shrink_live_list(mgt);
+    }
     if (mgt->current_item) {
         next = mgt->current_item->next;
 
@@ -1463,8 +1483,10 @@ RETRY:
     }
 #endif
     
-    //av_log(NULL, AV_LOG_INFO, "list_seek failed\n");
-    return -1;
+    if(mgt->debug_level>1){
+        RLOG("Seek failed,just return seek time:%lld,whence:%d\n",pos,whence);
+    }
+    return pos;
 }
 static int list_close(URLContext *h)
 {
@@ -1499,8 +1521,10 @@ static int list_close(URLContext *h)
         url_fclose(mgt->cur_uio);
         mgt->cur_uio = NULL;
     }
+
     av_free(mgt);
     unused(h);    
+    RLOG("Close hls list manager session\n");	 	
     return 0;
 }
 static int list_get_handle(URLContext *h)

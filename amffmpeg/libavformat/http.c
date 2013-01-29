@@ -372,7 +372,7 @@ static int process_line(URLContext *h, char *line, int line_count,
 {
     HTTPContext *s = h->priv_data;
     char *tag, *p, *end;
-	av_log(h, AV_LOG_INFO, "process_line:%s \n",line);
+	//av_log(h, AV_LOG_INFO, "process_line:%s \n",line);
     /* end of header */
     if (line[0] == '\0')
         return 0;
@@ -759,7 +759,7 @@ int ff_http_do_new_request(URLContext *h, const char *uri)
     s->canseek=1;
     ret = http_open_cnx(h);
     
-    while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()){
+    while(ret<0 && open_retry++<OPEN_RETRY_MAX && !url_interrupt_cb()&& (s->http_code != 404 ||s->http_code != 503 || s->http_code != 500)){
         s->is_seek=0;
         s->canseek=0;
         ret = http_open_cnx(h);

@@ -1267,6 +1267,11 @@ int avio_reset(AVIOContext *s,int flags){
     s->pos = 0;/*I think it is the first,pos now*/
     s->eof_reached=0;/*clear eof error*/
     s->error = 0;
+    URLContext *h = s->opaque;	
+    if(h && h->lpbuf)	
+    {
+        url_lpreset(h);
+    }	
     return  ret;
 }
 int avio_close(AVIOContext *s)
