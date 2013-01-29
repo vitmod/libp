@@ -84,11 +84,7 @@ static int player_para_release(play_para_t *para)
         }
     }
     ffmpeg_close_file(para);
-
-    if (para->playctrl_info.pause_flag) {
-        codec_resume(para->codec);     //clear pause state
-        para->playctrl_info.pause_flag = 0;
-    }
+    
     if (para->decoder && para->decoder->release) {
         para->decoder->release(para);
         para->decoder = NULL;
