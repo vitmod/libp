@@ -531,13 +531,8 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
                                 mgt->next_seq--;
 				}
 				
-			}
-						
-			if((item->flags &ENDLIST_FLAG) && (item->flags < (1<<12)))
-			{
-				mgt->have_list_end=1;
-			}
-				break;
+			}						
+				
 			if(item->flags&INVALID_ITEM_FLAG){
 				if(item->ktype == KEY_AES_128){
 					av_free(item->key_ctx);
@@ -549,6 +544,12 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				av_free(item);
 				item = NULL;				
 			}
+			if((tmpitem.flags &ENDLIST_FLAG) && (tmpitem.flags < (1<<12)))
+			{
+				mgt->have_list_end=1;
+				break;
+			}
+			
 			memset(&tmpitem,0,sizeof(tmpitem));
 			tmpitem.seq=-1;
 		}

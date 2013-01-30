@@ -1222,7 +1222,7 @@ reload:
         }
     }
 switchnext:
-    if (!mgt->have_list_end) {
+    if (mgt->parser_finish_flag >0&&!mgt->have_list_end) {
         list_shrink_live_list(mgt);
     }
     if (mgt->current_item) {
@@ -1486,7 +1486,7 @@ RETRY:
     if(mgt->debug_level>1){
         RLOG("Seek failed,just return seek time:%lld,whence:%d\n",pos,whence);
     }
-    return pos;
+    return -1;
 }
 static int list_close(URLContext *h)
 {

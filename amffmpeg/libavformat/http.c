@@ -372,7 +372,7 @@ static int process_line(URLContext *h, char *line, int line_count,
 {
     HTTPContext *s = h->priv_data;
     char *tag, *p, *end;
-	//av_log(h, AV_LOG_INFO, "process_line:%s \n",line);
+	av_log(h, AV_LOG_INFO, "process_line:%s \n",line);
     /* end of header */
     if (line[0] == '\0')
         return 0;
