@@ -64,6 +64,7 @@ int ffmpeg_interrupt_callback(unsigned long npid)
         return 0;
     }
     if (dealock_detected_cnt++ < 10000) {
+        log_info("...ffmpeg callback interrupted...\n");
         return 1;
     }
     /*player maybe locked,kill my self now*/
@@ -108,6 +109,12 @@ int ffmpeg_buffering_data(play_para_t *para)
         if (ret < 0) { /*iformat may buffering.,call lp buf also*/
             ret = av_buffering_data(para->pFormatCtx, 0);
         }
+	 if(ret <0 && para->playctrl_info.ignore_ffmpeg_errors){
+	 	 para->playctrl_info.ignore_ffmpeg_errors=0;
+		 if(para->pFormatCtx&& para->pFormatCtx->pb)
+		 	para->pFormatCtx->pb->error=0;
+	 	 ret=0;
+	 }
         player_mate_sleep(para);
         return ret;
     } else {

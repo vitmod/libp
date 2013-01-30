@@ -24,9 +24,6 @@
 #include "player_ffmpeg_ctrl.h"
 #include "amutils_msg.h"
 
-#define BREAK_FLAG      0x01
-#define CONTINUE_FLAG   0x02
-#define NONO_FLAG       0x00
 
 /******************************
  * reset subtitle prop
@@ -253,7 +250,7 @@ codec_para_t *get_video_codec(play_para_t *player)
     }
 }
 
-static void check_msg(play_para_t *para, player_cmd_t *msg)
+void check_msg(play_para_t *para, player_cmd_t *msg)
 {
 #ifdef DEBUG_VARIABLE_DUR
     int64_t t_fsize = 0;
@@ -404,7 +401,7 @@ static void check_amutils_msg(play_para_t *para, player_cmd_t *msg)
         }
     }
 }
-static int nextcmd_is_cmd(play_para_t *player, ctrl_cmd_t c_cmd)
+int nextcmd_is_cmd(play_para_t *player, ctrl_cmd_t c_cmd)
 {
     int is = 0;
     player_cmd_t *msg;

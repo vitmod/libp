@@ -104,7 +104,9 @@ typedef  struct {
     unsigned int switch_audio_id;
     unsigned int switch_sub_id;
     unsigned int is_playlist;	
-    unsigned int lowbuffermode_flag;	
+    unsigned int lowbuffermode_flag;
+    unsigned int ignore_ffmpeg_errors;
+    unsigned int temp_interrupt_ffmpeg;	
     float time_point;
     int f_step;
     int read_max_retry_cnt;
