@@ -976,11 +976,11 @@ int enable_freescale_MBX()
         log_print("[enable_freescale_MBX]not freescale mode!\n");
         return 0;
     }
-	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
+	/*	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
     if((ret>=0) && strstr(buf, "1")){
         log_print("[enable_freescale_MBX] already enabled,no need to set again!\n");
         return 0;
-    }
+    }*/
     if ((freeScaleOsd0File = open("/sys/class/graphics/fb0/free_scale", O_RDWR)) < 0) {
         log_print("open /sys/class/graphics/fb0/free_scale fail.");
     }
