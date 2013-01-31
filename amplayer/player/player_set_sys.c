@@ -175,7 +175,10 @@ int set_subtitle_num(int num)
     return set_sysfs_int("/sys/class/subtitle/total", num);
 
 }
-
+int set_subtitle_index(int num)
+{
+    return set_sysfs_int("/sys/class/subtitle/index", num);
+}
 int set_subtitle_curr(int num)
 {
     return set_sysfs_int("/sys/class/subtitle/curr", num);

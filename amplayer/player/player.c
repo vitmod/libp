@@ -32,6 +32,7 @@ static void release_subtitle()
 {
     set_subtitle_num(0);
     set_subtitle_curr(0);
+    set_subtitle_index(0);
     set_subtitle_fps(0);
     set_subtitle_subtype(0);
     set_subtitle_startpts(0);
@@ -369,7 +370,7 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
         para->buffering_threshhold_middle = msg->f_param1;
         para->buffering_threshhold_max = msg->f_param2;
     }
-#if 0
+#if 1
     else if (msg->ctrl_cmd & CMD_SWITCH_SID) {
         para->playctrl_info.switch_sub_id = msg->param;
         player_switch_sub(para);

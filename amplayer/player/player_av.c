@@ -790,7 +790,8 @@ static int non_raw_read(play_para_t *para)
                 pkt->codec = para->acodec;
                 pkt->type = CODEC_AUDIO;
                 para->read_size.apkt_num ++;
-            } else if (has_sub && ((1<<(pkt->avpkt->stream_index))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
+            //} else if (has_sub && ((1<<(pkt->avpkt->stream_index))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
+            } else if (has_sub && ((1<<(para->pFormatCtx->streams[pkt->avpkt->stream_index]->id))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
 #if 0
                 /* here we get the subtitle data, something should to be done */
                 if (para->playctrl_info.audio_switch_smatch) {
@@ -1615,7 +1616,9 @@ int write_av_packet(play_para_t *para)
                 int i;
                 //log_print("## 111 [%s:%d]i = %d, pkt->avpkt->stream_index = %d, \n", __FUNCTION__, __LINE__, i, pkt->avpkt->stream_index);
                 for (i = 0; i < 8; i++) {
-                    if (pkt->avpkt->stream_index == es_sub_buf[i].subid) {
+                    //subid should be equal to stream->id
+                    //if (pkt->avpkt->stream_index == es_sub_buf[i].subid) {
+                    if (para->pFormatCtx->streams[pkt->avpkt->stream_index]->id == es_sub_buf[i].subid) {
                         //log_print("## 222 [%s:%d]i = %d, pkt->avpkt->stream_index = %d, size=%d,----------\n", __FUNCTION__, __LINE__, i, pkt->avpkt->stream_index, size);
                         write_es_sub_all(i, (char *)buf, size);
                         break;
@@ -2308,7 +2311,8 @@ int process_es_subtitle(play_para_t *para)
     /* find stream for new id */
     for (i = 0; i < pFCtx->nb_streams; i++) {
         pstream = pFCtx->streams[i];
-        if ((unsigned int)pstream->id == pkt->avpkt->stream_index) {
+        //if ((unsigned int)pstream->id == pkt->avpkt->stream_index) {
+        if (i == pkt->avpkt->stream_index) {
             break;
         }
     }
@@ -2372,7 +2376,9 @@ int process_es_subtitle(play_para_t *para)
     }
 
     for (i = 0; i < 8; i++) {
-        if (pkt->avpkt->stream_index == es_sub_buf[i].subid) {
+        //subid should be equal to stream->id
+        //if (pkt->avpkt->stream_index == es_sub_buf[i].subid) {
+        if (pFCtx->streams[pkt->avpkt->stream_index]->id == es_sub_buf[i].subid) {
             write_es_sub_all(i, (char *)sub_header, sizeof(sub_header));
 #if 0
             log_print("[%s:%d]i = %d, pkt->avpkt->stream_index = %d, sub_type=%d, size=%d, sub_id=%d, sub_type=%d,--------\n", __FUNCTION__, __LINE__, i, pkt->avpkt->stream_index, sub_type, data_size, pkt->codec->sub_pid, pstream->codec->codec_id);
@@ -2826,6 +2832,18 @@ void player_switch_sub(play_para_t *para)
             total_size += write_size;
         }
         log_print("[%s:%d]write finished! total_size = %d, write_size = %d\n", __FUNCTION__, __LINE__, total_size, write_size);
+        //set curr for cts
+        int index;
+        for (index = 0; index < 8; index++) {
+          if (pstream->id == es_sub_buf[index].subid) {
+              break;
+          }
+        }
+        if(-1==set_subtitle_index(index))
+        {
+          log_print("set cur subtitle index = %d failed ! \n",index);
+          usleep(1000);
+        }
         return;
     } else {
         pcodec = para->codec;
