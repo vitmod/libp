@@ -678,7 +678,9 @@ static int list_open(URLContext *h, const char *filename, int flags)
     }	
    
     h->is_streamed = 1;
-    h->is_slowmedia = 1;
+    if(mgt->have_list_end){	
+        h->is_slowmedia = 1;
+    }
     if (mgt->full_time > 0 && mgt->have_list_end) {
         h->support_time_seek = 1;
     }
@@ -1612,7 +1614,16 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
 		if(mgt->debug_level>3){
 			RLOG("Get measured bandwidth: %0.3f kbps\n",(float)*info/1000.000);
 		}
-        }
+        }else if(flag ==2){
+		if(mgt->playing_variant!=NULL){
+			*info = mgt->playing_variant->bandwidth;
+		}else{
+			*info = 0;
+		}
+		if(mgt->debug_level>3){
+			RLOG("Get current bandwidth: %0.3f kbps\n",(float)*info/1000.000);
+		}		
+	  }
         return 0;
 
     }else {

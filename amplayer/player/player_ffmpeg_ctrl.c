@@ -334,6 +334,8 @@ int ffmpeg_geturl_netstream_info(play_para_t* para,int type,void* value){
 	if(para&& para->pFormatCtx && para->pFormatCtx->pb){
 		if(type == 1){
 			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,1,value);
+		}else if(type == 2){
+			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,2,value);
 		}
 		return 0;
 	}

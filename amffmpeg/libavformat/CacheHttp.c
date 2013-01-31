@@ -39,6 +39,7 @@
 #define WAIT_TIME (100*1000)
 #define TMP_BUFFER_SIZE (188*100)   
 #define HTTP_RETRY_TIMES 20
+#define HTTP_SKIP_TIMES 5
 
 #define ADD_TSHEAD_RECALC_DISPTS_TAG 	("amlogictsdiscontinue")
 static const uint8_t ts_segment_lead[188] = {0x47,0x00,0x1F,0xFF,0,}; 
@@ -420,6 +421,17 @@ static int tsstream_add_fakehead(CacheHttpContext * s)
 	}
 	return 0;
 }
+
+static int get_error_skip_cnt(){
+	float error_cnt = -1;
+	int  ret= -1;
+	ret= am_getconfig_float("libplayer.hls.live_skip_cnt",&error_cnt);	
+	if(ret>0&&error_cnt>=0){
+		return error_cnt;	
+	}
+
+	return HTTP_SKIP_TIMES;
+}
 static void *circular_buffer_task( void *_handle)
 {
     CacheHttpContext * s = (CacheHttpContext *)_handle; 
@@ -429,7 +441,8 @@ static void *circular_buffer_task( void *_handle)
     int config_ret = 0;
     int ts_parser_finised =-1;
 	int checkpacketnum=0;
-    
+    int skip_count = 0;
+    int skip_count_max = get_error_skip_cnt();	
     while(!s->EXIT) {
 
        av_log(h, AV_LOG_ERROR, "----------circular_buffer_task  item ");
@@ -506,23 +519,31 @@ OPEN_RETRY:
                 }
                 break;
              }
-             if(1 == http_code || s->have_list_end) {
+             if(s->have_list_end&&(2 == http_code || 3 == http_code||1 == http_code )) {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
                 if(retry_num++ < HTTP_RETRY_TIMES) {
                     usleep(WAIT_TIME);
+			 av_log(h,AV_LOG_WARNING,"Retry current segment,url:%s\n",filename);					
                     goto OPEN_RETRY;
-                } else {
+                } else if(skip_count++ < skip_count_max){
+                    av_log(h,AV_LOG_WARNING,"Skip current segment,url:%s\n",filename);
+                	 usleep(WAIT_TIME);
                     goto SKIP;
-                }
-             } else if((2 == http_code || 3 == http_code) && !s->have_list_end) {
-                usleep(1000*20);
-                goto OPEN_RETRY;
-             } else if(!s->have_list_end&&!(1 == http_code ||2 == http_code||3 == http_code)&&err ==AVERROR(EIO)){
-                if(retry_num++ < HTTP_RETRY_TIMES) {//if live streaming,just keep on 2s.
+                }else{
+                	   av_log(h, AV_LOG_ERROR, "------vod----CacheHttpContext : ffurl_open_h failed ,%d\n",err);
+	                if(filename) {
+	                    av_free(filename);
+	                    filename = NULL;
+	                }
+	                break;
+		    }
+             } else if(!s->have_list_end&&(1 == http_code ||2 == http_code||3 == http_code)){
+                if(skip_count++ < skip_count_max) {//if live streaming,just keep on 2s.
                     usleep(WAIT_TIME);
-                    goto OPEN_RETRY;
+			 av_log(h,AV_LOG_WARNING,"Skip current segment,url:%s\n",filename);		
+                    goto SKIP;
                 } else {
-                	  av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
+                	   av_log(h, AV_LOG_ERROR, "------ live----CacheHttpContext : ffurl_open_h failed ,%d\n",err);
 	                if(filename) {
 	                    av_free(filename);
 	                    filename = NULL;
@@ -539,7 +560,7 @@ OPEN_RETRY:
                  break;
              }          
         }
-
+        skip_count = 0;
         if(h && s->seek_flag&&!s->ignore_http_range_req) {
             int64_t cur_pos = CacheHttp_ffurl_seek(h, 0, SEEK_CUR);
             int64_t pos_ret = CacheHttp_ffurl_seek(h, s->seek_pos-cur_pos, SEEK_CUR);

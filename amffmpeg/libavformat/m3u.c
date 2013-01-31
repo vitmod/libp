@@ -503,10 +503,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
                        
                         if(item->seq<mgt->next_seq){
                             item->flags|=INVALID_ITEM_FLAG;
-                            if(mgt->debug_level>3){
-                                RLOG("Drop this item,url:%s,seq:%d\n",item->file,item->seq);
 
-                            }
                         }else{
                             mgt->next_seq++;
                         }
@@ -534,6 +531,9 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 			}						
 				
 			if(item->flags&INVALID_ITEM_FLAG){
+                          if(mgt->debug_level>3){
+                               RLOG("Drop this item,url:%s,seq:%d\n",item->file,item->seq);
+                          }				
 				if(item->ktype == KEY_AES_128){
 					av_free(item->key_ctx);
 					item->key_ctx = NULL;
@@ -541,6 +541,7 @@ static int m3u_format_parser(struct list_mgt *mgt,ByteIOContext *s)
 				if(item->file!=NULL){
 					av_free(item->file);
 				}
+				item->file = NULL;
 				av_free(item);
 				item = NULL;				
 			}

@@ -1025,6 +1025,12 @@ static int64_t get_measured_bandwidth(play_para_t *p_para){
 	//log_print("Get measured bandwidth: %lld\n",value);
 	return value;
 }
+static int64_t get_playing_bandwidth(play_para_t *p_para){
+	int64_t value = 0;
+	ffmpeg_geturl_netstream_info(p_para,2,&value);
+	//log_print("Get measured bandwidth: %lld\n",value);
+	return value;
+}
 static int  update_buffering_states(play_para_t *p_para,
                                     struct buf_status *vbuf,
                                     struct buf_status *abuf)
@@ -1076,6 +1082,9 @@ static int  update_buffering_states(play_para_t *p_para,
                 bitrate = (p_para->pFormatCtx->file_size * 8) / (p_para->pFormatCtx->duration / AV_TIME_BASE);
             }
         }
+	  if(bitrate<=0){
+		bitrate = get_playing_bandwidth(p_para);
+	  }	
         if (bitrate > 0 && (vbuf->size > 0 || abuf->size > 0)) {
             /*===time * bitrate/8/bufsize=buflevel =====*/
             p_para->buffering_threshhold_middle = ((float)buftime * bitrate / 8) / (vbuf->size + abuf->size); //for tmp start.we will reset after playing
