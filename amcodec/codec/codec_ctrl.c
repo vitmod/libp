@@ -705,10 +705,7 @@ void codec_audio_basic_init(void)
 {
     audio_basic_init();
 }
-void codec_tsync_init(codec_para_t *pcodec)
-{
-	return codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_SYNC_INIT, 0);
-}
+
 /* --------------------------------------------------------------------------*/
 /**
 * @brief  codec_write  Write data to codec device
@@ -987,7 +984,6 @@ int codec_pause(codec_para_t *p)
 /* --------------------------------------------------------------------------*/
 int codec_resume(codec_para_t *p)
 {
-
     int ret = CODEC_ERROR_NONE;
     if (p) {
         CODEC_PRINT("[codec_resume]p->has_audio=%d\n", p->has_audio);
