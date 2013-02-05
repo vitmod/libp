@@ -946,6 +946,8 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
 
     if(has_video)
         result = vbuf_level < 0.04;
+    else
+        result = 1;
     if(has_audio)
         result = result && (abuf_level < 0.04);
     if(has_audio && audio_fmt == AFORMAT_WMAPRO)
