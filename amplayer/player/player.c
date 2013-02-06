@@ -24,9 +24,6 @@
 #include "player_ffmpeg_ctrl.h"
 #include "amutils_msg.h"
 
-#define BREAK_FLAG      0x01
-#define CONTINUE_FLAG   0x02
-#define NONO_FLAG       0x00
 
 /******************************
  * reset subtitle prop
@@ -35,6 +32,7 @@ static void release_subtitle()
 {
     set_subtitle_num(0);
     set_subtitle_curr(0);
+    set_subtitle_index(0);
     set_subtitle_fps(0);
     set_subtitle_subtype(0);
     set_subtitle_startpts(0);
@@ -84,11 +82,7 @@ static int player_para_release(play_para_t *para)
         }
     }
     ffmpeg_close_file(para);
-
-    if (para->playctrl_info.pause_flag) {
-        codec_resume(para->codec);     //clear pause state
-        para->playctrl_info.pause_flag = 0;
-    }
+    
     if (para->decoder && para->decoder->release) {
         para->decoder->release(para);
         para->decoder = NULL;
@@ -257,7 +251,7 @@ codec_para_t *get_video_codec(play_para_t *player)
     }
 }
 
-static void check_msg(play_para_t *para, player_cmd_t *msg)
+void check_msg(play_para_t *para, player_cmd_t *msg)
 {
 #ifdef DEBUG_VARIABLE_DUR
     int64_t t_fsize = 0;
@@ -376,7 +370,7 @@ static void check_msg(play_para_t *para, player_cmd_t *msg)
         para->buffering_threshhold_middle = msg->f_param1;
         para->buffering_threshhold_max = msg->f_param2;
     }
-#if 0
+#if 1
     else if (msg->ctrl_cmd & CMD_SWITCH_SID) {
         para->playctrl_info.switch_sub_id = msg->param;
         player_switch_sub(para);
@@ -408,7 +402,7 @@ static void check_amutils_msg(play_para_t *para, player_cmd_t *msg)
         }
     }
 }
-static int nextcmd_is_cmd(play_para_t *player, ctrl_cmd_t c_cmd)
+int nextcmd_is_cmd(play_para_t *player, ctrl_cmd_t c_cmd)
 {
     int is = 0;
     player_cmd_t *msg;
@@ -1219,8 +1213,14 @@ release0:
             set_player_state(player, PLAYER_STOPED);
             set_player_error_no(player, 0);
         } else {
+        	int64_t value = 0;
+		int rv = ffmpeg_geturl_netstream_info(player,3,&value);
+		if(rv ==0){//get http download errors for HLS streaming
+			ret  = value;
+		}
             set_player_error_no(player, ret);
         }
+		
         log_print("player error,force video blackout\n");
         set_black_policy(1);
     }

@@ -64,6 +64,7 @@ int ffmpeg_interrupt_callback(unsigned long npid)
         return 0;
     }
     if (dealock_detected_cnt++ < 10000) {
+        log_info("...ffmpeg callback interrupted...\n");
         return 1;
     }
     /*player maybe locked,kill my self now*/
@@ -108,6 +109,12 @@ int ffmpeg_buffering_data(play_para_t *para)
         if (ret < 0) { /*iformat may buffering.,call lp buf also*/
             ret = av_buffering_data(para->pFormatCtx, 0);
         }
+	 if(ret <0 && para->playctrl_info.ignore_ffmpeg_errors){
+	 	 para->playctrl_info.ignore_ffmpeg_errors=0;
+		 if(para->pFormatCtx&& para->pFormatCtx->pb)
+		 	para->pFormatCtx->pb->error=0;
+	 	 ret=0;
+	 }
         player_mate_sleep(para);
         return ret;
     } else {
@@ -325,8 +332,12 @@ int ffmpeg_load_external_module(){
 int ffmpeg_geturl_netstream_info(play_para_t* para,int type,void* value){
 
 	if(para&& para->pFormatCtx && para->pFormatCtx->pb){
-		if(type == 1){
+		if(type == 1){//measured download speed
 			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,1,value);
+		}else if(type == 2){//current streaming bitrate
+			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,2,value);
+		}else if(type == 3){ //download error code
+			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,3,value);
 		}
 		return 0;
 	}

@@ -585,6 +585,7 @@ static const StreamType HDMV_types[] = {
 static const StreamType MISC_types[] = {
     { 0x81, AVMEDIA_TYPE_AUDIO,   CODEC_ID_AC3 },
     { 0x8a, AVMEDIA_TYPE_AUDIO,   CODEC_ID_DTS },
+    { 0x83, AVMEDIA_TYPE_AUDIO,   CODEC_ID_PCM_WIFIDISPLAY},  //add for wifi display by zefeng.tong@amlogic.com
     { 0 },
 };
 

@@ -2925,7 +2925,7 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 		case AVMEDIA_TYPE_AUDIO:
 		    //val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
 		    
-		    if(fastmode == 2){
+		    if((fastmode == 2) && (enc->codec_id != CODEC_ID_PCM_WIFIDISPLAY)){
 		       val =1;
                  }else{
                     val = enc->sample_rate && enc->channels;

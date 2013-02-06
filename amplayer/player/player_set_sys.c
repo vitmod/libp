@@ -175,7 +175,10 @@ int set_subtitle_num(int num)
     return set_sysfs_int("/sys/class/subtitle/total", num);
 
 }
-
+int set_subtitle_index(int num)
+{
+    return set_sysfs_int("/sys/class/subtitle/index", num);
+}
 int set_subtitle_curr(int num)
 {
     return set_sysfs_int("/sys/class/subtitle/curr", num);
@@ -976,11 +979,11 @@ int enable_freescale_MBX()
         log_print("[enable_freescale_MBX]not freescale mode!\n");
         return 0;
     }
-	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
+	/*	ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
     if((ret>=0) && strstr(buf, "1")){
         log_print("[enable_freescale_MBX] already enabled,no need to set again!\n");
         return 0;
-    }
+    }*/
     if ((freeScaleOsd0File = open("/sys/class/graphics/fb0/free_scale", O_RDWR)) < 0) {
         log_print("open /sys/class/graphics/fb0/free_scale fail.");
     }
@@ -1469,7 +1472,7 @@ int GL_2X_scale(int mSwitch)
 			write(scaleaxisOsd0File, writedata, strlen(writedata));
 
 			memset(writedata,0,strlen(writedata));
-			sprintf(writedata,"8");
+			sprintf(writedata,"7 %d %d",(vaxis_width/2),vaxis_height);
 			write(request2XScaleFile, writedata, strlen(writedata));
 			write(scaleaxisOsd1File, "1280 720 1920 1080", strlen("1280 720 1920 1080"));
 			write(scaleOsd1File, "0x10001", strlen("0x10001"));

@@ -83,6 +83,11 @@ do { \
 #define SUBTITLE_SYNC_HIGH  0x414d4c55
 #define SUBTITLE_SYNC_LOW   0xaa000000
 
+
+#define BREAK_FLAG      0x01
+#define CONTINUE_FLAG   0x02
+#define NONO_FLAG       0x00
+
 //#define DEBUG_VARIABLE_DUR
 
 typedef struct message_pool {
@@ -231,5 +236,6 @@ void *player_mate_init(play_para_t *player,int intervals);
 int player_mate_wake(play_para_t *player,int delay);
 int player_mate_sleep(play_para_t *player);
 int player_mate_release(play_para_t *player);
-
+void check_msg(play_para_t *para, player_cmd_t *msg);
+int nextcmd_is_cmd(play_para_t *player, ctrl_cmd_t c_cmd);
 #endif

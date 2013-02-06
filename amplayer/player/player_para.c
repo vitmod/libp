@@ -1185,6 +1185,7 @@ static void subtitle_para_init(play_para_t *player)
     }
     set_subtitle_num(player->sstream_num);
     set_subtitle_curr(0);
+    set_subtitle_index(0);
 
     //FFT: get proerty from build.prop
     GetSystemSettingString("media.amplayer.divx.certified", out, &default_sub);
@@ -1526,7 +1527,7 @@ int player_decoder_init(play_para_t *p_para)
         log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
 
-	codec_tsync_init(p_para->codec);
+
     return PLAYER_SUCCESS;
 failed:
     ffmpeg_close_file(p_para);
