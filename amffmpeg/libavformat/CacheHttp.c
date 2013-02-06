@@ -449,7 +449,8 @@ static void *circular_buffer_task( void *_handle)
        s->reset_flag = 1;
 	if (url_interrupt_cb()) {
 		 s->circular_buffer_error = EINTR;
-               goto FAIL;
+		usleep(WAIT_TIME);
+		continue;
 	}
 
         if(h) {
@@ -517,7 +518,7 @@ OPEN_RETRY:
                     av_free(filename);
                     filename = NULL;
                 }
-                break;
+                continue;
              }
              if(s->have_list_end&&(2 == http_code || 3 == http_code||1 == http_code )) {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
