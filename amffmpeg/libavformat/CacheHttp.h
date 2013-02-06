@@ -32,5 +32,7 @@
  int CacheHttp_Seek(void * handle, int64_t pos);
  int CacheHttp_GetBuffedTime(void *handle);
  int CacheHttp_GetBufferPercentage(void *handle,int* per);//from 0~100
+ int CacheHttp_GetEstimateBitrate(void *handle,int64_t* val);
+  int CacheHttp_GetErrorCode(void *handle,int64_t* val);
  
  #endif

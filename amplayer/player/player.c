@@ -1213,8 +1213,14 @@ release0:
             set_player_state(player, PLAYER_STOPED);
             set_player_error_no(player, 0);
         } else {
+        	int64_t value = 0;
+		int rv = ffmpeg_geturl_netstream_info(player,3,&value);
+		if(rv ==0){//get http download errors for HLS streaming
+			ret  = value;
+		}
             set_player_error_no(player, ret);
         }
+		
         log_print("player error,force video blackout\n");
         set_black_policy(1);
     }
