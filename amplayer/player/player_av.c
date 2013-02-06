@@ -1268,7 +1268,7 @@ int time_search(play_para_t *am_p)
                 am_p->playctrl_info.last_seek_time_point = time_point;
             }
         } else {
-            if ((am_p->file_type == MPEG_FILE || am_p->file_type == APE_FILE) && time_point > 0
+            if ((am_p->file_type == MPEG_FILE || am_p->file_type == APE_FILE) && time_point >= 0
                 && !am_p->playctrl_info.seek_frame_fail
                 && (s->pb && !s->pb->is_slowmedia)) {
                 timestamp = (int64_t)(time_point * AV_TIME_BASE);
