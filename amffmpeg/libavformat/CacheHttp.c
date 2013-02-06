@@ -58,7 +58,7 @@ typedef struct {
     double item_starttime;
     int64_t item_pos;
     int64_t item_size;
-    int64_t seek_pos;
+    int64_t seek_pos;	
     enum KeyType ktype;
     char key[33];
     char iv[33];
@@ -70,6 +70,8 @@ typedef struct {
     int is_ts_file;
     int livets_addhead;
     int ignore_http_range_req;
+    int http_error_code;	
+    int64_t estimate_bitrate;	
     struct list_mgt *m3u_mgt;
 } CacheHttpContext;
 
@@ -191,6 +193,7 @@ int CacheHttp_Open(void ** handle,const char* headers,void* arg)
 	s->livets_addhead=0;
 	s->is_ts_file=0;
     s->ignore_http_range_req = 0;
+    s->http_error_code = 0;
     memset(s->headers, 0x00, sizeof(s->headers));
     s->fifo = NULL;
     float value=0.0;
@@ -234,7 +237,6 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
     
     CacheHttpContext * s = (CacheHttpContext *)handle;
     pthread_mutex_lock(&s->read_mutex);
-    
     if (s->fifo) {
     	int avail;
        avail = av_fifo_size(s->fifo);
@@ -252,6 +254,10 @@ int CacheHttp_Read(void * handle, uint8_t * cache, int size)
             }
             s->is_first_read = 0;
         }
+	if(avail <=0&&s->http_error_code!=0){
+		pthread_mutex_unlock(&s->read_mutex);
+		return -1;
+	}		
 	if(url_interrupt_cb()) {
 	    pthread_mutex_unlock(&s->read_mutex);
 	    return 0;
@@ -531,6 +537,7 @@ OPEN_RETRY:
                 	 usleep(WAIT_TIME);
                     goto SKIP;
                 }else{
+                      s->http_error_code = http_code;
                 	   av_log(h, AV_LOG_ERROR, "------vod----CacheHttpContext : ffurl_open_h failed ,%d\n",err);
 	                if(filename) {
 	                    av_free(filename);
@@ -545,6 +552,7 @@ OPEN_RETRY:
                     goto SKIP;
                 } else {
                 	   av_log(h, AV_LOG_ERROR, "------ live----CacheHttpContext : ffurl_open_h failed ,%d\n",err);
+			   s->http_error_code = http_code;		   
 	                if(filename) {
 	                    av_free(filename);
 	                    filename = NULL;
@@ -554,6 +562,7 @@ OPEN_RETRY:
              	   	
              }else{
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h failed ,%d\n",err);
+		   s->http_error_code = err;			
                 if(filename) {
                     av_free(filename);
                     filename = NULL;
@@ -573,6 +582,9 @@ OPEN_RETRY:
         s->item_pos = 0;
         s->item_size = CacheHttp_ffurl_seek(s->hd, 0, AVSEEK_SIZE);
         item->item_size = s->item_size;
+	  if(item->item_size>0){
+		s->estimate_bitrate = (item->item_size*8*1000)/(item->duration*1000);
+	  }
         char tmpbuf[TMP_BUFFER_SIZE];
         int left = 0;
         int tmpdatasize = 0;
@@ -713,4 +725,30 @@ int CacheHttp_GetBufferPercentage(void *_handle,int* per){
     pthread_mutex_unlock(&s->read_mutex);
     return 0;
 }
+int CacheHttp_GetEstimateBitrate(void *_handle,int64_t* per){
+	if(!_handle){
+		*per = 0;	
+		return 0;
+	}
+	CacheHttpContext * s = (CacheHttpContext *)_handle; 
+	*per = s->estimate_bitrate;
+	return 0;	
+}
 
+ int CacheHttp_GetErrorCode(void *_handle,int64_t* val){
+	if(!_handle){		
+		return -1;
+	}
+	CacheHttpContext * s = (CacheHttpContext *)_handle; 
+	if(s->http_error_code ==1){		
+		*val =  -404; 
+	}else if(s->http_error_code ==2){		
+		*val =   -500;
+	}else if(s->http_error_code ==3){		
+		*val =   -503;
+	}else{		
+		*val =   -800;
+	}
+	return 0;
+
+ }

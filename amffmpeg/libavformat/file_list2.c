@@ -520,7 +520,10 @@ reload:
          ret = -1;       
          goto error;   
     }
-    
+    if(mgt->debug_level>1){
+        RLOG("Fetch m3u manifest file from server,url:%s\n",url);
+    }
+    mgt->last_load_time = av_gettime();	
     if(bio==NULL){
         ret = avio_open_h(&bio, url, flags,mgt->ipad_ex_headers);
         //av_log(NULL,AV_LOG_INFO,"http open,return value: %d\n",ret);
@@ -580,6 +583,7 @@ reload:
         //av_log(NULL,AV_LOG_INFO,"Https url only use short tcp connect\n");
         url_fclose(bio);
         bio= NULL;
+	  mgt->cur_uio = NULL;		
     }
     *pbio = bio;
     mgt->parser_finish_flag = 1;
@@ -635,16 +639,13 @@ static int list_open(URLContext *h, const char *filename, int flags)
              /*"Range: bytes=0- \r\n"*/
              "X-Playback-Session-Id: %s\r\n%s", sess_id,h!=NULL&&h->headers!=NULL?h->headers:"");
     //av_log(NULL, AV_LOG_INFO, "Generate ipad http request headers,\r\n%s\n", headers);
-    mgt->ipad_ex_headers = strndup(headers, 1024);
+    mgt->ipad_ex_headers = strndup(headers, 2048);    
    
-    memset(headers, 0, sizeof(headers));
-    generate_playback_session_id(sess_id, 37);
-    snprintf(headers, sizeof(headers),
-             /*"Connection: keep-alive\r\n"*/
-             "X-Playback-Session-Id: %s\r\n%s", sess_id,h!=NULL&&h->headers!=NULL?h->headers:"");
-    //av_log(NULL, AV_LOG_INFO, "Generate ipad http request media headers,\r\n%s\n", headers);
-    
-    mgt->ipad_req_media_headers = strndup(headers, 1024);
+    if(h->headers!=NULL){
+        mgt->ipad_req_media_headers = strndup(h->headers, 2048);
+    }else{
+        mgt->ipad_req_media_headers = NULL;
+    }
     if ((am_getconfig_bool("libplayer.hls.ignore_range"))){
         mgt->flags|=URL_SEGMENT_MEDIA;
     }
@@ -659,13 +660,8 @@ static int list_open(URLContext *h, const char *filename, int flags)
     if (ret < 0 || value <= 0) {	
         if (!mgt->have_list_end) {
             int itemindex =0;
-            if(mgt->item_num<10&&mgt->target_duration<5){
-                itemindex = mgt->item_num / 2+1; /*for live streaming ,choose the middle item.*/
-
-            }else if(mgt->item_num>=10){
-                itemindex = mgt->item_num-3; //last item
-            }else if(mgt->item_num<10&&mgt->target_duration>=5){
-                itemindex =  mgt->item_num -1;               
+            if(mgt->item_num<=10){
+                itemindex = mgt->item_num / 2+1; /*for live streaming ,choose the middle item.*/                  
             }else{
 		   itemindex =  mgt->item_num -1;         		
 	     }
@@ -1618,11 +1614,18 @@ static int list_getinfo(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *in
 		if(mgt->playing_variant!=NULL){
 			*info = mgt->playing_variant->bandwidth;
 		}else{
-			*info = 0;
+			int64_t val = 0;
+			CacheHttp_GetEstimateBitrate(mgt->cache_http_handle,&val);
+			*info = val;
 		}
 		if(mgt->debug_level>3){
 			RLOG("Get current bandwidth: %0.3f kbps\n",(float)*info/1000.000);
 		}		
+	  }else if(flag == 3){
+		int64_t val = 0;
+		CacheHttp_GetErrorCode(mgt->cache_http_handle,&val);
+		*info = val;
+		RLOG("Get cache http error code: %lld\n",val);
 	  }
         return 0;
 
