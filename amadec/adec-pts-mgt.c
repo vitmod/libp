@@ -134,7 +134,6 @@ int adec_pts_start(aml_audio_dec_t *audec)
 		}
 		close(fd);
 
-		set_tsync_enable(0);
 	} else {
 	    pts = adec_calc_pts(audec);
 		
