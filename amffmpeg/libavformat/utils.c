@@ -2025,8 +2025,10 @@ int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int f
     ff_read_frame_flush(s);
 
    #if 1
-    if(!memcmp(s->iformat->name,"mpegts",6)){
-        return url_fseektotime(s->pb, timestamp/(1000*1000), flags);
+    if (s->pb && s->pb->is_slowmedia) { 
+        if(!memcmp(s->iformat->name,"mpegts",6)){
+            return url_fseektotime(s->pb, timestamp/(1000*1000), flags);
+        }
     }
    #endif
     if(flags & AVSEEK_FLAG_BYTE)
