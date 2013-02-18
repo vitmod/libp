@@ -2543,6 +2543,7 @@ static void av_estimate_timeings_chapters(AVFormatContext * ic, int64_t old_offs
     int64_t valid_offset, offset, last_offset, duration;
 	int64_t last_pts[MAX_STREAMS], pts_discontinue[MAX_STREAMS];	
     int retry=0;   
+    unsigned int cur_nb_streams; // number of streams currently found
 #define DISCONTINUE_PTS_VALUE  (0xffffffff)
 
     ic->cur_st = NULL;
@@ -2575,6 +2576,7 @@ static void av_estimate_timeings_chapters(AVFormatContext * ic, int64_t old_offs
     /* XXX: may need to support wrapping */
     valid_offset = ic->valid_offset;
     end_time = AV_NOPTS_VALUE;
+    cur_nb_streams = ic->nb_streams;
     do{
 	    offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
 	    if (offset < 0)
@@ -2595,6 +2597,28 @@ static void av_estimate_timeings_chapters(AVFormatContext * ic, int64_t old_offs
 	        	break;
 	        }
 		        //av_log(NULL, AV_LOG_INFO, "[%s:%d] read a packet, pkt->pts=0x%llx\n",__FUNCTION__, __LINE__,pkt->pts);
+
+            // For VOB, new streams may be found after reading a new packet.
+            // If this happens, we need to init for the new streams.
+            if (ic->nb_streams > cur_nb_streams) {
+                for (i = (int)cur_nb_streams; i < (int)ic->nb_streams; i++) {
+                    last_pts[i] = AV_NOPTS_VALUE;
+                    pts_discontinue[i] = AV_NOPTS_VALUE;
+                    st = ic->streams[i];
+                    if (st->start_time != AV_NOPTS_VALUE) {
+                        start_time[i] = st->start_time;
+                        max_time[i] = start_time[i];
+                    }else if(st->first_dts != AV_NOPTS_VALUE){
+                        start_time[i] = st->first_dts;
+                        max_time[i] = start_time[i];
+                    }else {
+                        start_time[i] = 0;
+                        max_time[i] = 0;
+                    }
+                }
+                cur_nb_streams = ic->nb_streams;
+            }
+
 	        read_size += pkt->size;
 	        st = ic->streams[pkt->stream_index];
 	        if (pkt->pts != AV_NOPTS_VALUE){ 				
