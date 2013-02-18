@@ -22,7 +22,7 @@ ADEC_BEGIN_DECLS
 #define TSYNC_ENABLE  "/sys/class/tsync/enable"
 
 #define SYSTIME_CORRECTION_THRESHOLD        (90000*15/100)
-#define APTS_DISCONTINUE_THRESHOLD          (90000*1)
+#define APTS_DISCONTINUE_THRESHOLD          (90000*3)
 #define REFRESH_PTS_TIME_MS                 (1000/10)
 
 #define abs(x) ({                               \

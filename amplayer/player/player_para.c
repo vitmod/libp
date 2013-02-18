@@ -1474,7 +1474,7 @@ int player_decoder_init(play_para_t *p_para)
         set_sysfs_int("/sys/class/tsync/av_threshold_min",90000*8); 
     }
     else{
-        set_sysfs_int("/sys/class/tsync/av_threshold_min",90000); 
+        set_sysfs_int("/sys/class/tsync/av_threshold_min",90000*3); 
     }
 #endif
 
