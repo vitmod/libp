@@ -881,6 +881,7 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         }
     } else {
         p_para->playctrl_info.video_end_flag = 1;
+        p_para->playctrl_info.video_low_buffer = 1;
     }
 
     if (p_para->astream_info.has_audio) {
@@ -898,8 +899,10 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         }
     } else{
         p_para->playctrl_info.audio_end_flag = 1;
+        p_para->playctrl_info.audio_low_buffer = 1;
     }
-    //log_print("[%s:%d]abuf=0x%x   vbuf=0x%x\n", __FUNCTION__, __LINE__, abuf->data_len, abuf->data_len);
+    //log_print("[%s:%d]abuf=0x%x   vbuf=0x%x vlow=%d alow=%d\n", __FUNCTION__, __LINE__, \
+     //abuf->data_len, vbuf->data_len,p_para->playctrl_info.video_low_buffer,p_para->playctrl_info.audio_low_buffer);
 
     if ((p_para->playctrl_info.video_low_buffer ||
          p_para->playctrl_info.audio_low_buffer) &&
@@ -950,8 +953,10 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
         result = 1;
     if(has_audio)
         result = result && (abuf_level < 0.04);
+   //log_print("[%s:%d]result=%d abuf_level=%f\n", __FUNCTION__, __LINE__, result,abuf_level);
     if(has_audio && audio_fmt == AFORMAT_WMAPRO)
         result = result && (abuf_datalen < astream->codec->block_align);    
+    //log_print("[%s:%d]end=%d result=%d afmt=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.end_flag, result, audio_fmt);
     if (!p_para->playctrl_info.end_flag && result) {
         //log_print("v:%d vlen=0x%x a:%d alen=0x%x count=%d, vrp 0x%x, arp 0x%x\n",
         //    p_para->vstream_info.has_video,vbuf->data_len, p_para->astream_info.has_audio,abuf->data_len,p_para->check_end.end_count,vbuf->read_pointer,abuf->read_pointer);
@@ -973,13 +978,13 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
                 if (p_para->state.current_time < p_para->state.full_time && check_audio_output()) {
                     p_para->check_end.end_count = CHECK_END_COUNT;
                 }
-                if (p_para->abuffer.rp_is_changed) {
-                    p_para->check_end.end_count = CHECK_END_COUNT;
-                } else {
-                    check_flag = 1;
-                    log_print("[%s]arp not move,arp=abufrp=0x%x alevel=%.03f cnt=%d\n", __FUNCTION__, abuf->read_pointer, p_para->state.audio_bufferlevel, p_para->check_end.end_count);
-                }
             }
+            if (p_para->abuffer.rp_is_changed) {
+                p_para->check_end.end_count = CHECK_END_COUNT;
+            } else {
+                check_flag = 1;
+                log_print("[%s]arp not move,arp=abufrp=0x%x alevel=%.03f cnt=%d\n", __FUNCTION__, abuf->read_pointer, p_para->state.audio_bufferlevel, p_para->check_end.end_count);
+            }            
         }
 
         if (check_flag) {
