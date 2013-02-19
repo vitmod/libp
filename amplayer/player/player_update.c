@@ -944,7 +944,7 @@ static void check_force_end(play_para_t *p_para, struct buf_status *vbuf, struct
     float vbuf_level = p_para->state.video_bufferlevel;
     float abuf_level = p_para->state.audio_bufferlevel;
     aformat_t audio_fmt = p_para->astream_info.audio_format;
-    AVStream *astream = p_para->pFormatCtx->streams[aidx];
+    AVStream *astream = p_para->astream_info.has_audio?p_para->pFormatCtx->streams[aidx]:NULL;
     int abuf_datalen= abuf->data_len;    
 
     if(has_video)
