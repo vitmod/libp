@@ -405,7 +405,12 @@ static int ape_read_packet(AVFormatContext * s, AVPacket * pkt)
 
     /* note: we need to modify the packet size here to handle the last
        packet */
-    pkt->size = ret + extra_size;
+    if(ret < 0 ){	
+	 av_log(s, AV_LOG_INFO,"ape read frame fail,skip this frame.frame size %d,ret %d \n",ape->frames[ape->currentframe].size,ret);
+	 pkt->size = 0;
+    }
+    else
+    	pkt->size = ret + extra_size;
 
     ape->currentframe++;
 
