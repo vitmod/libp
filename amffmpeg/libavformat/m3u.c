@@ -205,7 +205,7 @@ static int m3u_parser_line(struct list_mgt *mgt,unsigned char *line,struct list_
 	int enditem=0;
 	const char* ptr = NULL;
        int isLetvFlag = 0;
-	while(*p==' ' && p!='\0' && p-line<1024) p++;
+	while((*p==' '||*p == '\t' )&& p!='\0' && p-line<1024) p++;
 	if(*p!='#' && strlen(p)>0&&mgt->is_variant==0)
 	{		
 		item->file=p; 

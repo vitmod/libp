@@ -42,7 +42,6 @@ static struct list_demux *list_demux_list = NULL;
 
 
 #define SESSLEN 256
-static int generate_playback_session_id(char * ssid, int size);
 static int generate_segment_session_id(char * ssid, int size);
 
 static float get_adaptation_ex_para(int type);
@@ -51,21 +50,6 @@ static int hls_base_info_dump(struct list_mgt*  c);
 
 #define RLOG(...) av_tag_log(HLS_RATETAG,__VA_ARGS__)
 
-int generate_playback_session_id(char * ssid, int size)
-{
-    AVLFG rnd;
-    char *ex_id = "314F1B49-AA3C-4715-950D-";
-    unsigned int session_id = 0;
-    char session_name[SESSLEN] = "";
-    av_lfg_init(&rnd, av_get_random_seed());
-    session_id =  av_lfg_get(&rnd);
-    snprintf(session_name, SESSLEN, "%s%012u", ex_id, session_id);
-    if (ssid != NULL) {
-        snprintf(ssid, size, "%s", session_name);
-        return 0;
-    }
-    return -1;
-}
 
 int generate_segment_session_id(char * ssid, int size)
 {
@@ -660,7 +644,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     if (ret < 0 || value <= 0) {	
         if (!mgt->have_list_end) {
             int itemindex =0;
-            if(mgt->item_num<=10){
+            if(mgt->item_num<=10&&mgt->item_num>1){
                 itemindex = mgt->item_num / 2+1; /*for live streaming ,choose the middle item.*/                  
             }else{
 		   itemindex =  mgt->item_num -1;         		
