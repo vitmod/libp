@@ -1283,7 +1283,7 @@ int time_search(play_para_t *am_p)
                 am_p->playctrl_info.last_seek_time_point = time_point;
             }
         } else {
-            if ((am_p->file_type == MPEG_FILE || am_p->file_type == APE_FILE) && time_point >= 0
+            if (((am_p->file_type == MPEG_FILE&&time_point > 0) || (am_p->file_type == APE_FILE&& time_point >= 0))
                 && !am_p->playctrl_info.seek_frame_fail
                 && (s->pb && !s->pb->is_slowmedia)) {
                 timestamp = (int64_t)(time_point * AV_TIME_BASE);
@@ -1642,7 +1642,7 @@ int write_av_packet(play_para_t *para)
 			* the dropped audio data would be too much and lead to apts bigger than vpts
 			*/
 			if (para->vstream_info.has_video && para->astream_info.has_audio
-				&& para->astream_num > 1 && para->playctrl_info.raw_mode) {
+				&& para->astream_num > 1 && para->playctrl_info.raw_mode&&get_player_state(para) != PLAYER_BUFFERING) {
 				char value[PROPERTY_VALUE_MAX]={0};
 				float vbuf_threshold = 0.8;
 				float abuf_threshold = 0.6;
