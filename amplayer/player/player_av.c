@@ -1497,7 +1497,7 @@ int write_av_packet(play_para_t *para)
 
     buf = pkt->data;
     size = pkt->data_size ;
-    if (size == 0 && pkt->avpkt_isvalid) {
+    if (size <= 0 && pkt->avpkt_isvalid) {
         if ((pkt->type == CODEC_VIDEO) && (!para->playctrl_info.raw_mode)) {
             para->write_size.vpkt_num ++;
         } else if ((pkt->type == CODEC_AUDIO) && (!para->playctrl_info.raw_mode)) {
@@ -1507,6 +1507,7 @@ int write_av_packet(play_para_t *para)
             av_free_packet(pkt->avpkt);
         }
         pkt->avpkt_isvalid = 0;
+	  pkt->data_size =0;
     }
 
     if (pkt->type == CODEC_AUDIO && para->astream_info.audio_format == AFORMAT_APE)  {
