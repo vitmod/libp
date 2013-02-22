@@ -90,9 +90,9 @@ int player_mate_sleep(play_para_t *player)
 	     log_print("ffmpeg_uninterrupt tmped by player mate!\n");	 
             ffmpeg_uninterrupt(player->thread_mgt.pthread_id);
     }
+    mate->mate_should_sleep = 1;	 
     while (mate->mate_isrunng) {
         pthread_mutex_lock(&mate->pthread_mutex);
-        mate->mate_should_sleep = 1;
         ret = pthread_cond_signal(&mate->pthread_cond);
         pthread_mutex_unlock(&mate->pthread_mutex);
         if (mate->mate_isrunng) {
