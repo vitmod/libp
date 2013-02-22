@@ -374,6 +374,19 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
         para->buffering_threshhold_min = msg->f_param;
         para->buffering_threshhold_middle = msg->f_param1;
         para->buffering_threshhold_max = msg->f_param2;
+    }else if (msg->set_mode & CMD_SET_FREERUN_MODE) {
+    	 /*low delay mode.
+    	#define FREERUN_NONE 0 // no freerun mode
+	#define FREERUN_NODUR 1 // freerun without duration
+	#define FREERUN_DUR 2 // freerun with duration
+	*/
+	int mode=msg->param;
+	log_print("set freerun_mode %d\n",mode);
+       if (para->vcodec) {
+           codec_set_freerun_mode(para->vcodec,mode);    /*es*/
+       } else {
+           codec_set_freerun_mode(para->codec,mode);    /*not es*/
+       }
     }
 #if 1
     else if (msg->ctrl_cmd & CMD_SWITCH_SID) {
