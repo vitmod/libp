@@ -1921,3 +1921,44 @@ int codec_set_av_threshold(codec_para_t *pcodec, int threshold)
     
     return ret;
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_freerun_mode  Get the mode of video freerun
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Video free run mode or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_freerun_mode(codec_para_t *pcodec)
+{
+    int freerun_mode, r;
+
+    if (pcodec->cntl_handle == 0) {
+        CODEC_PRINT("no control handler\n");
+        return 0;
+    }
+
+    r = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_FREERUN_MODE, (unsigned long)&freerun_mode);
+    if (r < 0) {
+        return system_error_to_codec_error(r);
+    } else {
+        return freerun_mode;
+    }
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_freerun_mode  Set the mode to video freerun
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  mode    Freerun mode to be set
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_freerun_mode(codec_para_t *pcodec, unsigned int mode)
+{
+    return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_FREERUN_MODE, (unsigned long)mode);
+}

@@ -1428,7 +1428,7 @@ int player_dec_init(play_para_t *p_para)
     }
     if (p_para->playctrl_info.raw_mode) {
         if (p_para->pFormatCtx->bit_rate > 0) {
-            p_para->max_raw_size = (p_para->pFormatCtx->bit_rate >> 3) >> 2 ; //KB/s /4
+            p_para->max_raw_size = (p_para->pFormatCtx->bit_rate >> 3) >> 4 ; //KB/s /16
             if (p_para->max_raw_size < MIN_RAW_DATA_SIZE) {
                 p_para->max_raw_size = MIN_RAW_DATA_SIZE;
             }

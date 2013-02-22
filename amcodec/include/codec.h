@@ -95,4 +95,7 @@ int codec_get_sub_info(codec_para_t *pcodec, subtitle_info_t *sub_info);
 
 int codec_set_av_threshold(codec_para_t *pcodec, int threshold);
 
+int codec_get_freerun_mode(codec_para_t *pcodec);
+int codec_set_freerun_mode(codec_para_t *pcodec, unsigned int mode);
+
 #endif
