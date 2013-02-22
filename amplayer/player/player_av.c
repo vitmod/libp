@@ -516,9 +516,16 @@ static int raw_read(play_para_t *para)
         }
         return PLAYER_SUCCESS;
     }
-
-    if (pkt->buf == NULL || pkt->buf_size != (para->max_raw_size + 16)) { /*may chaged to short,enarge it*/
-        pkt->buf_size = para->max_raw_size + 16;
+   if(para->buffering_enable&&para->buffering_threshhold_max){
+        int maxlimitsize=0;
+        maxlimitsize=((int)((1-para->buffering_threshhold_max)*AB_SIZE-1))&~0x2000;
+        if (para->max_raw_size > maxlimitsize) {
+            para->max_raw_size =maxlimitsize;		
+            log_print("Enable autobuf , max_raw_size set to =%d\n",para->max_raw_size);
+       }
+    }
+    if (pkt->buf == NULL || pkt->buf_size != (MAX_RAW_DATA_SIZE+16)) { /*may chaged to short,enarge it*/
+        pkt->buf_size = MAX_RAW_DATA_SIZE+16;
         pkt->buf = MALLOC(pkt->buf_size);
         if (pkt->buf == NULL) {
             log_print("not enough memory,please fre memory\n");
