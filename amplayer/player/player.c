@@ -382,6 +382,13 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
 	*/
 	int mode=msg->param;
 	log_print("set freerun_mode %d\n",mode);
+        if(mode){/*mode=1,2,is low buffer mode also*/
+		if(para->pFormatCtx&& para->pFormatCtx->pb)
+			ffio_set_buf_size(para->pFormatCtx->pb,1024*4);//reset aviobuf to small.
+                para->playctrl_info.lowbuffermode_flag=1;
+	}else{
+		para->playctrl_info.lowbuffermode_flag=0;
+	}
        if (para->vcodec) {
            codec_set_freerun_mode(para->vcodec,mode);    /*es*/
        } else {
