@@ -1149,11 +1149,6 @@ static int  update_buffering_states(play_para_t *p_para,
         }
         p_para->buffering_force_delay_s = 0;
     }
-#if FF_API_OLD_AVIO
-    if((p_para->pFormatCtx)&&(p_para->pFormatCtx->pb)&& (p_para->pFormatCtx->pb->is_streamed!=1)){
-	p_para->buffering_enable=0;
-    }
-#endif
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&

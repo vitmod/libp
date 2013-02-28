@@ -110,6 +110,7 @@ typedef struct {
 	int iscmf;
 	int flags;
 	int seekflags;
+	int local_playback;  /**local playback flag, 1 local media playback*/
 	unsigned long proppads[8];//data copyed from probed.
 } AVIOContext;
 
@@ -147,7 +148,7 @@ typedef struct URLContext {
 } URLContext;
 
 #define FLAGS_ISCMF	1<<0 
-
+#define FLAGS_LOCALMEDIA  (1<<1)
 
 
 #define URL_PROTOCOL_FLAG_NESTED_SCHEME 1 /*< The protocol name can be the first part of a nested protocol scheme */

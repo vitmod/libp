@@ -2558,8 +2558,8 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
     if (pb->seekable && mov->chapter_track > 0)
         mov_read_chapters(s);
 	
-#if FF_API_OLD_AVIO 
-    if(s->pb->is_slowmedia==1){//slowmedia  check interlace
+
+    if(s->pb&&s->pb->local_playback!=1){//web live playback,check movie file 
           int64_t amin_pos=INT64_MAX,vmin_pos=INT64_MAX,min=INT64_MAX;
           int64_t amax_pos=0,vmax_pos=0,max=0;
 
@@ -2587,7 +2587,7 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
 		av_log(NULL,AV_LOG_WARNING, "May need cache more for smooth playback on line\n");
          }
     }
-#endif
+
     return 0;
 }
 
