@@ -598,6 +598,10 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
     HTTPContext *s = h->priv_data;
     int len;
     int err_retry=READ_RETRY_MAX;
+    if(s->filesize>0&&s->off == s->filesize){
+        av_log(h, AV_LOG_INFO, "http_read maybe reach EOS,force to exit,current: %lld,file size:%lld\n",s->off,s->filesize);        
+        return 0;
+    }
     bandwidth_measure_start_read(s->bandwidth_measure);	
 retry:
     if (url_interrupt_cb()) {
@@ -685,7 +689,7 @@ retry:
 errors:
 	if(len<0){
 		av_log(h, AV_LOG_ERROR, "len=-%d err_retry=%d\n", -len, err_retry);	
-		if(s->off == s->filesize){
+		if(s->filesize>0&&s->off == s->filesize){
 			av_log(h, AV_LOG_INFO, "http_read maybe reach EOS,current: %lld,file size:%lld\n",s->off,s->filesize);
 			bandwidth_measure_finish_read(s->bandwidth_measure,0);
 			return 0;
