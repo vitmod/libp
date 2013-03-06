@@ -330,18 +330,19 @@ int ffmpeg_load_external_module(){
 }
 
 int ffmpeg_geturl_netstream_info(play_para_t* para,int type,void* value){
-
+	int ret = -1;
+	
 	if(para&& para->pFormatCtx && para->pFormatCtx->pb){
 		if(type == 1){//measured download speed
-			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,1,value);
+			ret = avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,1,value);
 		}else if(type == 2){//current streaming bitrate
-			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,2,value);
+			ret = avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,2,value);
 		}else if(type == 3){ //download error code
-			avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,3,value);
+			ret = avio_getinfo(para->pFormatCtx->pb,AVCMD_GET_NETSTREAMINFO,3,value);
 		}
-		return 0;
 	}
-	return -1;
+	
+	return ret;
 	
 
 }
