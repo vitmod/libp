@@ -197,6 +197,28 @@ static int player_mate_thread_cmd_proxy(play_para_t *player, struct player_mate 
 	ffmpeg_interrupt(player->thread_mgt.pthread_id);
 	codec_resume(player->codec);  /*auto resume on*/
     }
+    if (p_para->playctrl_info.pause_flag) {
+        if (get_player_state(p_para) != PLAYER_PAUSE) {
+            ret = codec_pause(p_para->codec);
+            if (ret != 0) {
+                log_error("[%s:%d]pause failed!ret=%d\n", __FUNCTION__, __LINE__, ret);
+            }
+            set_player_state(p_para, PLAYER_PAUSE);
+            update_playing_info(p_para);
+            update_player_states(p_para, 1);
+        }
+        return CONTINUE_FLAG;
+    } else {
+        if ((get_player_state(p_para) == PLAYER_PAUSE) || (get_player_state(p_para) == PLAYER_SEARCHOK)) {
+            ret = codec_resume(p_para->codec);
+            if (ret != 0) {
+                log_error("[%s:%d]resume failed!ret=%d\n", __FUNCTION__, __LINE__, ret);
+            }
+            set_player_state(p_para, PLAYER_RUNNING);
+            update_playing_info(p_para);
+            update_player_states(p_para, 1);
+        }
+    }
     return 0;
 }
 
