@@ -36,6 +36,10 @@ ADEC_BEGIN_DECLS
 #define AUDIODSP_GET_FIRST_PTS_FLAG             _IOR('r',6,long)
 #define AUDIODSP_AUTOMUTE_ON                    _IOW('r',9,unsigned long)
 #define AUDIODSP_AUTOMUTE_OFF                   _IOW('r',10,unsigned long)
+#define AUDIODSP_GET_PCM_LEVEL					_IOR('r',12,unsigned long)
+#define AUDIODSP_SET_PCM_BUF_SIZE                 _IOW('r',13,long)
+#define AMAUDIO_IOC_SET_RESAMPLE_ENA              _IOW('A', 0x19, unsigned long)
+#define AMAUDIO_IOC_GET_RESAMPLE_ENA              _IOR('A', 0x1a, unsigned long)
 #else
 
 #define AUDIODSP_SET_FMT                        _IOW('a',1,sizeof(long))

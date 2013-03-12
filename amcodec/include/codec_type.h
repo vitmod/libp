@@ -56,6 +56,7 @@ typedef struct {
     CODEC_HANDLE handle;        ///< codec device handler
     CODEC_HANDLE cntl_handle;   ///< video control device handler
     CODEC_HANDLE sub_handle;    ///< subtile device handler
+    CODEC_HANDLE audio_utils_handle;  ///< audio utils handler
     stream_type_t stream_type;  ///< stream type(es, ps, rm, ts)
 unsigned int has_video:
     1;                          ///< stream has video(1) or not(0)

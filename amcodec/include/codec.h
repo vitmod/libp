@@ -98,4 +98,9 @@ int codec_set_av_threshold(codec_para_t *pcodec, int threshold);
 int codec_get_freerun_mode(codec_para_t *pcodec);
 int codec_set_freerun_mode(codec_para_t *pcodec, unsigned int mode);
 
+int codec_init_audio_utils(codec_para_t *pcodec);
+int codec_set_audio_resample_ena(codec_para_t *pcodec, unsigned long mode);
+int codec_get_audio_resample_ena(codec_para_t *pcodec);
+int codec_set_audio_resample_type(codec_para_t *pcodec, unsigned long type);
+
 #endif

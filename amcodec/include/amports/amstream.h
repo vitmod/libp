@@ -111,6 +111,12 @@
 #define AMSTREAM_IOC_GET_FREERUN_MODE  _IOR(AMSTREAM_IOC_MAGIC, 0x87, unsigned long)
 #define AMSTREAM_IOC_SET_FREERUN_MODE  _IOW(AMSTREAM_IOC_MAGIC, 0x88, unsigned long)
 
+#define AMAUDIO_IOC_MAGIC  'A'
+#define AMAUDIO_IOC_SET_RESAMPLE_ENA        _IOW(AMAUDIO_IOC_MAGIC, 0x19, unsigned long)
+#define AMAUDIO_IOC_GET_RESAMPLE_ENA        _IOR(AMAUDIO_IOC_MAGIC, 0x1a, unsigned long)
+#define AMAUDIO_IOC_SET_RESAMPLE_TYPE       _IOW(AMAUDIO_IOC_MAGIC, 0x1b, unsigned long)
+#define AMAUDIO_IOC_GET_RESAMPLE_TYPE       _IOR(AMAUDIO_IOC_MAGIC, 0x1c, unsigned long)
+
 struct buf_status {
     int size;
     int data_len;

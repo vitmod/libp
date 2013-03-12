@@ -214,6 +214,12 @@ int audiodsp_start(aml_audio_dec_t *audec)
         return -1;
     }
 
+    if (am_getconfig_bool("media.libplayer.wfd")) {
+        ioctl(dsp_ops->dsp_file_fd, AUDIODSP_SET_PCM_BUF_SIZE, 16*1024);
+    } else {
+        ioctl(dsp_ops->dsp_file_fd, AUDIODSP_SET_PCM_BUF_SIZE, 32*1024);
+    }
+    
     m_fmt = switch_audiodsp(audec->format);
     adec_print("[%s:%d]  audio_fmt=%d\n", __FUNCTION__, __LINE__, m_fmt);
 

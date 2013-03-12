@@ -1346,6 +1346,30 @@ int update_playing_info(play_para_t *p_para)
         update_buffering_states(p_para, &vbuf, &abuf);
         update_av_sync_for_audio(p_para);
 
+#if 1
+        /* set pcm resampling for wfd */
+        if (am_getconfig_bool("media.libplayer.wfd") && (p_para->abuffer.data_level > 2048)) {
+            // 2k to try
+            codec_para_t *avcodec = NULL;
+            int resample_enable;
+
+            if (p_para->codec) {
+                avcodec = p_para->codec;
+            } else if (p_para->acodec) {
+                avcodec = p_para->acodec;
+            }
+            if (avcodec) {
+                resample_enable = codec_get_audio_resample_ena(avcodec);
+                if (!resample_enable && (p_para->abuffer.data_level > 2048)) {
+                    codec_set_audio_resample_type(avcodec, 1);  // down resample
+                    codec_set_audio_resample_ena(avcodec, 1);  // enable resample
+                } /*else if (resample_enable && (p_para->abuffer.data_level < 512)) {
+                    codec_set_audio_resample_ena(avcodec, 0);  // disable resample
+                }*/
+            }
+        }
+#endif
+        
         if (sta > PLAYER_INITOK && sta < PLAYER_ERROR) {
             if (p_para->playctrl_info.audio_ready != 1) {
                 p_para->playctrl_info.audio_ready  = codec_audio_isready(p_para->codec);

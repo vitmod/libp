@@ -94,8 +94,13 @@ int adec_pts_start(aml_audio_dec_t *audec)
     memset(buf, 0, sizeof(buf));
 
     if (audec->avsync_threshold <= 0) {
-        audec->avsync_threshold = SYSTIME_CORRECTION_THRESHOLD;
-        adec_print("use default av sync threshold!\n");
+        if (am_getconfig_bool("media.libplayer.wfd")) {
+            audec->avsync_threshold = SYSTIME_CORRECTION_THRESHOLD * 2 / 3;
+            adec_print("use 2/3 default av sync threshold!\n");
+        } else {
+            audec->avsync_threshold = SYSTIME_CORRECTION_THRESHOLD;
+            adec_print("use default av sync threshold!\n");
+        }
     }
     adec_print("av sync threshold is %d , no_first_apts=%d,\n", audec->avsync_threshold, audec->no_first_apts);
 
@@ -199,6 +204,11 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
 	adec_print("before drop --apts 0x%x,vpts 0x%x,apts %s, diff 0x%x\n",apts,vpts,(apts>vpts)?"big":"small",diff);
 	int audio_ahead = 0;
 	unsigned pts_ahead_val = SYSTIME_CORRECTION_THRESHOLD;
+
+        if (am_getconfig_bool("media.libplayer.wfd")) {
+            pts_ahead_val = pts_ahead_val * 2 / 3;
+        }
+
 	if(property_get("media.amplayer.apts",value,NULL) > 0){
 		if(!strcmp(value,"slow")){
 			audio_ahead = -1;

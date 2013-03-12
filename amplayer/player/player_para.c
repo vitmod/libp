@@ -1126,7 +1126,7 @@ int player_dec_reset(play_para_t *p_para)
     if (p_para->stream_type == STREAM_AUDIO) {
         p_para->astream_info.check_first_pts = 0;
     }
-    if(p_para->playctrl_info.time_point>=0){	
+    if((p_para->playctrl_info.time_point>=0) && (p_para->state.full_time > 0)){	
     	 ret = time_search(p_para);
     }else{
         ret = PLAYER_SUCCESS;/*do reset only*/	

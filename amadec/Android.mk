@@ -56,7 +56,7 @@ LOCAL_ARM_MODE := arm
 ##################################################
 $(shell cp $(LOCAL_PATH)/acodec_lib/*.so $(TARGET_OUT)/lib)
 ###################################################
-LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc
+LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamavutils
 
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_TAGS := optional

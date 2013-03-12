@@ -37,7 +37,7 @@ static int set_audiodsp_frelevel(int m1_flag, int coeff)
 {
 	int val;
 	if(m1_flag)	{		
-		val = get_sysfs_int(AUDIODSP_CODEC_MIPS_IN);
+		val = get_sys_int(AUDIODSP_CODEC_MIPS_IN);
 		if(val > 0 && coeff > 0){
 			val = coeff * val;
 			set_sys_int(AUDIODSP_CODEC_MIPS_OUT,val);

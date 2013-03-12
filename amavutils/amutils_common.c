@@ -33,7 +33,7 @@ int set_sys_int(const char *path,int val)
         return -1;
 }
 
-int get_sysfs_int(const char *path)
+int get_sys_int(const char *path)
 {
     int fd;
     int val = 0;

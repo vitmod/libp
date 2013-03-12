@@ -1962,3 +1962,77 @@ int codec_set_freerun_mode(codec_para_t *pcodec, unsigned int mode)
 {
     return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_FREERUN_MODE, (unsigned long)mode);
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_init_audio_utils  Initialize the audio utils device
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_init_audio_utils(codec_para_t *pcodec)
+{
+    CODEC_HANDLE audio_utils;
+
+    audio_utils = codec_h_open(CODEC_AUDIO_UTILS_DEVICE, O_RDONLY);
+    if (audio_utils < 0) {
+        CODEC_PRINT("get %s failed\n", CODEC_AUDIO_UTILS_DEVICE);
+        return system_error_to_codec_error(audio_utils);
+    }
+
+    pcodec->audio_utils_handle = audio_utils;
+    
+    return CODEC_ERROR_NONE;
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_audio_resample_ena  Set audio resample
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_audio_resample_ena(codec_para_t *pcodec, unsigned long mode)
+{
+    return codec_h_control(pcodec->audio_utils_handle, AMAUDIO_IOC_SET_RESAMPLE_ENA, mode);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_audio_resample_ena  Set audio resample enable
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_audio_resample_ena(codec_para_t *pcodec)
+{
+    unsigned long audio_resample_ena;
+    int ret;
+    ret = codec_h_control(pcodec->audio_utils_handle, AMAUDIO_IOC_GET_RESAMPLE_ENA, &audio_resample_ena);
+    if (ret < 0) {
+        return system_error_to_codec_error(ret);
+    } else {
+        return audio_resample_ena;
+    }
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_audio_resample_type  Set audio resample type
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_audio_resample_type(codec_para_t *pcodec, unsigned long type)
+{
+    return codec_h_control(pcodec->audio_utils_handle, AMAUDIO_IOC_SET_RESAMPLE_TYPE, type);
+}
+

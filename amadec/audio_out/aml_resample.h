@@ -9,7 +9,7 @@
 #define Q14_INT_GET(value)  ((value)>>14)
 #define Q14_FRA_GET(value)  ((value)&0x3fff)
 
-#define RESAMPLE_DELTA_NUMSAMPS 1
+#define RESAMPLE_DELTA_NUMSAMPS 2
 #define DEFALT_NUMSAMPS_PERCH   128
 #define MAX_NUMSAMPS_PERCH      (DEFALT_NUMSAMPS_PERCH + RESAMPLE_DELTA_NUMSAMPS)
 #define DEFALT_NUMCH            2

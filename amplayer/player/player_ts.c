@@ -99,6 +99,14 @@ static int stream_ts_init(play_para_t *p_para)
         }
         goto error1;
     }
+    
+    if(am_getconfig_bool("media.libplayer.wfd")) {
+        ret = codec_init_audio_utils(codec);
+        if (ret != CODEC_ERROR_NONE) {
+            codec_close(codec);
+            goto error1;
+        }
+    }    
 
     p_para->codec = codec;
     return PLAYER_SUCCESS;
@@ -110,6 +118,10 @@ error1:
 static int stream_ts_release(play_para_t *p_para)
 {
     if (p_para->codec) {
+        if (p_para->codec->audio_utils_handle >= 0) {
+            codec_set_audio_resample_ena(p_para->codec, 0); 
+        }
+
         codec_close(p_para->codec);
         codec_free(p_para->codec);
     }

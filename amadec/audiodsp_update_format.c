@@ -70,6 +70,43 @@ static int audiodsp_get_format_changed_flag()
 
 }
 
+static int audiodsp_get_pcm_resample_enable()
+{
+    int utils_fd, ret;
+    unsigned long value;
+
+    utils_fd = open("/dev/amaudio_utils", O_RDWR);
+    if (utils_fd >= 0) {
+        ret = ioctl(utils_fd, AMAUDIO_IOC_GET_RESAMPLE_ENA, &value);
+        if (ret < 0) {
+            adec_print("AMAUDIO_IOC_GET_RESAMPLE_ENA failed\n");
+            close(utils_fd);
+            return -1;
+        }
+        close(utils_fd);
+        return value;
+    }
+    return -1;
+}
+
+static int audiodsp_set_pcm_resample_enable(unsigned long enable)
+{
+    int utils_fd, ret;
+
+    utils_fd = open("/dev/amaudio_utils", O_RDWR);
+    if (utils_fd >= 0) {
+        ret = ioctl(utils_fd, AMAUDIO_IOC_SET_RESAMPLE_ENA, enable);
+        if (ret < 0) {
+            adec_print("AMAUDIO_IOC_SET_RESAMPLE_ENA failed\n");
+            close(utils_fd);
+            return -1;
+        }
+        close(utils_fd);
+        return 0;
+    }
+    return -1;
+}
+
 void adec_reset_track(aml_audio_dec_t *audec)
 {
 	if(audec->format_changed_flag){
@@ -128,6 +165,16 @@ int audiodsp_format_update(aml_audio_dec_t *audec)
          }
 		 #endif
 		//audiodsp_set_format_changed_flag(0);
+        #if 1
+	ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_PCM_LEVEL, &val);
+        if (ret == 0) {
+            //adec_print("pcm level == 0x%x\n", val);
+            if ((val < 0x1000) && (1==audiodsp_get_pcm_resample_enable())) {
+                adec_print("disable pcm down resample");
+                audiodsp_set_pcm_resample_enable(0);
+            }
+        } 
+        #endif
 	}
 	if(ret>0){
 	    audec->format_changed_flag=ret;
