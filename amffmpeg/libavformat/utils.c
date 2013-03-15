@@ -796,7 +796,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
 			char *listfile;
 			int err;
                     char* ptr = NULL;
-			listfile=av_malloc(strlen(filename)+10);
+			listfile=av_mallocz(MAX_URL_SIZE);
 			if(!listfile)
 				return AVERROR(ENOMEM);
                     if(av_strstart(newp->prefix,"mmsh:",&ptr)&&(is_use_external_module("mms_mod")>0)){                      
@@ -804,8 +804,16 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
                         strcpy(listfile+strlen("mmsx:"),filename);
                         
                     }else{
+                        if((is_use_external_module("vhls_mod")>0)){
+                            strcpy(listfile,"vhls:");
+                        }else{
                         strcpy(listfile,newp->prefix);
+                        }
+                        if(s->pb->reallocation!=NULL){
+                            strcpy(listfile+strlen(newp->prefix),s->pb->reallocation);
+                        }else{
                         strcpy(listfile+strlen(newp->prefix),filename);
+                        }
                     }
 			url_fclose(s->pb);
 			s->pb=NULL;

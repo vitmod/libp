@@ -179,7 +179,7 @@ int ammodule_open_module(struct ammodule_t *module)
     }
     return 0;
 }
-int ammodule_match_check(const char *filefmtstr,const char *fmtsetting)
+int ammodule_match_check(const char* filefmtstr,const char* fmtsetting)
 {
         const char * psets=fmtsetting;
         const char *psetend;

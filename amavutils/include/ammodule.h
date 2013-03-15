@@ -47,9 +47,17 @@ typedef struct ammodule_methods_t {
 #define AMPLAYER_MODULE_INFO_SYM         AMMD
 #define AMPLAYER_MODULE_INFO_SYM_AS_STR  "AMMD"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ammodule_load_module(const char *modulename,const struct ammodule_t **module);
 int ammodule_open_module(struct ammodule_t *module);
 int  ammodule_simple_load_module(char* name);
-int ammodule_match_check(const char *allmodstr,const char *modname);
+int ammodule_match_check(const char* allmodstr,const char* modname);
+
+#ifdef __cplusplus
+}
+#endif
 #endif 
 
