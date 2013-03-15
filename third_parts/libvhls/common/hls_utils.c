@@ -88,7 +88,22 @@ float in_get_sys_prop_float(char* key){
 #endif    
     return value;
 }
-
+int in_get_sys_prop_bool(char* key){
+    int value = 0;
+#ifdef HAVE_ANDROID_OS
+    value = am_getconfig_bool_def(key,0);
+    if(value<0){
+        return 0;
+    }
+#else
+    char * ev = getenv(key);
+    if(ev==NULL){
+        return 0;
+    }
+    value = atoi(ev);
+#endif    
+    return value;
+}
 #define SPACE_CHARS " \t\r\n"
 int in_hex_to_data(const char *p,uint8_t *data)
 {

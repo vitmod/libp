@@ -233,8 +233,11 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
     memset(headers,0,MAX_URL_SIZE);
 
     snprintf(headers,MAX_URL_SIZE,             
-             "X-Playback-Session-Id: "GUID_FMT"\r\n%s",GUID_PRINT(ss->session_guid),ss->headers!=NULL?ss->headers:"");  
+             "X-Playback-Session-Id: "GUID_FMT"",GUID_PRINT(ss->session_guid));  
 
+    if(ss->headers!=NULL&&strlen(ss->headers)>0){
+        snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n%s",ss->headers);
+    }
     ret = fetchHttpSmallFile(url,headers,&buf,&blen,&redirectUrl);
     if(ret!=0){        
         return NULL;
@@ -858,14 +861,14 @@ open_retry:
     if(range_offset>0){
         int pos = 0;
         if(s->headers!=NULL){
-            strlcpy(headers,s->headers,MAX_URL_SIZE);
+            snprintf(headers,MAX_URL_SIZE,"%s\r\n",s->headers);
             pos = strlen(s->headers);
         }
         char str[32];
         int64_t len = range_offset+range_length-1;
         snprintf(str,32,"%lld",len);
         *(str+strlen(str)+1) = '\0';  
-        snprintf(headers+pos,MAX_URL_SIZE,"Range: bytes=%lld-%s\r\n",(long long)range_offset,range_length<=0?"":str);
+        snprintf(headers+pos,MAX_URL_SIZE-pos,"Range: bytes=%lld-%s",(long long)range_offset,range_length<=0?"":str);
 
         LOGV("Got headers:%s\n",headers);
 

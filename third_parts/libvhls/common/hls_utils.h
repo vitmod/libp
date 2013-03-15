@@ -7,14 +7,14 @@
  ******************************************************************************
   文 件 名   : hls_utils.h
   版 本 号   : 初稿
-  作    者   : hls_session.h
+  作    者   : xiaoqiang.zhu
   生成日期   : 2013年2月21日 星期四
   最近修改   :
   功能描述   : hls_utils.c 的头文件
   函数列表   :
   修改历史   :
   1.日    期   : 2013年2月21日 星期四
-    作    者   : hls_session.h
+    作    者   : xiaoqiang.zhu
     修改内容   : 创建文件
 
 ******************************************************************************/
@@ -109,6 +109,7 @@ void in_freepointer(void *arg);
 
 float in_get_sys_prop_float(char* key);
 
+int in_get_sys_prop_bool(char* key);
 void  in_generate_guid (guid_t *p_guid );
 
 char* in_strip_blank(char *pStr);

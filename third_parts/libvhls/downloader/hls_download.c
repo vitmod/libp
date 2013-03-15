@@ -37,7 +37,38 @@ typedef struct _HLSHttpContext{
     FILE* mBackupFile;
 #endif
 }HLSHttpContext;
-int hls_http_open(const char* url,const char* headers,void* key,void** handle){
+
+#define BOX_WIFI_AUTH   "X-BOX-WMAC:"   //box WiFi MAC address, if enabled
+#define BOX_LAN_AUTH    "X-BOX-LMAC:"   //box LAN MAC address, if enabled
+#define BOX_SERIAL_AUTH "X-BOX-SERIAL:" //box serial number
+
+#define BOX_TEST_SERIAL "0100210755"
+static void _add_auth_headers(char* headers){
+    int ret = -1;
+    if(in_get_sys_prop_float("libplayer.hls.enable_auth")>0){
+        if(in_get_sys_prop_float("ro.net.device") ==1){//wifi
+            char wifi[17];
+            wifi[16] = '\0';
+            ret = in_get_mac_address("wlan0",wifi,17);
+            if(ret ==0){                
+                sprintf(headers,"%s %s\r\n",BOX_WIFI_AUTH,wifi);
+            }
+        }else if(in_get_sys_prop_float("ro.net.device") ==2){//lan
+            char lan[17];
+            lan[16] = '\0';
+            ret = in_get_mac_address("eth0",lan,17);            
+            if(ret ==0){
+                sprintf(headers,"%s %s\r\n",BOX_LAN_AUTH,lan);
+            }
+        }
+
+        sprintf(headers+strlen(headers),"%s %s\r\n",BOX_SERIAL_AUTH,BOX_TEST_SERIAL);        
+
+    }
+}
+
+
+int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
 
     if(*handle !=NULL){
         LOGE("Need close opend handle\n");
@@ -58,6 +89,17 @@ int hls_http_open(const char* url,const char* headers,void* key,void** handle){
     memset(fileUrl,0,sizeof(MAX_URL_SIZE));
     URLContext* h = NULL;  
     int flag = 0;
+    char headers[MAX_URL_SIZE];
+    headers[0] = '\0';
+    _add_auth_headers(headers);
+    if(_headers!=NULL&&strlen(_headers)>0){
+        if(in_get_sys_prop_bool("media.libplayer.curlenable")>0){
+            snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"%s\r\n",_headers);
+        }else{
+            snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"%s",_headers);  
+        }
+    }
+
     if(key == NULL){    
         snprintf(fileUrl,MAX_URL_SIZE,"s%s",url);    
 
