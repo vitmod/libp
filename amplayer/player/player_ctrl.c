@@ -236,7 +236,7 @@ int player_stop(int pid)
     /*if (player_para->pFormatCtx) {
         av_ioctrl(player_para->pFormatCtx, AVIOCTL_STOP, 0, 0);
     }*/
-
+    clear_all_message(player_para);/*clear old message to make sure fast exit.*/
     cmd = message_alloc();
     if (cmd) {
         cmd->ctrl_cmd = CMD_STOP;
@@ -292,6 +292,7 @@ int player_stop_async(int pid)
         log_print("[player_stop]pid=%d thread is already stopped\n", pid);
         return PLAYER_SUCCESS;
     }
+    clear_all_message(player_para);/*clear old message to make sure fast exit.*/
     cmd = message_alloc();
     if (cmd) {
         cmd->ctrl_cmd = CMD_STOP;

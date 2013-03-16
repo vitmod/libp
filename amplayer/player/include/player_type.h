@@ -204,7 +204,7 @@ typedef struct player_file_type
 #define STATE_PRE(sta) (sta>>16)
 #define PLAYER_THREAD_IS_INITING(sta)	(STATE_PRE(sta)==0x1)
 #define PLAYER_THREAD_IS_RUNNING(sta)	(STATE_PRE(sta)==0x2)
-#define PLAYER_THREAD_IS_STOPPED(sta)	(STATE_PRE(sta)==0x3)
+#define PLAYER_THREAD_IS_STOPPED(sta)	(sta==PLAYER_EXIT)
 
 typedef int (*update_state_fun_t)(int pid,player_info_t *) ;
 typedef int (*notify_callback)(int pid,int msg,unsigned long ext1,unsigned long ext2);
