@@ -1954,6 +1954,44 @@ int set_header_info(play_para_t *para)
                         FREE(vld_buf);
                         pkt->data_size = 0;
                     }
+                }else if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_MPEG4_4) {
+                    /*
+                    * for mpeg4, the global headers can be in the bitstream or extradata, encounter two mov divx file, there are not sequence header in 
+                    * the bitstream, so send the extradata to decode frame, if don't send the extradata, the frame is green colour.if the file is divx and  
+                    * global headers exist not only in the bitstream but also in pCtx->extradata, insert the extradata would affect the file play abnormally, 
+                    * so here add the para->file_type == MOV_FILE judgement.
+                    */
+                    signed short video_idx = para->vstream_info.video_index;
+                    AVCodecContext *pCtx= para->pFormatCtx->streams[video_idx]->codec;
+						
+                    if (para->file_type == MOV_FILE && pCtx->extradata_size) {
+                        if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
+                            FREE(pkt->hdr->data);
+	                    pkt->hdr->data = NULL;
+	                }
+
+	                if (pkt->hdr == NULL) {
+	                    pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+	                    if (!pkt->hdr) {
+	                        log_print("[wvc1_prefix] NOMEM!");
+	                        return PLAYER_FAILED;
+	                    }
+
+	                    pkt->hdr->data = NULL;
+	                    pkt->hdr->size = 0;
+	                }
+
+	                pkt->hdr->data = MALLOC(pCtx->extradata_size);
+	                if (pkt->hdr->data == NULL) {
+	                    log_print("[wvc1_prefix] NOMEM!");
+	                    return PLAYER_FAILED;
+	                }
+
+                        memcpy(pkt->hdr->data, (uint8_t *)pCtx->extradata, pCtx->extradata_size);
+
+	                pkt->hdr->size = pCtx->extradata_size;
+	                pkt->avpkt_newflag = 1;
+                    }
                 }
             } else if (para->vstream_info.video_format == VFORMAT_VC1) {
                 if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WMV3) {
