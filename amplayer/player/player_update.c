@@ -819,7 +819,7 @@ static void update_current_time(play_para_t *p_para)
             log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n", time / PTS_FREQ, p_para->state.current_time, p_para->state.last_time);
             p_para->state.current_ms = time / PTS_FREQ_MS;
             time /= PTS_FREQ;
-        } else if (!p_para->playctrl_info.reset_flag && !p_para->playctrl_info.search_flag) {
+        } else if (!p_para->playctrl_info.reset_flag && !p_para->playctrl_info.search_flag && !p_para->playctrl_info.request_end_flag) {
             time = p_para->state.full_time;
             log_print("[update_current_time:%d]play end, curtime: %d\n", __LINE__, time);
         }
