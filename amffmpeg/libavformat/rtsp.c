@@ -1546,7 +1546,16 @@ redirect:
     do {
         int lower_transport = ff_log2_tab[lower_transport_mask &
                                   ~(lower_transport_mask - 1)];
-
+        float value = 0.0;
+        int ret = -1;        
+        ret = am_getconfig_float("libplayer.rtsp.lower_transp", &value);
+        if(ret>=0){
+            if((int)value == RTSP_LOWER_TRANSPORT_UDP){
+                lower_transport = RTSP_LOWER_TRANSPORT_UDP;                
+            }else if((int)value == RTSP_LOWER_TRANSPORT_UDP_MULTICAST){
+                lower_transport = RTSP_LOWER_TRANSPORT_UDP_MULTICAST;
+            }
+        }
         err = ff_rtsp_make_setup_request(s, host, port, lower_transport,
                                  rt->server_type == RTSP_SERVER_REAL ?
                                      real_challenge : NULL);
