@@ -305,7 +305,7 @@ int url_is_file_list(ByteIOContext *s, const char *filename)
     int ret;
     list_demux_t *demux;
     ByteIOContext *lio = s;
-    int64_t    *oldpos = 0;
+    int64_t    oldpos = 0;
     if (am_getconfig_bool("media.amplayer.usedm3udemux")) {
         return 0;    /*if used m3u demux,always failed;*/
     }
@@ -510,18 +510,27 @@ reload:
     mgt->last_load_time = av_gettime();	
     if(bio==NULL){
         ret = avio_open_h(&bio, url, flags,mgt->ipad_ex_headers);
-        //av_log(NULL,AV_LOG_INFO,"http open,return value: %d\n",ret);
         
     }else{
-        avio_reset(bio,AVIO_FLAG_READ); 
-        URLContext* last = (URLContext*)bio->opaque;    
-	 if(last!=NULL){	
-        	ret = ff_http_do_new_request(last,NULL);
+    	if(am_getconfig_bool("media.libplayer.curlenable")){
+		avio_reset(bio,AVIO_FLAG_READ); 
+	        URLContext* last = (URLContext*)bio->opaque;    
+		 if(last!=NULL){
+		 	ret = ffurl_seek(last, 0, AVSEEK_CURL_HTTP_KEEPALIVE);
+		 }else{
+			ret = -1;
+		 }
+	}else{
+		 avio_reset(bio,AVIO_FLAG_READ); 
+	        URLContext* last = (URLContext*)bio->opaque;    
+		 if(last!=NULL){	
+	        	ret = ff_http_do_new_request(last,NULL);
 
-	 }else{
-		ret = -1;
-	 }
-        //av_log(NULL,AV_LOG_INFO,"do http request,return value: %d\n",ret);
+		 }else{
+			ret = -1;
+		 }
+	        //av_log(NULL,AV_LOG_INFO,"do http request,return value: %d\n",ret);
+	}
     }
     
     if (ret != 0) {      
@@ -563,12 +572,19 @@ reload:
         }
 
     }
-    if(av_strstart(url,"shttps://", NULL)){
-        //av_log(NULL,AV_LOG_INFO,"Https url only use short tcp connect\n");
-        url_fclose(bio);
-        bio= NULL;
-	  mgt->cur_uio = NULL;		
-    }
+	#if 0
+	if(am_getconfig_bool("media.libplayer.curlenable")) {
+		url_fclose(bio);
+        	bio= NULL;
+	  	mgt->cur_uio = NULL;
+	}else{}
+	#endif
+	if(av_strstart(url,"shttps://", NULL)){
+		//av_log(NULL,AV_LOG_INFO,"Https url only use short tcp connect\n");
+		url_fclose(bio);
+		bio= NULL;
+		mgt->cur_uio = NULL;
+	}
     *pbio = bio;
     mgt->parser_finish_flag = 1;
     return 0;
@@ -605,6 +621,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     mgt->listclose = 0;
     mgt->cmf_item_index = 0;
     mgt->cur_uio = NULL;
+    mgt->location = NULL;
     mgt->codec_buf_level=-1;
     mgt->switch_down_num = 0;
     mgt->switch_up_num = 0;
@@ -618,10 +635,17 @@ static int list_open(URLContext *h, const char *filename, int flags)
     memset(headers, 0, sizeof(headers));
     memset(sess_id, 0, sizeof(sess_id));
     generate_segment_session_id(sess_id, 37);
-    snprintf(headers, sizeof(headers),
-             "Connection: keep-alive\r\n"
-             /*"Range: bytes=0- \r\n"*/
-             "X-Playback-Session-Id: %s\r\n%s", sess_id,h!=NULL&&h->headers!=NULL?h->headers:"");
+    if(am_getconfig_bool("media.libplayer.curlenable")){
+	    snprintf(headers, sizeof(headers),
+	             "Connection: keep-alive\r\n"
+	             /*"Range: bytes=0- \r\n"*/
+	             "X-Playback-Session-Id: %s\r\n%s\r\n", sess_id,h!=NULL&&h->headers!=NULL?h->headers:"");
+    }else{
+	    snprintf(headers, sizeof(headers),
+		             "Connection: keep-alive\r\n"
+		             /*"Range: bytes=0- \r\n"*/
+		             "X-Playback-Session-Id: %s\r\n%s", sess_id,h!=NULL&&h->headers!=NULL?h->headers:"");
+    }
     //av_log(NULL, AV_LOG_INFO, "Generate ipad http request headers,\r\n%s\n", headers);
     mgt->ipad_ex_headers = strndup(headers, 2048);    
    

@@ -30,6 +30,7 @@
 #endif
 #include "url.h"
 #include "itemlist.h"
+#include "amconfigutils.h"
 /** @name Logging context. */
 /*@{*/
 static const char *urlcontext_to_name(void *ptr)
@@ -295,7 +296,16 @@ int ffurl_alloc(URLContext **puc, const char *filename, int flags)
 
 int ffurl_open(URLContext **puc, const char *filename, int flags)
 {
-    int ret = ffurl_alloc(puc, filename, flags);
+	int ret;
+	if(am_getconfig_bool("media.libplayer.curlenable") && (!strncmp(filename, "http", strlen("http")) || !strncmp(filename, "shttp", strlen("shttp")))) {
+		char * file = (char *)av_malloc(strlen(filename) + 10);
+		int num = snprintf(file, strlen(filename) + 10, "curl:%s", filename);
+		ret = ffurl_alloc(puc, file, flags);
+		av_free(file);
+		file = NULL;
+	} else {
+		ret = ffurl_alloc(puc, filename, flags);
+	}
     if (ret)
         return ret;
     ret = ffurl_connect(*puc);
@@ -307,7 +317,16 @@ int ffurl_open(URLContext **puc, const char *filename, int flags)
 }
 int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *headers, int * http_error_flag)
 {
-    int ret = ffurl_alloc(puc, filename, flags);
+	int ret;
+	if(am_getconfig_bool("media.libplayer.curlenable")  && (!strncmp(filename, "http", strlen("http")) || !strncmp(filename, "shttp", strlen("shttp")))) {
+		char * file = (char *)av_malloc(strlen(filename) + 10);
+		int num = snprintf(file, strlen(filename) + 10, "curl:%s", filename);
+		ret = ffurl_alloc(puc, file, flags);
+		av_free(file);
+		file = NULL;
+	} else {
+		ret = ffurl_alloc(puc, filename, flags);
+	}
     if (ret)
         return ret;
 	if(headers){
@@ -355,7 +374,7 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
         if (ret == AVERROR(EAGAIN)) { 
 			if(av_gettime()>=timeouttime)
 				return AVERROR(EAGAIN);
-			av_log(NULL,AV_LOG_INFO,"retry_transfer_wrapper,retry=%d\n",retry++);
+			//av_log(NULL,AV_LOG_INFO,"retry_transfer_wrapper,retry=%d\n",retry++);
         } else if (ret < 1){
             return ret < 0 ? ret : len;
         }else{
