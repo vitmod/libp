@@ -63,7 +63,7 @@ int af_get_reample_enable_flag()
     return get_sysfs_int("sys/class/amaudio/enable_resample");
 }
 
-static int af_get_resample_type()
+int af_get_resample_type()
 {
     return get_sysfs_int("sys/class/amaudio/resample_type");
 }
@@ -112,8 +112,9 @@ static void af_resample_linear_coef_get(af_resampe_ctl_t *paf_resampe_ctl)
 void af_resample_set_SampsNumRatio(af_resampe_ctl_t *paf_resampe_ctl)
 {  
     int resample_type=af_get_resample_type();
-    adec_print("resample_type=%d\n",resample_type);
-    memset(paf_resampe_ctl,0,sizeof(af_resampe_ctl_t));
+	paf_resampe_ctl->LastResamType=resample_type;
+	adec_print("ReSample Coef Init: type/%d",resample_type);
+    //memset(paf_resampe_ctl,0,sizeof(af_resampe_ctl_t));
     if(resample_type==RESAMPLE_TYPE_NONE){
          paf_resampe_ctl->SampNumIn=DEFALT_NUMSAMPS_PERCH;
          paf_resampe_ctl->SampNumOut=DEFALT_NUMSAMPS_PERCH;
@@ -140,6 +141,7 @@ void af_resample_linear_init()
     af_resampe_ctl_t *paf_resampe_ctl;
 	paf_resampe_ctl=&af_resampler_ctx;
 	memset(paf_resampe_ctl,0,sizeof(af_resampe_ctl_t));
+	adec_print("af_resample_linear_init");
 }
 
 
@@ -285,6 +287,179 @@ void  af_resample_stop_process(af_resampe_ctl_t *paf_resampe_ctl)
     // paf_resampe_ctl->ResevedSampsValid=0;
      //paf_resampe_ctl->OutSampReserveLen=0;
      paf_resampe_ctl->InitFlag=0;
+	 paf_resampe_ctl->LastResamType=0;
     // adec_print("resample stop INIT_FLAG=%d\n",paf_resampe_ctl->InitFlag);
+}
+
+#define MAXCH_NUMBER 8
+#define MAXFRAMESIZE 8192
+short  date_temp[MAXCH_NUMBER*MAXFRAMESIZE];
+extern int android_reset_track(struct aml_audio_dec* audec);
+/**
+ *  try to read as much data as len from dsp buffer
+ */
+static int dsp_pcm_read(aml_audio_dec_t*audec,char *data_in,int len)
+{
+   int pcm_ret=0,pcm_cnt_bytes=0;
+   int wait_times=0;
+   while(pcm_cnt_bytes<len){
+      pcm_ret=audec->adsp_ops.dsp_read(&audec->adsp_ops, data_in+pcm_cnt_bytes, len-pcm_cnt_bytes);
+	  if(pcm_ret==0){//indicate there is no data in dsp_buf,still try to read more data:
+          wait_times++;
+		  usleep(20);
+		  if(wait_times>50){
+		    adec_print("NOTE:dsp no enough data!");
+		    break;
+		  }
+	  }
+	  pcm_cnt_bytes+=pcm_ret;
+   }
+   return pcm_cnt_bytes/sizeof(short);
+}
+
+static void dump_pcm_bin(char *path,char *buf,int size)
+{
+	FILE *fp=fopen(path,"ab+");
+	 if(fp!= NULL){
+		   fwrite(buf,1,size,fp);
+		   fclose(fp);
+	}
+}
+
+
+void af_resample_api(char *buffer, unsigned int *size,int Chnum, aml_audio_dec_t *audec)
+{
+	int len;
+	int resample_enable;
+	af_resampe_ctl_t *paf_resampe_ctl;
+	short data_in[MAX_NUMSAMPS_PERCH*DEFALT_NUMCH], *data_out;
+	short outbuftmp16[MAX_NUMSAMPS_PERCH*DEFALT_NUMCH];
+    int NumSamp_in,NumSamp_out,NumCh,NumSampRequir=0;
+	static int print_flag=0;
+	int outbuf_offset=0;
+	int dsp_format_changed_flag=0;
+	static int pcm_left_len=-1;
+       //------------------------------------------
+        NumCh=Chnum;//buffer->channelCount;		
+        resample_enable= af_get_reample_enable_flag();
+		paf_resampe_ctl=af_resampler_ctx_get();
+        data_out=date_temp;//buffer->i16
+		NumSamp_out = *size/sizeof(short);//buffer->size/sizeof(short);
+		if(NumSamp_out>MAXCH_NUMBER*MAXFRAMESIZE)
+			NumSamp_out=MAXCH_NUMBER*MAXFRAMESIZE;
+		NumSampRequir=NumSamp_out;
+		int resample_type=af_get_resample_type();
+		
+		//adec_print("REQURE_NUM-----------------------------%d\n",NumSamp_out);
+		
+		//-------------------------------
+		//add this part for support rapid Resample_Type covet:
+		if (resample_enable)
+		 {   
+		 	if(paf_resampe_ctl->LastResamType!=resample_type)
+		 	{ 
+				adec_print("ReSample Type Changed: FromTYpe/%d ToType/%d \n",
+					         paf_resampe_ctl->LastResamType,resample_type);
+			    if((paf_resampe_ctl->OutSampReserveLen==0) // to ensure phase continue:
+		   	      && (paf_resampe_ctl->ResevedSampsValid==0))
+		        {   
+					adec_print("ReSample Type Changed: ENABLE");
+                    af_resample_stop_process(paf_resampe_ctl);
+		        }else{
+		            adec_print("ReSample Type Changed DISABLE:");
+					adec_print("  OutSampSaved/%d InSampSaved/%d in Resampler!",
+						        paf_resampe_ctl->OutSampReserveLen,paf_resampe_ctl->ResevedSampsValid);
+		   	        resample_enable=0;
+		        }
+
+		 	 }
+		 }
+        //-------------------------------
+        if(resample_enable){    
+			   int pcm_cnt=0;
+			   if (!paf_resampe_ctl->InitFlag)
+                   af_resample_set_SampsNumRatio(paf_resampe_ctl);
+			   af_get_pcm_in_resampler(paf_resampe_ctl,data_out+outbuf_offset,&NumSampRequir);
+			   
+			   //adec_print("RETURN_SIZE_1:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->OutSampReserveLen);
+
+			   outbuf_offset += NumSampRequir;
+			   NumSamp_out   -= NumSampRequir;
+			   while(NumSamp_out >= DEFALT_NUMSAMPS_PERCH*NumCh)
+			   {   
+			       int delta_input_sampsnum=af_get_delta_inputsampnum(paf_resampe_ctl,NumCh);
+			       NumSamp_in =dsp_pcm_read(audec,(char*)data_in,delta_input_sampsnum*sizeof(short));	
+				   af_resample_process_linear_inner(paf_resampe_ctl,data_in, &NumSamp_in,data_out+outbuf_offset,&pcm_cnt,NumCh);
+
+				   //adec_print("RETURN_SIZE_2:%d    OutSampReserve=%d \n",pcm_cnt,paf_resampe_ctl->OutSampReserveLen);
+
+				   if(pcm_cnt==0)
+				   	  goto resample_out;
+				   outbuf_offset += pcm_cnt;
+				   NumSamp_out   -= pcm_cnt;
+			   }
+			   
+               if(NumSamp_out>0)
+			   {
+			       int delta_input_sampsnum=af_get_delta_inputsampnum(paf_resampe_ctl,NumCh);
+			       NumSamp_in =dsp_pcm_read(audec,(char*)data_in,delta_input_sampsnum*sizeof(short));				   
+            	   af_resample_process_linear_inner(paf_resampe_ctl,data_in, &NumSamp_in,outbuftmp16,&pcm_cnt,NumCh);
+                   if(pcm_cnt==0)
+				   	   goto resample_out;
+
+				   //adec_print("RETURN_SIZE_3:%d    OutSampReserve=%d \n",NumSamp_out,pcm_cnt-NumSamp_out);
+   
+				   memcpy(data_out+outbuf_offset,outbuftmp16,NumSamp_out*sizeof(short));
+				   outbuf_offset +=NumSamp_out;
+                   memcpy(paf_resampe_ctl->OutSampReserveBuf,outbuftmp16+NumSamp_out,(pcm_cnt-NumSamp_out)*sizeof(short));
+                   paf_resampe_ctl->OutSampReserveLen = (pcm_cnt-NumSamp_out);
+			   }
+			   
+		}else{
+              if(paf_resampe_ctl->OutSampReserveLen > 0){
+			      af_get_pcm_in_resampler(paf_resampe_ctl,data_out+outbuf_offset,&NumSampRequir);
+				  //adec_print("RETURN_SIZE_4:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->OutSampReserveLen);
+			      outbuf_offset += NumSampRequir;
+			      NumSamp_out   -= NumSampRequir;
+				  NumSampRequir  =  NumSamp_out;
+              } 
+
+			  if(paf_resampe_ctl->ResevedSampsValid > 0){
+                  af_get_unpro_inputsampnum(paf_resampe_ctl,data_out+outbuf_offset,&NumSampRequir);
+				  //adec_print("RETURN_SIZE_5:%d    OutSampReserve=%d \n",NumSampRequir,paf_resampe_ctl->ResevedSampsValid);
+				  outbuf_offset += NumSampRequir;
+			      NumSamp_out   -= NumSampRequir;
+			  }
+			  
+              if((paf_resampe_ctl->OutSampReserveLen==0) && (paf_resampe_ctl->ResevedSampsValid==0))
+                  af_resample_stop_process(paf_resampe_ctl);
+
+			  if(NumSamp_out > 0){
+			  	  len=audec->adsp_ops.dsp_read(&audec->adsp_ops, (char*)(data_out+outbuf_offset),NumSamp_out*sizeof(short));
+                  outbuf_offset += len/sizeof(short);
+			  }
+        }
+	resample_out:
+		
+	    *size=outbuf_offset*sizeof(short);
+		memcpy(buffer,data_out,*size);
+		//------------------------------------
+        dsp_format_changed_flag=audiodsp_format_update(audec);
+	    if(dsp_format_changed_flag>0){
+			pcm_left_len=audiodsp_get_pcm_left_len();
+	    }
+		if(pcm_left_len>=0){
+			if(pcm_left_len>(*size)){
+				pcm_left_len-=(*size);
+				memset((char*)(data_out),0,*size);
+			}else if(pcm_left_len<=(*size)){
+			    memset((char*)(data_out),0,pcm_left_len);
+				pcm_left_len=-1;	
+			
+			}
+		}
+		//dump_pcm_bin("/data/post1.pcm",(char*)(buffer->i16),buffer->size);
+		//---------------------------------------------
+
 }
 
