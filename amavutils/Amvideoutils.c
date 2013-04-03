@@ -118,7 +118,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         memset(val, 0, sizeof(val));
         if (amsysfs_get_sysfs_str(PPSCALER_PATH, val, sizeof(val)) == 0) {
             /* the returned string should be "current ppscaler mode is disabled/enable" */            
-            ppscaler_enable = (val[24] == 'd') ? 0 : 1;
+            ppscaler_enable = (val[25] == 'd') ? 0 : 1;
         }
 
         if (free_scale_enable == 0 && ppscaler_enable == 0) {
