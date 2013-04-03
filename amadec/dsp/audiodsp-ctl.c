@@ -228,8 +228,10 @@ int audiodsp_start(aml_audio_dec_t *audec)
         return -3;
     }
 
-    if(audec->need_stop) //in case  stop command comes now  
-       return -5;
+    if(audec->need_stop){ //in case  stop command comes now  
+        ioctl(dsp_ops->dsp_file_fd, AUDIODSP_STOP, 0);
+        return -5;
+    }
 
     ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_DECODE_START, 0);
     err_count = 0;
