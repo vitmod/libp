@@ -668,7 +668,7 @@ static int list_open(URLContext *h, const char *filename, int flags)
     if (ret < 0 || value <= 0) {	
         if (!mgt->have_list_end) {
             int itemindex =0;
-            if(mgt->item_num<=10&&mgt->item_num>1){
+            if(mgt->item_num<=10&&mgt->item_num>2){
                 itemindex = mgt->item_num / 2+1; /*for live streaming ,choose the middle item.*/                  
             }else{
 		   itemindex =  mgt->item_num -1;         		
@@ -682,8 +682,10 @@ static int list_open(URLContext *h, const char *filename, int flags)
     }	
    
     h->is_streamed = 1;
+    h->is_slowmedia = 1;
     if(mgt->have_list_end){	
-        h->is_slowmedia = 1;
+        h->flags|=URL_MINI_BUFFER;//no lpbuffer        
+        h->flags|=URL_NO_LP_BUFFER;
     }
     if (mgt->full_time > 0 && mgt->have_list_end) {
         h->support_time_seek = 1;

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "hls_download.h"
 #include "hls_utils.h"
@@ -79,10 +80,13 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
     int ret = -1;
     int reason_code = 0;
     char fileUrl[MAX_URL_SIZE];
-    int is_ignore_range_req = 0;
+    int is_ignore_range_req = 1;
+#if 0 //remove Range in http request
     if(in_get_sys_prop_float("libplayer.hls.ignore_range")>0){
         is_ignore_range_req = 1;        
     }
+#endif
+    
     ctx->mBackupFile = NULL;
     //edit url address
 #ifdef _USE_FFMPEG_CODE       
@@ -140,14 +144,14 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
             av_set_string3(h->priv_data, "iv", aes128key->ivec_hex, 0, NULL);               
             if((ret = ffurl_connect(h))<0){
                 if(404 == h->http_code){
-                    reason_code = 1;
+                    reason_code = -404;
                 }
                 if(503 == h->http_code){
-                    reason_code = 2;
+                    reason_code = -503;
 
                 }
                 if(500 == h->http_code){
-                    reason_code = 3;
+                    reason_code = -500;
                 }
                 
                 ffurl_close(h);           
@@ -162,11 +166,15 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
         }
     }
     ctx->h = h;
-    
+    if(url_interrupt_cb()>0){//seek break loop,not error response.
+        reason_code = -800;
+    }
 #endif
     if(ret!=0){
         ctx->error_code = reason_code;
         ctx->open_flag = -1;
+        ctx->meausure_handle = NULL;
+        *handle = ctx;
         LOGE("Failed to open http file,url:%s,error:%d,reason:%d\n",fileUrl,ret,reason_code);
         return -1; 
 
@@ -176,8 +184,10 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
     ctx->open_flag = 1;
     ctx->meausure_handle = bandwidth_measure_alloc(HTTP_MEASURE_ITEM_NUM,0);
     if(ctx->meausure_handle == NULL){
-        LOGE("Failed to allocate memory for bandwidth meausre utils\n");
+        LOGE("Failed to allocate memory for bandwidth meausre utils\n");    
+        ctx->error_code = -1;
         ctx->open_flag = -1;
+        *handle = ctx;
         return -1; 
     }
 #ifdef SAVE_BACKUP
@@ -231,7 +241,7 @@ int hls_http_read(void* handle,void* buf,int size){
     
     int rsize = 0;
     HLSHttpContext* ctx = (HLSHttpContext*)handle;
-    if(ctx->open_flag==0){
+    if(ctx->open_flag<=0){
         LOGE("Need open http session\n");
         return -1;
     }
@@ -265,7 +275,7 @@ int hls_http_seek_by_size(void* handle,int64_t pos,int flag){
     
     
     HLSHttpContext* ctx = (HLSHttpContext*)handle;
-    if(ctx->open_flag==0){
+    if(ctx->open_flag<=0){
         LOGE("Need open http session\n");
         return -1;
     }  
@@ -316,15 +326,9 @@ const char* hls_http_get_redirect_url(void* handle){
 int hls_http_get_error_code(void* handle){
     if(handle == NULL){
         return -1;
-    }
-    
+    }    
     
     HLSHttpContext* ctx = (HLSHttpContext*)handle;
-    if(ctx->open_flag==0){
-        LOGE("Need open http session\n");
-        return -1;
-    } 
-
     LOGV("Got http error code:%d\n",ctx->error_code);
     return ctx->error_code;
     
@@ -343,7 +347,10 @@ int hls_http_close(void* handle){
     }
 #ifdef _USE_FFMPEG_CODE 
     URLContext* h = (URLContext*)(ctx->h); 
-    ffurl_close(h);
+    if(h){
+        ffurl_close(h);
+        ctx->h = NULL;
+    }
 #endif
 
 #ifdef SAVE_BACKUP    
@@ -355,8 +362,9 @@ int hls_http_close(void* handle){
     if(ctx->redirect_url){
         free(ctx->redirect_url);
     }
-
-    bandwidth_measure_free(ctx->meausure_handle);
+    if(ctx->meausure_handle!=NULL){
+        bandwidth_measure_free(ctx->meausure_handle);
+    }
     free(ctx);
     ctx = NULL;
     LOGV("Close http session\n");
@@ -390,7 +398,7 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     int64_t flen = hls_http_get_fsize(handle);
     int64_t rsize = 0;
     unsigned char* buffer = NULL;
-    const int def_buf_size = 64*1024;
+    const int def_buf_size = 1024*1024;
     int buf_len = 0;
     if(flen>0){
         buffer = (unsigned char* )malloc(flen);
@@ -426,11 +434,36 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     }else{
         *redirectUrl = NULL;
     }
+    
     *buf = buffer;
     *length = isize;
 
     hls_http_close(handle);
 
-    return 0;
+    if(ret<0){
+        LOGE("failed to fetch file,url:%s,return value:%d\n",url,ret);
+        return ret;        
+    }else{
+        return 0;
+
+    }
     
+}
+
+int hls_task_create(pthread_t *thread_out, pthread_attr_t const * attr,void *(*start_routine)(void *), void * arg){
+    int ret = -1;
+#ifdef _USE_FFMPEG_CODE 
+    ret = ffmpeg_pthread_create(thread_out,attr,start_routine,arg);
+#else
+    ret = pthread_create(thread_out,attr,start_routine,arg);
+#endif
+    return ret;
+}
+int hls_task_join(pthread_t thid, void ** ret_val){
+#ifdef _USE_FFMPEG_CODE 
+    ffmpeg_pthread_join(thid,ret_val);
+#else
+    pthread_join(thid,ret_val);
+#endif
+    return 0;
 }

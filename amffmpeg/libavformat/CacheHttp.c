@@ -526,7 +526,7 @@ OPEN_RETRY:
                 }
                 continue;
              }
-             if(s->have_list_end&&(2 == http_code || 3 == http_code||1 == http_code )) {
+             if(s->have_list_end&&(-404 == http_code || -500 == http_code||-503 == http_code )) {
                 av_log(h, AV_LOG_ERROR, "----------CacheHttpContext : ffurl_open_h 404\n");
                 if(retry_num++ < HTTP_RETRY_TIMES) {
                     usleep(WAIT_TIME);
@@ -545,7 +545,7 @@ OPEN_RETRY:
 	                }
 	                break;
 		    }
-             } else if(!s->have_list_end&&(1 == http_code ||2 == http_code||3 == http_code)){
+             } else if(!s->have_list_end&&(-404== http_code ||-503 == http_code|| -500 == http_code)){
                 if(skip_count++ < skip_count_max) {//if live streaming,just keep on 2s.
                     usleep(WAIT_TIME);
 			 av_log(h,AV_LOG_WARNING,"Skip current segment,url:%s\n",filename);		
@@ -740,15 +740,11 @@ int CacheHttp_GetEstimateBitrate(void *_handle,int64_t* per){
 		return -1;
 	}
 	CacheHttpContext * s = (CacheHttpContext *)_handle; 
-	if(s->http_error_code ==1){		
-		*val =  -404; 
-	}else if(s->http_error_code ==2){		
-		*val =   -500;
-	}else if(s->http_error_code ==3){		
-		*val =   -503;
-	}else{		
-		*val =   -800;
-	}
+	if(s->http_error_code < 0){		
+		*val =  s->http_error_code; 	
+	}else{
+        *val = -501; //unkown error
+    }
 	return 0;
 
  }

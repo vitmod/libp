@@ -341,11 +341,11 @@ int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *h
     if(http_error_flag) {
         *http_error_flag = 0;
         if(404 == (*puc)->http_code)
-            *http_error_flag = 1;
+            *http_error_flag = -404;
         if(503 == (*puc)->http_code)
-            *http_error_flag = 2;
+            *http_error_flag = -503;
         if(500 == (*puc)->http_code)
-            *http_error_flag = 3;
+            *http_error_flag = -500;
     }
     if (!ret)
         return 0;

@@ -224,7 +224,7 @@ static int _is_add_fake_leader_block(M3ULiveSession* ss){
     return 0;
 }
 static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged){
-   *unchanged = 0;
+    *unchanged = 0;
     void* buf = NULL;
     int blen = -1;
     int ret = -1;
@@ -239,7 +239,10 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
         snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n%s",ss->headers);
     }
     ret = fetchHttpSmallFile(url,headers,&buf,&blen,&redirectUrl);
-    if(ret!=0){        
+    if(ret!=0){   
+        if(buf!=NULL){
+            free(buf);
+        }
         return NULL;
     }
 
@@ -271,7 +274,7 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
 
         LOGV("Playlist unchanged, refresh state is now %d",
              (int)ss->refresh_state);
-
+        free(buf);
         return NULL;
     }
 
@@ -365,12 +368,18 @@ static int  _time_to_refresh_bandwidth_list(M3ULiveSession* ss,int64_t nowUs){
 
 #define CODEC_BUFFER_LOW_FLAG  (4)			// 4s
 #define CODEC_BUFFER_HIGH_FLAG (10)			 //10s
-
-
 static int  _get_best_bandwidth_index(M3ULiveSession* s){//rate adaptation logic
     int index = 0; 
-  
-    if(s->bandwidth_item_num >0){
+    int adaptive_profile = in_get_sys_prop_float("libplayer.hls.profile");
+    if(adaptive_profile ==0){
+        int fixed_bw = in_get_sys_prop_float("libplayer.hls.fixed_bw");
+        if(fixed_bw>=0&&fixed_bw<(s->bandwidth_item_num -1)&&fixed_bw!= s->prev_bandwidth_index){
+            index = fixed_bw;
+        }else{
+            index = s->prev_bandwidth_index;
+        }
+    }
+    if(s->bandwidth_item_num >0&&adaptive_profile!=0&&s->seekflag<=0&&s->is_closed<=0){
         int reserved_segment_check = 0;
         if(s->playlist!=NULL&&m3u_is_complete(s->playlist)>0){
             int32_t firstSeqNumberInPlaylist = m3u_get_node_by_index(s->playlist,0)->media_sequence;
@@ -567,9 +576,17 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
         LOGE("failed to init playlist\n");
         return -1;    
     }
-    
+    s->prev_bandwidth_index = 0;
     if(s->playlist==NULL){
         int bandwidthIndex = 0;        
+        int fixed_bw = in_get_sys_prop_float("libplayer.hls.fixed_bw");
+        if(fixed_bw>0){
+            if(fixed_bw>(s->bandwidth_item_num-1)){
+                bandwidthIndex = s->bandwidth_item_num-1;                
+            }else{
+                bandwidthIndex = fixed_bw;
+            }
+        }
         char* url = NULL;
         if (s->bandwidth_item_num> 0) {
             url = s->bandwidth_list[bandwidthIndex]->url;
@@ -579,7 +596,7 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
             return -1;
         }
         
-        int unchanged;
+        int unchanged = 0;
         void* playlist = _fetch_play_list(url,s, &unchanged);
         if (playlist == NULL) {
             if (unchanged) {
@@ -596,20 +613,33 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
         }
 
     }
-    s->prev_bandwidth_index = 0;
+    
     pthread_mutex_lock(&s->session_lock);
     int32_t firstSeqNumberInPlaylist = m3u_get_node_by_index(s->playlist,0)->media_sequence;
     if (firstSeqNumberInPlaylist ==-1) {
         firstSeqNumberInPlaylist = 0;
     }
+    int rv = -1;
+    rv = in_get_sys_prop_float("libplayer.hls.stpos"); 
     int hasEnd = -1;
     hasEnd = m3u_is_complete(s->playlist);
-    if(hasEnd>0){//first item
-        s->cur_seq_num = firstSeqNumberInPlaylist;
-        s->durationUs = m3u_get_durationUs(s->playlist);
-    }else{//last item            
-        s->cur_seq_num = firstSeqNumberInPlaylist+m3u_get_node_num(s->playlist)-1;
-        s->durationUs = -1;
+    if(rv<0){
+        if(hasEnd>0){//first item
+            s->cur_seq_num = firstSeqNumberInPlaylist;
+            s->durationUs = m3u_get_durationUs(s->playlist);
+        }else{//last item       
+            s->cur_seq_num = firstSeqNumberInPlaylist+m3u_get_node_num(s->playlist)-1;        
+            s->durationUs = -1;
+        }
+    }else{
+        if(rv<m3u_get_node_num(s->playlist)){
+            s->cur_seq_num = firstSeqNumberInPlaylist+rv;
+        }
+        if(hasEnd>0){
+            s->durationUs = m3u_get_durationUs(s->playlist);            
+        }else{
+            s->durationUs = -1;
+        }        
     }
     s->target_duration = m3u_get_target_duration(s->playlist);
     s->last_bandwidth_list_fetch_timeUs = in_gettimeUs();
@@ -621,6 +651,7 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
 
 }
 
+static void _thread_wait_timeUs(M3ULiveSession* s,int microseconds);
 #define REFRESH_PLAYLIST_THRESHOLD 3 
 #define RINSE_REPEAT_FAILED_MAX 5
 static int _refresh_playlist(M3ULiveSession* s){
@@ -675,7 +706,9 @@ rinse_repeat:
                     // We succeeded in fetching the playlist, but it was
                     // unchanged from the last time we tried.   
                     if(reserved_segment_check ==0){
-                        pthread_mutex_unlock(&s->session_lock);
+                        pthread_mutex_unlock(&s->session_lock);                        
+                        s->last_bandwidth_list_fetch_timeUs = in_gettimeUs();
+                        _thread_wait_timeUs(s,100*1000);
                         goto rinse_repeat;
                     }
                     LOGE("failed to load playlist at url '%s'", url); 
@@ -853,9 +886,11 @@ static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive
     }
 open_retry:
 {
-    if(s->is_closed>0){
+    if(s->is_closed>0||s->seekflag>0){
+        LOGV("Get close flag before opening,(value:%d) or seek flag(value:%d)\n",s->is_closed,s->seekflag);
         return 0;
     }
+    
     char headers[MAX_URL_SIZE];
     headers[0]='\0';
     if(range_offset>0){
@@ -884,6 +919,7 @@ open_retry:
         ret = _get_decrypt_key(s,indexInPlaylist,&keyinfo);
         if(ret!=0){
             _thread_wait_timeUs(s,100*1000);   
+            handle = NULL;
             goto open_retry;
         }
         ret = hls_http_open(url, headers,(void*)&keyinfo,&handle);
@@ -894,16 +930,17 @@ open_retry:
         ret = hls_http_open(url, headers,NULL,&handle);
     }
     if(ret !=0){
-        int errcode = hls_http_get_error_code(handle);
+        int errcode = hls_http_get_error_code(handle);       
         if(errcode!=0){
-            if(isLive&&open_counts-->0){
+            if((!isLive&&open_counts-->0)||errcode == -800){
                 LOGV("Just retry to open,url:%s\n",url);  
                 _thread_wait_timeUs(s,100*1000);
                 hls_http_close(handle);
+                handle = NULL;
                 goto open_retry;
 
             }else{//failed to download,need skip this file
-                s->err_code = errcode;
+                s->err_code = -errcode;                  
                 hls_http_close(handle);
                 return HLSERROR(EAGAIN);
             }
@@ -953,7 +990,7 @@ open_retry:
         }
         if(hls_simple_cache_get_free_space(s->cache)<(buf_tmp_size+extra_size)){
             LOGV("Simple cache not have free space,just wait\n");            
-            _thread_wait_timeUs(s,100*1000);
+            _thread_wait_timeUs(s,500*1000);
             continue;            
         }
 #endif  
@@ -984,7 +1021,7 @@ open_retry:
                     s->is_ts_media = 0;
                 }
             }            
-            if(buf_tmp_rsize >=buf_tmp_size/*||segment->index == 0*/){ //first node
+            if(buf_tmp_rsize >=buf_tmp_size||segment->index == 0){ //first node
                 //LOGV("Move temp buffer data to cache");
                 
 #ifdef USE_SIMPLE_CACHE
@@ -1049,10 +1086,15 @@ open_retry:
                 _thread_wait_timeUs(s,100*1000);
                 continue;
             }
-
-            s->err_code = rlen;
-            hls_http_close(handle);
-            return -1;
+            if(isLive> 0){ //live streaming,skip current segment
+                s->err_code = 0;
+                hls_http_close(handle);
+                return HLSERROR(EAGAIN);
+            }else{
+                s->err_code = rlen;
+                hls_http_close(handle);
+                return -1;
+            }
 
         }
     }
@@ -1220,11 +1262,15 @@ static void* _download_worker(void* ctx){
             if(ret == HLSERROR(EAGAIN)){
                 download_failed_counts--; 
             }else{
-                s->err_code = -1;
+                if(s->err_code>=0){
+                    s->err_code = -501; //unknow error
+                }
                 break;
             }
+        }else{
+            download_failed_counts = 5;
+            s->err_code = 0;
         }
-        
         if(s->is_closed>0){
             break;
         }
@@ -1253,7 +1299,7 @@ static int _open_session_download_task(M3ULiveSession* s){
     pthread_attr_t pthread_attr;
     pthread_attr_init(&pthread_attr);
 
-    ret = pthread_create(&tid, &pthread_attr, _download_worker,s);
+    ret = hls_task_create(&tid, &pthread_attr, _download_worker,s);
     if(ret!=0){
         pthread_attr_destroy(&pthread_attr);
         return -1;
@@ -1555,7 +1601,7 @@ int m3u_session_close(void* hSession){
     if(session->tid!=0){
         LOGV("Terminate session download task\n");
         _thread_wake_up(session);
-        pthread_join(session->tid,NULL);    
+        hls_task_join(session->tid,NULL);    
     }
     pthread_mutex_lock(&session->session_lock);
     if(session->baseUrl){

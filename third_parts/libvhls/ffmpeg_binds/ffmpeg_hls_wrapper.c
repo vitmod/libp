@@ -80,6 +80,7 @@ static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
     }else{//live streaming        
         h->support_time_seek = 0;
         h->flags|=URL_MINI_BUFFER;//no lpbuffer
+        h->flags|=URL_NO_LP_BUFFER;
     }
     
     h->is_slowmedia = 1;
@@ -101,7 +102,7 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
     do {
         if (url_interrupt_cb()) {
             RLOG("url_interrupt_cb\n");
-            len = AVERROR(EINTR);
+            len = 0;
             break;
         }
         len = m3u_session_read_data(hSession, buf,size);
