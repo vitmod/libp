@@ -1661,7 +1661,10 @@ int write_av_packet(play_para_t *para)
 					abuf_threshold = atof(value);
 				
 				if (para->state.video_bufferlevel >= vbuf_threshold || para->state.audio_bufferlevel >= abuf_threshold)
+				{
+					player_thread_wait(para, 10*1000);
 					return PLAYER_SUCCESS;
+				}
 			}
 			
             write_bytes = codec_write(pkt->codec, (char *)buf, size);
