@@ -802,8 +802,19 @@ static void update_current_time(play_para_t *p_para)
                     p_para->discontinue_point = p_para->discontinue_point - time / PTS_FREQ;
                     log_print("[update_current_time:%d]time<dpoint dpoint=%d\n", __LINE__, p_para->discontinue_point);
                     p_para->discontinue_flag = 1;
+                    p_para->discontinue_time = 0;
                 }
+                unsigned int tmp_time = time;
                 time += p_para->discontinue_point * PTS_FREQ;
+                if (((int)(time/PTS_FREQ) > p_para->state.full_time) && (p_para->state.full_time > 0)) {
+                    if(p_para->discontinue_time > 0) {
+                        p_para->discontinue_point += (tmp_time - p_para->discontinue_time) / PTS_FREQ;
+                        time = p_para->discontinue_point * PTS_FREQ;
+                    } else {
+                        time = p_para->discontinue_point * PTS_FREQ;
+                    }
+                    p_para->discontinue_time = tmp_time;
+                }
             }
             log_debug("[update_current_time]time=%d curtime=%d lasttime=%d\n", time / PTS_FREQ, p_para->state.current_time, p_para->state.last_time);
             p_para->state.current_ms = time / PTS_FREQ_MS;

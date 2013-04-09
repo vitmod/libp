@@ -142,6 +142,7 @@ typedef struct play_para {
     int             first_index;
     int             max_raw_size;
     int    discontinue_point;     
+    unsigned int    discontinue_time;
     unsigned int    discontinue_flag;
     unsigned int    karaok_flag;
     check_end_info_t check_end;
