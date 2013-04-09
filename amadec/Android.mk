@@ -54,7 +54,7 @@ LOCAL_MODULE := libamadec
 
 LOCAL_ARM_MODE := arm
 ##################################################
-$(shell cp $(LOCAL_PATH)/acodec_lib/*.so $(TARGET_OUT)/lib)
+#$(shell cp $(LOCAL_PATH)/acodec_lib/*.so $(TARGET_OUT)/lib)
 ###################################################
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamavutils
 
