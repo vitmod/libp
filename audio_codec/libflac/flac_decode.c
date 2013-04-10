@@ -739,10 +739,10 @@ decodecontinue:
 	/* decode frame */
 	init_get_bits(&s->gb, buf, buf_size*8);
 	if (decode_frame(s) < 0) {
-	  //  av_log(s->avctx, AV_LOG_ERROR, "decode_frame() failed\n");
+	    audio_codec_print("decode_frame() failed\n");
 		s->bitstream_size=0;
 		s->bitstream_index=0;
-		return -1;
+		return inlen;//-1;
 	}
 	bytes_read = (get_bits_count(&s->gb)+7)/8;
 

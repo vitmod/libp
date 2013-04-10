@@ -281,9 +281,7 @@ struct package * package_get()
         pack_list.first=NULL;
         pack_list.pack_num=0;
         pack_list.current=NULL;
-    }
-    else
-    {
+    }else if(pack_list.pack_num>1) {
         pack_list.first=pack_list.first->next;
         pack_list.pack_num--;
     }
