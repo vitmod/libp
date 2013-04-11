@@ -171,7 +171,9 @@ int ffmpeg_open_file(play_para_t *am_p)
 Retry_open:
         //ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, am_p->start_param ? am_p->start_param->headers : NULL);
         ret = av_open_input_file_header(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, header);
-        log_print("[ffmpeg_open_file] file=%s,header=%s\n", am_p->file_name, header);
+        if(am_getconfig_bool_def("media.amplayer.disp_url",1)>0){ 
+            log_print("[ffmpeg_open_file] file=%s,header=%s\n", am_p->file_name, header);
+        }
         if (ret != 0) {
             if (ret == AVERROR(EAGAIN)) {
                 goto  Retry_open;

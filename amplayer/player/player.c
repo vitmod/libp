@@ -700,7 +700,9 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
               p_para->playctrl_info.black_out,
               p_para->playctrl_info.time_point,
               p_para->playctrl_info.read_max_retry_cnt);
-    log_print("file::::[%s],len=%d\n", c_para->file_name, strlen(c_para->file_name));
+    if(am_getconfig_bool_def("media.amplayer.disp_url",1)>0){          
+        log_print("file::::[%s],len=%d\n", c_para->file_name, strlen(c_para->file_name));
+    }
 }
 static int check_start_cmd(play_para_t *player)
 {

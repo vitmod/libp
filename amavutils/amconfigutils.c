@@ -226,6 +226,8 @@ int am_getconfig_bool_def(const char * path,int def)
     if (ret > 0) {
         if(strcasecmp(buf,"true")==0 || strcmp(buf,"1")==0)
             return 1;
+        else
+            return 0;
     }
     return def;
 }
