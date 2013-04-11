@@ -252,6 +252,10 @@ int hls_http_read(void* handle,void* buf,int size){
     if(rsize == AVERROR_EOF){
         rsize = 0;
     }
+    if(rsize == AVERROR_EXIT){
+        LOGE("Mabye interrupt read loop by seek\n");
+        rsize = HLSERROR(EINTR);
+    }
 #endif
     if(rsize>0){
         bandwidth_measure_finish_read(ctx->meausure_handle,rsize);

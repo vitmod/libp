@@ -628,7 +628,11 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
             s->cur_seq_num = firstSeqNumberInPlaylist;
             s->durationUs = m3u_get_durationUs(s->playlist);
         }else{//last item       
-            s->cur_seq_num = firstSeqNumberInPlaylist+m3u_get_node_num(s->playlist)-1;        
+            if(m3u_get_node_num(s->playlist)>3){
+                s->cur_seq_num = firstSeqNumberInPlaylist+m3u_get_node_num(s->playlist)-3;
+            }else{
+                s->cur_seq_num = firstSeqNumberInPlaylist+m3u_get_node_num(s->playlist)-1;   
+            }
             s->durationUs = -1;
         }
     }else{
@@ -884,6 +888,11 @@ static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive
             s->is_encrypt_media = 0;
         }
     }
+    int explicitDiscontinuity = 0;
+    if(segment->flags&DISCONTINUE_FLAG){
+        LOGV("Get discontinuity flag\n");
+        explicitDiscontinuity = 1;        
+    }    
 open_retry:
 {
     if(s->is_closed>0||s->seekflag>0){
@@ -1086,7 +1095,7 @@ open_retry:
                 _thread_wait_timeUs(s,100*1000);
                 continue;
             }
-            if(isLive> 0){ //live streaming,skip current segment
+            if(isLive> 0||rlen == HLSERROR(EINTR)){ //live streaming,skip current segment
                 s->err_code = 0;
                 hls_http_close(handle);
                 return HLSERROR(EAGAIN);
@@ -1178,11 +1187,7 @@ static int _download_next_segment(M3ULiveSession* s){
         seek_by_pos = s->seekposByte;    
         s->seekposByte = -1;
     }
-    int explicitDiscontinuity = 0;
-    if(node->flags&DISCONTINUE_FLAG){
-        LOGV("Get discontinuity flag\n");
-        explicitDiscontinuity = 1;        
-    }
+
     M3uBaseNode segment;
     memcpy((void*)&segment,node,sizeof(M3uBaseNode));
 
@@ -1278,6 +1283,7 @@ static void* _download_worker(void* ctx){
         if(_finish_download_last(s)>0){
             LOGV("Download all segments,worker sleep...\n");
             s->eof_flag = 1;
+            s->err_code = 0;
             _thread_wait_timeUs(s,-1); 
         }
 
