@@ -804,6 +804,8 @@ void codec_resume_audio(codec_para_t *pcodec, unsigned int orig)
 		a_ainfo.dspdec_not_supported = pcodec->dspdec_not_supported;
 		if (pcodec->switch_audio_flag) {
 			a_ainfo.droppcm_flag = pcodec->switch_audio_flag;
+			if(pcodec->stream_type == STREAM_TYPE_TS || pcodec->stream_type == STREAM_TYPE_PS)
+				a_ainfo.droppcm_flag = 0;
 			pcodec->switch_audio_flag = 0;
 		}
         if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type))
