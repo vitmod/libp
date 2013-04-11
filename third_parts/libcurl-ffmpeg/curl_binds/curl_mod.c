@@ -37,10 +37,10 @@ extern URLProtocol ff_curl_protocol;
 
 int libcurl_mod_init(const struct ammodule_t* module, int flags)
 {
-    LOGI("libcurl module init\n");
+    CLOGI("libcurl module init\n");
     char * ver = NULL;
     ver = curl_version();
-    LOGI("curl version : [%s]", ver);
+    CLOGI("curl version : [%s]", ver);
     curl_global_init(CURL_GLOBAL_ALL);
     av_register_protocol(&ff_curl_protocol);
     return 0;
@@ -48,7 +48,7 @@ int libcurl_mod_init(const struct ammodule_t* module, int flags)
 
 int libcurl_mod_release(const struct ammodule_t* module)
 {
-    LOGI("libcurl module release\n");
+    CLOGI("libcurl module release\n");
     curl_global_cleanup();
     return 0;
 }

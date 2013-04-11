@@ -17,7 +17,7 @@ static void response_process(char * line, Curl_Data * buf)
     if (line[0] == '\0') {
         return;
     }
-    LOGI("[response]: %s", line);
+    CLOGI("[response]: %s", line);
     char * ptr = line;
     if (!strncasecmp(line, "HTTP", 4)) {
         while (!isspace(*ptr) && *ptr != '\0') {
@@ -106,7 +106,7 @@ static size_t curl_dl_chunkdata_callback(void *ptr, size_t size, size_t nmemb, v
     }
     Curl_Data * mem = (Curl_Data *)data;
     if (mem->handle->quited) {
-        LOGI("curl_dl_chunkdata_callback quited\n");
+        CLOGI("curl_dl_chunkdata_callback quited\n");
         return -1;
     }
     pthread_mutex_lock(&mem->handle->fifo_mutex);
@@ -124,13 +124,13 @@ static size_t curl_dl_chunkdata_callback(void *ptr, size_t size, size_t nmemb, v
     timeout.tv_nsec = now.tv_usec * 1000;
     while ((left <= 0 || left < realsize) && retcode != ETIMEDOUT) {
         if (mem->handle->quited) {
-            LOGI("curl_dl_chunkdata_callback quited\n");
+            CLOGI("curl_dl_chunkdata_callback quited\n");
             pthread_mutex_unlock(&mem->handle->fifo_mutex);
             return -1;
         }
         retcode = pthread_cond_timedwait(&mem->handle->pthread_cond, &mem->handle->fifo_mutex, &timeout);
         if (retcode == ETIMEDOUT && mem->handle->quited) {
-            LOGI("curl_dl_chunkdata_callback wait for fifo too long, left=%d, realsize=%d\n", left, realsize);
+            CLOGI("curl_dl_chunkdata_callback wait for fifo too long, left=%d, realsize=%d\n", left, realsize);
             pthread_mutex_unlock(&mem->handle->fifo_mutex);
             return -1;
         }
@@ -142,7 +142,7 @@ static size_t curl_dl_chunkdata_callback(void *ptr, size_t size, size_t nmemb, v
         if (mem->handle->cfifo->buffer + preval >= mem->handle->cfifo->rptr) {
             retcode = pthread_cond_timedwait(&mem->handle->pthread_cond, &mem->handle->fifo_mutex, &timeout);
             if (retcode == ETIMEDOUT) {
-                LOGI("curl_dl_chunkdata_callback fifo not enough\n");
+                CLOGI("curl_dl_chunkdata_callback fifo not enough\n");
                 pthread_mutex_unlock(&mem->handle->fifo_mutex);
                 return -1;
             }
@@ -168,7 +168,7 @@ static int curl_wrapper_add_curl_handle(CURLWContext *con, CURLWHandle *h)
 {
     int ret = -1;
     if (!con || !h) {
-        LOGE("curl_wrapper_add_curl_handle invalid handle\n");
+        CLOGE("curl_wrapper_add_curl_handle invalid handle\n");
         return ret;
     }
     CURLWHandle ** tmp_h;
@@ -191,7 +191,7 @@ static int curl_wrapper_del_curl_handle(CURLWContext *con, CURLWHandle *h)
 {
     int ret = -1;
     if (!con || !h) {
-        LOGE("curl_wrapper_del_curl_handle invalid handle\n");
+        CLOGE("curl_wrapper_del_curl_handle invalid handle\n");
         return ret;
     }
     CURLWHandle * tmp_h;
@@ -201,7 +201,7 @@ static int curl_wrapper_del_curl_handle(CURLWContext *con, CURLWHandle *h)
         }
     }
     if (!tmp_h) {
-        LOGE("could not find curl handle\n");
+        CLOGE("could not find curl handle\n");
         return ret;
     }
     if (con->curl_handle == h) {
@@ -250,7 +250,7 @@ static int curl_wrapper_del_all_curl_handle(CURLWContext *con)
 {
     int ret = -1;
     if (!con) {
-        LOGE("curl_wrapper_del_all_curl_handle invalid handle\n");
+        CLOGE("curl_wrapper_del_all_curl_handle invalid handle\n");
         return ret;
     }
     CURLWHandle *tmp_p = NULL;
@@ -296,10 +296,10 @@ static int curl_wrapper_setopt_error(CURLWHandle *h, CURLcode code)
     int ret = -1;
     if (code != CURLE_OK) {
         if (!h) {
-            LOGE("Invalid CURLWHandle\n");
+            CLOGE("Invalid CURLWHandle\n");
             return ret;
         }
-        LOGE("curl_easy_setopt failed : [%s]\n", h->curl_setopt_error);
+        CLOGE("curl_easy_setopt failed : [%s]\n", h->curl_setopt_error);
         return ret;
     }
     ret = 0;
@@ -308,15 +308,15 @@ static int curl_wrapper_setopt_error(CURLWHandle *h, CURLcode code)
 
 int curl_wrapper_set_para(CURLWHandle *h, void *buf, curl_para para, int iarg, const char * carg)
 {
-    LOGI("curl_wrapper_set_para enter\n");
+    CLOGI("curl_wrapper_set_para enter\n");
     int ret = -1, ret1 = -1, ret2 = -1;
     char * tmp_h = NULL;
     if (!h) {
-        LOGE("CURLWHandle invalid\n");
+        CLOGE("CURLWHandle invalid\n");
         return ret;
     }
     if (!h->curl) {
-        LOGE("CURLWHandle curl handle not inited\n");
+        CLOGE("CURLWHandle curl handle not inited\n");
         return ret;
     }
     switch (para) {
@@ -361,16 +361,16 @@ int curl_wrapper_set_para(CURLWHandle *h, void *buf, curl_para para, int iarg, c
 
 static int curl_wrapper_easy_setopt_http_basic(CURLWHandle *h, Curl_Data *buf)
 {
-    LOGI("curl_wrapper_easy_setopt_http_basic enter\n");
+    CLOGI("curl_wrapper_easy_setopt_http_basic enter\n");
     int ret = -1;
     if (!h) {
-        LOGE("CURLWHandle invalid\n");
+        CLOGE("CURLWHandle invalid\n");
         return ret;
     }
     CURLcode easy_code;
     easy_code = curl_easy_setopt(h->curl, CURLOPT_ERRORBUFFER, h->curl_setopt_error);
     if (easy_code != CURLE_OK) {
-        LOGE("CURLWHandle easy setopt errorbuffer failed\n");
+        CLOGE("CURLWHandle easy setopt errorbuffer failed\n");
         return ret;
     }
     if ((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L))) != 0) {
@@ -382,9 +382,11 @@ static int curl_wrapper_easy_setopt_http_basic(CURLWHandle *h, Curl_Data *buf)
     if ((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_CONNECTTIMEOUT, h->c_max_connecttimeout))) != 0) {
         goto CRET;
     }
+    /*
     if ((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_TIMEOUT, h->c_max_timeout))) != 0) {
         goto CRET;
     }
+    */
     if ((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_BUFFERSIZE, h->c_buffersize))) != 0) {
         goto CRET;
     }
@@ -412,16 +414,16 @@ CRET:
 
 CURLWContext * curl_wrapper_init(int flags)
 {
-    LOGI("curl_wrapper_init enter\n");
+    CLOGI("curl_wrapper_init enter\n");
     CURLWContext*  handle = NULL;
     handle = (CURLWContext *)c_malloc(sizeof(CURLWContext));
     if (!handle) {
-        LOGE("Failed to allocate memory for CURLWContext handle\n");
+        CLOGE("Failed to allocate memory for CURLWContext handle\n");
         return NULL;
     }
     handle->multi_curl = curl_multi_init();
     if (!handle->multi_curl) {
-        LOGE("CURLWContext multi_curl init failed\n");
+        CLOGE("CURLWContext multi_curl init failed\n");
         return NULL;
     }
     handle->curl_h_num = 0;
@@ -431,18 +433,18 @@ CURLWContext * curl_wrapper_init(int flags)
 
 CURLWHandle * curl_wrapper_open(CURLWContext *h, const char * uri, const char * headers, Curl_Data *buf, curl_prot_type flags)
 {
-    LOGI("curl_wrapper_open enter\n");
+    CLOGI("curl_wrapper_open enter\n");
     if (!h) {
-        LOGE("Invalid CURLWContext handle\n");
+        CLOGE("Invalid CURLWContext handle\n");
         return NULL;
     }
     if (!uri || strlen(uri) < 1 || strlen(uri) > MAX_CURL_URI_SIZE) {
-        LOGE("Invalid CURLWContext uri path\n");
+        CLOGE("Invalid CURLWContext uri path\n");
         return NULL;
     }
     CURLWHandle * curl_h = (CURLWHandle *)c_malloc(sizeof(CURLWHandle));
     if (!curl_h) {
-        LOGE("Failed to allocate memory for CURLWHandle\n");
+        CLOGE("Failed to allocate memory for CURLWHandle\n");
         return NULL;
     }
     if (curl_wrapper_add_curl_handle(h, curl_h) == -1) {
@@ -454,7 +456,7 @@ CURLWHandle * curl_wrapper_open(CURLWContext *h, const char * uri, const char * 
     curl_h->curl = NULL;
     curl_h->cfifo = curl_fifo_alloc(CURL_FIFO_BUFFER_SIZE);
     if (!curl_h->cfifo) {
-        LOGE("Failed to allocate memory for curl fifo\n");
+        CLOGE("Failed to allocate memory for curl fifo\n");
         return NULL;
     }
     pthread_mutex_init(&curl_h->fifo_mutex, NULL);
@@ -465,7 +467,7 @@ CURLWHandle * curl_wrapper_open(CURLWContext *h, const char * uri, const char * 
     curl_h->get_headers = NULL;
     curl_h->post_headers = NULL;
     curl_h->chunk_size = -1;
-    curl_h->c_max_timeout = 3600; // an hour for transfer timeout
+    curl_h->c_max_timeout = 0;
     curl_h->c_max_connecttimeout = 15;
     curl_h->c_buffersize = 16 * 1024;
     if (curl_wrapper_open_cnx(h, curl_h, buf, flags, 0) == -1) {
@@ -476,23 +478,23 @@ CURLWHandle * curl_wrapper_open(CURLWContext *h, const char * uri, const char * 
 
 static int curl_wrapper_open_cnx(CURLWContext *con, CURLWHandle *h, Curl_Data *buf, curl_prot_type flags, int64_t off)
 {
-    LOGI("curl_wrapper_open_cnx enter\n");
+    CLOGI("curl_wrapper_open_cnx enter\n");
     int ret = -1;
     if (!con || !h) {
-        LOGE("Invalid CURLWHandle\n");
+        CLOGE("Invalid CURLWHandle\n");
         return ret;
     }
     if (!h->curl) {
         h->curl = curl_easy_init();
         if (!h->curl) {
-            LOGE("CURLWHandle easy init failed\n");
+            CLOGE("CURLWHandle easy init failed\n");
             return ret;
         }
     }
     if (flags == C_PROT_HTTP) {
         ret = curl_wrapper_easy_setopt_http_basic(h, buf);
         if (ret != 0) {
-            LOGE("curl_wrapper_easy_setopt_http_basic failed\n");
+            CLOGE("curl_wrapper_easy_setopt_http_basic failed\n");
             return ret;
         }
     }
@@ -507,10 +509,10 @@ static int curl_wrapper_open_cnx(CURLWContext *con, CURLWHandle *h, Curl_Data *b
 
 int curl_wrapper_http_keepalive_open(CURLWContext *con, CURLWHandle *h, const char * uri)
 {
-    LOGI("curl_wrapper_keepalive_open enter\n");
+    CLOGI("curl_wrapper_keepalive_open enter\n");
     int ret = -1;
     if (!con || !h) {
-        LOGE("Invalid CURLWHandle\n");
+        CLOGE("Invalid CURLWHandle\n");
         return ret;
     }
     con->quited = 0;
@@ -528,13 +530,13 @@ int curl_wrapper_http_keepalive_open(CURLWContext *con, CURLWHandle *h, const ch
 
 int curl_wrapper_perform(CURLWContext *con)
 {
-    LOGI("curl_wrapper_perform enter\n");
+    CLOGI("curl_wrapper_perform enter\n");
     if (!con) {
-        LOGE("CURLWContext invalid\n");
+        CLOGE("CURLWContext invalid\n");
         return C_ERROR_UNKNOW;
     }
     if (!con->multi_curl) {
-        LOGE("Invalid multi curl handle\n");
+        CLOGE("Invalid multi curl handle\n");
         return C_ERROR_UNKNOW;
     }
     CURLWHandle * tmp_h = NULL;
@@ -560,7 +562,7 @@ int curl_wrapper_perform(CURLWContext *con)
         fd_set fd_except;
 
         if (con->quited) {
-            LOGI("curl_wrapper_perform quited when multi perform\n");
+            CLOGI("curl_wrapper_perform quited when multi perform\n");
             break;
         }
 
@@ -572,12 +574,12 @@ int curl_wrapper_perform(CURLWContext *con)
         int rc = select(max_fd + 1, &fd_read, &fd_write, &fd_except, &tv);
         switch (rc) {
         case -1:
-            LOGE("curl_wrapper_perform select error\n");
+            CLOGE("curl_wrapper_perform select error\n");
             break;
         case 0:
         default:
             while (CURLM_CALL_MULTI_PERFORM == curl_multi_perform(con->multi_curl, &running_handle_cnt)) {
-                LOGI("curl_wrapper_perform runing_handle_count : %d \n", running_handle_cnt);
+                CLOGI("curl_wrapper_perform runing_handle_count : %d \n", running_handle_cnt);
             }
             break;
         }
@@ -597,16 +599,16 @@ int curl_wrapper_perform(CURLWContext *con)
                 }
             }
             if (!tmp_h) {
-                LOGI("curl_multi_info_read curl not found\n");
+                CLOGI("curl_multi_info_read curl not found\n");
             } else {
-                LOGI("uri:[%s], completed with status:[%d]\n", tmp_h->uri, msg->data.result);
+                CLOGI("[perform done]: completed with status: [%d]\n", msg->data.result);
 
 #if 1
                 long arg = 0;
                 char * argc = NULL;
                 retcode = curl_wrapper_get_info(tmp_h, C_INFO_RESPONSE_CODE, 0, &arg);
                 if (CURLE_OK == retcode) {
-                    LOGI("uri:[%s], response_code=[%ld]\n", tmp_h->uri, arg);
+                    CLOGI("[perform done]: response_code: [%ld]\n", arg);
                 }
                 if (404 == arg) {
                     ret = C_ERROR_HTTP_404;
@@ -616,9 +618,16 @@ int curl_wrapper_perform(CURLWContext *con)
                 } else if (retcode == CURLE_OPERATION_TIMEDOUT) {
                     ret = C_ERROR_TRANSFERTIMEOUT;
                 }
+                /*
                 retcode = curl_wrapper_get_info(tmp_h, C_INFO_EFFECTIVE_URL, 0, argc);
                 if (CURLE_OK == retcode) {
-                    LOGI("uri:[%s], effective_url=[%s]\n", tmp_h->uri, argc);
+                    CLOGI("uri:[%s], effective_url=[%s]\n", tmp_h->uri, argc);
+                }
+                */
+                double dl_speed = 0.0;
+                retcode = curl_wrapper_get_info(tmp_h, C_INFO_SPEED_DOWNLOAD, 0, &dl_speed);
+                if(CURLE_OK == retcode) {
+                    CLOGI("[perform done]: the average download speed is: %0.2f kbps\n", (dl_speed * 8)/1024.00);
                 }
 #endif
 
@@ -630,10 +639,10 @@ int curl_wrapper_perform(CURLWContext *con)
 
 int curl_wrapper_clean_after_perform(CURLWContext *con)
 {
-    LOGI("curl_wrapper_clean_after_perform enter\n");
+    CLOGI("curl_wrapper_clean_after_perform enter\n");
     int ret = -1;
     if (!con) {
-        LOGE("CURLWContext invalid\n");
+        CLOGE("CURLWContext invalid\n");
         return ret;
     }
     if (con->multi_curl) {
@@ -652,16 +661,16 @@ int curl_wrapper_clean_after_perform(CURLWContext *con)
 
 int curl_wrapper_read(CURLWContext * h, uint8_t * buf, int size)
 {
-    LOGI("curl_wrapper_read enter\n");
+    CLOGI("curl_wrapper_read enter\n");
     return 0;
 }
 
 int curl_wrapper_set_to_quit(CURLWContext * con, CURLWHandle * h)
 {
-    LOGI("curl_wrapper_set_to_quit enter\n");
+    CLOGI("curl_wrapper_set_to_quit enter\n");
     int ret = 0;
     if (!con) {
-        LOGE("CURLWContext invalid\n");
+        CLOGE("CURLWContext invalid\n");
         ret = -1;
         return ret;
     }
@@ -697,10 +706,10 @@ int curl_wrapper_set_to_quit(CURLWContext * con, CURLWHandle * h)
 */
 int curl_wrapper_seek(CURLWContext * con, CURLWHandle * h, int64_t off, Curl_Data *buf, curl_prot_type flags)
 {
-    LOGI("curl_wrapper_seek enter\n");
+    CLOGI("curl_wrapper_seek enter\n");
     int ret = -1;
     if (!con || !h) {
-        LOGE("CURLWHandle invalid\n");
+        CLOGE("CURLWHandle invalid\n");
         return ret;
     }
     ret = curl_wrapper_open_cnx(con, h, buf, flags, off);
@@ -720,7 +729,7 @@ int curl_wrapper_seek(CURLWContext * con, CURLWHandle * h, int64_t off, Curl_Dat
 
 int curl_wrapper_close(CURLWContext * h)
 {
-    LOGI("curl_wrapper_close enter\n");
+    CLOGI("curl_wrapper_close enter\n");
     int ret = -1;
     if (!h) {
         return ret;
@@ -740,9 +749,9 @@ int curl_wrapper_close(CURLWContext * h)
 
 int curl_wrapper_get_info_easy(CURLWHandle * h, curl_info cmd, uint32_t flag, int64_t * iinfo, char * cinfo)
 {
-    LOGI("curl_wrapper_get_info_easy enter\n");
+    CLOGI("curl_wrapper_get_info_easy enter\n");
     if (!h) {
-        LOGE("CURLWHandle invalid\n");
+        CLOGE("CURLWHandle invalid\n");
         return -1;
     }
     CURLcode rc;
@@ -782,16 +791,16 @@ int curl_wrapper_get_info_easy(CURLWHandle * h, curl_info cmd, uint32_t flag, in
 
 int curl_wrapper_get_info(CURLWHandle * h, curl_info cmd, uint32_t flag, void * info)
 {
-    LOGI("curl_wrapper_get_info enter\n");
+    CLOGI("curl_wrapper_get_info enter\n");
     if (!h) {
-        LOGE("CURLWHandle invalid\n");
+        CLOGE("CURLWHandle invalid\n");
         return -1;
     }
     if (!h->curl) {
-        LOGE("CURLWHandle curl handle not inited\n");
+        CLOGE("CURLWHandle curl handle not inited\n");
         return -1;
     }
-    LOGI("curl_wrapper_get_info,  curl_info : [%d]", cmd);
+    CLOGI("curl_wrapper_get_info,  curl_info : [%d]", cmd);
     CURLcode rc;
     switch (cmd) {
     case C_INFO_EFFECTIVE_URL:

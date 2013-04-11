@@ -20,23 +20,23 @@ static int curl_fetch_waitthreadquit(CFContext * h, int microseconds);
 
 CFContext * curl_fetch_init(const char * uri, const char * headers, int flags)
 {
-    LOGI("curl_fetch_init enter\n");
+    CLOGI("curl_fetch_init enter\n");
     if (!uri || strlen(uri) < 1 || strlen(uri) > MAX_CURL_URI_SIZE) {
-        LOGE("CFContext invalid uri path\n");
+        CLOGE("CFContext invalid uri path\n");
         return NULL;
     }
     CFContext * handle = (CFContext *)c_malloc(sizeof(CFContext));
     if (!handle) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return NULL;
     }
     handle->cwc_h = curl_wrapper_init(flags);
     if (!handle->cwc_h) {
-        LOGE("curl_wrapper_init failed\n");
+        CLOGE("curl_wrapper_init failed\n");
         return NULL;
     }
 #if 1
-    LOGI("curl_fetch_init, uri:[%s]\n", uri);
+    CLOGI("curl_fetch_init, uri:[%s]\n", uri);
     if (c_stristart(uri, "http://", NULL) || c_stristart(uri, "shttp://", NULL)) {
         handle->prot_type = C_PROT_HTTP;
     }
@@ -49,12 +49,12 @@ CFContext * curl_fetch_init(const char * uri, const char * headers, int flags)
 #endif
     handle->cwd = (Curl_Data *)c_malloc(sizeof(Curl_Data));
     if (!handle->cwd) {
-        LOGE("Failed to allocate memory for curl_data\n");
+        CLOGE("Failed to allocate memory for curl_data\n");
         return NULL;
     }
     handle->cwh_h = curl_wrapper_open(handle->cwc_h, handle->uri, headers, handle->cwd, handle->prot_type);
     if (!handle->cwh_h) {
-        LOGE("curl_wrapper_open failed\n");
+        CLOGE("curl_wrapper_open failed\n");
         return NULL;
     }
     handle->chunk = NULL;
@@ -77,9 +77,9 @@ CFContext * curl_fetch_init(const char * uri, const char * headers, int flags)
 
 int curl_fetch_open(CFContext * h)
 {
-    LOGI("curl_fetch_open enter\n");
+    CLOGI("curl_fetch_open enter\n");
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return -1;
     }
 #if 1
@@ -112,6 +112,9 @@ int curl_fetch_open(CFContext * h)
     gettimeofday(&now, NULL);
     timeout.tv_sec = now.tv_sec + (15000000 + now.tv_usec) / 1000000;
     timeout.tv_nsec = now.tv_usec * 1000;
+    if(h->open_quited) {
+        return -1;
+    }
     pthread_mutex_lock(&h->cwh_h->info_mutex);
     retcode = pthread_cond_timedwait(&h->cwh_h->info_cond, &h->cwh_h->info_mutex, &timeout);
     if (retcode != ETIMEDOUT) {
@@ -138,10 +141,10 @@ int curl_fetch_open(CFContext * h)
 
 int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
 {
-    LOGI("curl_fetch_http_keepalive_open enter\n");
+    CLOGI("curl_fetch_http_keepalive_open enter\n");
     int ret = -1;
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return ret;
     }
     curl_wrapper_set_to_quit(h->cwc_h, NULL);
@@ -153,7 +156,7 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
         curl_fifo_reset(h->cwh_h->cfifo);
     }
     if (uri) {
-        LOGI("curl_fetch_http_keepalive_open, uri:[%s]\n", uri);
+        CLOGI("curl_fetch_http_keepalive_open, uri:[%s]\n", uri);
         if (c_stristart(uri, "http://", NULL) || c_stristart(uri, "shttp://", NULL)) {
             h->prot_type = C_PROT_HTTP;
         }
@@ -171,7 +174,7 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
         ret = curl_wrapper_http_keepalive_open(h->cwc_h, h->cwh_h, uri);
     }
     if (-1 == ret) {
-        LOGE("curl_wrapper_http_keepalive_open failed\n");
+        CLOGE("curl_wrapper_http_keepalive_open failed\n");
         return ret;
     }
     h->thread_quited = 0;
@@ -190,6 +193,9 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
     gettimeofday(&now, NULL);
     timeout.tv_sec = now.tv_sec + (15000000 + now.tv_usec) / 1000000;
     timeout.tv_nsec = now.tv_usec * 1000;
+    if(h->open_quited) {
+        return -1;
+    }
     pthread_mutex_lock(&h->cwh_h->info_mutex);
     retcode = pthread_cond_timedwait(&h->cwh_h->info_cond, &h->cwh_h->info_mutex, &timeout);
     if (retcode != ETIMEDOUT) {
@@ -217,10 +223,10 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
 
 static int curl_fetch_start_local_run(CFContext * h)
 {
-    LOGI("curl_fetch_start_local_run enter\n");
+    CLOGI("curl_fetch_start_local_run enter\n");
     int ret = -1;
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return ret;
     }
     ret = pthread_create(&h->pid, NULL, curl_fetch_thread_run, h);
@@ -229,7 +235,7 @@ static int curl_fetch_start_local_run(CFContext * h)
 
 static void * curl_fetch_thread_run(void *_handle)
 {
-    LOGI("curl_fetch_thread_run enter\n");
+    CLOGI("curl_fetch_thread_run enter\n");
     CFContext * h = (CFContext *)_handle;
 #if 0
     if (h->thread_first_run) {  // care of instant seeking after open
@@ -246,13 +252,13 @@ static void * curl_fetch_thread_run(void *_handle)
     h->thread_quited = 1;
     pthread_cond_signal(&h->quit_cond);
     pthread_mutex_unlock(&h->quit_mutex);
-    LOGI("curl_fetch_thread_run quit\n");
+    CLOGI("curl_fetch_thread_run quit\n");
     return NULL;
 }
 
 static int curl_fetch_waitthreadquit(CFContext * h, int microseconds)
 {
-    LOGI("curl_fetch_waitthreadquit enter\n");
+    CLOGI("curl_fetch_waitthreadquit enter\n");
     if (!h) {
         return -1;
     }
@@ -266,7 +272,7 @@ static int curl_fetch_waitthreadquit(CFContext * h, int microseconds)
     while (!h->thread_quited && retcode != ETIMEDOUT) {
         retcode = pthread_cond_timedwait(&h->quit_cond, &h->quit_mutex, &timeout);
         if (retcode == ETIMEDOUT) {
-            LOGI("curl_fetch_waitthreadquit wait too long\n");
+            CLOGI("curl_fetch_waitthreadquit wait too long\n");
             pthread_mutex_unlock(&h->quit_mutex);
             return -1;
         }
@@ -278,11 +284,11 @@ static int curl_fetch_waitthreadquit(CFContext * h, int microseconds)
 int curl_fetch_read(CFContext * h, char * buf, int size)
 {
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return C_ERROR_UNKNOW;
     }
     if (!h->cwh_h->cfifo) {
-        LOGE("CURLWHandle fifo invalid\n");
+        CLOGE("CURLWHandle fifo invalid\n");
         return C_ERROR_UNKNOW;
     }
     int avail = 0;
@@ -307,16 +313,16 @@ int curl_fetch_read(CFContext * h, char * buf, int size)
 
 int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
 {
-    LOGI("curl_fetch_seek enter\n");
+    CLOGI("curl_fetch_seek enter\n");
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return -1;
     }
-    LOGI("curl_fetch_seek: chunk_size=%lld, off=%lld, whence=%d\n", h->cwh_h->chunk_size, off, whence);
+    CLOGI("curl_fetch_seek: chunk_size=%lld, off=%lld, whence=%d\n", h->cwh_h->chunk_size, off, whence);
     if (SEEK_CUR != whence &&
         SEEK_SET != whence &&
         SEEK_END != whence) {
-        LOGE("curl_fetch_seek whence not support\n");
+        CLOGE("curl_fetch_seek whence not support\n");
         return -1;
     }
     if (h->cwh_h->chunk_size == -1 && whence == SEEK_END) {
@@ -331,7 +337,7 @@ int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
         off += h->cwh_h->chunk_size;
     }
     if (off >= h->cwh_h->chunk_size && h->cwh_h->chunk_size > 0) {
-        LOGE("curl_fetch_seek exceed chunk_size\n");
+        CLOGE("curl_fetch_seek exceed chunk_size\n");
         return -2;
     }
     int ret = -1;
@@ -348,7 +354,7 @@ int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
     }
     ret = curl_wrapper_seek(h->cwc_h, h->cwh_h, off, h->cwd, h->prot_type);
     if (ret) {
-        LOGE("curl_wrapper_seek failed\n");
+        CLOGE("curl_wrapper_seek failed\n");
         return -1;
     }
     if (h->headers) {
@@ -363,7 +369,7 @@ int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
 #endif
     ret = curl_fetch_start_local_run(h);
     if (ret) {
-        LOGE("curl_fetch_start_local_run failed\n");
+        CLOGE("curl_fetch_start_local_run failed\n");
         return -1;
     }
     return off;
@@ -371,9 +377,9 @@ int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
 
 int curl_fetch_close(CFContext * h)
 {
-    LOGI("curl_fetch_close enter\n");
+    CLOGI("curl_fetch_close enter\n");
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return -1;
     }
     curl_wrapper_set_to_quit(h->cwc_h, NULL);
@@ -402,9 +408,9 @@ int curl_fetch_close(CFContext * h)
 */
 int curl_fetch_http_set_headers(CFContext * h, const char * headers)
 {
-    LOGI("curl_fetch_http_set_headers enter\n");
+    CLOGI("curl_fetch_http_set_headers enter\n");
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return -1;
     }
     char fields[2048];
@@ -433,11 +439,11 @@ int curl_fetch_http_set_headers(CFContext * h, const char * headers)
 #if 0
         if (c_stristart(fields, "Connection:", NULL) || c_stristart(fields, "X-Playback-Session-Id:", NULL)) {
             h->chunk = curl_slist_append(h->chunk, fields);
-            LOGI("curl_fetch_http_set_headers fields=[%s]", fields);
+            CLOGI("curl_fetch_http_set_headers fields=[%s]", fields);
         }
 #else
         h->chunk = curl_slist_append(h->chunk, fields);
-        LOGI("curl_fetch_http_set_headers fields=[%s]", fields);
+        CLOGI("curl_fetch_http_set_headers fields=[%s]", fields);
 #endif
     }
     int ret = 0;
@@ -449,9 +455,9 @@ int curl_fetch_http_set_headers(CFContext * h, const char * headers)
 
 int curl_fetch_http_set_cookie(CFContext * h, const char * cookie)
 {
-    LOGI("curl_fetch_http_set_cookie enter\n");
+    CLOGI("curl_fetch_http_set_cookie enter\n");
     if (!h) {
-        LOGE("CFContext invalid\n");
+        CLOGE("CFContext invalid\n");
         return -1;
     }
     int ret = 0;
@@ -463,6 +469,16 @@ int curl_fetch_http_set_cookie(CFContext * h, const char * cookie)
 
 int curl_fetch_get_info(CFContext * h, curl_info cmd, uint32_t flag, void * info)
 {
-    LOGI("curl_fetch_get_info enter\n");
+    CLOGI("curl_fetch_get_info enter\n");
+    return 0;
+}
+
+int curl_fetch_interrupt(CFContext * h)
+{
+    CLOGI("***** curl_fetch_interrupt *****\n");
+    if(!h || !h->cwh_h) {
+        return -1;
+    }
+    pthread_cond_signal(&h->cwh_h->info_cond);
     return 0;
 }

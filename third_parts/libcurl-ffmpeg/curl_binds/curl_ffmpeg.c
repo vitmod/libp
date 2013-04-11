@@ -31,6 +31,8 @@
 typedef struct _CURLFFContext {
     char uri[MAX_CURL_URI_SIZE];
     CFContext * cfc_h;
+    pthread_t monitor_pid;
+    int monitor_quited;
 } CURLFFContext;
 
 static const AVOption options[] = {{NULL}};
@@ -41,18 +43,22 @@ static const AVClass curlffmpeg_class = {
     .version            = LIBAVUTIL_VERSION_INT,
 };
 
+#define THREAD_SLEEP_TIME (10 * 1000)
+
+static void * curl_ffmpeg_interrupt_monitor_thread(void *_handle);
+
 static int curl_ffmpeg_open(URLContext *h, const char *uri, int flags)
 {
-    LOGI("curl_ffmpeg_open enter, flags=%d\n", flags);
+    CLOGI("curl_ffmpeg_open enter, flags=%d\n", flags);
     int ret = -1;
     CURLFFContext * handle = NULL;
     if (!uri || strlen(uri) < 1 || strlen(uri) > MAX_CURL_URI_SIZE) {
-        LOGE("Invalid curl-ffmpeg uri\n");
+        CLOGE("Invalid curl-ffmpeg uri\n");
         return ret;
     }
     handle = (CURLFFContext *)av_mallocz(sizeof(CURLFFContext));
     if (!handle) {
-        LOGE("Failed to allocate memory for CURLFFContext handle\n");
+        CLOGE("Failed to allocate memory for CURLFFContext handle\n");
         return ret;
     }
     memset(handle->uri, 0, sizeof(handle->uri));
@@ -63,10 +69,16 @@ static int curl_ffmpeg_open(URLContext *h, const char *uri, int flags)
     }
     handle->cfc_h = curl_fetch_init(handle->uri, h->headers, flags);
     if (!handle->cfc_h) {
-        LOGE("curl_fetch_init failed\n");
+        CLOGE("curl_fetch_init failed\n");
         return ret;
     }
+    handle->cfc_h->open_quited = 0;
+    handle->monitor_quited = 0;
+    ffmpeg_pthread_create(&handle->monitor_pid, NULL, curl_ffmpeg_interrupt_monitor_thread, handle);
+    pthread_setname_np(handle->monitor_pid, "curlffmpeg-monitor");
     ret = curl_fetch_open(handle->cfc_h);
+    handle->monitor_quited = 1;
+    ffmpeg_pthread_join(handle->monitor_pid, NULL);
     h->http_code = handle->cfc_h->http_code;
     h->is_slowmedia = 1;
     h->is_streamed = handle->cfc_h->seekable ? 0 : 1;
@@ -80,7 +92,7 @@ static int curl_ffmpeg_read(URLContext *h, uint8_t *buf, int size)
     int ret = -1;
     CURLFFContext * s = (CURLFFContext *)h->priv_data;
     if (!s) {
-        LOGE("CURLFFContext invalid\n");
+        CLOGE("CURLFFContext invalid\n");
         return ret;
     }
     int counts = 200;
@@ -116,28 +128,25 @@ static int curl_ffmpeg_read(URLContext *h, uint8_t *buf, int size)
 
 static int64_t curl_ffmpeg_seek(URLContext *h, int64_t off, int whence)
 {
-    LOGI("curl_ffmpeg_seek enter\n");
+    CLOGI("curl_ffmpeg_seek enter\n");
     int ret = -1;
     CURLFFContext * s = (CURLFFContext *)h->priv_data;
     if (!s) {
-        LOGE("CURLFFContext invalid\n");
+        CLOGE("CURLFFContext invalid\n");
         return ret;
     }
     if (!s->cfc_h) {
-        LOGE("CURLFFContext invalid CFContext handle\n");
+        CLOGE("CURLFFContext invalid CFContext handle\n");
         return ret;
     }
     if (whence == AVSEEK_CURL_HTTP_KEEPALIVE) {
-        if (!h) {
-            LOGE("Invalid URLContext handle\n");
-            return ret;
-        }
-        CURLFFContext * handle = h->priv_data;
-        if (!handle) {
-            LOGE("Invalid CURLFFContext handle\n");
-            return ret;
-        }
-        ret = curl_fetch_http_keepalive_open(handle->cfc_h, NULL);
+        s->cfc_h->open_quited = 0;
+        s->monitor_quited = 0;
+        ffmpeg_pthread_create(&s->monitor_pid, NULL, curl_ffmpeg_interrupt_monitor_thread, s);
+        pthread_setname_np(s->monitor_pid, "curlffmpeg-monitor");
+        ret = curl_fetch_http_keepalive_open(s->cfc_h, NULL);
+        s->monitor_quited = 1;
+        ffmpeg_pthread_join(s->monitor_pid, NULL);
     } else if (whence == AVSEEK_SIZE) {
         ret = s->cfc_h->filesize;
     } else {
@@ -148,7 +157,7 @@ static int64_t curl_ffmpeg_seek(URLContext *h, int64_t off, int whence)
 
 static int curl_ffmpeg_close(URLContext *h)
 {
-    LOGI("curl_ffmpeg_close enter\n");
+    CLOGI("curl_ffmpeg_close enter\n");
     CURLFFContext * s = (CURLFFContext *)h->priv_data;
     if (!s) {
         return -1;
@@ -157,6 +166,23 @@ static int curl_ffmpeg_close(URLContext *h)
     av_free(s);
     s = NULL;
     return 0;
+}
+
+static void * curl_ffmpeg_interrupt_monitor_thread(void *_handle)
+{
+    CURLFFContext * h = (CURLFFContext *)_handle;
+    if(!h) {
+        return NULL;
+    }
+    while(!h->monitor_quited) {
+        if(url_interrupt_cb()) {
+            h->cfc_h->open_quited = 1;
+            curl_fetch_interrupt(h->cfc_h);
+            return NULL;
+        }
+        usleep(THREAD_SLEEP_TIME);
+    }
+    return NULL;
 }
 
 static int curl_ffmpeg_get_info(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *info)
