@@ -1199,7 +1199,19 @@ int time_search(play_para_t *am_p)
     int64_t ret = PLAYER_SUCCESS;
     int seek_flags = am_getconfig_bool("media.libplayer.seek.fwdsearch") ? 0 : AVSEEK_FLAG_BACKWARD;
     int sample_size;
-
+	
+	//-----------------------------------
+	// forcing updating  the value of <first_time> when seeking to the start of file, 
+	// other wise: <bug 69038 > will happend,
+	//     in this case, after push the <last_song_buton>, the libplayer will seek to start of file  instead of 
+	//     switching to last song, then <first_time> was not the value of first packge and become unvalid, 
+	//    need to update it;
+	
+    if(time_point==0)
+        am_p->state.first_time=-1;
+	//----------------------------------
+	
+    
     url_start_user_seek(s->pb);
     /* If swith audio, then use audio stream index */
     if (am_p->playctrl_info.seek_base_audio) {
