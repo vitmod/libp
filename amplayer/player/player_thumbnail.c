@@ -43,20 +43,24 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
     int find_ok = 0;
     int keyframe_index=0;
     AVStream *st=pFormatCtx->streams[video_index];
-
+	int havepts=0;
+	int nopts=0;
+	
     if(count<=0){
 	   float newcnt=-0.1;	
 	   count=100;
 	   if(am_getconfig_float("libplayer.thumbnail.scan.count",&newcnt)>=0 && newcnt>=1)
 	   	count=(int)newcnt;
     }
-
+	
     do{
 	   r = av_read_next_video_frame(pFormatCtx, &packet,video_index);
 	   if(r<0)
 	   	break;
-          log_print("[find_best_keyframe][%d]read frame packet.size=%d,pts=%lld\n",i,packet.size,packet.pts);
-	   if (packet.size > maxFrameSize && packet.pts>=0) { //packet.pts>=0 can used for seek.
+          log_debug("[find_best_keyframe][%d]read frame packet.size=%d,pts=%lld\n",i,packet.size,packet.pts);
+  	   havepts=(packet.pts>0||havepts);
+  	   nopts=(i>10)&&!havepts;
+  	   if (packet.size > maxFrameSize && (packet.pts>=0 || nopts)) { //packet.pts>=0 can used for seek.
 		maxFrameSize = packet.size;
 		thumbTime = packet.pts;
 		thumbOffset = avio_tell(pFormatCtx->pb) - packet.size;
@@ -64,13 +68,16 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
 		find_ok=1;
 	   }        	   
 	   av_free_packet(&packet);
-	   if(i>5 && find_ok && maxFrameSize>10*1024) 
+	   if(i>5 && find_ok && maxFrameSize>100*1024/(1+i/2)) 
 	   	 break;
     }while(i++<count);
 
     if(find_ok){
-	 log_print("[%s]return thumbTime=%lld thumbOffset=%llx\n", __FUNCTION__, thumbTime, thumbOffset);		
-    	*time = av_rescale_q(thumbTime, st->time_base, AV_TIME_BASE_Q);
+	 log_debug("[%s]return thumbTime=%lld thumbOffset=%llx\n", __FUNCTION__, thumbTime, thumbOffset);
+	 	if(thumbTime>=0&&thumbTime != AV_NOPTS_VALUE)
+    		*time = av_rescale_q(thumbTime, st->time_base, AV_TIME_BASE_Q);
+		else
+			*time = AV_NOPTS_VALUE;
     	*offset = thumbOffset;
 	r=0;
     }else{
@@ -87,7 +94,7 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
     AVStream *st = pFormatCtx->streams[video_index];
     int duration = pFormatCtx->duration / AV_TIME_BASE;
  ///   int64_t init_seek_time = (duration > 0) ? MIN(10, duration >> 1) : 10;
-    int64_t init_seek_time = (duration > 0) ? MIN(10, duration >> 1) : 10;	
+    int64_t init_seek_time = (duration > 0) ? MIN(120, duration >> 1) : 10;	
     int ret = 0;
     float starttime;	
     if(am_getconfig_float("libplayer.thumbnail.starttime",&starttime)>=0 && starttime>=0)
@@ -99,26 +106,26 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
 			init_seek_time=0;
     }	 
     init_seek_time *= AV_TIME_BASE;
-    log_print("[find_thumbnail_frame]duration=%lld init_seek_time=%lld\n", pFormatCtx->duration, init_seek_time);
+    log_debug("[find_thumbnail_frame]duration=%lld init_seek_time=%lld\n", pFormatCtx->duration, init_seek_time);
     //init_seek_time = av_rescale_q(init_seek_time, st->time_base, AV_TIME_BASE_Q);
-    //log_print("[find_thumbnail_frame]init_seek_time=%lld timebase=%d:%d video_index=%d\n",init_seek_time,st->time_base.num,st->time_base.den, video_index);
+    //log_debug("[find_thumbnail_frame]init_seek_time=%lld timebase=%d:%d video_index=%d\n",init_seek_time,st->time_base.num,st->time_base.den, video_index);
     ret = av_seek_frame(pFormatCtx, video_index,init_seek_time -100, 0);
     if (ret < 0) {
         avio_seek(pFormatCtx->pb, 0, SEEK_SET);
         log_error("[%s]seek error, reset offset to 0\n", __FUNCTION__);
         return;
     }
-    log_print("[find_thumbnail_frame]offset=%llx \n", avio_tell(pFormatCtx->pb));
+    log_debug("[find_thumbnail_frame]offset=%llx \n", avio_tell(pFormatCtx->pb));
 
     find_best_keyframe(pFormatCtx, video_index, 0, &thumbTime, &thumbOffset);
 
     if (thumbTime != AV_NOPTS_VALUE) {
-        *thumb_time = av_rescale_q(thumbTime, st->time_base, AV_TIME_BASE_Q);
-    } else {
-        *thumb_time = AV_NOPTS_VALUE;
+        *thumb_time = thumbTime;
+    }else{
+    	*thumb_time = AV_NOPTS_VALUE;
     }
     *thumb_offset = thumbOffset;
-    log_print("[find_thumbnail_frame]return thumb_time=%lld thumb_offset=%lld\n", *thumb_time, *thumb_offset);
+    log_debug("[find_thumbnail_frame]return thumb_time=%lld thumb_offset=%lld\n", *thumb_time, *thumb_offset);
 }
 
 void * thumbnail_res_alloc(void)
@@ -193,7 +200,7 @@ int thumbnail_decoder_open(void *handle, const char* filename)
     struct video_frame *frame = (struct video_frame *)handle;
     struct stream *stream = &frame->stream;
 
-    log_print("thumbnail open file:%s\n", filename);
+    log_debug("thumbnail open file:%s\n", filename);
 
     if (av_open_input_file(&stream->pFormatCtx, filename, NULL, 0, NULL) != 0) {
         log_print("Coundn't open file %s !\n", filename);
@@ -297,33 +304,37 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
             log_error("[thumbnail_extract_video_frame]av_seek_frame failed!");
         }
         find_best_keyframe(pFormatCtx, stream->videoStream, 0, &frame->thumbNailTime, &frame->thumbNailOffset);
-        log_print("[thumbnail_extract_video_frame:%d]time=%lld time=%lld  offset=%lld!ret=%d\n", 
+        log_debug("[thumbnail_extract_video_frame:%d]time=%lld time=%lld  offset=%lld!ret=%d\n", 
                 __LINE__,time, frame->thumbNailTime, frame->thumbNailOffset, ret);
     }
 
-    if (frame->thumbNailTime != AV_NOPTS_VALUE) {
-        log_print("seek to thumbnail frame by timestamp(%lld)!curoffset=%llx\n", frame->thumbNailTime, avio_tell(pFormatCtx->pb));
-        if (av_seek_frame(pFormatCtx, stream->videoStream, frame->thumbNailTime-100, 0) < 0) {
-            av_seek_frame(pFormatCtx, stream->videoStream, 0, 0);
-            log_error("[thumbnail_extract_video_frame]av_seek_frame failed!seek to 0\n");
+    if (frame->thumbNailTime>0 && frame->thumbNailTime != AV_NOPTS_VALUE) {
+		int64_t seektime=frame->thumbNailTime-100;
+		if(seektime<0)	seektime=0;
+        log_debug("seek to thumbnail frame by timestamp(%lld)!curoffset=%llx\n", seektime, avio_tell(pFormatCtx->pb));
+        if (av_seek_frame(pFormatCtx, stream->videoStream, seektime, 0) < 0) {
+            avio_seek(pFormatCtx->pb, frame->thumbNailOffset, 0);
+            log_error("[thumbnail_extract_video_frame]av_seek_frame failed!seek to thumbNailOffset %x\n",frame->thumbNailOffset);
         }
-        log_print("after seek by time, offset=%llx!\n", avio_tell(pFormatCtx->pb));
+        log_debug("after seek by time, offset=%llx!\n", avio_tell(pFormatCtx->pb));
     } else {
-        log_print("seek to thumbnail frame by offset(%lld)!\n", frame->thumbNailOffset);
+        log_debug("seek to thumbnail frame by offset(%lld)!\n", frame->thumbNailOffset);
         ret = avio_seek(pFormatCtx->pb, frame->thumbNailOffset, SEEK_SET);
-        log_print("after seek by offset, offset=%llx!ret=%llx\n", avio_tell(pFormatCtx->pb), ret);
+        log_debug("after seek by offset, offset=%llx!ret=%llx\n", avio_tell(pFormatCtx->pb), ret);
     }
 
     avcodec_flush_buffers(stream->pCodecCtx);
-
+	i=0;
     while (av_read_next_video_frame(pFormatCtx, &packet,stream->videoStream) >= 0) {
 	     AVFrame         *pFrame=NULL; 	
-	     log_print("[%s] av_read_frame frame size=%d,pts=%lld\n", __FUNCTION__, packet.size,packet.pts);
-	     if(packet.size<1024)
+	     log_debug("[%s] av_read_frame frame size=%d,pts=%lld\n", __FUNCTION__, packet.size,packet.pts);
+		 i++;
+	     if(packet.size<1024){
 		 	continue;/*skip small size packets,it maybe a black frame*/
+	     }
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
 	     pFrame=stream->pFrameYUV	;
-            log_print("[%s]decode video frame, finish=%d key=%d offset=%llx type=%dcodec_id=%x,quality=%d tryNum=%d\n", __FUNCTION__,
+            log_debug("[%s]decode video frame, finish=%d key=%d offset=%llx type=%dcodec_id=%x,quality=%d tryNum=%d\n", __FUNCTION__,
                       frameFinished, pFrame->key_frame, avio_tell(pFormatCtx->pb), pFrame->pict_type, pCodecCtx->codec_id,pFrame->quality,tryNum);
          if (frameFinished && 
 		 ((pFrame->key_frame && pFrame->pict_type == AV_PICTURE_TYPE_I) ||
@@ -338,7 +349,7 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 		 (tryNum>(TRY_DECODE_MAX-1) && pFrame->pict_type == AV_PICTURE_TYPE_S) || 
 		 (0))) /*not find a I FRAME too long,try normal frame*/
           {                
-                log_print("[%s]pCodecCtx->codec_id=%x tryNum=%d\n", __FUNCTION__, pCodecCtx->codec_id, tryNum);
+                log_debug("[%s]pCodecCtx->codec_id=%x tryNum=%d\n", __FUNCTION__, pCodecCtx->codec_id, tryNum);
 
                 struct SwsContext *img_convert_ctx;
                 img_convert_ctx = sws_getContext(stream->pCodecCtx->width, stream->pCodecCtx->height,
@@ -487,7 +498,7 @@ int thumbnail_get_tracks_info(void *handle, int *vtracks, int *atracks, int *str
         } else
             ;
     }
-    log_print("thumbnail_get_tracks_info v:%d a:%d s:%d \n", *vtracks, *atracks, *stracks);
+    log_debug("thumbnail_get_tracks_info v:%d a:%d s:%d \n", *vtracks, *atracks, *stracks);
     return 0;
 }
 void thumbnail_get_video_rotation(void *handle, int* rotation)
