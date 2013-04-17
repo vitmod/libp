@@ -112,7 +112,7 @@ int bandwidth_measure_get_bandwidth(void  *band,int *fast_band,int *mid_band,int
 
 	time_us=in_gettimeUs()-rates->init_time_us;
 	if(time_us>0)
-		*avg_band=rates->total_bytes*8*1000*1000/time_us;/*bits per seconds*/
+		*avg_band=(int64_t)rates->total_bytes*8*1000*1000/time_us;/*bits per seconds*/
 	else
 		*avg_band=0;
 	return 0;

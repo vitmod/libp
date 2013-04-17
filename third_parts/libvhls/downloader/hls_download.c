@@ -26,13 +26,11 @@
 
 #define SAVE_BACKUP 1
 
-#define HTTP_MEASURE_ITEM_NUM 100
 typedef struct _HLSHttpContext{
     void* h;    
     int open_flag; 
     int error_code;     
-    char* redirect_url;
-    void* meausure_handle;
+    char* redirect_url;    
 #ifdef SAVE_BACKUP    
 #define BACK_FILE_PATH "/cached/"
     FILE* mBackupFile;
@@ -77,16 +75,24 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
     }
     HLSHttpContext* ctx = NULL;
     ctx = (HLSHttpContext*)malloc(sizeof(HLSHttpContext));
+    if(ctx == NULL){
+        LOGE("Failed to allocate memory for hls http context\n");    
+        ctx->error_code = -1;
+        ctx->open_flag = -1;        
+        *handle = ctx;
+        return -1;     
+    }
     int ret = -1;
     int reason_code = 0;
     char fileUrl[MAX_URL_SIZE];
     int is_ignore_range_req = 1;
+   
 #if 0 //remove Range in http request
     if(in_get_sys_prop_float("libplayer.hls.ignore_range")>0){
         is_ignore_range_req = 1;        
     }
 #endif
-    
+
     ctx->mBackupFile = NULL;
     //edit url address
 #ifdef _USE_FFMPEG_CODE       
@@ -125,7 +131,7 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
         if(aeskey->type != AES128_CBC|| aeskey->key_info == NULL){
             LOGE("Only support AES128-cbc\n");
             ctx->h = NULL;
-            *handle = ctx;
+            *handle = ctx;            
             return -1;
         }
         if (strstr(url,"://")){
@@ -170,9 +176,8 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
 #endif
     if(ret!=0){
         ctx->error_code = reason_code;
-        ctx->open_flag = -1;
-        ctx->meausure_handle = NULL;
-        *handle = ctx;
+        ctx->open_flag = -1;        
+        *handle = ctx;        
         LOGE("Failed to open http file,url:%s,error:%d,reason:%d\n",fileUrl,ret,reason_code);
         return -1; 
 
@@ -180,14 +185,7 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
     
     ctx->error_code = 0;
     ctx->open_flag = 1;
-    ctx->meausure_handle = bandwidth_measure_alloc(HTTP_MEASURE_ITEM_NUM,0);
-    if(ctx->meausure_handle == NULL){
-        LOGE("Failed to allocate memory for bandwidth meausre utils\n");    
-        ctx->error_code = -1;
-        ctx->open_flag = -1;
-        *handle = ctx;
-        return -1; 
-    }
+
 #ifdef SAVE_BACKUP
     int dump_type = in_get_sys_prop_float("libplayer.hls.dump");
     if(dump_type>0){
@@ -211,7 +209,7 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
             LOGE("Failed to create backup file");
         }
     }
-#endif 
+#endif     
     *handle = ctx;
     return 0;
 }
@@ -243,7 +241,7 @@ int hls_http_read(void* handle,void* buf,int size){
         LOGE("Need open http session\n");
         return -1;
     }
-    bandwidth_measure_start_read(ctx->meausure_handle);    
+      
 #ifdef _USE_FFMPEG_CODE 
     URLContext* h = (URLContext*)(ctx->h); 
     rsize = ffurl_read(h,(unsigned char*)buf, size);
@@ -255,11 +253,7 @@ int hls_http_read(void* handle,void* buf,int size){
         rsize = HLSERROR(EINTR);
     }
 #endif
-    if(rsize>0){
-        bandwidth_measure_finish_read(ctx->meausure_handle,rsize);
-    }else{
-        bandwidth_measure_finish_read(ctx->meausure_handle,0);
-    }
+    
 #ifdef SAVE_BACKUP
     int wsize = 0;
     if(ctx->mBackupFile!=NULL&&rsize>0){
@@ -302,11 +296,21 @@ int hls_http_estimate_bandwidth(void* handle,int* bandwidth_bps){
     
     HLSHttpContext* ctx = (HLSHttpContext*)handle;
     
-    int avg_bps,fast_bps,mid_bps;
-    int ret = bandwidth_measure_get_bandwidth(ctx->meausure_handle,&fast_bps,&mid_bps,&avg_bps);
-    
-    *bandwidth_bps = avg_bps;
-    return ret;
+    if(ctx->h== NULL){
+        *bandwidth_bps = 0;
+        return -1;
+    }
+    int64_t avg_speed = 0;
+#ifdef _USE_FFMPEG_CODE 
+    URLContext* h = (URLContext*)(ctx->h);  
+    if(h->prot!=NULL&&h->prot->url_getinfo!=NULL){
+	    int rv=h->prot->url_getinfo(h,AVCMD_GET_NETSTREAMINFO,1,&avg_speed);
+	}
+#endif
+
+    //LOGV("Current estimate bandwidth.avg:%.2f kbps\n",avg_speed/1024.0f);
+    *bandwidth_bps = avg_speed;
+    return 0;
 
 }
 const char* hls_http_get_redirect_url(void* handle){
@@ -363,9 +367,6 @@ int hls_http_close(void* handle){
 #endif
     if(ctx->redirect_url){
         free(ctx->redirect_url);
-    }
-    if(ctx->meausure_handle!=NULL){
-        bandwidth_measure_free(ctx->meausure_handle);
     }
     free(ctx);
     ctx = NULL;

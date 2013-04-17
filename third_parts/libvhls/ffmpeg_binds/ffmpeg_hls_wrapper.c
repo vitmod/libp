@@ -284,6 +284,7 @@ static int ffmpeg_hls_getopt(URLContext *h, uint32_t  cmd, uint32_t flag, int64_
         }else{
             *info = 0;
         }
+        RLOG("Get hls stream type,:%d\n",*info);
     }
 
     return 0;

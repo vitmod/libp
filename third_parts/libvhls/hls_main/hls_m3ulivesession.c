@@ -43,8 +43,9 @@
 #define HASH_KEY_SIZE   16
 #define FAILED_RETRIES_MAX 5
 #define PLAYBACK_SESSION_ID_MAX 128
-
 #define USE_SIMPLE_CACHE 1
+#define BW_MEASURE_ITEM_DEFAULT 100
+
 #ifdef USE_SIMPLE_CACHE
 #include "hls_simple_cache.h"
 #endif
@@ -107,7 +108,8 @@ typedef struct _M3ULiveSession{
     int64_t durationUs;    
     int64_t last_bandwidth_list_fetch_timeUs;
     uint8_t last_bandwidth_list_hash[HASH_KEY_SIZE];
-    void* cache;   
+    void* cache;  
+    void* bw_meausure_handle;
     int err_code;
     int eof_flag;
     pthread_mutex_t session_lock;
@@ -131,6 +133,7 @@ static void _init_m3u_live_session_context(M3ULiveSession* ss){
     ss->seekposByte = -1;
     ss->is_ts_media = -1;
     ss->is_encrypt_media = -1;
+    ss->codec_data_time = -1;
     ss->refresh_state = INITIAL_MINIMUM_RELOAD_DELAY;
     if(in_get_sys_prop_float("libplayer.hls.ignore_range")>0){
         ss->is_http_ignore_range = 1;        
@@ -366,8 +369,20 @@ static int  _time_to_refresh_bandwidth_list(M3ULiveSession* ss,int64_t nowUs){
     return flag;
 }
 
-#define CODEC_BUFFER_LOW_FLAG  (4)			// 4s
-#define CODEC_BUFFER_HIGH_FLAG (10)			 //10s
+static int _estimate_and_calc_bandwidth(M3ULiveSession* s){
+    if(s == NULL){
+        ERROR_MSG();
+        return 0;
+    }
+    int fast_bw,mid_bw,avg_bw,calc_bw;
+    bandwidth_measure_get_bandwidth(s->bw_meausure_handle,&fast_bw,&mid_bw,&avg_bw);
+    calc_bw = fast_bw*0.7+mid_bw*0.2+avg_bw*0.1;
+    LOGV("Get current bw.fast:%.2f kbps,mid:%.2f kbps,avg:%.2f kbps,calc value:%.2f kbps\n",
+        fast_bw/1024.0f,mid_bw/1024.0f,avg_bw/1024.0f,calc_bw/1024.0f);    
+    return calc_bw;
+}
+#define CODEC_BUFFER_LOW_FLAG  (8)			// 8s
+#define CODEC_BUFFER_HIGH_FLAG (15)			 //15s
 static int  _get_best_bandwidth_index(M3ULiveSession* s){//rate adaptation logic
     int index = 0; 
     int adaptive_profile = in_get_sys_prop_float("libplayer.hls.profile");
@@ -379,6 +394,7 @@ static int  _get_best_bandwidth_index(M3ULiveSession* s){//rate adaptation logic
             index = s->prev_bandwidth_index;
         }
     }
+    s->estimate_bandwidth_bps = _estimate_and_calc_bandwidth(s);
     if(s->bandwidth_item_num >0&&adaptive_profile!=0&&s->seekflag<=0&&s->is_closed<=0){
         int reserved_segment_check = 0;
         if(s->playlist!=NULL&&m3u_is_complete(s->playlist)>0){
@@ -393,7 +409,7 @@ static int  _get_best_bandwidth_index(M3ULiveSession* s){//rate adaptation logic
                 return index;
             }
         }          
-        int est_bps =  s->estimate_bandwidth_bps;
+        int est_bps = s->estimate_bandwidth_bps;
         LOGV("bandwidth estimated at %.2f kbps,codec buffer time,%d s\n", est_bps/ 1024.0f,s->codec_data_time);
         if(est_bps == 0){
             LOGV("no bandwidth estimate.Pick the lowest bandwidth stream by default.");                    
@@ -426,7 +442,12 @@ static int  _get_best_bandwidth_index(M3ULiveSession* s){//rate adaptation logic
         return index;
         
     }else{
-        index = s->prev_bandwidth_index;
+        if(s->seekflag>0&&in_get_sys_prop_bool("libplayer.hls.lowbw_seek")>0){
+            LOGV("Used low bandwidth stream after seek");
+            index = 0;
+        }else{
+            index = s->prev_bandwidth_index;
+        }
     }
     return index;
 
@@ -890,7 +911,10 @@ static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive
     if(segment->flags&DISCONTINUE_FLAG){
         LOGV("Get discontinuity flag\n");
         explicitDiscontinuity = 1;        
-    }    
+    } 
+    int64_t fetch_start,fetch_end;
+    fetch_start = in_gettimeUs();
+    int drop_estimate_bw = 0;
 open_retry:
 {
     if(s->is_closed>0||s->seekflag>0){
@@ -998,6 +1022,7 @@ open_retry:
         if(hls_simple_cache_get_free_space(s->cache)<(buf_tmp_size+extra_size)){
             LOGV("Simple cache not have free space,just wait\n");            
             _thread_wait_timeUs(s,500*1000);
+            drop_estimate_bw = 1;
             continue;            
         }
 #endif  
@@ -1010,10 +1035,7 @@ open_retry:
             is_add_ts_fake_head = 0;
         }
         rlen = hls_http_read(handle,buf_tmp+buf_tmp_rsize,HLSMIN(buf_tmp_size-buf_tmp_rsize,READ_ONCE_BLOCK_SIZE));
-        int est_bps = 0;
-        hls_http_estimate_bandwidth(handle,&est_bps);
-        s->estimate_bandwidth_bps = est_bps;
-        
+       
         if(rlen>0){
 
             buf_tmp_rsize+=rlen;
@@ -1028,7 +1050,7 @@ open_retry:
                     s->is_ts_media = 0;
                 }
             }            
-            if(buf_tmp_rsize >=buf_tmp_size||segment->index == 0){ //first node
+            if(buf_tmp_rsize >=buf_tmp_size||s->codec_data_time==-1){ //first node
                 //LOGV("Move temp buffer data to cache");
                 
 #ifdef USE_SIMPLE_CACHE
@@ -1053,6 +1075,10 @@ open_retry:
                 }                
                 hls_http_close(handle);
                 handle = NULL;
+                if(drop_estimate_bw==0){
+                    fetch_end = in_gettimeUs();
+                    bandwidth_measure_add(s->bw_meausure_handle,fsize,fetch_end-fetch_start);
+                }
                 return 0;                
             }
             
@@ -1070,6 +1096,10 @@ open_retry:
             }
             hls_http_close(handle);
             handle = NULL;
+            if(drop_estimate_bw==0){
+                fetch_end = in_gettimeUs();
+                bandwidth_measure_add(s->bw_meausure_handle,read_size,fetch_end-fetch_start);
+            }            
             return 0;
         }else{
             if(fsize>0&&read_size >=fsize){
@@ -1079,10 +1109,15 @@ open_retry:
                     hls_simple_cache_write(s->cache,buf_tmp,buf_tmp_rsize);
                     buf_tmp_rsize = 0;
                 }
-#endif                  
+#endif          
+        
                 LOGV("Http return error value,maybe reached EOS,force to exit it\n");
                 hls_http_close(handle);
                 handle = NULL;
+                if(drop_estimate_bw==0){
+                    fetch_end = in_gettimeUs();
+                    bandwidth_measure_add(s->bw_meausure_handle,read_size,fetch_end-fetch_start);
+                }                 
                 return 0;                
             }
             if(rlen == HLSERROR(EAGAIN)){
@@ -1093,7 +1128,7 @@ open_retry:
                 _thread_wait_timeUs(s,100*1000);
                 continue;
             }
-            if(isLive> 0||rlen == HLSERROR(EINTR)){ //live streaming,skip current segment
+            if(isLive> 0||rlen == HLSERROR(EINTR)||rlen == HLSERROR(ENETRESET)){ //live streaming,skip current segment
                 s->err_code = 0;
                 hls_http_close(handle);
                 return HLSERROR(EAGAIN);
@@ -1216,8 +1251,8 @@ static int _download_next_segment(M3ULiveSession* s){
             s->stream_estimate_bps = (double)(node->range_length*8*1000000)/(double)node->durationUs;
         }
     }
-
-    if(ret == 0 || ret == HLSERROR(EAGAIN)){
+ 
+    if((ret == 0 || ret == HLSERROR(EAGAIN))&&s->seekflag!=1){//must not seek
         pthread_mutex_lock(&s->session_lock);
         ++s->cur_seq_num;
         pthread_mutex_unlock(&s->session_lock);
@@ -1410,6 +1445,11 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
 
     ret = _open_session_download_task(session);
     
+    if(m3u_get_durationUs(session->playlist)>0){
+        session->bw_meausure_handle = bandwidth_measure_alloc(m3u_get_node_num(session->playlist),0);
+    }else{
+        session->bw_meausure_handle = bandwidth_measure_alloc(BW_MEASURE_ITEM_DEFAULT,0);
+    }
     LOGV("Session open complete\n");
     *hSession = session;
     return 0;
@@ -1652,6 +1692,9 @@ int m3u_session_close(void* hSession){
     if(session->playlist){
         m3u_release(session->playlist);
 
+    }
+    if(session->bw_meausure_handle!=NULL){
+        bandwidth_measure_free(session->bw_meausure_handle);
     }
     pthread_mutex_unlock(&session->session_lock);
 #ifdef USE_SIMPLE_CACHE
