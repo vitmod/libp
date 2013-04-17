@@ -21,6 +21,7 @@
 #include <audio-dec.h>
 #include <audiodsp.h>
 #include <log-print.h>
+#include <cutils/properties.h>
 
 static int reset_track_enable=0;
 void adec_reset_track_enable(int enable_flag)
@@ -165,16 +166,17 @@ int audiodsp_format_update(aml_audio_dec_t *audec)
          }
 		 #endif
 		//audiodsp_set_format_changed_flag(0);
-        #if 1
-	ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_PCM_LEVEL, &val);
-        if (ret == 0) {
-            //adec_print("pcm level == 0x%x\n", val);
-            if ((val < 0x1000) && (1==audiodsp_get_pcm_resample_enable())) {
-                adec_print("disable pcm down resample");
-                audiodsp_set_pcm_resample_enable(0);
-            }
-        } 
-        #endif
+        
+        if (am_getconfig_bool("media.libplayer.wfd")) {
+	    ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_PCM_LEVEL, &val);
+            if (ret == 0) {
+                //adec_print("pcm level == 0x%x\n", val);
+                if ((val < 0x1000) && (1==audiodsp_get_pcm_resample_enable())) {
+                    adec_print("disable pcm down resample");
+                    audiodsp_set_pcm_resample_enable(0);
+                }
+            } 
+        }
 	}
 	if(ret>0){
 	    audec->format_changed_flag=ret;
