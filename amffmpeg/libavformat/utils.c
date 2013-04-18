@@ -1886,7 +1886,7 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
             pos_max -= step;
             ts_max = read_timestamp(s, stream_index, &pos_max, pos_max + step);
             step += step;
-        }while(ts_max == AV_NOPTS_VALUE && pos_max >= step && step < s->file_size);
+        }while(ts_max == AV_NOPTS_VALUE && pos_max >= step && step < 0x6400000/*100M*/);
 
 		if (ts_max == AV_NOPTS_VALUE){
 			av_log(NULL, AV_LOG_ERROR, "av_gen_search failed, max pts not found\n");
