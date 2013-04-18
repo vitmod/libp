@@ -68,7 +68,7 @@ static void find_best_keyframe(AVFormatContext *pFormatCtx, int video_index, int
 		find_ok=1;
 	   }        	   
 	   av_free_packet(&packet);
-	   if(i>5 && find_ok && maxFrameSize>100*1024/(1+i/2)) 
+	   if(i>5 && find_ok && maxFrameSize>100*1024/(1+i/20)) 
 	   	 break;
     }while(i++<count);
 
@@ -95,7 +95,7 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
     AVStream *st = pFormatCtx->streams[video_index];
     int duration = pFormatCtx->duration / AV_TIME_BASE;
  ///   int64_t init_seek_time = (duration > 0) ? MIN(10, duration >> 1) : 10;
-    int64_t init_seek_time = (duration > 0) ? MIN(120, duration >> 1) : 10;	
+    int64_t init_seek_time = 10;	
     int ret = 0;
     float starttime;
 	int maxframesize;
@@ -106,12 +106,20 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
 			init_seek_time=duration-1;
 		if(init_seek_time<=0)
 			init_seek_time=0;
-    }	 
+    }else{
+    	if(duration > 360)
+			init_seek_time=120;/*long file.don't do more seek..*/
+		else if(duration>6){
+			init_seek_time=duration/3;
+		}else{
+			init_seek_time=0;/*file is too short,try from start.*/
+		}
+    }
     init_seek_time *= AV_TIME_BASE;
     log_debug("[find_thumbnail_frame]duration=%lld init_seek_time=%lld\n", pFormatCtx->duration, init_seek_time);
     //init_seek_time = av_rescale_q(init_seek_time, st->time_base, AV_TIME_BASE_Q);
     //log_debug("[find_thumbnail_frame]init_seek_time=%lld timebase=%d:%d video_index=%d\n",init_seek_time,st->time_base.num,st->time_base.den, video_index);
-    ret = av_seek_frame(pFormatCtx, video_index,init_seek_time -100, 0);
+    ret = av_seek_frame(pFormatCtx, video_index,init_seek_time, AVSEEK_FLAG_BACKWARD);
     if (ret < 0) {
         avio_seek(pFormatCtx->pb, 0, SEEK_SET);
         log_error("[%s]seek error, reset offset to 0\n", __FUNCTION__);
@@ -204,7 +212,7 @@ int thumbnail_decoder_open(void *handle, const char* filename)
     struct stream *stream = &frame->stream;
 
     log_debug("thumbnail open file:%s\n", filename);
-
+	update_loglevel_setting();
     if (av_open_input_file(&stream->pFormatCtx, filename, NULL, 0, NULL) != 0) {
         log_print("Coundn't open file %s !\n", filename);
         goto err;
@@ -301,10 +309,9 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
     AVFormatContext *pFormatCtx = stream->pFormatCtx;
     AVPacket        packet;
     AVCodecContext *pCodecCtx = pFormatCtx->streams[stream->videoStream]->codec;
-	int foundmaxframesize;
 	
     if (time >= 0) {
-        if (av_seek_frame(pFormatCtx, stream->videoStream, time-100, 0) < 0) {
+        if (av_seek_frame(pFormatCtx, stream->videoStream, time, AVSEEK_FLAG_BACKWARD) < 0) {
             log_error("[thumbnail_extract_video_frame]av_seek_frame failed!");
         }
         find_best_keyframe(pFormatCtx, stream->videoStream, 0, &frame->thumbNailTime, &frame->thumbNailOffset,&frame->maxframesize);
@@ -312,11 +319,9 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
                 __LINE__,time, frame->thumbNailTime, frame->thumbNailOffset, ret);
     }
 
-    if (frame->thumbNailTime>0 && frame->thumbNailTime != AV_NOPTS_VALUE) {
-		int64_t seektime=frame->thumbNailTime-100;
-		if(seektime<0)	seektime=0;
-        log_debug("seek to thumbnail frame by timestamp(%lld)!curoffset=%llx\n", seektime, avio_tell(pFormatCtx->pb));
-        if (av_seek_frame(pFormatCtx, stream->videoStream, seektime, 0) < 0) {
+    if (frame->thumbNailTime>=0 && frame->thumbNailTime != AV_NOPTS_VALUE) {
+        log_debug("seek to thumbnail frame by timestamp(%lld)!curoffset=%llx\n", frame->thumbNailTime, avio_tell(pFormatCtx->pb));
+        if (av_seek_frame(pFormatCtx, stream->videoStream, frame->thumbNailTime, AVSEEK_FLAG_BACKWARD) < 0) {
             avio_seek(pFormatCtx->pb, frame->thumbNailOffset, 0);
             log_error("[thumbnail_extract_video_frame]av_seek_frame failed!seek to thumbNailOffset %x\n",frame->thumbNailOffset);
         }
@@ -333,12 +338,8 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 	     AVFrame         *pFrame=NULL; 	
 	     log_debug("[%s] av_read_frame frame size=%d,pts=%lld\n", __FUNCTION__, packet.size,packet.pts);
 		 i++;
-	     if(i<10 && packet.size<frame->maxframesize*9/10){
-		 	continue;/*we have get the max framesize before,but the max frame is not I frame,maybe jumped,So I get a little one.*/
-	     }else if(packet.size<frame->maxframesize/2){
-	     	continue;/*get 5 frames,still not get the better frame,maybe need try more smalls size.*/
-	     }if(packet.size<1024){
-	     	continue;/*skip small size packets,it maybe a black frame*/
+	     if(packet.size<MAX(frame->maxframesize/10,packet.size)){
+		 	continue;/*skip small size packets,it maybe a black frame*/
 	     }
             avcodec_decode_video2(stream->pCodecCtx, stream->pFrameYUV, &frameFinished, &packet);
 	     pFrame=stream->pFrameYUV	;
