@@ -99,6 +99,7 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
     void * hSession = ctx->hls_ctx;
     int len = AVERROR(EIO);
     int counts = 200;
+    
     do {
         if (url_interrupt_cb()) {
             RLOG("url_interrupt_cb\n");
@@ -118,8 +119,9 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
             break;
         }
     } while (counts-- > 0);
-    
-    
+    if(ctx->debug_level>5){
+        RLOG("%s,want:%d,got:%d\n",__FUNCTION__,size,len);
+    }
     return len;
 }
 
@@ -132,9 +134,9 @@ static int64_t ffmpeg_hls_seek(URLContext *h, int64_t pos, int whence){
     FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
     void * hSession = ctx->hls_ctx;
 
-    RLOG("%s:pos:%d,whence:%d\n",__FUNCTION__,pos,whence);
+    RLOG("%s:pos:%lld,whence:%d\n",__FUNCTION__,pos,whence);
 
-    if(whence == AVSEEK_SIZE){
+    if(whence == AVSEEK_SIZE){        
         return AVERROR_STREAM_SIZE_NOTVALID;        
     }
 
@@ -276,6 +278,12 @@ static int ffmpeg_hls_getopt(URLContext *h, uint32_t  cmd, uint32_t flag, int64_
             RLOG("Get cache http error code: %d\n",val);
         }  
 
+    }else if(cmd == AVCMD_HLS_STREAMTYPE){
+        if(ctx->durationUs>0){
+            *info = 1; 
+        }else{
+            *info = 0;
+        }
     }
 
     return 0;

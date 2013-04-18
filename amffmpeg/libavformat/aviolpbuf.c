@@ -144,7 +144,7 @@ int url_lpopen(URLContext *s,int size)
 	lp_lock_init(&lp->mutex,NULL);
 	lp->file_size=url_lpseek(s,0,AVSEEK_SIZE);
 	lp->cache_enable=0;
-	lp->cache_id=aviolp_cache_open(s->filename,url_filesize(s));
+	lp->cache_id=aviolp_cache_open(s->filename,url_lpseek(s,0,AVSEEK_SIZE));
 	lp->dbg_cnt=0;
 	ret=am_getconfig_float("libplayer.ffmpeg.lpbufmaxbuflv",&value);
 		if(ret<0)

@@ -1804,7 +1804,7 @@ static int mpegts_read_header(AVFormatContext *s,
 
         mpegts_open_section_filter(ts, PAT_PID, pat_cb, ts, 1);
 
-        if(pb->fastdetectedinfo)
+        if(pb->fastdetectedinfo||pb->is_slowmedia)
 		handle_packets(ts, 256*1024 / ts->raw_packet_size);
 	else
         	handle_packets(ts, s->probesize / ts->raw_packet_size);

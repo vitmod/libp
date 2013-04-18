@@ -96,9 +96,9 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
     char headers[MAX_URL_SIZE];
     headers[0] = '\0';
     _add_auth_headers(headers);
-    if(_headers!=NULL&&strlen(_headers)>0){
+    if(_headers!=NULL&&strlen(_headers)>0){  
         if(in_get_sys_prop_bool("media.libplayer.curlenable")>0){
-            snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"%s\r\n",_headers);
+            snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"%s\r\n",_headers);  
         }else{
             snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"%s",_headers);  
         }
@@ -135,24 +135,22 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
             snprintf(fileUrl, MAX_URL_SIZE, "crypto:%s", url);
         }
         AES128KeyInfo_t* aes128key = (AES128KeyInfo_t*)aeskey->key_info;
-        ret = ffurl_alloc(&h, fileUrl, AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK);
+        if(is_ignore_range_req>0){
+            ret = ffurl_alloc(&h, fileUrl, AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK|URL_SEGMENT_MEDIA);
+        }else{
+            ret = ffurl_alloc(&h, fileUrl, AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK);
+        }
         if(ret>=0){
-            if(is_ignore_range_req>0){
-                h->is_segment_media = 1;
+            if(headers!=NULL&&strlen(headers)>0){
+                h->headers=strndup(headers,MAX_URL_SIZE);
             }
+            
             av_set_string3(h->priv_data, "key", aes128key->key_hex, 0, NULL);
             av_set_string3(h->priv_data, "iv", aes128key->ivec_hex, 0, NULL);               
             if((ret = ffurl_connect(h))<0){
-                if(404 == h->http_code){
-                    reason_code = -404;
-                }
-                if(503 == h->http_code){
-                    reason_code = -503;
-
-                }
-                if(500 == h->http_code){
-                    reason_code = -500;
-                }
+                if(h->http_code<0){
+                    reason_code = h->http_code;
+                }                
                 
                 ffurl_close(h);           
                 h = NULL;                

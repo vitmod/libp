@@ -89,20 +89,23 @@ static int CacheHttp_advanced_ffurl_open_h(URLContext ** h,const char * filename
     }else{//crypto streaming
         int ret = -1;
         URLContext* input = NULL;
-        if ((ret = ffurl_alloc(&input, filename, AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK)) < 0){
+        if(ctx->ignore_http_range_req){
+            flags|=URL_SEGMENT_MEDIA;
+        }
+        if ((ret = ffurl_alloc(&input, filename, flags|AVIO_FLAG_READ|AVIO_FLAG_NONBLOCK)) < 0){
             return ret;    
         }
-        if(ctx->ignore_http_range_req){
-		input->is_segment_media = 1;
-	  }
+
         av_set_string3(input->priv_data, "key", ctx->key, 0, NULL);
         av_set_string3(input->priv_data, "iv", ctx->iv, 0, NULL);
         if ((ret = ffurl_connect(input)) < 0) {
+            *http = input->http_code;
             ffurl_close(input);
             input = NULL;
             *h = NULL;
             return ret;
         }
+        *http = 0;
         *h = input;
     }
     return 0;
@@ -668,7 +671,7 @@ OPEN_RETRY:
                         continue;
                    } else {
                         pthread_mutex_unlock(&s->read_mutex);
-                        av_log(h, AV_LOG_ERROR, "---------- circular_buffer_task read left = %d\n", left);
+                        av_log(h, AV_LOG_ERROR, "---------- circular_buffer_task read left = %d\n", left!=AVERROR_EOF?left:0);
                         break;
                    }
                    pthread_mutex_unlock(&s->read_mutex);

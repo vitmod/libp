@@ -615,9 +615,17 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
     }
     
     pthread_mutex_lock(&s->session_lock);
-    int32_t firstSeqNumberInPlaylist = m3u_get_node_by_index(s->playlist,0)->media_sequence;
+    M3uBaseNode* node = m3u_get_node_by_index(s->playlist,0);
+    int32_t firstSeqNumberInPlaylist = node->media_sequence;
     if (firstSeqNumberInPlaylist ==-1) {
         firstSeqNumberInPlaylist = 0;
+    }
+    if(s->is_encrypt_media == -1){//simply detect encrypted stream 
+        if(node->flags&CIPHER_INFO_FLAG){            
+            s->is_encrypt_media = 1;            
+        }else{            
+            s->is_encrypt_media = 0;
+        }
     }
     int rv = -1;
     rv = in_get_sys_prop_float("libplayer.hls.stpos"); 
@@ -878,16 +886,6 @@ static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive
     int indexInPlaylist = segment->index;
     int segmentDurationUs = segment->durationUs;
     s->cached_data_timeUs = segment->startUs;
-
-    if(indexInPlaylist ==0 &&s->is_encrypt_media == -1){//simply detect encrypted stream 
-        if(segment->flags&CIPHER_INFO_FLAG){
-            
-            s->is_encrypt_media = 1;            
-        }else{
-            
-            s->is_encrypt_media = 0;
-        }
-    }
     int explicitDiscontinuity = 0;
     if(segment->flags&DISCONTINUE_FLAG){
         LOGV("Get discontinuity flag\n");
@@ -1306,6 +1304,7 @@ static int _open_session_download_task(M3ULiveSession* s){
     pthread_attr_init(&pthread_attr);
 
     ret = hls_task_create(&tid, &pthread_attr, _download_worker,s);
+    pthread_setname_np(tid,"hls_m3ulivesession");
     if(ret!=0){
         pthread_attr_destroy(&pthread_attr);
         return -1;
