@@ -133,7 +133,8 @@ struct MpegTSContext {
     AVPacket *pkt;
     /** to detect seek                                       */
     int64_t last_pos;
-	
+
+	int64_t first_pcrscr;
 //*************************************************/	
 	/*
 	soft demux qq/pplive living ts; segment duration is 5-10s;
@@ -1759,7 +1760,7 @@ static int mpegts_read_header(AVFormatContext *s,
 
  	
     recalcpts_resetinfo(ts);
-
+	ts->first_pcrscr=AV_NOPTS_VALUE;
 
 	if(am_getconfig_bool("libplayer.netts.recalcpts")){
 		ts->pownon_recalcpts=1;
@@ -2125,6 +2126,32 @@ static int read_seek(AVFormatContext *s, int stream_index, int64_t target_ts, in
     uint8_t buf[TS_PACKET_SIZE];
     int64_t pos;
 	int ret;
+
+	{/*some stream pcrscr start time is not same as pts 
+	  we need del the diffs;otherwise,we don't seek to the need time;
+	*/
+		if(ts->first_pcrscr==AV_NOPTS_VALUE){/*get the first pcrscr*/
+			pos= avio_tell(s->pb);
+			int64_t pos=0;
+			ts->first_pcrscr=mpegts_get_pcr(s,stream_index,&pos,INT64_MAX);
+			avio_seek(s->pb, pos, SEEK_SET);
+		}
+		if(ts->first_pcrscr!=AV_NOPTS_VALUE){
+			int64_t pcr_starttimediff;
+			int64_t firsPTS=av_rescale_q(s->start_time, AV_TIME_BASE_Q,s->streams[stream_index]->time_base);
+			pcr_starttimediff=(ts->first_pcrscr - firsPTS);
+			av_log(NULL,AV_LOG_INFO,"ts->first_pcrscr=%lld firsPTS=%lld\n",ts->first_pcrscr,firsPTS);
+			if(abs(pcr_starttimediff)<90000){/*<1s.we think is the same start time.*/
+				pcr_starttimediff=0;
+			}
+			av_log(NULL,AV_LOG_INFO,"pcr_starttimediff=%lld target_ts=%lld\n",pcr_starttimediff,target_ts);
+			target_ts+=pcr_starttimediff;
+			av_log(NULL,AV_LOG_INFO,"pcr_starttimediff=%lld target_ts=%lld\n",pcr_starttimediff,target_ts);
+
+		}
+		
+	}
+
 
 	ret = av_seek_frame_binary(s, stream_index, target_ts, flags);
     if(ret < 0){		
