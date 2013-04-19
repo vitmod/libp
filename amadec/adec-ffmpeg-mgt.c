@@ -1073,6 +1073,7 @@ exit_decode_loop:
 				audec->format_changed_flag = 1;
 				g_bst->channels=audec->channels=g_AudioInfo.channels;
 				g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+                aout_ops->pause(audec);
 				
 #if 0
 				if(aout_stop_mutex==0)
