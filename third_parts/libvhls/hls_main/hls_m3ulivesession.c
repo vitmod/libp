@@ -9,6 +9,8 @@
 #include "hls_m3uparser.h"
 #include "hls_utils.h"
 #include "hls_download.h"
+#include "hls_bandwidth_measure.h"
+
 #ifdef HAVE_ANDROID_OS
 #include "hls_common.h"
 #else
@@ -107,6 +109,7 @@ typedef struct _M3ULiveSession{
     pthread_t tid;
     int64_t durationUs;    
     int64_t last_bandwidth_list_fetch_timeUs;
+    int64_t download_monitor_timer;
     uint8_t last_bandwidth_list_hash[HASH_KEY_SIZE];
     void* cache;  
     void* bw_meausure_handle;
@@ -240,12 +243,17 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
 
     if(ss->headers!=NULL&&strlen(ss->headers)>0){
         snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n%s",ss->headers);
+    }else{
+        if(in_get_sys_prop_bool("media.libplayer.curlenable")<=0){
+            snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n");
+        }
     }
     ret = fetchHttpSmallFile(url,headers,&buf,&blen,&redirectUrl);
     if(ret!=0){   
         if(buf!=NULL){
             free(buf);
         }
+        ss->err_code = -ret;//small trick,avoid to exit player thread
         return NULL;
     }
 
@@ -656,11 +664,11 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
         if(hasEnd>0){//first item
             s->cur_seq_num = firstSeqNumberInPlaylist;
             s->durationUs = m3u_get_durationUs(s->playlist);
-        }else{//last item       
+        }else{//last third item       
             if(m3u_get_node_num(s->playlist)>3){
                 s->cur_seq_num = firstSeqNumberInPlaylist+m3u_get_node_num(s->playlist)-3;
-            }else{
-                s->cur_seq_num = firstSeqNumberInPlaylist+m3u_get_node_num(s->playlist)-1;   
+            }else{//first item
+                s->cur_seq_num = firstSeqNumberInPlaylist;   
             }
             s->durationUs = -1;
         }
@@ -746,7 +754,7 @@ rinse_repeat:
                     }
                     LOGE("failed to load playlist at url '%s'", url); 
                     pthread_mutex_unlock(&s->session_lock);
-                    return 0;
+                    return HLSERROR(EAGAIN);
                     
                 } else {
                     LOGE("failed to load playlist at url '%s'", url); 
@@ -802,7 +810,8 @@ rinse_repeat:
                     m3u_release(new_playlist);
                     new_playlist = NULL;
                 }
-                //just wait                
+                //just wait
+                _thread_wait_timeUs(s,3000000);// 3s delay           
                 return HLSERROR(EAGAIN);
                 
             }
@@ -820,11 +829,17 @@ rinse_repeat:
                  firstSeqNumberInPlaylist + m3u_get_node_num(new_playlist)- 1);
             
             pthread_mutex_unlock(&s->session_lock);
-            if(new_playlist!=NULL){
+            if(new_playlist!=NULL&&s->cur_seq_num>lastSeqNumberInPlaylist){
                 m3u_release(new_playlist);
                 new_playlist = NULL;
-            }            
-            return -1;
+                return -1;
+            }else{
+                explicitDiscontinuity = 1;
+                s->cur_seq_num = lastSeqNumberInPlaylist;
+                LOGE("We've missed the boat, using last seq,mabye will skip some frame for ugly hls server\n");
+            }
+            
+            
         }      
     }
     if (s->prev_bandwidth_index!= bandwidthIndex) {
@@ -899,8 +914,6 @@ static void _thread_wake_up(M3ULiveSession* s){
 static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive){
     int ret = -1;
     void *handle = NULL;
-    int open_counts = 5;
-
     const char* url = segment->fileUrl;
     long long range_offset = segment->range_offset;
     long long range_length = segment->range_length;
@@ -915,6 +928,7 @@ static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive
     int64_t fetch_start,fetch_end;
     fetch_start = in_gettimeUs();
     int drop_estimate_bw = 0;
+    
 open_retry:
 {
     if(s->is_closed>0||s->seekflag>0){
@@ -960,27 +974,36 @@ open_retry:
     }else{
         ret = hls_http_open(url, headers,NULL,&handle);
     }
+    int errcode = 0;
     if(ret !=0){
-        int errcode = hls_http_get_error_code(handle);       
-        if(errcode!=0){
-            if((!isLive&&open_counts-->0)||errcode == -800){
-                LOGV("Just retry to open,url:%s\n",url);  
-                _thread_wait_timeUs(s,100*1000);
-                hls_http_close(handle);
-                handle = NULL;
-                goto open_retry;
-
-            }else{//failed to download,need skip this file
-                s->err_code = -errcode;                  
-                hls_http_close(handle);
-                return HLSERROR(EAGAIN);
-            }
-
-        }else{//fatal error,can not recovery,need exit download task
+        errcode = hls_http_get_error_code(handle);    
+        if(errcode == -800){
+            LOGV("Maybe seek play,just retry to open,url:%s\n",url);
             hls_http_close(handle);
-            s->err_code  = ret;
-            return -1;
+            handle = NULL;
+            goto open_retry;            
         }
+        int64_t now = in_gettimeUs();
+        if(!isLive&&((now - fetch_start)<segmentDurationUs*10)){//maybe 10s*10 = 100s.
+            LOGV("[VOD]Just retry to open,url:%s,max retry time:%d s\n",url,segmentDurationUs/100000);  
+            _thread_wait_timeUs(s,100*1000);
+            hls_http_close(handle);
+            handle = NULL;
+            goto open_retry;
+
+        }else if(isLive&&(now - fetch_start)<segmentDurationUs/2){//maybe 5s
+            LOGV("[LIVE]Just retry to open,url:%s,max retry time:%d s\n",url,segmentDurationUs/2000000);  
+            _thread_wait_timeUs(s,100*1000);
+            hls_http_close(handle);
+            handle = NULL;
+            goto open_retry;
+        }else{//failed to download,need skip this file
+            LOGV("[%s],skip this segment\n",isLive>0?"LIVE":"VOD");
+            s->err_code = errcode<0?(-errcode):(-ret); //small trick,avoid to exit player read logic                  
+            hls_http_close(handle);
+            handle = NULL;
+            return HLSERROR(EAGAIN);
+        }     
 
     }
 
@@ -1023,6 +1046,7 @@ open_retry:
             LOGV("Simple cache not have free space,just wait\n");            
             _thread_wait_timeUs(s,500*1000);
             drop_estimate_bw = 1;
+            s->download_monitor_timer = in_gettimeUs();
             continue;            
         }
 #endif  
@@ -1128,8 +1152,8 @@ open_retry:
                 _thread_wait_timeUs(s,100*1000);
                 continue;
             }
-            if(isLive> 0||rlen == HLSERROR(EINTR)||rlen == HLSERROR(ENETRESET)){ //live streaming,skip current segment
-                s->err_code = 0;
+            if(isLive> 0||rlen == HLSERROR(EINTR)||rlen == HLSERROR(ENETRESET)||rlen ==HLSERROR(ECONNRESET)){ //live streaming,skip current segment
+                s->err_code = -rlen;//small trick
                 hls_http_close(handle);
                 return HLSERROR(EAGAIN);
             }else{
@@ -1210,10 +1234,10 @@ static int _download_next_segment(M3ULiveSession* s){
         node = m3u_get_node_by_index(s->playlist,s->cur_seq_num- firstSeqNumberInPlaylist);   
     }
     if(node == NULL){
-        LOGE("Can't find invalid segment in playlist,need refresh playlist,seq:%d\n",s->cur_seq_num- firstSeqNumberInPlaylist);
+        LOGE("Can't find invalid segment in playlist,need refresh playlist,seq:%d\n",s->cur_seq_num);
         pthread_mutex_unlock(&s->session_lock);
         _thread_wait_timeUs(s,100*1000);
-        return 0;
+        return HLSERROR(EAGAIN);
 
     }
     if(s->seekflag == 1&&s->seekposByte>0){
@@ -1280,6 +1304,8 @@ static int _finish_download_last(M3ULiveSession* s){
 
     return isLast;
 }
+
+#define FAILOVER_TIME_MAX 10*60    //10min
 static void* _download_worker(void* ctx){
     if(ctx == NULL){
         LOGE("Sanity check\n");
@@ -1288,7 +1314,10 @@ static void* _download_worker(void* ctx){
     M3ULiveSession* s = ctx;
     int first_download = 1;
     int ret = -1;
-    int download_failed_counts = 5;
+    s->download_monitor_timer = in_gettimeUs();
+    int64_t now = in_gettimeUs(); 
+    int failover_time = in_get_sys_prop_float("libplayer.hls.failover_time");
+    failover_time = HLSMAX(failover_time,FAILOVER_TIME_MAX);
     do{
         
         if(first_download>0){
@@ -1297,16 +1326,20 @@ static void* _download_worker(void* ctx){
         }
         ret = _download_next_segment(s); //100ms delay       
         if(ret<0){
-            if(ret == HLSERROR(EAGAIN)){
-                download_failed_counts--; 
-            }else{
-                if(s->err_code>=0){
-                    s->err_code = -501; //unknow error
+            if(ret != HLSERROR(EAGAIN)){               
+                break;
+            }
+            now = in_gettimeUs(); 
+            
+            if((now-s->download_monitor_timer)/1000000>failover_time){
+                LOGV("Can't go on playing in failover time,%d s\n",failover_time);
+                if(s->err_code == 0){
+                    s->err_code = -501;
                 }
                 break;
             }
         }else{
-            download_failed_counts = 5;
+            s->download_monitor_timer = in_gettimeUs();
             s->err_code = 0;
         }
         if(s->is_closed>0){
@@ -1314,20 +1347,24 @@ static void* _download_worker(void* ctx){
         }
         ret =  _refresh_playlist(s);
         if(_finish_download_last(s)>0){
+            if(s->err_code!=0){
+                break;
+            }
             LOGV("Download all segments,worker sleep...\n");
             s->eof_flag = 1;
             s->err_code = 0;
             _thread_wait_timeUs(s,-1); 
+            s->download_monitor_timer = in_gettimeUs();
         }
 
-    }while(s->is_closed<1&&download_failed_counts>0);
+    }while(s->is_closed<1);
     if(s->err_code!=0){
         if(s->err_code>0){
             s->err_code = -(s->err_code);
         }
             
     }
-    LOGV("Session download worker end\n");
+    LOGV("Session download worker end,error code:%d\n",s->err_code);
     return (void*)NULL;
     
 }

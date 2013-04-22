@@ -9,7 +9,6 @@
 
 #include "hls_download.h"
 #include "hls_utils.h"
-#include "hls_bandwidth_measure.h"
 
 #ifdef HAVE_ANDROID_OS
 #include "hls_common.h"
@@ -403,6 +402,7 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     unsigned char* buffer = NULL;
     const int def_buf_size = 1024*1024;
     int buf_len = 0;
+    int err_code = 0;
     if(flen>0){
         buffer = (unsigned char* )malloc(flen);
         buf_len = flen;         
@@ -440,11 +440,12 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     
     *buf = buffer;
     *length = isize;
-
+    err_code = hls_http_get_error_code(handle);
     hls_http_close(handle);
-
+    
     if(ret<0){
-        LOGE("failed to fetch file,url:%s,return value:%d\n",url,ret);
+        ret = err_code<0?err_code:ret;
+        LOGE("failed to fetch file,url:%s,return value:%d\n",url,ret);        
         return ret;        
     }else{
         return 0;
