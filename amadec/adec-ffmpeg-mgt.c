@@ -31,6 +31,11 @@ static int last_valid_pts=0;
 static int out_len_after_last_valid_pts=0;
 static int pcm_cache_size=0;
 
+
+#define lock_t            pthread_mutex_t
+#define lp_lock_init(x,v)     pthread_mutex_init(x,v)
+#define lp_lock(x)        pthread_mutex_lock(x)
+#define lp_unlock(x)       pthread_mutex_unlock(x)
 struct package{
     char *data;//buf ptr
     int size;               //package size
@@ -40,7 +45,7 @@ typedef struct {
     struct package *first;
     int pack_num;
     struct package *current;
-    int mutex; //  0 idle 1 inuse
+    lock_t tslock;
 }Package_List;
 Package_List pack_list;
 
@@ -210,9 +215,7 @@ audio_decoder_operations_t AudioFFmpegDecoder=
 #if 1 /*package list ops*/
 int package_list_free()
 {
-    while((pack_list.mutex))
-        usleep(100);
-        pack_list.mutex=1;
+    lp_lock(&(pack_list.tslock));
     while(pack_list.pack_num)
     {
         struct package * p=pack_list.first;
@@ -221,7 +224,7 @@ int package_list_free()
         free(p);
         pack_list.pack_num--;
     }
-    pack_list.mutex=0;
+    lp_unlock(&(pack_list.tslock));
     return 0;
 }
 
@@ -230,23 +233,24 @@ int package_list_init()
     pack_list.first=NULL;
     pack_list.pack_num=0;
     pack_list.current=NULL;
-    pack_list.mutex=0;
+    lp_lock_init(&(pack_list.tslock),NULL);
     return 0;
 }
 
 int package_add(char * data,int size)
 {
-    if(pack_list.mutex)
-        return -3;
-    pack_list.mutex=1;  
+    lp_lock(&(pack_list.tslock));
     if(pack_list.pack_num==4)//enough
     {
-         pack_list.mutex=0;
+        lp_unlock(&(pack_list.tslock));
         return -2;
     }
     struct package *p=malloc(sizeof(struct package));
     if(!p) //malloc failed
+    {
+        lp_unlock(&(pack_list.tslock));
         return -1;
+    }
     p->data=data;
     p->size=size;
     if(pack_list.pack_num==0)//first package
@@ -261,18 +265,16 @@ int package_add(char * data,int size)
         pack_list.current=p;
         pack_list.pack_num++;
     }
-    pack_list.mutex=0;
+    lp_unlock(&(pack_list.tslock));
     return 0;
 }
 
 struct package * package_get()
 {
-    if(pack_list.mutex)
-        return NULL;
-    pack_list.mutex=1;  
+    lp_lock(&(pack_list.tslock));
     if(pack_list.pack_num==0)
     {
-        pack_list.mutex=0;
+        lp_unlock(&(pack_list.tslock));
         return NULL;
     }
     struct package *p=pack_list.first;
@@ -285,7 +287,7 @@ struct package * package_get()
         pack_list.first=pack_list.first->next;
         pack_list.pack_num--;
     }
-    pack_list.mutex=0;
+    lp_unlock(&(pack_list.tslock));
     return p;
 }
 
