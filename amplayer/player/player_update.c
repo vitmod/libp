@@ -50,6 +50,12 @@ static int set_stream_info(play_para_t *p_para)
     } else {
         info->seekable = 1;
     }
+
+	if(info->seekable == 0){
+		log_print("amplayer send PLAYER_EVENTS_NOT_SUPPORT_SEEKABLE\n");
+		send_event(p_para, PLAYER_EVENTS_NOT_SUPPORT_SEEKABLE, 0, 0);
+	}
+	
     if (info->total_video_num > MAX_VIDEO_STREAMS) {
         log_error("[set_stream_info]too much video streams(%d)!\n ", info->total_video_num);
         return -2;

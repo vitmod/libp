@@ -217,6 +217,7 @@ typedef enum
 	PLAYER_EVENTS_FILE_TYPE,				///<ext1=player_file_type_t*,ext2=0
 	PLAYER_EVENTS_HTTP_WV,				        ///<(need use DRMExtractor),ext1=0, ext2=0
 	PLAYER_EVENTS_HWBUF_DATA_SIZE_CHANGED,		///<(need use DRMExtractor),ext1=0, ext2=0
+	PLAYER_EVENTS_NOT_SUPPORT_SEEKABLE,     //not support seek;
 }player_events;
 
 typedef struct
