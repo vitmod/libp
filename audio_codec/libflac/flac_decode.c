@@ -669,6 +669,7 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
 	int output_size = 0;
 	unsigned char *buf;
 	unsigned buf_size;
+    int last_sync_pos=0;
 
 	unsigned int max_framesize = FFMAX(17*s->max_framesize/16 + 32, s->max_framesize);
 	if (inlen < max_framesize) {
@@ -725,13 +726,16 @@ decodecontinue:
 		bytes_read = get_metadata_size(buf, buf_size);
 		goto end;
 	}
-
+FIND_SYNC_WORD:
 	/* check for frame sync code and resync stream if necessary */
 	if ((AV_RB16(buf) & 0xFFFE) != 0xFFF8) {
 		const uint8_t *buf_end = buf + buf_size;
 	   // av_log(s->avctx, AV_LOG_ERROR, "FRAME HEADER not here\n");
 		while (buf+2 < buf_end && (AV_RB16(buf) & 0xFFFE) != 0xFFF8)
+        {
 			buf++;
+            last_sync_pos++;
+        }
 		bytes_read = buf_size - (buf_end - buf);
 		goto end; // we may not have enough bits left to decode a frame, so try next time
 	}
@@ -740,9 +744,12 @@ decodecontinue:
 	init_get_bits(&s->gb, buf, buf_size*8);
 	if (decode_frame(s) < 0) {
 	    audio_codec_print("decode_frame() failed\n");
-		s->bitstream_size=0;
-		s->bitstream_index=0;
-		return inlen;//-1;
+        //some times , flac may seek to fake sync word pos, caused decode failed
+        //call resync to fix this issue
+        buf = s->bitstream+last_sync_pos+1;
+	    buf_size = s->bitstream_size-(last_sync_pos+1);
+        last_sync_pos++;
+        goto FIND_SYNC_WORD;
 	}
 	bytes_read = (get_bits_count(&s->gb)+7)/8;
 
