@@ -124,3 +124,15 @@ int hls_simple_cache_free(void* handle){
 
     return 0;
 }
+int hls_simple_cache_revert(void* handle){
+    if(handle == NULL){
+        return -1;
+    }
+    SimpleCache_t* cache = (SimpleCache_t*)handle;
+    pthread_mutex_lock(&cache->lock);
+    
+    hls_fifo_revert(cache->fifo);
+    pthread_mutex_unlock(&cache->lock);
+
+    return 0;    
+}

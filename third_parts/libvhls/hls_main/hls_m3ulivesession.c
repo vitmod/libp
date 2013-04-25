@@ -949,7 +949,9 @@ open_retry:
         snprintf(str,32,"%lld",len);
         *(str+strlen(str)+1) = '\0';  
         snprintf(headers+pos,MAX_URL_SIZE-pos,"Range: bytes=%lld-%s",(long long)range_offset,range_length<=0?"":str);
-
+        if(in_get_sys_prop_bool("media.libplayer.curlenable")<=0){
+            snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n");
+        }
         LOGV("Got headers:%s\n",headers);
 
     }else{
@@ -1207,7 +1209,7 @@ static int _download_next_segment(M3ULiveSession* s){
             if(node){
                 int32_t newSeqNumber = firstSeqNumberInPlaylist + node->index;
 
-                if (newSeqNumber != s->cur_seq_num) {
+                if (newSeqNumber != s->cur_seq_num||s->seekflag == 2) {//flag is 2,force seek
                     LOGI("seeking to seq no %d", newSeqNumber);
 
                     s->cur_seq_num = newSeqNumber;
@@ -1240,7 +1242,7 @@ static int _download_next_segment(M3ULiveSession* s){
         return HLSERROR(EAGAIN);
 
     }
-    if(s->seekflag == 1&&s->seekposByte>0){
+    if(s->seekflag >0&&s->seekposByte>0){
         seek_by_pos = s->seekposByte;    
         s->seekposByte = -1;
     }
@@ -1248,7 +1250,7 @@ static int _download_next_segment(M3ULiveSession* s){
     M3uBaseNode segment;
     memcpy((void*)&segment,node,sizeof(M3uBaseNode));
 
-    if(s->seekflag == 1&&seek_by_pos>0){
+    if(s->seekflag >0&&seek_by_pos>0){
         segment.range_offset = seek_by_pos;
         segment.range_length = -1;
     }
@@ -1259,7 +1261,7 @@ static int _download_next_segment(M3ULiveSession* s){
         
     }
     int isLive = m3u_is_complete(s->playlist)>0?0:1;
-    if(s->seekflag ==1){
+    if(s->seekflag >0){
         s->seekflag = 0;        
     }    
     pthread_mutex_unlock(&s->session_lock);
@@ -1276,7 +1278,7 @@ static int _download_next_segment(M3ULiveSession* s){
         }
     }
  
-    if((ret == 0 || ret == HLSERROR(EAGAIN))&&s->seekflag!=1){//must not seek
+    if((ret == 0 || ret == HLSERROR(EAGAIN))&&s->seekflag<=0){//must not seek
         pthread_mutex_lock(&s->session_lock);
         ++s->cur_seq_num;
         pthread_mutex_unlock(&s->session_lock);
@@ -1746,4 +1748,179 @@ int m3u_session_close(void* hSession){
 
     return 0;
     
+}
+//==================================================================
+//==ugly codes for cmf&by peter,20130424
+
+int64_t m3u_session_get_next_segment_st(void* hSession){
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
+    
+    if(session->playlist == NULL){
+        return -1;
+    }
+    int firstSeqInPlaylist = 0;
+    M3uBaseNode* item = m3u_get_node_by_index(session->playlist,0);
+    if(item->media_sequence>0){
+        firstSeqInPlaylist = item->media_sequence;
+    }
+    int lastSeqInPlaylist = firstSeqInPlaylist+m3u_get_node_num(session->playlist)-1;
+    if(session->cur_seq_num == lastSeqInPlaylist){
+        return session->durationUs;
+    }
+    int next_index = session->cur_seq_num - firstSeqInPlaylist+1;
+    item = m3u_get_node_by_index(session->playlist,next_index);
+    return item->startUs;
+}
+int m3u_session_get_segment_num(void* hSession){
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
+    
+    if(session->playlist == NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    return m3u_get_node_num(session->playlist);
+}
+int64_t m3u_session_hybrid_seek(void* hSession,int64_t seg_st,int64_t pos,int (*interupt_func_cb)()){
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
+    
+    int64_t realPosUs = seg_st;
+    pthread_mutex_lock(&session->session_lock);
+    pthread_cond_broadcast(&session->session_cond);
+    session->seekflag = 2;
+    session->seektimeUs = seg_st;
+    session->seekposByte = pos;
+    session->eof_flag = 0;
+    pthread_mutex_unlock(&session->session_lock);
+    
+    while(session->seekflag == 2){//ugly codes,just block app
+        if(interupt_func_cb!=NULL){
+            if(interupt_func_cb() >0){
+                break;
+            }
+        }
+        usleep(1000*10);
+    }    
+    return seg_st;
+     
+}
+void* m3u_session_seek_by_index(void* hSession,int prev_index,int index,int (*interupt_func_cb)()){//block api
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return NULL;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
+    
+    if(session->playlist == NULL){
+        ERROR_MSG();
+        return NULL;
+    }
+    M3uBaseNode* item  = m3u_get_node_by_index(session->playlist,index);
+
+    int64_t realPosUs = item->startUs;
+    pthread_mutex_lock(&session->session_lock);
+    pthread_cond_broadcast(&session->session_cond);
+    session->seekflag = 2;
+    session->seektimeUs = realPosUs;    
+    session->eof_flag = 0;
+    pthread_mutex_unlock(&session->session_lock);
+    
+   
+    while(session->seekflag == 2){
+        usleep(1000*10);
+        if(interupt_func_cb!=NULL){
+            if(interupt_func_cb() >0){
+                TRACE();
+                break;
+            }
+        }         
+    }
+    return item;
+}
+int64_t m3u_session_get_segment_size(void* hSession,const char* url,int index,int type){
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
+    
+    if(session->playlist == NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    
+    M3uBaseNode* item  = m3u_get_node_by_index(session->playlist,index);
+    if(type == 1){
+        LOGV("Get segment size:%lld\n",item->range_length);
+        return item->range_length;
+    }else if(type == 2){
+        void* handle = NULL;
+        int rv = hls_http_open(url,session->headers,NULL,&handle);
+        if(rv!=0){
+            if(handle!=NULL){
+                hls_http_close(handle);
+            }
+            return -1;
+        }
+        int64_t len = hls_http_get_fsize(handle);
+        if(handle!=NULL){
+            hls_http_close(handle);
+        }
+        return len;
+            
+    }else if(type == 3){
+        if(session->stream_estimate_bps>0){
+            int64_t len = (session->stream_estimate_bps*item->durationUs)/(8*1000000);
+            return len;
+        }else{
+            return 0;
+        }
+    }
+    return 0;
+    
+}
+void* m3u_session_get_index_by_timeUs(void* hSession,int64_t timeUs){
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return NULL;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
+    
+    if(session->playlist == NULL){
+        ERROR_MSG();
+        return NULL;
+    }
+    
+    M3uBaseNode* item  = m3u_get_node_by_time(session->playlist,timeUs);
+    if(item ==NULL){
+        ERROR_MSG();
+        return NULL;
+    }
+    return item;
+}
+void* m3u_session_get_segment_info_by_index(void* hSession,int index){
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return NULL;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
+    
+    if(session->playlist == NULL){
+        ERROR_MSG();
+        return NULL;
+    }
+    
+    M3uBaseNode* item  = m3u_get_node_by_index(session->playlist,index);
+    return item;
 }

@@ -1135,7 +1135,10 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 	(*s)->reallocation=h->location;
 	
 	
-	if (h->prot&&h->prot->name &&(!strncmp( h->prot->name, "cmf", 3) || !strncmp( h->prot->name, "list", 4) || (h->priv_flags&FLAGS_ISCMF))) {
+	if (h->prot&&h->prot->name &&(!strncmp( h->prot->name, "cmf", 3) 
+	|| !strncmp( h->prot->name, "list", 4)
+	|| !strncmp( h->prot->name, "vhls", 4)
+	|| (h->priv_flags&FLAGS_ISCMF))) {
 		(*s)->iscmf=1;
 	}	
     if(h&&(h->priv_flags&FLAGS_LOCALMEDIA)){

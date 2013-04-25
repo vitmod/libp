@@ -2,12 +2,12 @@
 #include "libavformat/avio.h"
 #include "hls_m3ulivesession.h"
 #include "amconfigutils.h"
+#include "hls_cmf_impl.h"
 #ifndef INT_MAX
 #define INT_MAX   2147483647
 #endif
 
 #define FFMPEG_HLS_TAG "amffmpeg-hls"
-
 
 #define RLOG(...) av_tag_log(FFMPEG_HLS_TAG,__VA_ARGS__)
 
@@ -22,10 +22,12 @@ typedef struct _FFMPEG_HLS_CONTEXT{
     int codec_adat_size;
     int debug_level;
     void* hls_ctx;
+    CmfPrivContext_t* cmf_ctx;
 }FFMPEG_HLS_CONTEXT;
 
 typedef enum _SysPropType{
     PROP_DEBUG_LEVEL = 0,
+    PROP_CMF_SUPPORT = 1,
     
 }SysPropType;
 static float _get_system_prop(SysPropType type){
@@ -39,6 +41,14 @@ static float _get_system_prop(SysPropType type){
                 value = 0;
             }            
             break;
+        case PROP_CMF_SUPPORT:
+            ret = am_getconfig_bool("libplayer.hls.cmf");
+            if(ret<0){
+                value = -1;
+            }else{
+                value= ret;
+            }
+            break;
         default:
             RLOG("Never see this line,type:%d\n",type);
             break;
@@ -50,6 +60,14 @@ static float _get_system_prop(SysPropType type){
     }
 
     return ret;
+    
+}
+static int interrupt_call_cb(void){//only for cmf
+    if (url_interrupt_cb()) {
+        RLOG("[%s]:url_interrupt_cb\n",__FUNCTION__);        
+        return 1;
+    }
+    return 0;
     
 }
 static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
@@ -82,7 +100,16 @@ static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
         h->flags|=URL_MINI_BUFFER;//no lpbuffer
         h->flags|=URL_NO_LP_BUFFER;
     }
-    
+    if(_get_system_prop(PROP_CMF_SUPPORT)>0){//only vod
+        if(dur>0){
+            f->cmf_ctx = av_mallocz(sizeof(CmfPrivContext_t));
+            f->cmf_ctx->totol_clip_num = hls_cmf_get_clip_num(session);
+            f->cmf_ctx->interrupt_func_cb = interrupt_call_cb;
+        }else{
+            RLOG("Can't support live streaming for CMF module\n");
+            return -1;
+        }
+    }
     h->is_slowmedia = 1;
     h->is_streamed = 1;
     h->is_segment_media = 1;
@@ -110,7 +137,7 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
 
         if (len <0) {
             if(len == AVERROR(EAGAIN)){
-                usleep(1000 * 100);
+                usleep(1000 * 10);
             }else{
                 break;
             }
@@ -125,7 +152,44 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
     return len;
 }
 
-
+static int64_t _ffmpeg_cmf_seek(URLContext *h, int64_t pos, int whence){
+    FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
+    void * hSession = ctx->hls_ctx;
+    if(hSession == NULL ||ctx->cmf_ctx == NULL){
+        RLOG("Failed call :%s\n",__FUNCTION__);
+        return -1;
+    }
+    RLOG("%s:pos:%lld,whence:%x\n",__FUNCTION__,pos,whence);
+    if(whence == SEEK_SET){//just seek within one slice
+        int64_t ret = hls_cmf_seek_by_size(hSession,ctx->cmf_ctx,pos);
+        RLOG("Seek to clip pos:%lld,rv:%lld\n",pos,ret);
+        if(ret<0){
+            return -1;
+        }else{
+            return pos;
+        }
+    }else if(whence == AVSEEK_ITEM_TIME){
+        if(ctx->durationUs>0){
+            int64_t item_st = m3u_session_get_next_segment_st(hSession);
+            if(ctx->debug_level>3){
+                RLOG("Got next item start time:%lld us\n",item_st);
+            }
+            return item_st/1000000;
+        }
+    }else if(whence == AVSEEK_SLICE_BYINDEX){
+        
+        int64_t timeUs = hls_cmf_seek_by_index(hSession,ctx->cmf_ctx,pos);
+        RLOG("Seek to clip pos:%lld,timeUs:%lld\n",pos,timeUs);
+        
+        
+        return pos;        
+    }else if(whence == AVSEEK_SLICE_BYTIME){
+        int64_t index = hls_cmf_shift_index_by_time(hSession,ctx->cmf_ctx,pos*1000);
+        RLOG("Get clip index by time,time:%lld ms,index:%lld\n",pos,index);
+        return index;
+    }
+    return -1;
+}
 static int64_t ffmpeg_hls_seek(URLContext *h, int64_t pos, int whence){
     if(h == NULL||h->priv_data == NULL){
         RLOG("Failed call :%s\n",__FUNCTION__);
@@ -133,14 +197,31 @@ static int64_t ffmpeg_hls_seek(URLContext *h, int64_t pos, int whence){
     } 
     FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
     void * hSession = ctx->hls_ctx;
-
-    RLOG("%s:pos:%lld,whence:%d\n",__FUNCTION__,pos,whence);
-
-    if(whence == AVSEEK_SIZE){        
+    
+    if(whence == AVSEEK_SIZE){   
+        RLOG("%s:pos:%lld,whence:%d\n",__FUNCTION__,pos,whence);
         return AVERROR_STREAM_SIZE_NOTVALID;        
+    }else if(_get_system_prop(PROP_CMF_SUPPORT)>0&&ctx->durationUs>0){
+        return _ffmpeg_cmf_seek(h,pos,whence);        
     }
 
     return -1;
+}
+static int64_t _ffmpeg_cmf_exseek(URLContext *h, int64_t pos, int whence){
+    FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
+	int ret=-1;
+	void * hSession = ctx->hls_ctx;
+	if(whence == AVSEEK_CMF_TS_TIME) {
+	    int64_t seekToUs = ctx->cmf_ctx->cur_clip_st+pos*1000000;
+	    int64_t seekLimitUs = ctx->cmf_ctx->cur_clip_end;
+	    if(ctx->durationUs>0&&pos>=0&&seekToUs<=seekLimitUs){
+            int64_t seekTo = m3u_session_seekUs(hSession,seekToUs);
+            RLOG("Seek to clip time:%lld,pos\n",seekTo,pos);
+            return (seekTo/1000000);	        
+	    }
+	}
+	return -1;
+
 }
 static int64_t ffmpeg_hls_exseek(URLContext *h, int64_t pos, int whence){
     if(h == NULL||h->priv_data == NULL){
@@ -176,6 +257,16 @@ static int64_t ffmpeg_hls_exseek(URLContext *h, int64_t pos, int whence){
             return (seekToUs/1000000);
         }
 
+    }else if(whence == AVSEEK_ITEM_TIME){//just for get will-download item time,for xiaomi,by zc
+        if(ctx->durationUs>0){
+            int64_t item_st = m3u_session_get_next_segment_st(hSession);
+            if(ctx->debug_level>3){
+                RLOG("Got next item start time:%lld us\n",item_st);
+            }
+            return item_st/1000000;
+        }
+    }else if(_get_system_prop(PROP_CMF_SUPPORT)>0&&ctx->durationUs>0){//only vod
+        return _ffmpeg_cmf_exseek(h,pos,whence);        
     }
     RLOG("Never support this case,pos:%lld,whence:%d\n",(long long)pos,whence);
     return -1;
@@ -188,6 +279,9 @@ static int ffmpeg_hls_close(URLContext *h){
     FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
     if(ctx != NULL && ctx->hls_ctx!=NULL){
         m3u_session_close(ctx->hls_ctx);
+    }
+    if(_get_system_prop(PROP_CMF_SUPPORT)>0&&ctx->cmf_ctx!=NULL){
+        av_free(ctx->cmf_ctx);
     }
     av_free(h->priv_data);
 
@@ -211,7 +305,6 @@ static int _hls_estimate_buffer_time(FFMPEG_HLS_CONTEXT* ctx,int cur_bw){
 	}
 	return buffer_t;
 }
-
 static int ffmpeg_hls_setopt(URLContext *h, int cmd,int flag,unsigned long info){
     if(h == NULL||h->priv_data == NULL){
         RLOG("Failed call :%s\n",__FUNCTION__);
@@ -246,13 +339,77 @@ static int ffmpeg_hls_setopt(URLContext *h, int cmd,int flag,unsigned long info)
 	}
 	return ret;
 }
-
+static int _ffmpeg_cmf_getopt(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t* info){
+    FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
+	int ret=-1;    
+	CmfPrivContext_t* cmf_ctx = ctx->cmf_ctx;
+	RLOG("[%s]:cmd:%d,flag:%d\n",__FUNCTION__,cmd,flag);
+	if(ctx == NULL||cmf_ctx == NULL){
+	    RLOG("Failed call :%s\n",__FUNCTION__);
+	    return -1;
+	}
+    if(cmd == AVCMD_TOTAL_NUM){
+        *info = cmf_ctx->totol_clip_num;
+        RLOG("Get total clip num:%d\n",cmf_ctx->totol_clip_num);        
+    }else if(cmd == AVCMD_TOTAL_DURATION){
+        *info = ctx->durationUs/1000;
+        RLOG("Get duration:%lld\n",*info);
+    }else if(cmd == AVCMD_SLICE_START_OFFSET){
+        *info = -1;
+        RLOG("Get clip start offset\n");        
+    }else if(cmd == AVCMD_SLICE_INDEX){
+        *info = cmf_ctx->cur_clip_index;
+        RLOG("Get clip index:%d\n",cmf_ctx->cur_clip_index);        
+    }else if(cmd == AVCMD_SLICE_SIZE){
+        if(cmf_ctx->cur_clip_len>0){
+            *info = cmf_ctx->cur_clip_len;
+        }else{//ugly codes
+            int64_t ret = hls_cmf_get_fsize(ctx->hls_ctx,cmf_ctx,1);
+            if(ret<=0){//10s,maybe chunk stream,can't get size from server
+                int counts=100;
+                while(counts-->0&&ret<=0){
+                    if (url_interrupt_cb()) {
+                        RLOG("url_interrupt_cb,%d\n",__LINE__);
+                        ret = 0;
+                        break;
+                    }
+                    ret = hls_cmf_get_fsize(ctx->hls_ctx,cmf_ctx,2); 
+                    usleep(100*1000);//100ms
+                }
+                if(ret<=0&&url_interrupt_cb()==0){
+                    ret = hls_cmf_get_fsize(ctx->hls_ctx,cmf_ctx,3); 
+                }
+            }
+            *info = ret;            
+            
+        }
+        RLOG("Get clip length:%lld\n",*info);        
+    }else if(cmd == AVCMD_SLICE_STARTTIME){
+        if(ctx->durationUs<=0){
+            *info = -1;
+        }else{
+            *info = cmf_ctx->cur_clip_st/1000;
+        }
+        RLOG("Get clip start time:%lld\n",*info);        
+    }else if(cmd == AVCMD_SLICE_ENDTIME){
+        if(ctx->durationUs<=0){
+            *info = -1;
+        }else{
+            *info = cmf_ctx->cur_clip_end/1000;
+        }
+        RLOG("Get clip end time:%lld\n",*info);             
+    }else{
+        RLOG("Can't excute this case\n");
+    }
+    return 0;
+}
 static int ffmpeg_hls_getopt(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t* info){
     if(h == NULL||h->priv_data == NULL){
         RLOG("Failed call :%s\n",__FUNCTION__);
         return -1;
     } 
     FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
+    
     if(cmd == AVCMD_GET_NETSTREAMINFO){
         if(flag == 1){
             
@@ -285,6 +442,8 @@ static int ffmpeg_hls_getopt(URLContext *h, uint32_t  cmd, uint32_t flag, int64_
             *info = 0;
         }
         RLOG("Get hls stream type,:%d\n",*info);
+    }else if(_get_system_prop(PROP_CMF_SUPPORT)>0&&ctx->durationUs>0){
+        return _ffmpeg_cmf_getopt(h,cmd,flag,info);
     }
 
     return 0;

@@ -446,7 +446,10 @@ int cmf_read_seek(AVFormatContext *s, int stream_index, int64_t sample_time, int
     int64_t remain_seektime;
     int64_t seektimestamp;
     AVStream *st;
-
+    if(cmf->sctx == NULL||cmf->sctx->iformat == NULL){
+        av_log(NULL,AV_LOG_ERROR,"cmf sctx[%s] or iformat is NULL\n",cmf->sctx == NULL?"null":"valid");
+        return -1;
+    }
     av_log(NULL, AV_LOG_INFO, "cmf read_seek:TOTALINFO  index[%lld] total_num [%lld] total_duration [%lld] \n",ci->cur_index,ci->total_num, ci->total_duration);
     av_log(NULL, AV_LOG_INFO, "cmf read_seek:SIZEINFO    index[%lld] start_offset [0x%llx] end_offset [0x%llx] slice_size[0x%llx] \n", ci->cur_index, ci->start_offset, ci->end_offset, ci->size);
     av_log(NULL, AV_LOG_INFO, "cmf read_seek:TIMEINFO    index[%lld] start_time [%lld]ms end_time [%lld]ms curslice_duration[%lld]ms \n", ci->cur_index, ci->start_time, ci->end_time, ci->curslice_duration);

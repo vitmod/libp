@@ -34,7 +34,7 @@ int hls_simple_cache_alloc(int size_max,void** handle);
 int hls_simple_cache_get_free_space(void* handle);
 int hls_simple_cache_get_data_size(void* handle);
 int hls_simple_cache_reset(void* handle);
-
+int hls_simple_cache_revert(void* handle);
 int hls_simple_cache_write(void* handle,void* data,int size);
 
 int hls_simple_cache_read(void* handle,void* buffer,int size);

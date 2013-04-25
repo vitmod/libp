@@ -145,3 +145,7 @@ void hls_fifo_drain(HLSFifoBuffer *f, int size)
         f->rptr -= f->end - f->buffer;
     f->rndx += size;
 }
+void hls_fifo_revert(HLSFifoBuffer *f){
+    f->rptr = f->buffer;
+    f->rndx = 0;    
+}

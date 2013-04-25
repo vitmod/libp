@@ -15,7 +15,7 @@ LOCAL_MODULE_TAGS := optional
 
 LOCAL_CFLAGS += -Wno-multichar
 
-LOCAL_STATIC_LIBRARIES := libhls libhls_http libhls_common 
+LOCAL_STATIC_LIBRARIES := libhls libhls_http libhls_common libhls_cmf
 LOCAL_SHARED_LIBRARIES :=libamplayer libcutils libssl libamavutils libcrypto
 
 

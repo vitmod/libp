@@ -74,6 +74,14 @@ int m3u_session_read_data(void* session,void* buf,int len);
 
 int m3u_session_close(void* hSession);
 
+//ugly codes for cmf
+int64_t m3u_session_get_next_segment_st(void* session);
+int m3u_session_get_segment_num(void* session);
+int64_t m3u_session_hybrid_seek(void* session,int64_t seg_st,int64_t pos,int (*interupt_func_cb)());
+void* m3u_session_seek_by_index(void* session,int prev_index,int index,int (*interupt_func_cb)());
+int64_t m3u_session_get_segment_size(void* session,const char* url,int index,int type);
+void* m3u_session_get_index_by_timeUs(void* session,int64_t timeUs);
+void* m3u_session_get_segment_info_by_index(void* hSession,int index);
 
 #ifdef __cplusplus
 #if __cplusplus
