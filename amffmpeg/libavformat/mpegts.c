@@ -970,6 +970,8 @@ int ff_parse_mpeg2_descriptor(AVFormatContext *fc, AVStream *st, int stream_type
     int i;
 
     desc_tag = get8(pp, desc_list_end);
+    if (st == NULL)
+        return -1;
     if (desc_tag < 0)
         return -1;
     desc_len = get8(pp, desc_list_end);

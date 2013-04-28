@@ -1371,6 +1371,8 @@ void av_close_input_file(AVFormatContext *s);
  */
 void avformat_free_context(AVFormatContext *s);
 
+void av_delete_stream(AVFormatContext *s, int id);
+void av_free_stream(AVFormatContext *s, AVStream *st);
 /**
  * Add a new stream to a media file.
  *

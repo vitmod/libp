@@ -3434,6 +3434,11 @@ int av_find_stream_info(AVFormatContext *ic)
         st = ic->streams[i];
         if(st->codec->codec)
             avcodec_close(st->codec);
+            
+        if (!has_codec_parameters(st->codec)) {
+            av_log(NULL, AV_LOG_INFO, "[%s:%d] delete stream %d,\n", __FUNCTION__, __LINE__, i);
+            av_delete_stream(ic, i);
+        }
     }
     for(i=0;i<ic->nb_streams;i++) {
         st = ic->streams[i];
@@ -3693,6 +3698,55 @@ void av_close_input_file(AVFormatContext *s)
 	
 }
 
+void av_free_stream(AVFormatContext *s, AVStream *st)
+{
+    /* free all data in a stream component */
+    if (st->parser) {
+        av_parser_close(st->parser);
+        av_free_packet(&st->cur_pkt);
+    }
+    av_dict_free(&st->metadata);
+    av_freep(&st->index_entries);
+    av_freep(&st->codec->extradata);
+    av_freep(&st->codec->subtitle_header);
+    av_freep(&st->codec);
+    av_freep(&st->priv_data);
+    av_freep(&st->info);
+    av_freep(&st);
+}
+
+void av_delete_stream(AVFormatContext *s, int id)
+{
+    AVStream *st = s->streams[id];;
+    int i;
+
+    for (i=id; i<s->nb_streams-1; i++) {
+        s->streams[i] = s->streams[i+1];
+        s->streams[i]->index -= 1;
+    }
+
+    s->nb_streams -= 1;
+
+    av_free_stream(s, st);
+
+    if (s->nb_programs) {
+        unsigned int i, j, k;
+	
+        /* check program stream */
+        for (i=0; i<s->nb_programs; i++) {
+            for(j=0; j<s->programs[i]->nb_stream_indexes; j++) {
+                k = s->programs[i]->stream_index[j];
+                if (k == id) {
+                //for (; k<s->programs[i]->nb_stream_indexes; k++) {
+                //    s->programs[i]->stream_index[k] = s->programs[i]->stream_index[k+1];
+                //}
+                    s->programs[i]->nb_stream_indexes--;
+                    return;
+                }
+            }
+        }
+}
+}
 AVStream *av_new_stream(AVFormatContext *s, int id)
 {
     AVStream *st;
