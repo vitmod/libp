@@ -1602,6 +1602,8 @@ static int mov_read_ctts(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     if (!sc->ctts_data)
         return AVERROR(ENOMEM);
     sc->ctts_count = entries;
+    int negative_count = 0;
+    int positive_count = 0;
 
     for (i=0; i<entries; i++) {
         int count    =avio_rb32(pb);
@@ -1609,6 +1611,11 @@ static int mov_read_ctts(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 
         sc->ctts_data[i].count   = count;
         sc->ctts_data[i].duration= duration;
+
+        if(duration > 0)
+            positive_count++;
+        if(duration < 0)
+            negative_count++;
 
         if (FFABS(duration) > (1<<28) && i+2<entries) {
             av_log(c->fc, AV_LOG_WARNING, "CTTS invalid\n");
@@ -1620,6 +1627,15 @@ static int mov_read_ctts(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         if (duration < 0 && i+2<entries)
             sc->dts_shift = FFMAX(sc->dts_shift, -duration);
     }
+
+    /*
+    * PTS = DTS (from stts) + CTS (from ctts)
+    *
+    * According to MPEG-4 ISO standard, CTS can never be negative, but quicktime allows 
+    * negative value. The CTS must be all positive or negative in that case, otherwise ignore the dts_shift.
+    */
+    if(positive_count > negative_count)
+        sc->dts_shift = 0;
 
     av_dlog(c->fc, "dts shift %d\n", sc->dts_shift);
 
