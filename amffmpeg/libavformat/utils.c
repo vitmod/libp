@@ -2182,6 +2182,17 @@ static void av_update_stream_timings(AVFormatContext *ic)
                 ic->bit_rate = bit_rate ;
             }
         }
+#define IS_GTHD_VBR(a,b) ((5*a > 6*b) ? 1 : 0) // if (real bitrate > avg bitrate 20%) we think it is VBR, the offset for seek use the time ratio.
+#define IS_LTHD_VBR(a,b) ((5*a < 4*b) ? 1 : 0)
+        if (ic->file_size > 0 && ic->pb && !ic->pb->is_slowmedia) {
+            unsigned int avg_bitrate = (double)ic->file_size * 8.0 * AV_TIME_BASE/(double)ic->duration;
+            if (IS_GTHD_VBR(ic->bit_rate, avg_bitrate) || IS_LTHD_VBR(ic->bit_rate, avg_bitrate)){
+                ic->is_vbr = 1;
+            }
+            else {
+                ic->is_vbr = -1;
+            }
+        }
     }
 }
 

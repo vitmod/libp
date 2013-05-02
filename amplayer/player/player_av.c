@@ -1318,7 +1318,19 @@ int time_search(play_para_t *am_p)
                     am_p->playctrl_info.seek_frame_fail = 1;
                 }
             }
-            offset = ((int64_t)(time_point * (s->bit_rate >> 3)));
+            
+            if (am_p->file_type == MPEG_FILE && time_point > 0 && am_p->pFormatCtx->is_vbr == 1) {
+                double factor_tm = (double)time_point * AV_TIME_BASE / (double)am_p->pFormatCtx->duration;
+                if (factor_tm > 1.0 || factor_tm < 0.0) {
+                    offset = ((int64_t)(time_point * (s->bit_rate >> 3)));
+                }
+                else {
+                    offset = (int64_t)(s->valid_offset * factor_tm);
+                }
+            }
+            else {
+                offset = ((int64_t)(time_point * (s->bit_rate >> 3)));
+            }
             log_info("time_point = %f  bit_rate=%x offset=0x%llx\n", time_point, s->bit_rate, offset);
 
             if (am_p->file_type == RM_FILE) {
@@ -1355,6 +1367,9 @@ int time_search(play_para_t *am_p)
 					offset = s->file_size * (timestamp - s->start_time)/(s->duration - s->start_time);
 					log_info("## file_size=%llx, time_point=%f, timestamp=%lld,s->duration=%lld,offset=%llx,--------\n",
 						s->file_size, time_point, timestamp, s->duration, offset);
+					if (offset > s->valid_offset){
+                        offset = url_ftell(s->pb);
+					}
 				}
             }
             ret = url_fseek(s->pb, offset, SEEK_SET);
@@ -1362,6 +1377,73 @@ int time_search(play_para_t *am_p)
                 log_info("%s: could not seek to position 0x%llx  ret=0x%llx\n", s->filename, offset, ret);
                 ret = PLAYER_SEEK_FAILED;
                 goto searchexit;
+            }
+            else if (am_p->off_init == 0 && am_p->file_type == MPEG_FILE)
+            {
+#define MAX_DIFF_PTS    100  
+#define MAX_FIND_NUM    10            
+                char is_find = 0;
+                int64_t l_off = -5;
+                int64_t r_off = 5;
+                char num_search = MAX_FIND_NUM;
+                int64_t tot_dur = am_p->pFormatCtx->duration/AV_TIME_BASE;
+                AVPacket pkt;
+                do {
+                    av_init_packet(&pkt);
+                    ret = av_read_frame(s, &pkt);
+                    if (ret != 0) {
+                        break;
+                    }
+                    else {
+                        double actiont = 0.0;
+                        int64_t pts_diff = 0;
+
+                        pts_diff = (int64_t)time_point - pkt.pts/90000;
+                        //if search time is more than 10, we large the pts diff range.
+                        if (num_search <= 5) {
+                            r_off++;
+                            l_off--;
+                        }
+
+                        //if the difference between target and getted pts less than 1%, or less than 3s for very short stream, just find it.
+                        //if (abs(pts_diff * 100) < tot_dur || (abs(pts_diff) <= 3 && tot_dur <= 300)){                        
+                        if (pts_diff < r_off && pts_diff > l_off){
+                            is_find = 1;
+                            break;
+                        }
+                        actiont = (double) abs(pts_diff)/(double)tot_dur;
+
+                        // if the pts getted is nomal, then adjust the offset.
+                        if (actiont <= 1.0 && actiont >= 0.0){
+                            int64_t cur_off = 0;
+                            cur_off = (int64_t)((pts_diff >= 0) ? (offset + actiont * (double)s->valid_offset):
+                                    (offset - actiont * (double)s->valid_offset));
+                            ret = url_fseek(s->pb, cur_off, SEEK_SET);
+                            // if find a invalid offset, then reback the last valid offset.
+                            if (ret < 0) {
+                                ret = url_fseek(s->pb, offset, SEEK_SET);
+                                break;
+                            }
+                            //get new offset.
+                            offset = cur_off;
+                            num_search--;
+                        }
+                        else {
+                            break;
+                        }
+                    }
+                    
+                }while(!is_find && num_search > 0);
+                //if find or just use the last offset, then confirm the offset.
+                if (is_find || num_search <= 0) {
+                    ret = url_fseek(s->pb, offset, SEEK_SET);
+                    if (ret < 0) {
+                        ret = PLAYER_SEEK_FAILED;
+                        av_free_packet(&pkt);
+                        goto searchexit;
+                    }
+                }
+                av_free_packet(&pkt);
             }
         }
 

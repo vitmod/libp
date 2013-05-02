@@ -1493,6 +1493,7 @@ int player_offset_init(play_para_t *p_para)
 {
     int ret = PLAYER_SUCCESS;
     if (p_para->playctrl_info.time_point >= 0) {
+        p_para->off_init = 1;
         ret = time_search(p_para);
         if (ret != PLAYER_SUCCESS) {
             set_player_state(p_para, PLAYER_ERROR);
@@ -1501,6 +1502,7 @@ int player_offset_init(play_para_t *p_para)
             goto init_fail;
         }
 
+        p_para->off_init = 0;
         if (p_para->playctrl_info.time_point < p_para->state.full_time) {
             p_para->state.current_time = p_para->playctrl_info.time_point;
             p_para->state.current_ms = p_para->playctrl_info.time_point * 1000;

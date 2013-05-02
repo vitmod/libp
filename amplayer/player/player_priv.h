@@ -201,6 +201,7 @@ typedef struct play_para {
 
 	void *player_mate;/*player's mate thread handle*/
 	vdec_profile_t vdec_profile;
+	char off_init;
 } play_para_t;
 
 typedef struct media_type_t {
