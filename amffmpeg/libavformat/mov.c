@@ -2599,19 +2599,36 @@ static AVIndexEntry *mov_find_next_sample(AVFormatContext *s, AVStream **st)
     for (i = 0; i < s->nb_streams; i++) {
         AVStream *avst = s->streams[i];
         MOVStreamContext *msc = avst->priv_data;
+		int wantnew=0;
         if (msc->pb && msc->current_sample < avst->nb_index_entries) {
             AVIndexEntry *current_sample = &avst->index_entries[msc->current_sample];
             int64_t dts = av_rescale(current_sample->timestamp, AV_TIME_BASE, msc->time_scale);
             av_dlog(s, "stream %d, sample %d, dts %"PRId64"\n", i, msc->current_sample, dts);
-            if (!sample || (!s->pb->seekable && current_sample->pos < sample->pos) ||
-                (s->pb->seekable &&
-                 ((msc->pb != s->pb && dts < best_dts) || (msc->pb == s->pb &&
+            if (!sample || (!s->pb->seekable && current_sample->pos < sample->pos)){/*not seekable streaming,*/
+				wantnew=1;
+            }else if(msc->pb != s->pb && dts < best_dts){/*read from different file,*/
+				wantnew=1;
+	    }else if((s->pb->seekable && !s->pb->is_slowmedia) && /*local files.,*/
                  ((FFABS(best_dts - dts) <= AV_TIME_BASE && current_sample->pos < sample->pos) ||
-                  (FFABS(best_dts - dts) > AV_TIME_BASE && dts < best_dts)))))) {
-                sample = current_sample;
+                  (FFABS(best_dts - dts) > AV_TIME_BASE && dts < best_dts))) {
+            	wantnew=1;
+            }else if((s->pb->seekable && s->pb->is_slowmedia)){/*seekable network,seek is slow...*/
+		int64_t curentpos=avio_tell(s->pb); 
+		if((FFABS(best_dts - dts) < AV_TIME_BASE*10)&&
+		    FFABS(curentpos-current_sample->pos)<FFABS(curentpos-sample->pos)){
+            		wantnew=1;
+		}else if((FFABS(best_dts - dts) >= AV_TIME_BASE*8 || FFABS(curentpos-sample->pos) )&& (dts < best_dts)){
+            		wantnew=1;
+		}
+		///av_log(s, AV_LOG_WARNING, "curentpos=%llx,dts=%llx,best_dts=%llx,%llx,%llx,new=%d\n",curentpos,dts,best_dts,current_sample->pos,sample->pos,wantnew);
+            }
+
+	    if(wantnew){
+		sample = current_sample;
                 best_dts = dts;
                 *st = avst;
-            }
+	    }
+			
         }
     }
     return sample;
