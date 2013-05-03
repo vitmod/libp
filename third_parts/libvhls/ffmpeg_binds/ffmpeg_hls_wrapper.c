@@ -107,7 +107,19 @@ static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
             f->cmf_ctx->interrupt_func_cb = interrupt_call_cb;
         }else{
             RLOG("Can't support live streaming for CMF module\n");
-            return -1;
+            h->is_slowmedia = 1;
+            h->is_streamed = 1;
+            h->is_segment_media = 1;
+            f->hls_ctx = session;  
+            if(session!=NULL){
+                m3u_session_close(f->hls_ctx);
+                f->hls_ctx = NULL;
+            }
+            if(f!=NULL){
+                av_free(f);
+            }
+            h->priv_data = NULL;
+            return AVERROR(EIO);
         }
     }
     h->is_slowmedia = 1;

@@ -122,5 +122,5 @@ static inline uint8_t *hls_fifo_peek2(const HLSFifoBuffer *f, int offs)
         ptr = f->end - (f->buffer - ptr);
     return ptr;
 }
-
+void hls_fifo_revert(HLSFifoBuffer *f);
 #endif /* HLSUTIL_FIFO_H */

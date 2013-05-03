@@ -395,6 +395,10 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
    
     if(ret!=0){
         LOGV("Failed to open http handle\n");
+        if(handle!=NULL){
+            hls_http_close(handle);
+            handle = NULL;
+        }
         return -1;
     }
     int64_t flen = hls_http_get_fsize(handle);
