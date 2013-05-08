@@ -1275,6 +1275,32 @@ static void set_es_sub(play_para_t *p_para)
         }
     }
 }
+
+int check_video_profile(play_para_t *para)
+{
+	/*
+	now we support high profile 4.1
+	only check local play ,only local play the profile can be parsered;
+	*/
+
+    AVStream *pStream = NULL;
+    AVCodecContext *avcodec;
+    int index = para->vstream_info.video_index;
+    pStream = para->pFormatCtx->streams[index];
+
+	if (pStream->codec){
+    	avcodec = pStream->codec;
+	}
+	log_print("video profile [0x%x][%d] level[%d]\n",avcodec->profile,avcodec->profile,avcodec->level);	
+	if((para->pFormatCtx)&&(para->pFormatCtx->pb)&& (para->pFormatCtx->pb->local_playback==1)){
+		if (avcodec && avcodec->profile > FF_PROFILE_H264_HIGH){
+			log_print("unsupport h264 profile [0x%x][%d] level[%d]\n",avcodec->profile,avcodec->profile,avcodec->level);
+			return PLAYER_FAILED;
+		}
+	}
+	return PLAYER_SUCCESS;
+}
+
 int player_dec_init(play_para_t *p_para)
 {
     pfile_type file_type = UNKNOWN_FILE;
@@ -1441,6 +1467,13 @@ int player_dec_init(play_para_t *p_para)
         log_print("====bitrate=%d max_raw_size=%d\n", p_para->pFormatCtx->bit_rate, p_para->max_raw_size);
     }
     subtitle_para_init(p_para);
+
+	ret = check_video_profile(p_para);
+	if (ret < 0){
+		log_print("please check profile,the profile may be not support\n");
+		return PLAYER_FAILED;
+	}
+	
     //set_tsync_enable(1);        //open av sync
     //p_para->playctrl_info.avsync_enable = 1;
     return PLAYER_SUCCESS;
@@ -1477,6 +1510,7 @@ init_fail:
     ffmpeg_close_file(p_para);
     return ret;
 }
+
 
 int player_decoder_init(play_para_t *p_para)
 {
@@ -1543,7 +1577,6 @@ int player_decoder_init(play_para_t *p_para)
         p_para->codec = p_para->vcodec;
         log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
-
 
     return PLAYER_SUCCESS;
 failed:

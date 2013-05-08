@@ -3142,7 +3142,10 @@ int av_find_stream_info(AVFormatContext *ic)
         fast_switch = (int)value;
     }
 
-
+	if(ic->pb->local_playback && fast_switch){
+		av_log(NULL,AV_LOG_ERROR,"localplay force close fastswitch for parser profile\n");
+		fast_switch = 0;
+	}
 
 	if ((!strcmp(ic->iformat->name, "mpegts"))){
 		if (ic->pb&&ic->pb->is_slowmedia&&am_getconfig_bool("libplayer.netts.softdemux")){
