@@ -650,7 +650,14 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
         firstSeqNumberInPlaylist = 0;
     }
     if(s->is_encrypt_media == -1){//simply detect encrypted stream 
-        if(node->flags&CIPHER_INFO_FLAG){            
+        //add codes for stream that the field "METHOD" of EXT-X-KEY is "NONE".
+        char* method = NULL;
+        if(node->key!=NULL&&node->key->method!=NULL){
+            method = node->key->method;
+        }else{
+            method = "NONE";
+        }
+        if(node->flags&CIPHER_INFO_FLAG&&strcmp(method,"NONE")){            
             s->is_encrypt_media = 1;            
         }else{            
             s->is_encrypt_media = 0;
