@@ -97,8 +97,8 @@ static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
         h->support_time_seek = 1;        
     }else{//live streaming        
         h->support_time_seek = 0;
-        h->flags|=URL_MINI_BUFFER;//no lpbuffer
-        h->flags|=URL_NO_LP_BUFFER;
+        //h->flags|=URL_MINI_BUFFER;//no lpbuffer
+        //h->flags|=URL_NO_LP_BUFFER;
     }
     if(_get_system_prop(PROP_CMF_SUPPORT)>0){//only vod
         if(dur>0){

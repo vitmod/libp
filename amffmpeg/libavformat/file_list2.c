@@ -684,8 +684,8 @@ static int list_open(URLContext *h, const char *filename, int flags)
     h->is_streamed = 1;
     h->is_slowmedia = 1;
     if(!mgt->have_list_end){	
-        h->flags|=URL_MINI_BUFFER;//no lpbuffer        
-        h->flags|=URL_NO_LP_BUFFER;
+        //h->flags|=URL_MINI_BUFFER;//no lpbuffer        
+        //h->flags|=URL_NO_LP_BUFFER;
     }
     if (mgt->full_time > 0 && mgt->have_list_end) {
         h->support_time_seek = 1;
