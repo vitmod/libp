@@ -48,6 +48,28 @@ int amdisplay_utils_get_size(int *width, int *height)
     return 0;
 }
 
+#define FB_DEVICE_PATH_FB2   "/sys/class/graphics/fb2/virtual_size"
+int amdisplay_utils_get_size_fb2(int *width, int *height)
+{
+    LOG_FUNCTION_NAME
+    char buf[SYSCMD_BUFSIZE];
+    int disp_w = 0;
+    int disp_h = 0;
+    int ret;
+    ret = amsysfs_get_sysfs_str(FB_DEVICE_PATH_FB2, buf, SYSCMD_BUFSIZE);
+    if (ret < 0) {
+        return ret;
+    }
+    if (sscanf(buf, "%d,%d", &disp_w, &disp_h) == 2) {
+        LOGI("disp resolution %dx%d\n", disp_w, disp_h);
+        disp_h = disp_h / 2;
+    } else {
+        return -2;/*format unknow*/
+    }
+    *width = disp_w;
+    *height = disp_h;
+    return 0;
+}
 
 int amdisplay_utils_set_scale_mode(int scale_wx, int scale_hx)
 {
