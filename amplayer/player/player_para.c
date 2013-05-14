@@ -1283,6 +1283,9 @@ int check_video_profile(play_para_t *para)
 	only check local play ,only local play the profile can be parsered;
 	*/
 
+	if (!para->vstream_info.has_video){
+		return PLAYER_SUCCESS;
+	}
     AVStream *pStream = NULL;
     AVCodecContext *avcodec;
     int index = para->vstream_info.video_index;
@@ -1291,9 +1294,11 @@ int check_video_profile(play_para_t *para)
 	if (pStream->codec){
     	avcodec = pStream->codec;
 	}
-	log_print("video profile [0x%x][%d] level[%d]\n",avcodec->profile,avcodec->profile,avcodec->level);	
-	if((para->pFormatCtx)&&(para->pFormatCtx->pb)&& (para->pFormatCtx->pb->local_playback==1)){
-		if (avcodec && avcodec->profile > FF_PROFILE_H264_HIGH){
+	
+	log_print("video profile [0x%x][%d] level[%d]\n",avcodec->profile,avcodec->profile,avcodec->level);  
+
+	if((para->pFormatCtx)&&(para->pFormatCtx->pb)&&(para->pFormatCtx->pb->local_playback==1)){
+		if (avcodec && (avcodec->profile != FF_PROFILE_H264_CONSTRAINED_BASELINE)&& (avcodec->profile > FF_PROFILE_H264_HIGH)){
 			log_print("unsupport h264 profile [0x%x][%d] level[%d]\n",avcodec->profile,avcodec->profile,avcodec->level);
 			return PLAYER_FAILED;
 		}
