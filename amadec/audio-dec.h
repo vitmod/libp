@@ -29,6 +29,9 @@ ADEC_BEGIN_DECLS
 #define AMAUDIO_IOC_SET_STEREO               _IOW(AMAUDIO_IOC_MAGIC, 0x10, int)
 #define AMAUDIO_IOC_SET_CHANNEL_SWAP            _IOW(AMAUDIO_IOC_MAGIC, 0x11, int)
 
+//should in accordance with ../amcodec/include/amports/amstream.h
+#define AMAUDIO_IOC_SET_RESAMPLE_DELTA        _IOW(AMAUDIO_IOC_MAGIC, 0x1d, unsigned long)
+
 //for ffmpeg audio decode
 #define AMSTREAM_IOC_MAGIC  'S'
 #define AMSTREAM_IOC_APTS_LOOKUP    _IOR(AMSTREAM_IOC_MAGIC, 0x81,unsigned long)   

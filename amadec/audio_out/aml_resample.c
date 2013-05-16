@@ -98,11 +98,35 @@ static void af_resample_linear_coef_get(af_resampe_ctl_t *paf_resampe_ctl)
 }
 
 
+static int audiodsp_set_pcm_resample_delta(int resample_num_delta)
+{
+    int utils_fd, ret;
+
+    utils_fd = open("/dev/amaudio_utils", O_RDWR);
+    if (utils_fd >= 0) {
+        ret = ioctl(utils_fd, AMAUDIO_IOC_SET_RESAMPLE_DELTA, resample_num_delta);
+        if (ret < 0) {
+            adec_print(" AMAUDIO_IOC_SET_RESAMPLE_DELTA failed\n");
+            close(utils_fd);
+            return -1;
+        }
+		adec_print("Notify kernel: <resample_num_delta=%d>\n",resample_num_delta);
+        close(utils_fd);
+        return 0;
+    }
+    return -1;
+}
 void af_resample_set_SampsNumRatio(af_resampe_ctl_t *paf_resampe_ctl)
 {  
     int resample_type=af_get_resample_type();
+	int default_DELTA_NUMSAMPS=RESAMPLE_DELTA_NUMSAMPS;
+	if (am_getconfig_bool("media.libplayer.wfd"))
+	{
+       default_DELTA_NUMSAMPS=2;
+	}
+	audiodsp_set_pcm_resample_delta(default_DELTA_NUMSAMPS);
 	paf_resampe_ctl->LastResamType=resample_type;
-	adec_print("ReSample Coef Init: type/%d",resample_type);
+	adec_print("ReSample Coef Init: type/%d DELTA_NUMSAMPS/%d ",resample_type,default_DELTA_NUMSAMPS);
     //memset(paf_resampe_ctl,0,sizeof(af_resampe_ctl_t));
     if(resample_type==RESAMPLE_TYPE_NONE){
          paf_resampe_ctl->SampNumIn=DEFALT_NUMSAMPS_PERCH;
@@ -110,12 +134,12 @@ void af_resample_set_SampsNumRatio(af_resampe_ctl_t *paf_resampe_ctl)
     }
     else if(resample_type==RESAMPLE_TYPE_DOWN)
     {
-         paf_resampe_ctl->SampNumIn=DEFALT_NUMSAMPS_PERCH + RESAMPLE_DELTA_NUMSAMPS;
+         paf_resampe_ctl->SampNumIn=DEFALT_NUMSAMPS_PERCH + default_DELTA_NUMSAMPS;
          paf_resampe_ctl->SampNumOut=DEFALT_NUMSAMPS_PERCH ;
     }
     else if(resample_type==RESAMPLE_TYPE_UP)
     {
-         paf_resampe_ctl->SampNumIn=DEFALT_NUMSAMPS_PERCH - RESAMPLE_DELTA_NUMSAMPS;
+         paf_resampe_ctl->SampNumIn=DEFALT_NUMSAMPS_PERCH - default_DELTA_NUMSAMPS;
          paf_resampe_ctl->SampNumOut=DEFALT_NUMSAMPS_PERCH;
     }
     af_resample_linear_coef_get(paf_resampe_ctl);
@@ -221,7 +245,7 @@ void  af_resample_process_linear_inner(af_resampe_ctl_t *paf_resampe_ctl,short *
 	     {  
 		      for(index=0;index<buf16_in_valid;index++)
                    buf16_in[index]= pPreSamps[NumCh*index+ChId];
-		      for(index=0;index<buf16_in_valid;index++)
+		      for(index=0;index<paf_resampe_ctl->SampNumOut-1;index++)
 		      {   int pos=pindex[index];
 		          short t16;
 	              t16 =buf16_in[pos]+Q14_INT_GET((pcoef[index]*(buf16_in[pos+1]-buf16_in[pos])));
@@ -239,7 +263,7 @@ void  af_resample_process_linear_inner(af_resampe_ctl_t *paf_resampe_ctl,short *
 	          {   
 		           for(index=0;index<buf16_in_valid;index++)
                          buf16_in[index]= data_in[input_offset+NumCh*index+ChId];
-		           for(index=0;index<buf16_in_valid;index++)
+		           for(index=0;index<paf_resampe_ctl->SampNumOut-1;index++)
 		           {   int pos=pindex[index];
 		               short t16;
 	                   t16 =buf16_in[pos]+Q14_INT_GET(((int64_t)pcoef[index]*(buf16_in[pos+1]-buf16_in[pos])));
@@ -251,7 +275,7 @@ void  af_resample_process_linear_inner(af_resampe_ctl_t *paf_resampe_ctl,short *
               input_offset +=paf_resampe_ctl->SampNumIn*NumCh;
               output_offset +=paf_resampe_ctl->SampNumOut*NumCh;
          }
-         cur_out_samp_reserve_num = output_offset%DEFALT_NUMSAMPS_PERCH ;
+         cur_out_samp_reserve_num = output_offset%(DEFALT_NUMSAMPS_PERCH*NumCh) ;
          paf_resampe_ctl->OutSampReserveLen = cur_out_samp_reserve_num;
         
          memcpy(paf_resampe_ctl->OutSampReserveBuf,
@@ -275,6 +299,10 @@ void  af_resample_stop_process(af_resampe_ctl_t *paf_resampe_ctl)
     //*SampNum=paf_resampe_ctl->OutSampReserveLen + paf_resampe_ctl->ResevedSampsValid;
     // paf_resampe_ctl->ResevedSampsValid=0;
      //paf_resampe_ctl->OutSampReserveLen=0;
+     if(paf_resampe_ctl->InitFlag!=0)
+	 {
+	 	 audiodsp_set_pcm_resample_delta(0);
+	 }
      paf_resampe_ctl->InitFlag=0;
 	 paf_resampe_ctl->LastResamType=0;
     // adec_print("resample stop INIT_FLAG=%d\n",paf_resampe_ctl->InitFlag);
