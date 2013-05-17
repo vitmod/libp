@@ -122,6 +122,9 @@ typedef  struct {
     long avdiff_check_old_time;
     int avdiff_next_reset_timepoint;
     int pts_discontinue_check_time;
+
+	int buf_limited_time_ms;/*low buffering mode,if data> ms,we do wait write.*/
+	int reset_drop_buffered_data;/*droped buffered data.*/
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);

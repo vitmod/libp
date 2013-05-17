@@ -2038,3 +2038,117 @@ int codec_set_audio_resample_type(codec_para_t *pcodec, unsigned long type)
     return codec_h_control(pcodec->audio_utils_handle, AMAUDIO_IOC_SET_RESAMPLE_TYPE, type);
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_video_delay_limited_ms  Set video buffer max delayed,if> settings,write may wait& again,
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_video_delay_limited_ms(codec_para_t *pcodec,int delay_ms)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_VIDEO_DELAY_LIMIT_MS, delay_ms);
+}
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_video_delay_limited_ms  Set video buffer max delayed,if> settings,write may wait& again,
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_video_delay_limited_ms(codec_para_t *pcodec,int *delay_ms)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_VIDEO_DELAY_LIMIT_MS, delay_ms);
+}
+
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_set_video_delay_limited_ms  Set video buffer max delayed,if> settings,write may wait& again,
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_set_audio_delay_limited_ms(codec_para_t *pcodec,int delay_ms)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_AUDIO_DELAY_LIMIT_MS, delay_ms);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_audio_delay_limited_ms  get video buffer max delayed,if> settings,write may wait& again,
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_audio_delay_limited_ms(codec_para_t *pcodec,int *delay_ms)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_AUDIO_DELAY_LIMIT_MS, delay_ms);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_audio_cur_delay_ms  get current audio delay ms
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_audio_cur_delay_ms(codec_para_t *pcodec,int *delay_ms)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_AUDIO_CUR_DELAY_MS, delay_ms);
+}
+
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_video_cur_delay_ms  get video  current delay ms
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_video_cur_delay_ms(codec_para_t *pcodec,int *delay_ms)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_VIDEO_CUR_DELAY_MS, delay_ms);
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_audio_cur_delay_ms   get vido   latest bitrate.
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_video_cur_bitrate(codec_para_t *pcodec,int *bitrate)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_VIDEO_AVG_BITRATE_BPS, bitrate);
+}
+
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_audio_cur_bitrate  get audio  latest bitrate.
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     0 for success, or fail type if < 0
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_audio_cur_bitrate(codec_para_t *pcodec,int *bitrate)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_AUDIO_AVG_BITRATE_BPS, bitrate);
+}
+

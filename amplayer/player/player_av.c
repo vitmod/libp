@@ -1637,7 +1637,7 @@ int write_av_packet(play_para_t *para)
             if (write_bytes < 0 || write_bytes > nCurrentWriteCount) {
                 if (-errno != AVERROR(EAGAIN)) {
                     para->playctrl_info.check_lowlevel_eagain_cnt = 0;
-                    log_print("write codec data failed!\n");
+                    log_print("write codec data failed! ret=%d,errno=%d\n",write_bytes,errno);
                     return PLAYER_WR_FAILED;
                 } else {
                     /* EAGAIN to see if buffer full or write time out too much */
@@ -1765,7 +1765,7 @@ int write_av_packet(play_para_t *para)
             if (write_bytes < 0 || write_bytes > size) {
                 if (-errno != AVERROR(EAGAIN)) {
                     para->playctrl_info.check_lowlevel_eagain_cnt = 0;
-                    log_print("write codec data failed!\n");
+                    log_print("write codec data failed! ret=%d,errno=%d\n",write_bytes,errno);
                     return PLAYER_WR_FAILED;
                 } else {
                     /* EAGAIN to see if buffer full or write time out too much */

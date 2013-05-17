@@ -1129,6 +1129,25 @@ int player_dec_reset(play_para_t *p_para)
     if((p_para->playctrl_info.time_point>=0) && (p_para->state.full_time > 0)){	
     	 ret = time_search(p_para);
     }else{
+    	if(p_para->playctrl_info.reset_drop_buffered_data && /*drop data for less delay*/
+			p_para->stream_type == STREAM_TS && 
+			p_para->pFormatCtx->pb){
+			#define S_TOPBUF_LEN (188*10*8)
+			#define S_ONCE_READ_L (188*8)
+			char readbuf[S_ONCE_READ_L];
+			int ret=S_ONCE_READ_L;
+			int maxneeddroped=S_TOPBUF_LEN;
+			int totaldroped=0;
+			avio_reset(p_para->pFormatCtx->pb,0);/*clear ffmpeg's  buffers data.*/
+			while(ret==S_ONCE_READ_L && maxneeddroped>0){/*do read till read max,or top buffer underflow to droped steamsource buffers data*/
+				ret = get_buffer(p_para->pFormatCtx->pb, readbuf,S_ONCE_READ_L);
+				maxneeddroped -= ret;
+				if(ret>0)
+					totaldroped+=ret;
+			}
+			log_print("reset total droped data len=%d\n",totaldroped);
+    	}
+		p_para->playctrl_info.reset_drop_buffered_data=0;
         ret = PLAYER_SUCCESS;/*do reset only*/	
     }
     if (ret != PLAYER_SUCCESS) {
@@ -1584,7 +1603,27 @@ int player_decoder_init(play_para_t *p_para)
         p_para->codec = p_para->vcodec;
         log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
-
+	if(p_para->playctrl_info.lowbuffermode_flag && !am_getconfig_bool("media.libplayer.wfd")) {
+		if(p_para->playctrl_info.buf_limited_time_ms<=0)	/*wfd not need blocked write.*/
+			p_para->playctrl_info.buf_limited_time_ms=1000;
+	}else{
+		p_para->playctrl_info.buf_limited_time_ms=0;/*0 is not limited.*/
+	}
+	{
+		log_print("[%s] set buf_limited_time_ms to %d\n", __FUNCTION__, p_para->playctrl_info.buf_limited_time_ms);
+		if(p_para->vstream_info.has_video){
+			if(p_para->vcodec != NULL)
+				codec_set_video_delay_limited_ms(p_para->vcodec,p_para->playctrl_info.buf_limited_time_ms);
+			else if(p_para->codec != NULL)
+				codec_set_video_delay_limited_ms(p_para->codec,p_para->playctrl_info.buf_limited_time_ms);
+		}
+		if(p_para->astream_info.has_audio){
+			if(p_para->acodec != NULL)
+				codec_set_audio_delay_limited_ms(p_para->acodec,p_para->playctrl_info.buf_limited_time_ms);
+			else if(p_para->codec != NULL)
+				codec_set_audio_delay_limited_ms(p_para->codec,p_para->playctrl_info.buf_limited_time_ms);
+		}
+	}
     return PLAYER_SUCCESS;
 failed:
     ffmpeg_close_file(p_para);

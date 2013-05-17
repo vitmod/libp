@@ -340,7 +340,9 @@ static void write_section_data(AVFormatContext *s, MpegTSFilter *tss1,
 
     if (tss->section_h_size != -1 && tss->section_index >= tss->section_h_size) {
         tss->end_of_section_reached = 1;
-        if (!tss->check_crc ||
+	uint8_t *pcrc=&tss->section_buf[tss->section_h_size-4];
+	int crc32=pcrc[0]+pcrc[1]+pcrc[2]+pcrc[3];
+        if (!tss->check_crc || crc32==0 || /*if crc32==0,we think the ts stream  is not set the crc segment.some stream have this bug.*/
             av_crc(av_crc_get_table(AV_CRC_32_IEEE), -1,
                    tss->section_buf, tss->section_h_size) == 0)
             tss->section_cb(tss1, tss->section_buf, tss->section_h_size);
@@ -1086,7 +1088,7 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
     int mp4_dec_config_descr_len = 0;
     int mp4_es_id = 0;
 
-    av_dlog(ts->stream, "PMT: len %i\n", section_len);
+    av_log(ts->stream,AV_LOG_DEBUG1, "PMT: len %i\n", section_len);
     hex_dump_debug(ts->stream, (uint8_t *)section, section_len);
 
     p_end = section + section_len - 4;
@@ -1107,7 +1109,7 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
     add_pid_to_pmt(ts, h->id, pcr_pid);
     set_pcr_pid(ts->stream, h->id, pcr_pid);
 
-    av_dlog(ts->stream, "pcr_pid=0x%x\n", pcr_pid);
+    av_log(ts->stream,AV_LOG_DEBUG1, "pcr_pid=0x%x\n", pcr_pid);
 
     program_info_length = get16(&p, p_end) & 0xfff;
     if (program_info_length < 0)
@@ -1117,7 +1119,7 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
         tag = get8(&p, p_end);
         len = get8(&p, p_end);
 
-        av_dlog(ts->stream, "program tag: 0x%02x len=%d\n", tag, len);
+        av_log(ts->stream,AV_LOG_DEBUG1,"program tag: 0x%02x len=%d\n", tag, len);
 
         if(len > program_info_length - 2)
             //something else is broken, exit the program_descriptors_loop
@@ -1206,7 +1208,7 @@ static void pat_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
     int sid, pmt_pid;
     AVProgram *program;
 
-    av_dlog(ts->stream, "PAT:\n");
+    av_log(ts->stream,AV_LOG_DEBUG1,"PAT:\n");
     hex_dump_debug(ts->stream, (uint8_t *)section, section_len);
 
     p_end = section + section_len - 4;
@@ -1227,7 +1229,7 @@ static void pat_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
         if (pmt_pid < 0)
             break;
 
-        av_dlog(ts->stream, "sid=0x%x pid=0x%x\n", sid, pmt_pid);
+        av_log(ts->stream,AV_LOG_DEBUG1, "sid=0x%x pid=0x%x\n", sid, pmt_pid);
 
         if (sid == 0x0000) {
             /* NIT info */

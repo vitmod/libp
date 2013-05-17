@@ -125,7 +125,7 @@ static int check_decoder_worksta(play_para_t *para)
     if (get_player_state(para) == PLAYER_PAUSE) {
         return PLAYER_SUCCESS;    //paused,don't care buf lowlevel
     }
-    if (para->vstream_info.has_video && (!para->playctrl_info.video_low_buffer)) {
+    if (para->vstream_info.has_video/* && (!para->playctrl_info.video_low_buffer)*/) {
         if (para->vcodec) {
             codec = para->vcodec;
         } else {
@@ -149,12 +149,15 @@ static int check_decoder_worksta(play_para_t *para)
                     } else {
                         para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
                     }
-                    if ((para->vbuffer.check_rp_change_cnt <= 0) 
-                        || (((vdec.status >> 16) & PARSER_FATAL_ERROR) && (para->state.current_time < para->state.full_time - 5))/*||
+                    if ((para->vbuffer.check_rp_change_cnt <= 0 && para->playctrl_info.video_low_buffer) || 
+						((vdec.status >> 16) & PARSER_FATAL_ERROR)/*||
                     (para->vbuffer.check_rp_change_cnt < CHECK_VIDEO_HALT_CNT && para->playctrl_info.video_low_buffer)) &&
                     ((para->state.full_time - para->state.current_time) > 10 )*/) {
                         para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
-                        para->playctrl_info.time_point = para->state.current_time + 1;
+						if( para->state.full_time > 0&& (para->state.current_time < para->state.full_time - 5))
+                        	para->playctrl_info.time_point = para->state.current_time + 1;
+						else
+							para->playctrl_info.time_point =-1;/*do reset only.*/
                         para->playctrl_info.reset_flag = 1;
                         set_black_policy(0);
                         para->playctrl_info.end_flag = 1;
@@ -281,6 +284,7 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
             para->playctrl_info.fast_backward = 0;
             para->playctrl_info.f_step = 0;
             para->astream_info.has_audio = para->astream_info.resume_audio;
+			para->playctrl_info.reset_drop_buffered_data=0;
             set_cntl_mode(para, TRICKMODE_NONE);
             log_print("seek durint searching, clear ff/fb first\n");
         }
@@ -289,18 +293,22 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
             para->playctrl_info.search_flag = 1;
             para->playctrl_info.time_point = msg->f_param;
             para->playctrl_info.end_flag = 1;
+            para->playctrl_info.reset_drop_buffered_data=0;
         } else if(msg->f_param < 0){
             log_print("pid[%d]::seek reset\n", para->player_id);
 	     para->playctrl_info.reset_flag= 1;
             para->playctrl_info.time_point = -1;
             para->playctrl_info.end_flag = 1;
+            para->playctrl_info.reset_drop_buffered_data=1;
 	 }else if (msg->f_param == para->state.full_time) {
             para->playctrl_info.end_flag = 1;
             para->playctrl_info.search_flag = 0;
+            para->playctrl_info.reset_drop_buffered_data=0;
             set_player_state(para, PLAYER_PLAYEND);
             update_playing_info(para);
             update_player_states(para, 1);
         } else {
+		    para->playctrl_info.reset_drop_buffered_data=0;
             log_print("pid[%d]::seek time out of range!\n", para->player_id);
             set_player_error_no(para, PLAYER_SEEK_OVERSPILL);
             /*
@@ -654,7 +662,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     p_para->loopbufsize = c_para->loopbufsize;
     p_para->enable_rw_on_pause = c_para->enable_rw_on_pause;
     p_para->playctrl_info.lowbuffermode_flag = c_para->lowbuffermode_flag;
-
+	p_para->playctrl_info.buf_limited_time_ms=c_para->lowbuffermode_limited_ms;
     if (p_para->buffering_enable) {
         /*check threshhold is valid*/
         if (c_para->buffing_starttime_s > 0 && c_para->buffing_middle <= 0) {
@@ -1033,7 +1041,7 @@ void *player_thread(play_para_t *player)
                         ///continue;
                     }
                 } else {
-                   /// player_thread_wait(player, 100 * 1000); //100ms
+                   player_thread_wait(player, 100 * 1000); //100ms
                 }
             }
             if ((player->playctrl_info.f_step == 0) &&
