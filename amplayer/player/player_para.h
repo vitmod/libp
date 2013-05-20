@@ -125,6 +125,11 @@ typedef  struct {
 
 	int buf_limited_time_ms;/*low buffering mode,if data> ms,we do wait write.*/
 	int reset_drop_buffered_data;/*droped buffered data.*/
+
+    int iponly_flag;
+    int freerun_mode;
+    int no_dec_ref_buf;
+    int vsync_upint;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);
