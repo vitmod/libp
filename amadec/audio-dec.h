@@ -99,6 +99,7 @@ struct adec_status {
 #define AUDIO_ARM_DECODER 1
 #define AUDIO_FFMPEG_DECODER 2
 
+//reference from " /amcodec/include/amports/aformat.h"
 #define    ACODEC_FMT_NULL   -1
 #define    ACODEC_FMT_MPEG   0
 #define    ACODEC_FMT_PCM_S16LE  1
@@ -121,6 +122,7 @@ struct adec_status {
 #define    ACODEC_FMT_VORBIS     18
 #define    ACODEC_FMT_AAC_LATM    19
 #define    ACODEC_FMT_APE    20
+#define    ACODEC_FMT_EAC3    21 
 
 /***********************************************************************************************/
 extern void android_basic_init(void);

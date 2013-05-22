@@ -4,6 +4,9 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE
+ifdef DOLBY_UDC
+    LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
+endif
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
@@ -18,8 +21,8 @@ endif
 
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
-           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c 
-
+           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c  \
+	   adec_omxddpdec_brige.c
 
 LOCAL_MODULE := libamadec
 
@@ -33,6 +36,9 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE
+ifdef DOLBY_UDC
+    LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
+endif
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
@@ -48,7 +54,7 @@ endif
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
            dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c \
-		   spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c
+		   spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c adec_omxddpdec_brige.c
 
 LOCAL_MODULE := libamadec
 
@@ -56,11 +62,42 @@ LOCAL_ARM_MODE := arm
 ##################################################
 #$(shell cp $(LOCAL_PATH)/acodec_lib/*.so $(TARGET_OUT)/lib)
 ###################################################
-LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamavutils
+LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamadec_omx_api libamavutils
 
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_TAGS := optional
 include $(BUILD_SHARED_LIBRARY)
+
+
+###################module make file for libamadec_omx_api ######################################
+include $(CLEAR_VARS)
+
+LOCAL_CFLAGS := \
+        -fPIC -D_POSIX_SOURCE  -DDOLBY_DDPDEC51_MULTICHANNEL_ENDPOINT
+
+LOCAL_C_INCLUDES:= \
+    $(LOCAL_PATH)/omx_audio/include \
+    $(LOCAL_PATH)/omx_audio/../     \
+    $(LOCAL_PATH)/omx_audio/../include \
+    $(LOCAL_PATH)/omx_audio/../../../../../frameworks/native/include/media/openmax \
+    $(LOCAL_PATH)/omx_audio/../../../../../frameworks/av/include/media/stagefright \
+    $(LOCAL_PATH)/omx_audio/../../../../../frameworks/native/include/utils
+
+LOCAL_SRC_FILES := \
+           /omx_audio/adec_omx.cpp /omx_audio/audio_mediasource.cpp  
+	   #../adec_read.c
+
+LOCAL_MODULE := libamadec_omx_api
+LOCAL_MODULE_TAGS := optional
+LOCAL_ARM_MODE := arm
+
+LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libstagefright \
+                          libstagefright_omx  libstagefright_yuv libmedia_native liblog 
+LOCAL_PRELINK_MODULE := false
+LOCAL_MODULE_TAGS := optional
+
+include $(BUILD_SHARED_LIBRARY)
+#########################################################
 
 
 #
@@ -120,3 +157,4 @@ include $(BUILD_PHONY_PACKAGE)
 _audio_firmware_modules :=
 _audio_firmware :=
 
+include $(call all-subdir-makefiles)

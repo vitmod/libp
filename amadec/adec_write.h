@@ -1,3 +1,7 @@
+
+#ifndef __ADEC_WRITE_H__
+#define __ADEC_WRITE_H__
+
 #include <pthread.h>
 #include <stdlib.h>
 #include<stdio.h>
@@ -29,3 +33,6 @@ int is_buffer_full(buffer_stream_t *bs);
 int get_buffer_length(buffer_stream_t *bs);
 int read_pcm_buffer(char * out, buffer_stream_t *bs, int size);
 int write_pcm_buffer(char * in, buffer_stream_t *bs, int size);
+
+
+#endif

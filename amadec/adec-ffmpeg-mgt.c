@@ -9,6 +9,7 @@
 #include <audio-dec.h>
 #include <adec-pts-mgt.h>
 #include <adec_write.h>
+#include <adec_omxddpdec_brige.h>
 
 #if 1//************Macro Definitions**************
 #define DECODE_ERR_PATH "/sys/class/audiodsp/codec_fatal_err"
@@ -17,19 +18,20 @@
 #define DECODE_FATAL_ERR 2
 
 int exit_decode_thread=0;
-static int exit_decode_thread_success=0;
-static unsigned long decode_offset=0;
+int exit_decode_thread_success=0;
+unsigned long decode_offset=0;
 static int nDecodeErrCount=0;
-static buffer_stream_t *g_bst=NULL;
+buffer_stream_t *g_bst=NULL;
 static int fd_uio=-1;
-static AudioInfo g_AudioInfo;
-static int sn_threadid=-1;
-static int sn_getpackage_threadid=-1;
+AudioInfo g_AudioInfo;
+int sn_threadid=-1;
+int sn_getpackage_threadid=-1;
 
 static int aout_stop_mutex=0;//aout stop mutex flag
 static int last_valid_pts=0;
 static int out_len_after_last_valid_pts=0;
-static int pcm_cache_size=0;
+int pcm_cache_size=0;
+
 
 
 #define lock_t            pthread_mutex_t
@@ -49,6 +51,7 @@ typedef struct {
 }Package_List;
 Package_List pack_list;
 
+extern int read_buffer(unsigned char *buffer,int size);
 
 void *audio_decode_loop(void *args);
 void *audio_dtsdecode_loop(void *args);
@@ -90,7 +93,10 @@ int find_audio_lib(aml_audio_dec_t *audec)
 
 	num = ARRAY_SIZE(audio_lib_list);   
 	audio_decoder_operations_t *adec_ops=audec->adec_ops;
-	
+	//-------------------------
+	if(find_omx_lib(audec))
+		return 0;
+	//-----------------------
 	for (i = 0; i < num; i++) {        
 		f = &audio_lib_list[i];        
 		if (f->codec_id == audec->format) 
@@ -418,6 +424,7 @@ int get_decoder_status(void *p,struct adec_status *adec)
     switch(type)
     {
         case AUDIO_ARM_DECODER:
+			memset(&AudioArmDecoder,0,sizeof(audio_decoder_operations_t));
             audec->adec_ops=&AudioArmDecoder;
             find_audio_lib(audec);
             audec->adec_ops->priv_data=audec;
@@ -463,6 +470,11 @@ static int OutBufferInit(aml_audio_dec_t *audec)
     if(audec->adec_ops->nOutBufSize<=0) //set default if not set
         audec->adec_ops->nOutBufSize=DEFAULT_PCM_BUFFER_SIZE;
     int ret=init_buff(g_bst,audec->adec_ops->nOutBufSize);
+	if(audec->adec_ops->nOutBufSize==0)
+	{
+         ret=0;
+         adec_print("[WARNING]: audec->adec_ops->nOutBufSize=0! %s %d\n",__FUNCTION__,__LINE__);
+	}
     if(ret==-1)
     {
         adec_print("=====pcm buffer init failed !\n");
@@ -540,7 +552,12 @@ static int audio_codec_init(aml_audio_dec_t *audec)
             memcpy(audec->adec_ops->extradata,audec->extradata,audec->extradata_size);
         int ret=0;
         //1-decoder init
-        ret=audec->adec_ops->init(audec->adec_ops);
+        adec_print("%s %d StageFrightCodecEnable=%d\n",__FUNCTION__,__LINE__,StageFrightCodecEnable);
+		if(StageFrightCodecEnable)
+			(*parm_omx_codec_init)(StageFrightCodecEnable,(void*)read_buffer,&exit_decode_thread);
+		else
+            ret=audec->adec_ops->init(audec->adec_ops);
+		
         if(ret==-1)
         {
             adec_print("====adec_ops init err \n");
@@ -580,14 +597,18 @@ err3:
         return -1;
        
 }
-static int audio_codec_release(aml_audio_dec_t *audec)
+int audio_codec_release(aml_audio_dec_t *audec)
 {
     //1-decode thread quit
     //adec_print("====adec_ffmpeg_release start release ! \n");
-    stop_decode_thread(audec);
-    //adec_print("====adec_ffmpeg_release quit decode ok ! \n");
-     //2-decoder release
-    audec->adec_ops->release(audec->adec_ops);
+    if(StageFrightCodecEnable){
+	    //omx_codec_Release();
+	}else{
+        stop_decode_thread(audec);
+        //adec_print("====adec_ffmpeg_release quit decode ok ! \n");
+        //2-decoder release
+        audec->adec_ops->release(audec->adec_ops);
+    }
     //3-uio uninit
     InBufferRelease(audec);
     //4-outbufferrelease
@@ -660,7 +681,7 @@ static int get_first_apts_flag(dsp_operations_t *dsp_ops)
  * \brief start audio dec when receive START command.
  * \param audec pointer to audec
  */
-static void start_adec(aml_audio_dec_t *audec)
+void start_adec(aml_audio_dec_t *audec)
 {
     int ret;
     audio_out_operations_t *aout_ops = &audec->aout_ops;
@@ -1217,15 +1238,23 @@ void *adec_armdec_loop(void *args)
         audec->state = INITING;
         ret = audio_codec_init(audec);
         if (ret == 0) {
-            ret = aout_ops->init(audec);
-            if (ret) {
-                adec_print("Audio out device init failed!");
-                audio_codec_release(audec);
-                continue;
-            }
-            audec->state = INITTED;
-            start_decode_thread(audec);
-            start_adec(audec);
+			//---------------------
+		    if(StageFrightCodecEnable){
+                start_decode_thread_omx(audec);
+				start_adec(audec);
+				adec_print("INIT AudioTrack: samplerate=%d channels=%d ",audec->samplerate,audec->channels);
+			}else{
+                ret = aout_ops->init(audec);
+                if (ret) {
+                   adec_print("Audio out device init failed!");
+                   audio_codec_release(audec);
+                   continue;
+                }
+                audec->state = INITTED;
+                start_decode_thread(audec);
+				start_adec(audec);
+			}
+			//-----------------------------
             break;
         }
 
@@ -1255,7 +1284,12 @@ void *adec_armdec_loop(void *args)
         case CMD_START:
 
             adec_print("Receive START Command!\n");
-            start_decode_thread(audec);
+			//------------------------
+			if(StageFrightCodecEnable && parm_omx_codec_start){
+            //     (*parm_omx_codec_start)();
+			}else
+                 start_decode_thread(audec);
+			//------------------------
             start_adec(audec);
             break;
 
@@ -1279,8 +1313,17 @@ void *adec_armdec_loop(void *args)
                 usleep(100000);
             }
             aout_stop_mutex=1;
+			//if (audec->state > INITING && StageFrightCodecEnable) {
+		    //     stop_decode_thread_omx(audec);
+			//}
+			 if(StageFrightCodecEnable)
+			 {
+			    stop_decode_thread_omx(audec);
+			 }
             stop_adec(audec);
+			 omx_codec_Release();
             aout_stop_mutex=0;
+
             break;
 
         case CMD_MUTE:

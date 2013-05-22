@@ -91,6 +91,21 @@ extern "C" int android_init(struct aml_audio_dec* audec)
 	adec_print("SessionID = %d",SessionID);
 	
 #if defined(_VERSION_JB)
+	if(audec->channels == 8){
+		status = track->set(AUDIO_STREAM_MUSIC,
+                        audec->samplerate,
+                        AUDIO_FORMAT_PCM_16_BIT,
+                        AUDIO_CHANNEL_OUT_7POINT1,
+                        0,       // frameCount
+                        AUDIO_OUTPUT_FLAG_DEEP_BUFFER/*AUDIO_OUTPUT_FLAG_NONE*/, // flags
+                        audioCallback,
+                        audec,    // user when callback
+                        0,       // notificationFrames
+                        0,       // shared buffer
+                        false,   // threadCanCallJava
+                        SessionID);      // sessionId
+	}
+	else{
     status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
                         AUDIO_FORMAT_PCM_16_BIT,
@@ -103,6 +118,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
                         0,       // shared buffer
                         false,   // threadCanCallJava
                         SessionID);      // sessionId
+		}
                         
 #elif defined(_VERSION_ICS)
     status = track->set(AUDIO_STREAM_MUSIC,

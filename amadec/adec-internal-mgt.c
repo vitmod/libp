@@ -82,6 +82,7 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_AAC_LATM, "aac_latm"},
     {ACODEC_FMT_APE, "ape"},
     {ACODEC_FMT_MPEG, "mp3"},
+    {ACODEC_FMT_EAC3,"eac3"},
     {ACODEC_FMT_NULL, "null"},
 };
 
@@ -394,7 +395,7 @@ static void *adec_message_loop(void *args)
 	if(!audec->need_stop){
             usleep(100000);
 	    }
-       }
+    }
             
     do {
         //if(message_pool_empty(audec))
@@ -437,6 +438,7 @@ static void *adec_message_loop(void *args)
         case CMD_STOP:
 
             adec_print("Receive STOP Command!");
+			adec_print("audec->state=%d (INITING/3) when Rec_STOP_CMD\n",audec->state);
             stop_adec(audec);
             dtsenc_stop();
             break;
@@ -904,7 +906,19 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
 	if (ret>0 && match_types(t->type,value))
 	{	
-		audio_decoder = AUDIO_ARM_DECODER;
+		char type_value[] = "ac3,eac3";
+		if(match_types(t->type,type_value))
+		{   
+            #ifdef DOLBY_USE_ARMDEC
+			adec_print("DOLBY_USE_ARMDEC=%d",DOLBY_USE_ARMDEC);
+			audio_decoder = AUDIO_ARM_DECODER;					  
+            #else
+			audio_decoder = AUDIO_ARC_DECODER;
+            adec_print("<DOLBY_USE_ARMDEC> is not DEFINED,use ARC_Decoder\n!");
+			#endif
+		}else{
+            audio_decoder = AUDIO_ARM_DECODER;
+        }
 		return 0;
 	} 
 	
