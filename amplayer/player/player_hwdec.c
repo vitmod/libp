@@ -338,7 +338,7 @@ static int h264_add_header(unsigned char *buf, int size,  am_packet_t *pkt)
     char* buffer = pkt->hdr->data;
 
     p = extradata;
-    if ((p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) && size < HDR_BUF_SIZE) {
+    if ((p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1)||(p[0] == 0 && p[1] == 0 && p[2] == 1 ) && size < HDR_BUF_SIZE) {
         log_print("add 264 header in stream before header len=%d", size);
         MEMCPY(buffer, buf, size);
         pkt->hdr->size = size;
