@@ -226,7 +226,14 @@ static void get_av_codec_type(play_para_t *p_para)
                     p_para->vstream_info.has_video = 0;
                 }
             }
-        }
+        }else if (p_para->vstream_info.video_format == VFORMAT_H264){
+			if((p_para->pFormatCtx)&&(p_para->pFormatCtx->pb)&&(p_para->pFormatCtx->pb->local_playback==1)){
+					if (pCodecCtx && (pCodecCtx->profile != FF_PROFILE_H264_CONSTRAINED_BASELINE)&& (pCodecCtx->profile > FF_PROFILE_H264_HIGH)){
+						log_print("FF_PROFILE_H264_HIGH[0x%x] unsupport h264 profile [0x%x][%d] level[%d]\n",FF_PROFILE_H264_HIGH,pCodecCtx->profile,pCodecCtx->profile,pCodecCtx->level);
+						 p_para->vstream_info.has_video = 0;
+					}
+				}
+		}
 
         if (p_para->vstream_info.has_video) {
             p_para->vstream_info.video_pid      = (unsigned short)pStream->id;
@@ -1295,35 +1302,6 @@ static void set_es_sub(play_para_t *p_para)
     }
 }
 
-int check_video_profile(play_para_t *para)
-{
-	/*
-	now we support high profile 4.1
-	only check local play ,only local play the profile can be parsered;
-	*/
-
-	if (!para->vstream_info.has_video){
-		return PLAYER_SUCCESS;
-	}
-    AVStream *pStream = NULL;
-    AVCodecContext *avcodec;
-    int index = para->vstream_info.video_index;
-    pStream = para->pFormatCtx->streams[index];
-
-	if (pStream->codec){
-    	avcodec = pStream->codec;
-	}
-	
-	log_print("video profile [0x%x][%d] level[%d]\n",avcodec->profile,avcodec->profile,avcodec->level);  
-
-	if((para->pFormatCtx)&&(para->pFormatCtx->pb)&&(para->pFormatCtx->pb->local_playback==1)){
-		if (avcodec && (avcodec->profile != FF_PROFILE_H264_CONSTRAINED_BASELINE)&& (avcodec->profile > FF_PROFILE_H264_HIGH)){
-			log_print("unsupport h264 profile [0x%x][%d] level[%d]\n",avcodec->profile,avcodec->profile,avcodec->level);
-			return PLAYER_FAILED;
-		}
-	}
-	return PLAYER_SUCCESS;
-}
 
 int player_dec_init(play_para_t *p_para)
 {
@@ -1492,12 +1470,6 @@ int player_dec_init(play_para_t *p_para)
     }
     subtitle_para_init(p_para);
 
-	ret = check_video_profile(p_para);
-	if (ret < 0){
-		log_print("please check profile,the profile may be not support\n");
-		return PLAYER_FAILED;
-	}
-	
     //set_tsync_enable(1);        //open av sync
     //p_para->playctrl_info.avsync_enable = 1;
     return PLAYER_SUCCESS;
