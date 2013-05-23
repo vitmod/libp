@@ -637,6 +637,10 @@ int codec_init(codec_para_t *pcodec)
     int ret;
     //if(pcodec->has_audio)
     //  audio_stop();
+    pcodec->handle = -1;
+    pcodec->cntl_handle = -1;
+    pcodec->sub_handle = -1;
+    pcodec->audio_utils_handle = -1;
     switch (pcodec->stream_type) {
     case STREAM_TYPE_ES_VIDEO:
         ret = codec_video_es_init(pcodec);
@@ -2001,7 +2005,8 @@ int codec_init_audio_utils(codec_para_t *pcodec)
 int codec_release_audio_utils(codec_para_t *pcodec)
 {
     if (pcodec) {
-        codec_h_close(pcodec->audio_utils_handle);
+        if(pcodec->audio_utils_handle>=0)
+            codec_h_close(pcodec->audio_utils_handle);
     }
 
     pcodec->audio_utils_handle = -1;
