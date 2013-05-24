@@ -2220,15 +2220,23 @@ static void av_estimate_timings_from_bit_rate(AVFormatContext *ic)
     int64_t filesize, duration;
     int bit_rate, i;
     AVStream *st;
+	int64_t fulltimesecs;
+	int bit_rate_err=0;
 
     /* if bit_rate is already set, we believe it */
     if (ic->bit_rate <= 0) {
         bit_rate = 0;
         for(i=0;i<ic->nb_streams;i++) {
             st = ic->streams[i];
-            if (st->codec->bit_rate > 0)
-            bit_rate += st->codec->bit_rate;
-        }
+            if ((st->codec->bit_rate > 0)){
+			bit_rate += st->codec->bit_rate;
+		}else{
+			bit_rate_err++;
+		}
+		if (bit_rate_err >= ic->nb_streams/2){
+			bit_rate =0;
+		}
+	}
         ic->bit_rate = bit_rate;
     }
 
@@ -2246,6 +2254,16 @@ static void av_estimate_timings_from_bit_rate(AVFormatContext *ic)
             }
         }
     }
+	if (ic->duration == AV_NOPTS_VALUE &&
+		ic->bit_rate == 0 &&
+		 ic->nb_chapters > 0){
+		  AVChapter *ch = ic->chapters[ic->nb_chapters-1];
+		  fulltimesecs = (int64_t)(ch->end * av_q2d(ch->time_base));
+		  av_log(NULL, AV_LOG_INFO, "chapters fulltime secs [%lld] \n",fulltimesecs,st->time_base.num,st->time_base.den);
+		  duration = av_rescale(fulltimesecs, st->time_base.den,(int64_t)st->time_base.num);
+		  if (st->duration == AV_NOPTS_VALUE)
+			  st->duration = duration ;
+	}
 }
 
 #define DURATION_MAX_READ_SIZE 150000
