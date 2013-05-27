@@ -2233,12 +2233,16 @@ static void av_estimate_timings_from_bit_rate(AVFormatContext *ic)
 		}else{
 			bit_rate_err++;
 		}
-		if (bit_rate_err >= ic->nb_streams/2){
-			bit_rate =0;
+		if (bit_rate_err!=0 &&
+			ic->nb_streams !=1 &&
+			bit_rate_err >= ic->nb_streams/2
+			){
+			bit_rate = 0;
 		}
 	}
         ic->bit_rate = bit_rate;
     }
+
 
     /* if duration is already set, we believe it */
     if (ic->duration == AV_NOPTS_VALUE &&
