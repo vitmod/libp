@@ -1143,6 +1143,7 @@ typedef struct AVPacket {
 
 
 #define AV_PKT_FLAG_AAC_WITH_ADTS_HEADER   0x010000
+#define AV_PKT_FLAG_ISDECRYPTINFO  0x0100 ///< The packet is drminfo not real es
 
 
 /**

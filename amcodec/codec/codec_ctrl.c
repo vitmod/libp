@@ -2191,4 +2191,8 @@ int codec_set_vsync_upint(codec_para_t *pcodec, unsigned int mode)
 {
     return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_SET_VSYNC_UPINT, (unsigned long)mode);
 }
+int codec_set_drmmode(codec_para_t *pcodec)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_DRMMODE, 0);
+}
 

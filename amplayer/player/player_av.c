@@ -1199,7 +1199,6 @@ int time_search(play_para_t *am_p)
     int64_t ret = PLAYER_SUCCESS;
     int seek_flags = am_getconfig_bool("media.libplayer.seek.fwdsearch") ? 0 : AVSEEK_FLAG_BACKWARD;
     int sample_size;
-	
 	//-----------------------------------
 	// forcing updating  the value of <first_time> when seeking to the start of file, 
 	// other wise: <bug 69038 > will happend,
@@ -1211,7 +1210,15 @@ int time_search(play_para_t *am_p)
         am_p->state.first_time=-1;
 	//----------------------------------
 	
-    
+ 
+    if((am_p->pFormatCtx)&&(am_p->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(am_p->pFormatCtx->iformat->name,"DRMdemux",8))==0){
+	if (am_p->vcodec){
+		codec_set_drmmode(am_p->vcodec);
+	}
+	if (am_p->acodec){
+		codec_set_drmmode(am_p->acodec);	
+	}
+    }
     url_start_user_seek(s->pb);
     /* If swith audio, then use audio stream index */
     if (am_p->playctrl_info.seek_base_audio) {
@@ -1760,7 +1767,6 @@ int write_av_packet(play_para_t *para)
 					return PLAYER_SUCCESS;
 				}
 			}
-			
             write_bytes = codec_write(pkt->codec, (char *)buf, size);
             if (write_bytes < 0 || write_bytes > size) {
                 if (-errno != AVERROR(EAGAIN)) {
@@ -1832,7 +1838,7 @@ int write_av_packet(play_para_t *para)
                     }
                     pkt->avpkt_isvalid = 0;
                     pkt->data_size = 0;
-                    //log_print("[%s:%d]write finish pkt->data_size=%d\r",__FUNCTION__, __LINE__,pkt->data_size);
+                   //log_print("[%s:%d]write finish pkt->data_size=%d\r",__FUNCTION__, __LINE__,pkt->data_size);
                     break;
                 } else if (len < pkt->data_size) {
                     buf += write_bytes;
@@ -1995,10 +2001,14 @@ int set_header_info(play_para_t *para)
                     return PLAYER_SUCCESS;
                     }
                 }	
-                ret = h264_update_frame_header(pkt);
-                if (ret != PLAYER_SUCCESS) {
-                    return ret;
-                }
+
+				if (!(para->p_pkt->avpkt->flags & AV_PKT_FLAG_ISDECRYPTINFO)){
+                	ret = h264_update_frame_header(pkt);
+                	if (ret != PLAYER_SUCCESS) {
+                    	return ret;
+                	}
+				}
+
             } else if (para->vstream_info.video_format == VFORMAT_MPEG4) {
                 if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_MPEG4_3) {
                     return divx3_prefix(pkt);
@@ -2284,7 +2294,9 @@ int set_header_info(play_para_t *para)
                         return PLAYER_NOMEM;
                     }
                 }
-                adts_add_header(para);
+				if (!(para->p_pkt->avpkt->flags & AV_PKT_FLAG_ISDECRYPTINFO)){
+                	adts_add_header(para);
+				}
             }
             if (((!para->playctrl_info.raw_mode) &&
                  (para->astream_info.audio_format == AFORMAT_ALAC)) ||

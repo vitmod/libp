@@ -573,6 +573,8 @@ static void get_stream_info(play_para_t *p_para)
 				log_print("## filtered format audio_format=%d,i=%d,----\n",audio_format,i);
 				continue;
 			}
+
+		
 	    //not support blueray stream,one PID has two audio track(truehd+ac3)
 	    if(strcmp(pFormat->iformat->name, "mpegts") == 0){
 	       if(pCodec->codec_id==CODEC_ID_TRUEHD){
@@ -1351,9 +1353,6 @@ int player_dec_init(play_para_t *p_para)
     }
    
 
-
- 
-  
     if (ret != PLAYER_SUCCESS) {
         set_player_state(p_para, PLAYER_ERROR);
         p_para->state.status = PLAYER_ERROR;
@@ -1596,6 +1595,19 @@ int player_decoder_init(play_para_t *p_para)
 				codec_set_audio_delay_limited_ms(p_para->codec,p_para->playctrl_info.buf_limited_time_ms);
 		}
 	}
+
+	if((p_para->pFormatCtx)&&(p_para->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(p_para->pFormatCtx->iformat->name,"DRMdemux",8))==0){
+		log_print("DRMdemux :: LOCAL_OEMCRYPTO_LEVEL -> L1\n");
+		if (p_para->vcodec){
+			log_print("DRMdemux setdrmmodev vcodec\n");
+			codec_set_drmmode(p_para->vcodec);
+		}
+		if (p_para->acodec){
+			log_print("DRMdemux setdrmmodev acodec\n");
+			codec_set_drmmode(p_para->acodec);	
+		}
+	}
+ 
     return PLAYER_SUCCESS;
 failed:
     ffmpeg_close_file(p_para);

@@ -776,6 +776,9 @@ typedef struct AVFormatContext {
 
 #define AVFMT_FLAG_FILESIZE_NOT_VALID 0x100000 ///< Dont use filesize calculate duration/bitrate.because file size always changed.
 
+#define AVFMT_FLAG_DRMLEVEL1 0x200000 ///< Set Drm Level ;
+
+
     int loop_input;
 
     /**
