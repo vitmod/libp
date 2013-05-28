@@ -136,3 +136,32 @@ int hls_simple_cache_revert(void* handle){
 
     return 0;    
 }
+
+int hls_simple_cache_grow_space(void* handle,int size){
+    if(handle == NULL){
+        return -1;
+    }
+    SimpleCache_t* cache = (SimpleCache_t*)handle;
+    int ret = -1;
+    pthread_mutex_lock(&cache->lock);
+    
+    ret = hls_fifo_grow(cache->fifo,size);
+    pthread_mutex_unlock(&cache->lock); 
+    return ret;
+}
+
+int hls_simple_cache_move_to_pos(void* handle,int pos){
+    if(handle == NULL){
+        return -1;
+    }
+    SimpleCache_t* cache = (SimpleCache_t*)handle;
+    pthread_mutex_lock(&cache->lock);
+    
+    hls_fifo_revert(cache->fifo);
+    if(pos>0){
+        hls_fifo_drain(cache->fifo,pos);
+    }
+    pthread_mutex_unlock(&cache->lock);
+
+    return 0;   
+}

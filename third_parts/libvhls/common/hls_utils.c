@@ -252,3 +252,10 @@ char* in_strip_blank(char *pStr)
     *(p+1) = 0;
     return pStr;
 }
+#include <sys/sysinfo.h>
+unsigned long in_get_free_mem_size(){
+    struct sysinfo s_info;
+    int error = sysinfo(&s_info);
+    LOGV("Get free memory size:%lu\n",s_info.freeram);
+    return s_info.freeram;
+}

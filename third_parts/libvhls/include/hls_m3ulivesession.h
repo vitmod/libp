@@ -55,7 +55,7 @@ extern "C"{
 
 int m3u_session_open(const char* baseUrl,const char* headers,void** hSession);
 int m3u_session_is_seekable(void* hSession);
-int64_t m3u_session_seekUs(void* hSession,int64_t posUs);
+int64_t m3u_session_seekUs(void* hSession,int64_t posUs,int (*interupt_func_cb)());
 
 int m3u_session_get_durationUs(void*session,int64_t* dur);
 

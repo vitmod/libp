@@ -40,7 +40,9 @@ int hls_simple_cache_write(void* handle,void* data,int size);
 int hls_simple_cache_read(void* handle,void* buffer,int size);
 int hls_simple_cache_free(void* handle);
 
+int hls_simple_cache_grow_space(void* handle,int size);
 
+int hls_simple_cache_move_to_pos(void* handle,int pos);
 #ifdef __cplusplus
 #if __cplusplus
 }

@@ -707,8 +707,8 @@ static unsigned int get_current_time(play_para_t *p_para)
     if (audio_pts_discontinue > 0) {
         //log_info("audio pts discontinue, curtime=%d lasttime=%d\n", p_para->state.current_time, p_para->state.last_time);
         use_apts_as_time = 0;
-        if (!set_discontinue && is_chapter_discontinue(p_para) &&
-			(p_para->state.current_time < p_para->state.last_time))
+        if (!set_discontinue && is_chapter_discontinue(p_para) /*&&
+			(p_para->state.current_time < p_para->state.last_time)*/)
 		{
             p_para->discontinue_point = p_para->state.current_time;
             set_discontinue = 1;

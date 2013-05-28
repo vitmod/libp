@@ -62,7 +62,7 @@ static float _get_system_prop(SysPropType type){
     return ret;
     
 }
-static int interrupt_call_cb(void){//only for cmf
+static int interrupt_call_cb(void){
     if (url_interrupt_cb()) {
         RLOG("[%s]:url_interrupt_cb\n",__FUNCTION__);        
         return 1;
@@ -140,7 +140,7 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
     int counts = 200;
     
     do {
-        if (url_interrupt_cb()) {
+        if (url_interrupt_cb()>0) {
             RLOG("url_interrupt_cb\n");
             len = 0;
             break;
@@ -149,7 +149,7 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
 
         if (len <0) {
             if(len == AVERROR(EAGAIN)){
-                usleep(1000 * 10);
+                usleep(1000*100);
             }else{
                 break;
             }
@@ -227,7 +227,7 @@ static int64_t _ffmpeg_cmf_exseek(URLContext *h, int64_t pos, int whence){
 	    int64_t seekToUs = ctx->cmf_ctx->cur_clip_st+pos*1000000;
 	    int64_t seekLimitUs = ctx->cmf_ctx->cur_clip_end;
 	    if(ctx->durationUs>0&&pos>=0&&seekToUs<=seekLimitUs){
-            int64_t seekTo = m3u_session_seekUs(hSession,seekToUs);
+            int64_t seekTo = m3u_session_seekUs(hSession,seekToUs,interrupt_call_cb);
             RLOG("Seek to clip time:%lld,pos\n",seekTo,pos);
             return (seekTo/1000000);	        
 	    }
@@ -264,7 +264,7 @@ static int64_t ffmpeg_hls_exseek(URLContext *h, int64_t pos, int whence){
 
     }else if(whence == AVSEEK_TO_TIME){
         if(ctx->durationUs>0&&pos>=0&&(pos*1000000)<ctx->durationUs){
-            int64_t seekToUs = m3u_session_seekUs(hSession,pos*1000000);
+            int64_t seekToUs = m3u_session_seekUs(hSession,pos*1000000,interrupt_call_cb);
             RLOG("Seek to time:%lld\n",seekToUs);
             return (seekToUs/1000000);
         }
