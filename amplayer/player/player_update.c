@@ -1222,8 +1222,8 @@ static void update_decbuf_states(play_para_t *p_para, struct buf_status *vbuf, s
 
 static void update_av_sync_for_audio(play_para_t *p_para)
 {
-    if (!p_para->abuffer.rp_is_changed && !check_time_interrupt(&p_para->playctrl_info.avsync_check_old_time, 20)) {
-        return ;    //no changed and time is no changed.do count---,1S no changesd..20*50
+    if (!p_para->abuffer.rp_is_changed && !check_time_interrupt(&p_para->playctrl_info.avsync_check_old_time, 60)) {
+        return ;    //no changed and time is no changed.do count---,3S no changesd..60*50
     }
     if(p_para->playctrl_info.video_low_buffer == 1 || 
         p_para->playctrl_info.audio_low_buffer == 1) {
