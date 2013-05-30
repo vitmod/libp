@@ -10,6 +10,7 @@ endif
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
+    $(LOCAL_PATH)/../amavutils/include \
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
     LOCAL_CFLAGS += -D_VERSION_JB
@@ -42,6 +43,7 @@ endif
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
+    $(LOCAL_PATH)/../amavutils/include \
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
     LOCAL_CFLAGS += -D_VERSION_JB

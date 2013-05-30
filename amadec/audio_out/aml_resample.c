@@ -43,18 +43,7 @@ static int get_sysfs_int(const char *path)
 
 static int  get_sysfs_str(const char *path, char *valstr, int size)
 {
-    int fd;
-    fd = open(path, O_RDONLY);
-    if (fd >= 0) {
-        read(fd, valstr, size - 1);
-        valstr[strlen(valstr)] = '\0';
-        close(fd);
-    } else {
-        sprintf(valstr, "%s", "fail");
-        return -1;
-    };
-    log_print("get_sysfs_str=%s\n", valstr);
-    return 0;
+    return amsysfs_get_sysfs_str(path, valstr, size);
 }
 
 

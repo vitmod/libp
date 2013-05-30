@@ -25,18 +25,8 @@ static int vdec_pts_pause(void);
 
 static int set_tsync_enable(int enable)
 {
-    int fd;
     char *path = "/sys/class/tsync/enable";
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", enable);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    
-    return -1;
+    return amsysfs_set_sysfs_int(path, enable);
 }
 /**
  * \brief calc current pts
@@ -84,7 +74,6 @@ int adec_pts_start(aml_audio_dec_t *audec)
 {
     unsigned long pts = 0;
     char *file;
-    int fd;
     char buf[64];
     dsp_operations_t *dsp_ops;
 	char value[PROPERTY_VALUE_MAX]={0};
@@ -114,30 +103,23 @@ int adec_pts_start(aml_audio_dec_t *audec)
 			set_tsync_enable(1);
 		}
     // before audio start or pts start
-    fd = open(TSYNC_EVENT, O_WRONLY);
-    if(fd < 0){
-      adec_print("unable open file %s, err: %s", TSYNC_EVENT, strerror(errno));
-      return -1;
+    if(amsysfs_set_sysfs_str(TSYNC_EVENT, "AUDIO_PRE_START") == -1)
+    {
+        return -1;
     }
-    sprintf(buf, "AUDIO_PRE_START", 0);
-    write(fd, buf, strlen(buf));
-    close(fd);
 
     usleep(1000);
 
 	if (audec->no_first_apts) {
-		fd = open(TSYNC_APTS, O_RDONLY);
-		if (fd < 0) {
+		if (amsysfs_get_sysfs_str(TSYNC_APTS, buf, sizeof(buf)) == -1) {
 			adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
 			return -1;
 		}
-		
-		read(fd, buf, sizeof(buf));
+
 		if (sscanf(buf, "0x%lx", &pts) < 1) {
 			adec_print("unable to get vpts from: %s", buf);
 			return -1;
 		}
-		close(fd);
 
 	} else {
 	    pts = adec_calc_pts(audec);
@@ -146,14 +128,11 @@ int adec_pts_start(aml_audio_dec_t *audec)
 
 	        adec_print("pts==-1");
 
-	        fd = open(TSYNC_APTS, O_RDONLY);
-	        if (fd < 0) {
-	            adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
-	            return -1;
-	        }
+    		if (amsysfs_get_sysfs_str(TSYNC_APTS, buf, sizeof(buf)) == -1) {
+    			adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
+    			return -1;
+    		}
 
-	        read(fd, buf, sizeof(buf));
-	        close(fd);
 	        if (sscanf(buf, "0x%lx", &pts) < 1) {
 	            adec_print("unable to get apts from: %s", buf);
 	            return -1;
@@ -163,15 +142,12 @@ int adec_pts_start(aml_audio_dec_t *audec)
 
     adec_print("audio pts start from 0x%lx", pts);
 
-    fd = open(TSYNC_EVENT, O_WRONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
+    sprintf(buf, "AUDIO_START:0x%lx", pts);
+
+    if(amsysfs_set_sysfs_str(TSYNC_EVENT, buf) == -1)
+    {
         return -1;
     }
-
-    sprintf(buf, "AUDIO_START:0x%lx", pts);
-    write(fd, buf, strlen(buf));
-    close(fd);
 
     return 0;
 }
@@ -180,24 +156,20 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
 {
     unsigned long vpts, apts;
     int drop_size;
-    int fd;
     int ret;
     char buf[32];
     char buffer[8*1024];
 	char value[PROPERTY_VALUE_MAX]={0};
 	
-    fd = open(TSYNC_VPTS, O_RDONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_VPTS, strerror(errno));
-        return -1;
-    }
-
-    read(fd, buf, sizeof(buf));
+	if (amsysfs_get_sysfs_str(TSYNC_VPTS, buf, sizeof(buf)) == -1) {
+		adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
+		return -1;
+	}
     if (sscanf(buf, "0x%lx", &vpts) < 1) {
         adec_print("unable to get vpts from: %s", buf);
         return -1;
     }
-    close(fd);
+
 
     apts = adec_calc_pts(audec);
 	int diff = (apts > vpts)?(apts-vpts):(vpts-apts);
@@ -262,14 +234,11 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
     adec_print("==old time  sec :%d usec:%d \n", old_time.tv_sec  ,old_time.tv_usec );
     adec_print("==new time  sec:%d usec:%d \n", new_time.tv_sec  ,new_time.tv_usec  ); 
     adec_print("==old time ms is :%d  new time ms is:%d   diff:%d  \n",old_time_mseconds ,new_time_mseconds ,new_time_mseconds- old_time_mseconds);
-    fd = open(TSYNC_VPTS, O_RDONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_VPTS, strerror(errno));
-        return -1;
-    }
 
-    read(fd, buf, sizeof(buf));
-    close(fd);
+	if (amsysfs_get_sysfs_str(TSYNC_VPTS, buf, sizeof(buf)) == -1) {
+		adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
+		return -1;
+	}
     if (sscanf(buf, "0x%lx", &vpts) < 1) {
         adec_print("unable to get vpts from: %s", buf);
         return -1;
@@ -295,20 +264,8 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
  */
 int adec_pts_pause(void)
 {
-    int fd;
-    char buf[32];
-
-    fd = open(TSYNC_EVENT, O_WRONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
-        return -1;
-    }
-
-    sprintf(buf, "AUDIO_PAUSE");
-    write(fd, buf, strlen(buf));
-    close(fd);
-
-    return 0;
+    adec_print("adec_pts_pause");
+    return amsysfs_set_sysfs_str(TSYNC_EVENT, "AUDIO_PAUSE");
 }
 
 /**
@@ -317,23 +274,9 @@ int adec_pts_pause(void)
  */
 int adec_pts_resume(void)
 {
-    int fd;
-    char buf[32];
-
     adec_print("adec_pts_resume");
-    memset(buf, 0, sizeof(buf));
+    return amsysfs_set_sysfs_str(TSYNC_EVENT, "AUDIO_RESUME");
 
-    fd = open(TSYNC_EVENT, O_WRONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
-        return -1;
-    }
-
-    sprintf(buf, "AUDIO_RESUME");
-    write(fd, buf, strlen(buf));
-    close(fd);
-
-    return 0;
 }
 
 /**
@@ -348,7 +291,6 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     unsigned long systime;
     unsigned long last_pts = audec->adsp_ops.last_audio_pts;
     unsigned long last_kernel_pts = audec->adsp_ops.kernel_audio_pts;
-    int fd = -1;
     char buf[64];
 
     if (audec->auto_mute == 1) {
@@ -357,22 +299,9 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
 
     memset(buf, 0, sizeof(buf));
 
-    /* get system time */
-    fd = open(TSYNC_PCRSCR, O_RDWR);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_PCRSCR, strerror(errno));
-        return -1;
-    }
-
-    read(fd, buf, sizeof(buf));
-    if(fd>=0){
-        close(fd);
-        fd = -1;
-    }
-
-    if (sscanf(buf, "0x%lx", &systime) < 1) {
-        adec_print("unable to getsystime %s", buf);
-        //close(fd);
+    systime = audec->adsp_ops.get_cur_pcrscr(&audec->adsp_ops);
+    if (systime == -1) {
+        adec_print("unable to getsystime");
         return -1;
     }
 
@@ -391,18 +320,16 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         /* report audio time interruption */
         adec_print("pts = %lx, last pts = %lx\n", pts, last_pts);
 
-        fd = open(TSYNC_EVENT, O_RDWR);
-        if (fd < 0) {
-            adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
-            return -1;
-        }
-
         adec_print("audio time interrupt: 0x%lx->0x%lx, 0x%lx\n", last_pts, pts, abs(pts - last_pts));
 
         sprintf(buf, "AUDIO_TSTAMP_DISCONTINUITY:0x%lx", pts);
-        write(fd, buf, strlen(buf));
-        close(fd);
-	 fd = -1;
+
+        if(amsysfs_set_sysfs_str(TSYNC_EVENT, buf) == -1)
+        {
+            adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
+            return -1;
+        }
+        
         audec->adsp_ops.last_audio_pts = pts;
         audec->adsp_ops.last_pts_valid = 1;
         adec_print("set automute!\n");
@@ -428,18 +355,14 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         }
 
     /* report apts-system time difference */
-    fd = open(TSYNC_APTS, O_RDWR);
-    if (fd < 0) {
+
+    sprintf(buf, "0x%lx", pts);
+    if(amsysfs_set_sysfs_str(TSYNC_APTS, buf) == -1)
+    {
         adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
         return -1;
     }
-
     adec_print("report apts as %ld,system pts=%ld, difference= %ld\n", pts, systime, (pts - systime));
-
-    sprintf(buf, "0x%lx", pts);
-    write(fd, buf, strlen(buf));
-    close(fd);
-    fd = -1;
     return 0;
 }
 
@@ -450,17 +373,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
  */
 int avsync_en(int e)
 {
-    int fd;
-    char  bcmd[16];
-
-    fd = open(TSYNC_ENABLE, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", e);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return amsysfs_set_sysfs_int(TSYNC_ENABLE, e);
 }
 
 /**
@@ -479,28 +392,17 @@ int track_switch_pts(aml_audio_dec_t *audec)
     unsigned long apts;
     unsigned long pcr;
     char buf[32];
-    int fd = -1;
 
     memset(buf, 0, sizeof(buf));
 
-    fd = open(TSYNC_PCRSCR, O_RDWR);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_PCRSCR, strerror(errno));
-        return 1;
-    }
-
-    read(fd, buf, sizeof(buf));
-    close(fd);
-
-    if (sscanf(buf, "0x%lx", &pcr) < 1) {
-        adec_print("unable to get pcr %s", buf);
-        close(fd);
+    pcr = audec->adsp_ops.get_cur_pcrscr(&audec->adsp_ops);
+    if (pcr == -1) {
+        adec_print("unable to get pcr");
         return 1;
     }
 
     apts = adec_calc_pts(audec);
     if (apts == -1) {
-        close(fd);
         adec_print("unable to get apts");
         return 1;
     }
@@ -517,38 +419,12 @@ int track_switch_pts(aml_audio_dec_t *audec)
 }
 static int vdec_pts_pause(void)
 {
-    int fd;
-    char buf[32];
+    char *path = "/sys/class/video_pause";
+    return amsysfs_set_sysfs_int(path, 1);
 
-    fd = open("/sys/class/video_pause", O_WRONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
-        return -1;
-    }
-
-    sprintf(buf, "1");
-    write(fd, buf, strlen(buf));
-    close(fd);
-
-    return 0;
 }
 int vdec_pts_resume(void)
 {
-    int fd;
-    char buf[32];
-
     adec_print("vdec_pts_resume\n");
-    memset(buf, 0, sizeof(buf));
-
-    fd = open(TSYNC_EVENT, O_WRONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: %s", TSYNC_EVENT, strerror(errno));
-        return -1;
-    }
-
-    sprintf(buf, "VIDEO_PAUSE:0x0");
-    write(fd, buf, strlen(buf));
-    close(fd);
-
-    return 0;
+    return amsysfs_set_sysfs_str(TSYNC_EVENT, "VIDEO_PAUSE:0x0");
 }

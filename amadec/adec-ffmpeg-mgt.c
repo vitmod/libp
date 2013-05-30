@@ -11,6 +11,8 @@
 #include <adec_write.h>
 #include <adec_omxddpdec_brige.h>
 
+#include <Amsysfsutils.h>
+
 #if 1//************Macro Definitions**************
 #define DECODE_ERR_PATH "/sys/class/audiodsp/codec_fatal_err"
 #define DECODE_NONE_ERR 0
@@ -381,17 +383,7 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
 
 static int set_sysfs_int(const char *path, int val)
 {
-    int fd;
-    int bytes;
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0664);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", val);
-        bytes = write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return amsysfs_set_sysfs_int(path, val);
 }
 int get_decoder_status(void *p,struct adec_status *adec)
 {

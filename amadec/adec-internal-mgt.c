@@ -19,20 +19,13 @@
 #include <adec-pts-mgt.h>
 #include <cutils/properties.h>
 #include <dts_enc.h>
+#include <Amsysfsutils.h>
+
 static int set_tsync_enable(int enable)
 {
-    int fd;
+
     char *path = "/sys/class/tsync/enable";
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", enable);
-        write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    
-    return -1;
+    return amsysfs_set_sysfs_int(path, enable);
 }
 
 /**
@@ -135,7 +128,6 @@ static void start_adec(aml_audio_dec_t *audec)
     int ret;
     audio_out_operations_t *aout_ops = &audec->aout_ops;
     dsp_operations_t *dsp_ops = &audec->adsp_ops;
-	int fd=0;
 	unsigned long  vpts,apts;
 	int times=0;
     char buf[32];
@@ -151,30 +143,18 @@ static void start_adec(aml_audio_dec_t *audec)
 
 			if (times>=5) {
 				// read vpts
-				fd = open(TSYNC_VPTS, O_RDONLY);
-				if (fd < 0) {
-					adec_print("unable to open file %s,\n", TSYNC_VPTS);
-					return -1;
-				}
-				
-				read(fd, buf, sizeof(buf));
+				amsysfs_get_sysfs_str(TSYNC_VPTS, buf, sizeof(buf));
 				if (sscanf(buf, "0x%lx", &vpts) < 1) {
 					adec_print("unable to get vpts from: %s", buf);
 					return -1;
 				}
-				close(fd);
 
 				// save vpts to apts
 				adec_print("## can't get first apts, save vpts to apts,vpts=%lx, \n",vpts);
-				fd = open(TSYNC_APTS, O_RDWR);
-			    if (fd < 0) {
-			        adec_print("unable to open file %s,\n", TSYNC_APTS);
-			        return -1;
-			    }
 
 			    sprintf(buf, "0x%lx", vpts);
-			    write(fd, buf, strlen(buf));
-				close(fd);
+
+				amsysfs_set_sysfs_str(TSYNC_APTS, buf);
 
 				audec->no_first_apts = 1;
 			}
@@ -979,20 +959,7 @@ int get_audio_decoder(void)
 
 int vdec_pts_pause(void)
 {
-    int fd;
-    char buf[32];
-
-    fd = open(TSYNC_EVENT, O_WRONLY);
-    if (fd < 0) {
-        adec_print("unable to open file %s,err: ", TSYNC_EVENT/*, strerror(errno)*/);
-        return -1;
-    }
-
-    sprintf(buf, "VIDEO_PAUSE:0x1");
-    write(fd, buf, strlen(buf));
-    close(fd);
-
-    return 0;
+    return amsysfs_set_sysfs_str(TSYNC_EVENT, "VIDEO_PAUSE:0x1");
 }
 int audiodec_init(aml_audio_dec_t *audec)
 {

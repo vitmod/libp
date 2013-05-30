@@ -32,31 +32,12 @@ void adec_reset_track_enable(int enable_flag)
 
 static int get_sysfs_int(const char *path)
 {
-    int fd;
-    int val = 0;
-    char  bcmd[16];
-    fd = open(path, O_RDONLY);
-    if (fd >= 0) {
-        read(fd, bcmd, sizeof(bcmd));
-        val = strtol(bcmd, NULL, 10);
-        close(fd);
-    }
-    return val;
+    return amsysfs_get_sysfs_int(path);
 }
 
 static int set_sysfs_int(const char *path, int val)
 {
-    int fd;
-    int bytes;
-    char  bcmd[16];
-    fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd >= 0) {
-        sprintf(bcmd, "%d", val);
-        bytes = write(fd, bcmd, strlen(bcmd));
-        close(fd);
-        return 0;
-    }
-    return -1;
+    return amsysfs_set_sysfs_int(path, val);
 }
 
 static int audiodsp_get_format_changed_flag()

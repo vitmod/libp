@@ -15,6 +15,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../amplayer/player/include \
 LOCAL_STATIC_LIBRARIES := libamplayer libamplayer libamcodec libavformat librtmp libavcodec libavutil libamadec libamavutils libamstreaming
 LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils libssl libcrypto 
 
+LOCAL_SHARED_LIBRARIES += libbinder  \
+                          libsystemwriteservice
 include $(BUILD_EXECUTABLE)
 
 
@@ -32,4 +34,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../amplayer/player/include \
 LOCAL_STATIC_LIBRARIES := libamplayer libamplayer libamcodec libavformat librtmp libavcodec libavutil libamadec libamavutils
 LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils libssl libcrypto
 
+LOCAL_SHARED_LIBRARIES += libbinder  \
+                          libsystemwriteservice
 include $(BUILD_EXECUTABLE)

@@ -42,17 +42,7 @@ volatile unsigned* reg_base = 0;
 
 static unsigned long  get_num_infile(char *file)
 {
-	int fd;
-	char buf[24]="";
-	unsigned long num=0;
-	if ((fd = open(file, O_RDONLY)) < 0) {
-		adec_print("iunable to open file\n");
-		return 0;
-	}
-	read(fd, buf, sizeof(buf));
-	num = strtoul(buf, NULL, 0);
-	close(fd);
-	return num;
+	return amsysfs_get_sysfs_ulong(file);
 }
 
 int uio_init(int fd){
