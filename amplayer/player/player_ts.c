@@ -37,7 +37,7 @@ static int stream_ts_init(play_para_t *p_para)
             if (p_para->pFormatCtx->pb && p_para->pFormatCtx->pb->is_slowmedia) {
                 /* ts slow media, use idr framerate */
                 log_print("[%s:%d]Slow media detected for ts\n", __FUNCTION__, __LINE__);
-                codec->am_sysinfo.param = USE_IDR_FRAMERATE;
+                ///codec->am_sysinfo.param = USE_IDR_FRAMERATE;
             }
             if ((codec->video_type == VFORMAT_H264) && p_para->playctrl_info.iponly_flag) {
                 codec->am_sysinfo.param = (void *)(IPONLY_MODE | (int) codec->am_sysinfo.param);
