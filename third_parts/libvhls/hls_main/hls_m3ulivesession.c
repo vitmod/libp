@@ -384,7 +384,7 @@ static int _estimate_and_calc_bandwidth(M3ULiveSession* s){
     }
     int fast_bw,mid_bw,avg_bw,calc_bw;
     bandwidth_measure_get_bandwidth(s->bw_meausure_handle,&fast_bw,&mid_bw,&avg_bw);
-    calc_bw = fast_bw*0.7+mid_bw*0.2+avg_bw*0.1;
+    calc_bw = fast_bw*0.8+mid_bw*0.2;
     LOGV("Get current bw.fast:%.2f kbps,mid:%.2f kbps,avg:%.2f kbps,calc value:%.2f kbps\n",
         fast_bw/1024.0f,mid_bw/1024.0f,avg_bw/1024.0f,calc_bw/1024.0f);    
     return calc_bw;
@@ -396,7 +396,7 @@ static int  _get_best_bandwidth_index(M3ULiveSession* s){//rate adaptation logic
     int adaptive_profile = in_get_sys_prop_float("libplayer.hls.profile");
     if(adaptive_profile ==0){
         int fixed_bw = in_get_sys_prop_float("libplayer.hls.fixed_bw");
-        if(fixed_bw>=0&&fixed_bw<(s->bandwidth_item_num -1)&&fixed_bw!= s->prev_bandwidth_index){
+        if(fixed_bw>=0&&fixed_bw<=(s->bandwidth_item_num -1)&&fixed_bw!= s->prev_bandwidth_index){
             index = fixed_bw;
         }else{
             index = s->prev_bandwidth_index;
@@ -438,12 +438,12 @@ static int  _get_best_bandwidth_index(M3ULiveSession* s){//rate adaptation logic
         }   
 
         if(index>(size_t)s->prev_bandwidth_index){//up bw
-            if(s->codec_data_time<HLSMIN(s->target_duration,CODEC_BUFFER_LOW_FLAG)){
+            if(s->codec_data_time>=0&&s->codec_data_time<HLSMIN(s->target_duration,CODEC_BUFFER_LOW_FLAG)){
                 index = s->prev_bandwidth_index; //keep original
             }
 
         }else if(index<(size_t)s->prev_bandwidth_index){//down bw
-            if(s->codec_data_time>HLSMAX(s->target_duration,CODEC_BUFFER_HIGH_FLAG)){
+            if(s->codec_data_time>=0&&s->codec_data_time>HLSMAX(s->target_duration,CODEC_BUFFER_HIGH_FLAG)){
                 index = s->prev_bandwidth_index; //keep original
             }
         }
@@ -642,7 +642,10 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
         }
 
     }
-    
+    if(s->playlist!=NULL&&m3u_get_node_num(s->playlist)==0){
+        LOGE("Empty playlist,can't find one item\n");
+        return -1;
+    }
     pthread_mutex_lock(&s->session_lock);
     M3uBaseNode* node = m3u_get_node_by_index(s->playlist,0);
     int32_t firstSeqNumberInPlaylist = node->media_sequence;
@@ -743,6 +746,9 @@ rinse_repeat:
             char* url = NULL;
             if (s->bandwidth_item_num> 0) {
                 url = s->bandwidth_list[bandwidthIndex]->url;
+                if(s->durationUs>0){
+                    memset(s->last_bandwidth_list_hash,0,HASH_KEY_SIZE);
+                }
             } else {
                 url = s->redirectUrl!=NULL?s->redirectUrl:s->baseUrl;
                 
