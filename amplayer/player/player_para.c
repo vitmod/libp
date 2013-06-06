@@ -329,6 +329,12 @@ static void get_av_codec_type(play_para_t *p_para)
                          p_para->astream_info.audio_format, p_para->astream_info.audio_samplerate);
             p_para->astream_info.has_audio = 0;
         }
+	//ape audio 16 bps support
+	if ((p_para->astream_info.audio_format == AFORMAT_APE) &&
+		pCodecCtx->bits_per_coded_sample != 16) {
+		log_print(" ape audio only support 16 bit  bps \n");
+		p_para->astream_info.has_audio = 0;
+	}		
 		//---------------------------------
 		
         if (p_para->astream_info.audio_format == AFORMAT_AAC || p_para->astream_info.audio_format == AFORMAT_AAC_LATM) {
