@@ -827,7 +827,7 @@ M3uBaseNode* m3u_get_node_by_time(void* hParse,int64_t timeUs){
     node = get_node_by_time(p,timeUs);
     return node;
 
-}
+}
 
 int m3u_get_target_duration(void* hParse){
     if(NULL ==hParse){
@@ -848,7 +848,7 @@ int m3u_release(void* hParse){
         free(p->baseUrl);
     }
     clean_all_nodes(p);    
-    pthread_mutex_destroy(&p->parser_lock);
+    pthread_mutex_destroy(&p->parser_lock);
     free(p);
     return 0;
 }
