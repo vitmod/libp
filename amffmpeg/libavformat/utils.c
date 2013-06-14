@@ -520,7 +520,7 @@ int av_demuxer_open(AVFormatContext *ic, AVFormatParameters *ap){
 
 /** size of probe buffer, for guessing file type from file contents */
 #define PROBE_BUF_MIN 2048
-#define PROBE_BUF_MAX (1<<20)
+#define PROBE_BUF_MAX (1<<20)*2
 
 int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
                           const char *filename, void *logctx,
@@ -670,7 +670,7 @@ retry_probe:
 	
 
     /* rewind. reuse probe buffer to avoid seeking */
-    if ((ret = ffio_rewind_with_probe_data(pb, buf, pd.buf_size)) < 0)
+    if ((ret = ffio_rewind_with_probe_data(pb, buf, pd.buf_size+data_offset)) < 0)
         av_free(buf);
     memcpy(pb->proppads,pd.pads,sizeof(pd.pads));
     return ret;

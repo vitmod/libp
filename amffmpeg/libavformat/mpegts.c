@@ -1782,6 +1782,8 @@ static int mpegts_read_header(AVFormatContext *s,
     }
 #endif
 
+	int reget_size_cnt = 0;
+reget_packet_size:
     /* read the first 1024 bytes to get packet size */
     pos = avio_tell(pb);
     do {
@@ -1792,6 +1794,11 @@ static int mpegts_read_header(AVFormatContext *s,
     ts->raw_packet_size = get_packet_size(buf, sizeof(buf));
     if (ts->raw_packet_size <= 0) {
         av_log(s, AV_LOG_WARNING, "Could not detect TS packet size, defaulting to non-FEC/DVHS\n");
+		if(reget_size_cnt++ < 100)
+		{
+			reget_size_cnt++;
+			goto reget_packet_size;
+		}
         ts->raw_packet_size = TS_PACKET_SIZE;
     }
     ts->stream = s;
