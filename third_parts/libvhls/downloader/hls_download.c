@@ -110,7 +110,11 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
     }
 
     if(key == NULL){    
-        snprintf(fileUrl,MAX_URL_SIZE,"s%s",url);    
+        if(strcasestr(url,"http")){
+            snprintf(fileUrl,MAX_URL_SIZE,"s%s",url);
+        }else{
+            snprintf(fileUrl,MAX_URL_SIZE,"%s",url);
+        }    
 
         if(is_ignore_range_req>0){
             flag |=URL_SEGMENT_MEDIA;
