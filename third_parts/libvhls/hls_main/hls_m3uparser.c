@@ -239,7 +239,7 @@ static int64_t parseMetaDataDurationUs(const char* line) {
         return err;
     }
    
-    return ((int64_t)x * 1E6);
+    return ((int64_t)(x * 1E6));
     
 }
 

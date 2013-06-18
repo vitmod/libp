@@ -98,7 +98,7 @@ typedef struct _M3ULiveSession{
     int seekflag;
     int codec_data_time;
     int estimate_bandwidth_bps;
-    int cached_data_timeUs;
+    int64_t cached_data_timeUs;
     int is_ts_media;
     int is_encrypt_media;
     int is_http_ignore_range;
