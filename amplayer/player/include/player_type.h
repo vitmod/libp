@@ -241,6 +241,7 @@ typedef enum
 	PLAYER_EVENTS_HTTP_WV,				        ///<(need use DRMExtractor),ext1=0, ext2=0
 	PLAYER_EVENTS_HWBUF_DATA_SIZE_CHANGED,		///<(need use DRMExtractor),ext1=0, ext2=0
 	PLAYER_EVENTS_NOT_SUPPORT_SEEKABLE,     //not support seek;
+	PLAYER_EVENTS_VIDEO_SIZE_CHANGED,           ///<ext1 refers to video width,ext2 refers to video height
 }player_events;
 
 typedef struct

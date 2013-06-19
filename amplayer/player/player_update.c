@@ -869,7 +869,11 @@ static void update_dec_info(play_para_t *p_para,
         if (p_para->vstream_info.video_width == 0) {
             p_para->vstream_info.video_width = vdec->width;
             p_para->vstream_info.video_height = vdec->height;
-        }
+        }else if(((p_para->vstream_info.video_width != vdec->width)||(p_para->vstream_info.video_height != vdec->height)) && vdec->width>0 && vdec->width<=3840 && vdec->height>0 && vdec->height<=2160){
+            p_para->vstream_info.video_width = vdec->width;
+            p_para->vstream_info.video_height = vdec->height;
+            send_event(p_para, PLAYER_EVENTS_VIDEO_SIZE_CHANGED,vdec->width,vdec->height);
+        } 
         p_para->state.video_error_cnt = vdec->error_count;
     }
     if (p_para->astream_info.has_audio) {
