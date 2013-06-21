@@ -558,6 +558,7 @@ static int fast_parse(M3UParser* var,const void *_data, int size){
     tmpNode.media_sequence = -1;
     tmpNode.range_length = -1;
     tmpNode.range_offset = 0;
+    tmpNode.durationUs = -1;
 
      //cut BOM header
     if(data[0] ==0xEF&&data[1] ==0xBB &&data[2]==0xBF){
@@ -688,7 +689,7 @@ static int fast_parse(M3UParser* var,const void *_data, int size){
         if (strlen(line)>0&&!startsWith(line,"#")) {
             
             if(!isVariantPlaylist){
-                if(tmpNode.durationUs<1){
+                if(tmpNode.durationUs<0){
                     var->is_initcheck = -1;
                     LOGE("Get invalid node,failed to parse m3u\n");
                     break;
@@ -703,7 +704,7 @@ static int fast_parse(M3UParser* var,const void *_data, int size){
             }
             
             memcpy(node,&tmpNode,sizeof(M3uBaseNode));
-
+            tmpNode.durationUs = -1;
             if(hasKey&&keyinfo){
                 node->key = keyinfo;   
                 hasKey = 0;

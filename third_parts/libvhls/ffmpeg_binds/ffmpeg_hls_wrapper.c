@@ -100,27 +100,10 @@ static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
         //h->flags|=URL_MINI_BUFFER;//no lpbuffer
         //h->flags|=URL_NO_LP_BUFFER;
     }
-    if(_get_system_prop(PROP_CMF_SUPPORT)>0){//only vod
-        if(dur>0){
-            f->cmf_ctx = av_mallocz(sizeof(CmfPrivContext_t));
-            f->cmf_ctx->totol_clip_num = hls_cmf_get_clip_num(session);
-            f->cmf_ctx->interrupt_func_cb = interrupt_call_cb;
-        }else{
-            RLOG("Can't support live streaming for CMF module\n");
-            h->is_slowmedia = 1;
-            h->is_streamed = 1;
-            h->is_segment_media = 1;
-            f->hls_ctx = session;  
-            if(session!=NULL){
-                m3u_session_close(f->hls_ctx);
-                f->hls_ctx = NULL;
-            }
-            if(f!=NULL){
-                av_free(f);
-            }
-            h->priv_data = NULL;
-            return AVERROR(EIO);
-        }
+    if(_get_system_prop(PROP_CMF_SUPPORT)>0){    
+        f->cmf_ctx = av_mallocz(sizeof(CmfPrivContext_t));
+        f->cmf_ctx->totol_clip_num = hls_cmf_get_clip_num(session);
+        f->cmf_ctx->interrupt_func_cb = interrupt_call_cb;        
     }
     h->is_slowmedia = 1;
     h->is_streamed = 1;
