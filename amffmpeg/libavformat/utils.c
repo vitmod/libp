@@ -3428,6 +3428,7 @@ int av_find_stream_info(AVFormatContext *ic)
         st->codec_info_nb_frames++;
         count++;
     }
+	
 
     // close codecs which were opened in try_decode_frame()
     for(i=0;i<ic->nb_streams;i++) {
@@ -3435,7 +3436,10 @@ int av_find_stream_info(AVFormatContext *ic)
         if(st->codec->codec)
             avcodec_close(st->codec);
             
-        if (!has_codec_parameters(st->codec)) {
+        av_log(NULL, AV_LOG_INFO, "[%s:%d] st %d, para: %d, codec_info_nb_frames: %d,\n", __FUNCTION__, __LINE__, i, has_codec_parameters_ex(st->codec,fast_switch)
+            ,st->codec_info_nb_frames);
+        if (!has_codec_parameters_ex(st->codec,fast_switch) && (!st->codec_info_nb_frames)
+            && (st->codec->codec_type == AVMEDIA_TYPE_AUDIO)) {
             av_log(NULL, AV_LOG_INFO, "[%s:%d] delete stream %d,\n", __FUNCTION__, __LINE__, i);
             av_delete_stream(ic, i);
         }
