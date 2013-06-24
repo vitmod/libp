@@ -369,7 +369,23 @@ unsigned long  audiodsp_get_pcrscr(dsp_operations_t *dsp_ops)
 
     return val;
 }
+/**
+ * \brief set current audio pts
+ * \param dsp_ops pointer to dsp operation struct
+ * \return 0 on success otherwise -1 if an error occurred
+ */
+int   audiodsp_set_apts(dsp_operations_t *dsp_ops,unsigned long apts)
+{
 
+    if (dsp_ops->dsp_file_fd < 0) {
+        adec_print("read error!! audiodsp have not opened\n");
+        return -1;
+    }
+
+    ioctl(dsp_ops->dsp_file_fd, AUDIODSP_SYNC_SET_APTS, &apts);
+
+    return 0;
+}
 /**
  * \brief get decoded audio frame number
  * \param dsp_ops pointer to dsp operation struct

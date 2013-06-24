@@ -15,6 +15,8 @@
 #include <media/AudioTrack.h>
 #include <binder/IPCThreadState.h>
 #include <binder/ProcessState.h>
+#include <media/AudioParameter.h>
+#include <system/audio_policy.h>
 
 extern "C" {
 #include <audio-dec.h>
@@ -28,6 +30,94 @@ namespace android
 {
 
 static Mutex mLock;
+static int get_digitalraw_mode(void)
+{
+    int fd;
+    int val = 0;
+    char  bcmd[28];
+    fd = open("/sys/class/audiodsp/digital_raw", O_RDONLY);
+    if (fd >= 0) {
+        read(fd, &bcmd, 28);
+        close(fd);
+    }
+	else{
+		adec_print("open DIGITAL_RAW_PATH failed\n");
+		return 0;
+	}
+    val=bcmd[21]&0xf;
+    return val;
+    
+}
+void restore_system_samplerate()
+{
+	int sr = 0;
+	//TODO ,other output deivce routed ??
+	AudioSystem::getOutputSamplingRate(&sr,AUDIO_STREAM_MUSIC);
+	if(sr != 48000){
+	audio_io_handle_t handle = -1;		
+	handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+	                            48000,
+	                            AUDIO_FORMAT_PCM_16_BIT,
+	                            AUDIO_CHANNEL_OUT_STEREO,
+#if defined(_VERSION_ICS) 
+					AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+#else	//JB...			
+	                            AUDIO_OUTPUT_FLAG_PRIMARY
+#endif	                            
+	                            );
+		if(handle > 0){
+			char str[64];
+			memset(str,0,sizeof(str));
+			sprintf(str,"sampling_rate=%d",48000);
+			AudioSystem::setParameters(handle, String8(str));			
+		}		
+	}
+}
+void reset_system_samplerate(struct aml_audio_dec* audec)
+{
+	unsigned digital_raw = 0;
+	digital_raw = get_digitalraw_mode();	
+	if(!audec ||!digital_raw)
+		return;
+	/*
+	1)32k,44k dts
+	2) 32k,44k ac3 
+	3)44.1k eac3 when hdmi passthrough
+	4)32k,44k eac3 when spdif pasthrough 
+	*/
+	adec_print("format %d,sr %d \n",audec->format ,audec->samplerate );
+	if( ((audec->format == ADEC_AUDIO_FORMAT_DTS||audec->format == ADEC_AUDIO_FORMAT_AC3) && \
+		(audec->samplerate == 32000 || audec->samplerate == 44100)) ||  \
+		(audec->format == ADEC_AUDIO_FORMAT_EAC3 && digital_raw == 2 && audec->samplerate == 44100) || \
+		(audec->format == ADEC_AUDIO_FORMAT_EAC3 && digital_raw == 1 &&  \
+		(audec->samplerate == 32000 || audec->samplerate == 44100)))
+		
+	{
+		audio_io_handle_t handle = -1;
+		int sr = 0;
+		//AudioSystem::getOutputSamplingRate(&sr,AUDIO_STREAM_MUSIC);
+		if(/*sr*/48000 != audec->samplerate){
+			adec_print("change android system audio sr from %d to %d \n",sr,audec->samplerate);
+			handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+	                                    48000,
+	                                    AUDIO_FORMAT_PCM_16_BIT,
+	                                    AUDIO_CHANNEL_OUT_STEREO,
+#if defined(_VERSION_ICS) 
+					AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+#else	//JB...			
+	                            AUDIO_OUTPUT_FLAG_PRIMARY
+#endif	                            
+	                                    );
+			if(handle > 0){
+				char str[64];
+				memset(str,0,sizeof(str));
+				sprintf(str,"sampling_rate=%d",audec->samplerate);
+				AudioSystem::setParameters(handle, String8(str));			
+			}
+		}
+		
+       }
+}
 
 /**
  * \brief callback function invoked by android
@@ -89,7 +179,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
 
 	int SessionID = audec->SessionID;
 	adec_print("SessionID = %d",SessionID);
-	
+	reset_system_samplerate(audec);
 #if defined(_VERSION_JB)
 	if(audec->channels == 8){
 		status = track->set(AUDIO_STREAM_MUSIC,
@@ -268,7 +358,7 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
     /* release AudioTrack */
     delete track;
     out_ops->private_data = NULL;
-
+    restore_system_samplerate();	
     return 0;
 }
 

@@ -292,7 +292,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     unsigned long last_pts = audec->adsp_ops.last_audio_pts;
     unsigned long last_kernel_pts = audec->adsp_ops.kernel_audio_pts;
     char buf[64];
-
+    char ret_val = -1;
     if (audec->auto_mute == 1) {
         return 0;
     }
@@ -356,8 +356,14 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
 
     /* report apts-system time difference */
 
-    sprintf(buf, "0x%lx", pts);
-    if(amsysfs_set_sysfs_str(TSYNC_APTS, buf) == -1)
+    if(audec->adsp_ops.set_cur_apts){
+        ret_val = audec->adsp_ops.set_cur_apts(&audec->adsp_ops,pts);
+    }
+    else{
+	 sprintf(buf, "0x%lx", pts);
+	 ret_val = amsysfs_set_sysfs_str(TSYNC_APTS, buf);
+    }			
+    if(ret_val == -1)
     {
         adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
         return -1;

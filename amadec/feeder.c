@@ -178,6 +178,7 @@ int feeder_init(aml_audio_dec_t *audec)
         dsp_ops->dsp_read = audiodsp_stream_read;
         dsp_ops->get_cur_pts = audiodsp_get_pts;
         dsp_ops->get_cur_pcrscr = audiodsp_get_pcrscr;
+	 dsp_ops->set_cur_apts    = audiodsp_set_apts;	
     } else {
         audiodsp_release(dsp_ops);
         dsp_ops->dsp_on = 0;

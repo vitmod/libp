@@ -26,6 +26,7 @@ ADEC_BEGIN_DECLS
 #define AUDIODSP_DECODE_STOP                    _IOW('a',5,long)
 #define AUDIODSP_REGISTER_FIRMWARE          _IOW('a',6,long)
 #define AUDIODSP_UNREGISTER_ALLFIRMWARE     _IOW('a',7,long)
+#define AUDIODSP_SYNC_SET_APTS            		   _IOW('a', 10, unsigned long)
 #define AUDIODSP_WAIT_FORMAT                 _IOW('a',11,long)
 
 #define AUDIODSP_GET_CHANNELS_NUM           _IOR('r',1,long)
@@ -93,6 +94,8 @@ struct dsp_operations {
     int (*dsp_read)(dsp_operations_t *dsp_ops, char *buffer, int len);                                        /* read pcm stream from dsp */
     unsigned long(*get_cur_pts)(dsp_operations_t *);
     unsigned long(*get_cur_pcrscr)(dsp_operations_t *);
+    int (*set_cur_apts)(dsp_operations_t *dsp_ops,unsigned long apts);
+	
 };
 
 typedef struct {
@@ -114,6 +117,7 @@ typedef struct {
 int audiodsp_stream_read(dsp_operations_t *dsp_ops, char *buffer, int size);
 unsigned long  audiodsp_get_pts(dsp_operations_t *dsp_ops);
 unsigned long  audiodsp_get_pcrscr(dsp_operations_t *dsp_ops);
+int audiodsp_set_apts(dsp_operations_t *dsp_ops,unsigned long apts);
 int audiodsp_get_decoded_nb_frames(dsp_operations_t *dsp_ops);
 int audiodsp_get_first_pts_flag(dsp_operations_t *dsp_ops);
 int audiodsp_automute_on(dsp_operations_t *dsp_ops);
