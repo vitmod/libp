@@ -148,7 +148,7 @@ void * thumbnail_res_alloc(void)
         return NULL;
     }
     memset(frame, 0, sizeof(struct video_frame));
-
+    frame->stream.videoStream=-1;
     av_register_all();
 
     return (void *)frame;
@@ -159,12 +159,17 @@ int thumbnail_find_stream_info(void *handle, const char* filename)
 {
     struct video_frame *frame = (struct video_frame *)handle;
     struct stream *stream = &frame->stream;
-
+    int i;
     if (av_open_input_file(&stream->pFormatCtx, filename, NULL, 0, NULL) != 0) {
         log_print("Coundn't open file %s !\n", filename);
         goto err;
     }
-
+    for (i = 0; i < stream->pFormatCtx->nb_streams; i++) {        
+        if (stream->pFormatCtx->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO) {
+                      stream->videoStream = i;
+            break;
+        }
+    }
     //thumbnail just need the info of stream, so do not need fast_switch
     stream->pFormatCtx->pb->local_playback = 1;
     
@@ -464,6 +469,9 @@ int thumbnail_get_key_metadata(void* handle, char* key, const char** value)
 
     if(!memcmp(key, "rotate", 6)) {
             int rot;
+            if(frame->stream.videoStream==-1){/*no video.*/
+                return 0;
+            }
             thumbnail_get_video_rotation(handle,&rot);
             char *tmp = (char*)av_malloc(32);
             memset(tmp, 0x00, 32);
