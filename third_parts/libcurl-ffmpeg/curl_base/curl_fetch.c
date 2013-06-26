@@ -171,13 +171,16 @@ int curl_fetch_open(CFContext * h)
     int timeout = 0;
     while(!h->cwh_h->open_quited && timeout < CONNECT_TIMEOUT_THRESHOLD) {
         if(h->interrupt) {
-            if((*(h->interrupt))) {
+            if((*(h->interrupt))()) {
                 CLOGE("***** CURL INTERRUPTED *****");
                 return -1;  // consider for seek interrupt
             }
         }
         usleep(SLEEP_TIME_UNIT);
         timeout += SLEEP_TIME_UNIT;
+    }
+    if(h->cwh_h->perform_error_code < C_ERROR_EAGAIN) {
+        return -1;
     }
     if(h->cwh_h->open_quited) {
         if (h->cwh_h->chunk_size > 0) {
@@ -286,6 +289,9 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
         }
         usleep(SLEEP_TIME_UNIT);
         timeout += SLEEP_TIME_UNIT;
+    }
+    if(h->cwh_h->perform_error_code < C_ERROR_EAGAIN) {
+        return -1;
     }
     if(h->cwh_h->open_quited) {
         if (h->cwh_h->chunk_size > 0) {

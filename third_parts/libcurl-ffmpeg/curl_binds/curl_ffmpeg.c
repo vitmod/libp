@@ -79,7 +79,7 @@ static int curl_ffmpeg_open(URLContext *h, const char *uri, int flags)
         CLOGE("curl_fetch_init failed\n");
         return ret;
     }
-    curl_ffmpeg_register_interrupt(handle, url_interrupt_cb());
+    curl_ffmpeg_register_interrupt(handle, url_interrupt_cb);
     /*
     handle->monitor_quited = 0;
     ffmpeg_pthread_create(&handle->monitor_pid, NULL, curl_ffmpeg_interrupt_monitor_thread, handle);

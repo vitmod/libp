@@ -97,12 +97,6 @@ static size_t write_response(void *ptr, size_t size, size_t nmemb, void *data)
         CLOGI("write_response quited\n");
         return -1;
     }
-    if(mem->handle->interrupt) {
-        if((*(mem->handle->interrupt))) {
-            CLOGI("write_response interrupted\n");
-            return -1;
-        }
-    }
     char * tmp_ch = c_malloc(realsize + 1);
     if (!tmp_ch) {
         return -1;
@@ -126,12 +120,6 @@ static size_t curl_dl_chunkdata_callback(void *ptr, size_t size, size_t nmemb, v
         CLOGI("curl_dl_chunkdata_callback quited\n");
         return -1;
     }
-    if(mem->handle->interrupt) {
-        if((*(mem->handle->interrupt))) {
-            CLOGI("curl_dl_chunkdata_callback interrupted\n");
-            return -1;
-        }
-    }
     pthread_mutex_lock(&mem->handle->fifo_mutex);
     int left = curl_fifo_space(mem->handle->cfifo);
     //left = CURLMIN(left, mem->handle->cfifo->end - mem->handle->cfifo->wptr);
@@ -152,7 +140,7 @@ static size_t curl_dl_chunkdata_callback(void *ptr, size_t size, size_t nmemb, v
             return -1;
         }
         if(mem->handle->interrupt) {
-            if((*(mem->handle->interrupt))) {
+            if((*(mem->handle->interrupt))()) {
                 CLOGI("curl_dl_chunkdata_callback interrupted\n");
                 return -1;
             }
@@ -585,7 +573,7 @@ int curl_wrapper_perform(CURLWContext *con)
     }
 
     if(con->interrupt) {
-        if((*(con->interrupt))) {
+        if((*(con->interrupt))()) {
             CLOGI("curl_wrapper_perform interrupted when multi perform\n");
             return C_ERROR_UNKNOW;
         }
@@ -611,7 +599,7 @@ int curl_wrapper_perform(CURLWContext *con)
             break;
         }
         if(con->interrupt) {
-            if((*(con->interrupt))) {
+            if((*(con->interrupt))()) {
                 CLOGI("curl_wrapper_perform interrupted when multi perform\n");
                 break;
             }
@@ -656,6 +644,11 @@ int curl_wrapper_perform(CURLWContext *con)
                 if(CURLE_OK != msg->data.result) {
                     tmp_h->perform_error_code = CURLERROR(msg->data.result + C_ERROR_PERFORM_BASE_ERROR);
                     ret = tmp_h->perform_error_code;
+                }
+
+                if(CURLE_RECV_ERROR == msg->data.result
+                || CURLE_COULDNT_CONNECT == msg->data.result) {
+                    tmp_h->open_quited = 1;
                 }
 
 #if 1
