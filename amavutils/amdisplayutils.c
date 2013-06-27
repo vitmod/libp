@@ -26,6 +26,27 @@
 //#define LOG_FUNCTION_NAME LOGI("%s-%d\n",__FUNCTION__,__LINE__);
 #define LOG_FUNCTION_NAME
 
+void get_display_mode(char *mode)
+{
+    int fd;
+    char *path = "/sys/class/display/mode";
+    if (!mode) {
+        LOGE("[get_display_mode]Invalide parameter!");
+        return;
+    }
+    fd = open(path, O_RDONLY);
+    if (fd >= 0) {
+        memset(mode, 0, 16); // clean buffer and read 15 byte to avoid strlen > 15	
+        read(fd, mode, 15);
+        LOGI("[get_display_mode]mode=%s strlen=%d\n", mode, strlen(mode));
+        mode[strlen(mode)] = '\0';
+        close(fd);
+    } else {
+        sprintf(mode, "%s", "fail");
+    };
+    LOGI("[get_display_mode]display_mode=%s\n", mode);
+    return ;
+}
 int amdisplay_utils_get_size(int *width, int *height)
 {
     LOG_FUNCTION_NAME
@@ -78,20 +99,37 @@ int amdisplay_utils_set_scale_mode(int scale_wx, int scale_hx)
     int neww, newh;
     char buf[40];
 
+    if(amvideo_utils_get_freescale_enable()==0)
+    {
+        LOGI("free_scale is disabled,no need to update amdisplay_utils_set_scale_mode\n");
+        return 0;
+    }
+    
     /*scale mode only support x2,x1*/
     if ((scale_wx != 1 && scale_wx != 2) || (scale_hx != 1 && scale_hx != 2)) {
-		LOGI("unsupport scaling mode,x1,x2 only\n", scale_wx, scale_hx);
+        LOGI("unsupport scaling mode,x1,x2 only\n", scale_wx, scale_hx);
         return -1;
     }
-	if(scale_wx==2)
-	    ret = amsysfs_set_sysfs_str(SCALE_REQUEST, "1");
-	else if(scale_wx==1)
-	    ret = amsysfs_set_sysfs_str(SCALE_REQUEST, "2");   
-	     
+
+    char mode[16];
+    get_display_mode(mode);
+    if(strncmp(mode, "1080i", 5) == 0 || strncmp(mode, "1080p", 5) == 0) {
+        
+        LOGI("not reset SCALE_REQUEST under 1080i or 1080p\n");
+        return -1;
+        
+    }
+
+    if(scale_wx==2)
+        ret = amsysfs_set_sysfs_str(SCALE_REQUEST, "1");
+    else if(scale_wx==1)
+        ret = amsysfs_set_sysfs_str(SCALE_REQUEST, "2");   
+  
     if (ret < 0) {
         LOGI("set [%s]=[%s] failed\n", SCALE_AXIS_PATH, buf);
         return -2;
     }
+    
     return ret;
 }
 

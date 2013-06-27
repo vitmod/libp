@@ -42,6 +42,21 @@ static int disp_height = 1080;
 //#define LOG_FUNCTION_NAME LOGI("%s-%d\n",__FUNCTION__,__LINE__);
 #define LOG_FUNCTION_NAME
 
+int amvideo_utils_get_freescale_enable(void)
+{
+    int ret = 0;
+    char buf[32];
+    
+    ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
+    if((ret >=0) && strncmp(buf, "free_scale_enalbe:[0x1]", 
+        strlen("free_scale_enalbe:[0x1]"))==0){
+        
+        return 1;
+        
+    }
+    return 0;
+}
+
 int  amvideo_utils_get_global_offset(void)
 {
     LOG_FUNCTION_NAME
@@ -105,6 +120,166 @@ int is_vertical_panel_reverse(void)
     }
 
     return ret;
+}
+
+typedef enum _OSD_DISP_MODE {
+	OSD_DISP_480I,
+	OSD_DISP_480P,
+	OSD_DISP_576I,
+	OSD_DISP_576P,
+	OSD_DISP_720P,
+	OSD_DISP_1080I,
+	OSD_DISP_1080P,
+	OSD_DISP_LVDS1080P,
+}OSD_DISP_MODE;
+
+OSD_DISP_MODE get_osd_display_mode()
+{
+    OSD_DISP_MODE ret = OSD_DISP_1080P; 
+    char buf[32]; 
+    memset(buf,0,sizeof(buf));	
+    property_get("ubootenv.var.outputmode",buf,"1080p");
+    if(!strncmp(buf,"720p",4)){
+        ret = OSD_DISP_720P;
+    }
+    else if(!strncmp(buf,"480p",4)){
+        ret = OSD_DISP_480P;
+    }
+    else if(!strncmp(buf,"480",3)){//for 480i&480cvbs
+        ret = OSD_DISP_480I;
+    }
+    else if(!strncmp(buf,"576p",4)){
+        ret = OSD_DISP_576P;
+    }
+    else if(!strncmp(buf,"576",3)){//for 576i&576cvbs
+        ret = OSD_DISP_576I;
+    }
+    else if(!strncmp(buf,"1080i",5)){
+        ret = OSD_DISP_1080I;
+    }
+    else if(!strncmp(buf,"1080p",5)){
+        ret = OSD_DISP_1080P;
+    }
+    else if(!strncmp(buf,"lvds1080p",9)){			
+        ret = OSD_DISP_LVDS1080P;
+    }
+    return ret;
+}
+
+int get_device_win(OSD_DISP_MODE dismod, int *x, int *y, int *w, int *h)
+{
+    const char *prop1080i_h ="ubootenv.var.1080ioutputheight";
+    const char *prop1080i_w ="ubootenv.var.1080ioutputwidth";
+    const char *prop1080i_x ="ubootenv.var.1080ioutputx";
+    const char *prop1080i_y ="ubootenv.var.1080ioutputy";
+
+    const char *prop1080p_h ="ubootenv.var.1080poutputheight";
+    const char *prop1080p_w ="ubootenv.var.1080poutputwidth";
+    const char *prop1080p_x ="ubootenv.var.1080poutputx";
+    const char *prop1080p_y ="ubootenv.var.1080poutputy";
+
+    const char *prop720p_h ="ubootenv.var.720poutputheight";
+    const char *prop720p_w ="ubootenv.var.720poutputwidth";
+    const char *prop720p_x ="ubootenv.var.720poutputx";
+    const char *prop720p_y ="ubootenv.var.720poutputy";
+
+    const char *prop480i_h ="ubootenv.var.480ioutputheight";
+    const char *prop480i_w ="ubootenv.var.480ioutputwidth";
+    const char *prop480i_x ="ubootenv.var.480ioutputx";
+    const char *prop480i_y ="ubootenv.var.480ioutputy";
+
+    const char *prop480p_h ="ubootenv.var.480poutputheight";
+    const char *prop480p_w ="ubootenv.var.480poutputwidth";
+    const char *prop480p_x ="ubootenv.var.480poutputx";
+    const char *prop480p_y ="ubootenv.var.480poutputy";
+
+    const char *prop576i_h ="ubootenv.var.576ioutputheight";
+    const char *prop576i_w ="ubootenv.var.576ioutputwidth";
+    const char *prop576i_x ="ubootenv.var.576ioutputx";
+    const char *prop576i_y ="ubootenv.var.576ioutputy";
+
+    const char *prop576p_h ="ubootenv.var.576poutputheight";
+    const char *prop576p_w ="ubootenv.var.576poutputwidth";
+    const char *prop576p_x ="ubootenv.var.576poutputx";
+    const char *prop576p_y ="ubootenv.var.576poutputy";
+
+    char prop_value_h[32];
+    memset(prop_value_h,0,32);
+    char prop_value_w[32];
+    memset(prop_value_w,0,32);
+    char prop_value_x[32];
+    memset(prop_value_x,0,32);
+    char prop_value_y[32];
+    memset(prop_value_y,0,32);
+	
+    switch(dismod)
+    {
+    case OSD_DISP_1080P:
+        property_get(prop1080p_h,prop_value_h,"1080");
+        property_get(prop1080p_w,prop_value_w,"1920");
+        property_get(prop1080p_x,prop_value_x,"0");
+        property_get(prop1080p_y,prop_value_y,"0");
+        break;
+    case OSD_DISP_1080I:
+        property_get(prop1080i_h,prop_value_h,"1080");
+        property_get(prop1080i_w,prop_value_w,"1920");
+        property_get(prop1080i_x,prop_value_x,"0");
+        property_get(prop1080i_y,prop_value_y,"0");
+        break;
+    case OSD_DISP_LVDS1080P:			
+        property_get(prop1080p_h,prop_value_h,"1080");
+        property_get(prop1080p_w,prop_value_w,"1920");
+        property_get(prop1080p_x,prop_value_x,"0");
+        property_get(prop1080p_y,prop_value_y,"0");
+        break;
+    case OSD_DISP_720P:
+        property_get(prop720p_h,prop_value_h,"720");
+        property_get(prop720p_w,prop_value_w,"1280");
+        property_get(prop720p_x,prop_value_x,"0");
+        property_get(prop720p_y,prop_value_y,"0");
+        break;
+    case OSD_DISP_576P:
+        property_get(prop576p_h,prop_value_h,"576");
+        property_get(prop576p_w,prop_value_w,"720");
+        property_get(prop576p_x,prop_value_x,"0");
+        property_get(prop576p_y,prop_value_y,"0");
+        break;
+    case OSD_DISP_576I:
+        property_get(prop576i_h,prop_value_h,"576");
+        property_get(prop576i_w,prop_value_w,"720");
+        property_get(prop576i_x,prop_value_x,"0");
+        property_get(prop576i_y,prop_value_y,"0");
+        break;
+    case OSD_DISP_480P:
+        property_get(prop480p_h,prop_value_h,"480");
+        property_get(prop480p_w,prop_value_w,"720");
+        property_get(prop480p_x,prop_value_x,"0");
+        property_get(prop480p_y,prop_value_y,"0");
+        break;
+    case OSD_DISP_480I:
+        property_get(prop480i_h,prop_value_h,"480");
+        property_get(prop480i_w,prop_value_w,"720");
+        property_get(prop480i_x,prop_value_x,"0");
+        property_get(prop480i_y,prop_value_y,"0");
+        break;
+    default :
+        break;
+    }
+
+    LOGD("get_device_win h:%s , w:%s, x:%s, y:%s \n",prop_value_h,prop_value_w,prop_value_x,prop_value_y);
+    if(h){
+        *h=atoi(prop_value_h);
+    }
+    if(w){
+        *w=atoi(prop_value_w);
+    }
+    if(x){
+        *x=atoi(prop_value_x);
+    }
+    if(y){
+        *y=atoi(prop_value_y);
+    }
+    return 0;
 }
 
 int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t h, int rotation)
@@ -194,16 +369,28 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     LOGI("amvideo_utils_set_virtual_position:: disp_w=%d, disp_h=%d\n", disp_w, disp_h);    
         
     video_global_offset = amvideo_utils_get_global_offset();
+    
+    disp_w = 1280;
+    disp_h = 720;
 
     /* if we are doing video output to a second display device with
      * a different resolution, scale all the numbers.
      * E.g. when a MID pad is connected to a HDMI output.
      */
+
+    bzero(buf, SYSCMD_BUFSIZE);
+    property_get("const.window.w", buf, "0") ;
+    disp_w = atoi(buf)>0? atoi(buf): disp_w; 
+
+    bzero(buf, SYSCMD_BUFSIZE);
+    property_get("const.window.h", buf, "0") ;
+    disp_h = atoi(buf)>0? atoi(buf): disp_h;
+    int free_scale_enable = 0;
+    int ppscaler_enable = 0;
+    
     if (((disp_w != dev_w) || (disp_h / 2 != dev_h)) &&
         (video_global_offset == 0)) {
         char val[256];
-        int free_scale_enable = 0;
-        int ppscaler_enable = 0;
 
         memset(val, 0, sizeof(val));
         if (video_on_vpp2) {
@@ -264,7 +451,76 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         }
     }
 #endif
-
+		if (free_scale_enable == 0 && ppscaler_enable == 0) {
+        OSD_DISP_MODE display_mode = OSD_DISP_1080P;
+        int x_d=0,y_d=0,w_d=0,h_d=0;
+        LOGI("set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+    
+        display_mode = get_osd_display_mode();
+        get_device_win(display_mode, &x_d, &y_d, &w_d, &h_d);
+        if(display_mode==OSD_DISP_720P) {
+            if((dst_w==1280)||(dst_w==1279)||(dst_w==0)) {
+                dst_x = x_d;
+                dst_y = y_d;
+                dst_w = w_d;
+                dst_h = h_d;
+            }
+            else {
+                dst_x = dst_x*w_d/1280+x_d;
+                dst_y = dst_y*h_d/720+y_d;
+                dst_w = dst_w*w_d/1280;
+                dst_h = dst_h*h_d/720;
+            }
+        }
+        else if((display_mode==OSD_DISP_1080I)||(display_mode==OSD_DISP_1080P)||(display_mode==OSD_DISP_LVDS1080P)) {
+            if((dst_w==1920)||(dst_w==1919)||(dst_w==0)) {
+                dst_x = x_d;
+                dst_y = y_d;
+                dst_w = w_d;
+                dst_h = h_d;
+            }
+            else {//scaled to 1080p
+                dst_x = dst_x*w_d/1920+x_d;
+                dst_y = dst_y*h_d/1080+y_d;
+                dst_w = dst_w*w_d/1920;
+                dst_h = dst_h*h_d/1080;
+			
+                LOGI("after scaled to 1080 ,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+            }
+        }
+        else if((display_mode==OSD_DISP_480I)||(display_mode==OSD_DISP_480P)) {
+            if((dst_w==720)||(dst_w==719)||(dst_w==0)) {
+                dst_x = x_d;
+                dst_y = y_d;
+                dst_w = w_d;
+                dst_h = h_d;
+            }
+            else {//scaled to 480p/480i
+                dst_x = dst_x*w_d/720+x_d;
+                dst_y = dst_y*h_d/480+y_d;
+                dst_w = dst_w*w_d/720;
+                dst_h = dst_h*h_d/480;
+			
+                LOGI("after scaled to 480,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+            }
+        }
+        else if((display_mode==OSD_DISP_576I)||(display_mode==OSD_DISP_576P)) {
+            if((dst_w==720)||(dst_w==719)||(dst_w==0)) {
+                dst_x = x_d;
+                dst_y = y_d;
+                dst_w = w_d;
+                dst_h = h_d;
+            }
+            else {//scaled to 576p/576i
+                dst_x = dst_x*w_d/720+x_d;
+                dst_y = dst_y*h_d/576+y_d;
+                dst_w = dst_w*w_d/720;
+                dst_h = dst_h*h_d/576;
+			
+                LOGI("after scaled to 576 ,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+            }
+        }
+    }
     axis[0] = dst_x;
     axis[1] = dst_y;
     axis[2] = dst_x + dst_w - 1;
