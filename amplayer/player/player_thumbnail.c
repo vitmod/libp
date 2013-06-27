@@ -166,7 +166,7 @@ int thumbnail_find_stream_info(void *handle, const char* filename)
     }
 
     //thumbnail just need the info of stream, so do not need fast_switch
-    stream->pFormatCtx->pb->local_playback = 0;
+    stream->pFormatCtx->pb->local_playback = 1;
     
     if (av_find_stream_info(stream->pFormatCtx) < 0) {
         log_print("Coundn't find stream information !\n");
