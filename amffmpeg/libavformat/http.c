@@ -325,6 +325,8 @@ static int http_getc(HTTPContext *s)
     int retry=0;
     if (s->buf_ptr >= s->buf_end) {
 		do {
+		if(retry++>0)
+		 	return AVERROR(EIO);
 	        len = ffurl_read(s->hd, s->buffer, BUFFER_SIZE);
 	        if (len < 0 && len != AVERROR(EAGAIN)) {
 				av_log(NULL, AV_LOG_ERROR, "http_getc failed\n");
@@ -336,8 +338,8 @@ static int http_getc(HTTPContext *s)
 	        	s->buf_ptr = s->buffer;
 				s->buf_end = s->buffer + len;
 	        }	
-		 if(retry++>10)
-		 	return AVERROR(EIO);/*10 times,avoid alway no return problem*/
+		 //if(retry++>10)
+		 //	return AVERROR(EIO);/*10 times,avoid alway no return problem*/
 		}while (len == AVERROR(EAGAIN));		
     }
     return *s->buf_ptr++;
@@ -566,7 +568,6 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     for(;;) {
         if (http_get_line(s, line, sizeof(line)) < 0)
             return AVERROR(EIO);
-
         av_dlog(NULL, "header='%s'\n", line);	
 		
         err = process_line(h, line, s->line_count, new_location);
