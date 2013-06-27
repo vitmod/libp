@@ -2922,6 +2922,7 @@ typedef struct AVCodecContext {
     /* added by Z.C
      * to record mpeg4 vol_sprite_usage */
      int mpeg4_vol_sprite;
+     int quater_sample;
 
     /* added by Z.C
      * to record vc1_profile */

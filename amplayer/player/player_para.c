@@ -210,9 +210,9 @@ static void get_av_codec_type(play_para_t *p_para)
             int wrap_points = (pCodecCtx->mpeg4_vol_sprite >> 16) & 0xffff;
             int vol_sprite = pCodecCtx->mpeg4_vol_sprite & 0xffff;
             if (vol_sprite == 2) { // not support totally
-                log_print("[%s:%d]mpeg4 vol sprite usage %d, GMC wrappoint %d\n",
-                          __FUNCTION__, __LINE__, vol_sprite, wrap_points);
-                if (wrap_points > 2) {
+                log_print("[%s:%d]mpeg4 vol sprite usage %d, GMC wrappoint %d, quater_sample %d\n",
+                          __FUNCTION__, __LINE__, vol_sprite, wrap_points, pCodecCtx->quater_sample);
+                if ((wrap_points > 2) || ((wrap_points == 2) && pCodecCtx->quater_sample)) {
                     p_para->vstream_info.has_video = 0;
                 }
             }
