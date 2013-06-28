@@ -82,7 +82,8 @@ typedef struct _M3ULiveSession{
     char* headers;     
     void* playlist; 
     guid_t session_guid;
-    int is_opened;    
+    int is_opened;
+    int is_variant;
     BandwidthItem_t** bandwidth_list;
     AESKeyForUrl_t** aes_keyurl_list;
     int aes_keyurl_list_num;
@@ -135,6 +136,7 @@ static void _init_m3u_live_session_context(M3ULiveSession* ss){
     ss->last_bandwidth_list_fetch_timeUs = -1;
     ss->seekposByte = -1;
     ss->is_ts_media = -1;
+    ss->is_variant = -1;
     ss->is_encrypt_media = -1;
     ss->codec_data_time = -1;
     ss->refresh_state = INITIAL_MINIMUM_RELOAD_DELAY;
@@ -1405,6 +1407,78 @@ static int _open_session_download_task(M3ULiveSession* s){
     return 0;   
 
 }
+
+static void _pre_estimate_bandwidth(M3ULiveSession* s){
+    if(s == NULL){
+        return;
+    }
+
+    int ret = -1;
+    if(in_get_sys_prop_bool("media.libplayer.hlsestbw")>0 && s->is_variant>0){
+        M3uBaseNode* node = NULL;
+        node = m3u_get_node_by_index(s->playlist, 0);
+        if(node) {
+                void *handle = NULL;
+                char headers[MAX_URL_SIZE];
+                headers[0]='\0';
+                if(s->headers!=NULL){
+                    strlcpy(headers,s->headers,MAX_URL_SIZE);
+                }
+                
+                if(s->is_encrypt_media >0 ){                
+                    AESKeyInfo_t keyinfo;
+                    int indexInPlaylist = node->index;
+                    ret = _get_decrypt_key(s,indexInPlaylist,&keyinfo);
+                    if(ret!=0){
+                        return;
+                    }
+                    ret = hls_http_open(node->fileUrl, headers,(void*)&keyinfo,&handle);
+                    if(keyinfo.key_info!=NULL){
+                        free(keyinfo.key_info);
+                    }
+                }else{
+                    ret = hls_http_open(node->fileUrl, headers,NULL,&handle);
+                }
+                if(ret!=0) {
+                    hls_http_close(handle);
+                    handle = NULL;
+                    return;
+                }
+                int pre_bw = preEstimateBandwidth(handle, NULL, 0);
+                size_t index = s->bandwidth_item_num - 1;
+                while (index > 0 && (s->bandwidth_list[index]->mBandwidth>(size_t)pre_bw)) {
+                    --index;
+                }
+                LOGV("preEstimateBandwidth, bw=%f kbps, index=%d", pre_bw/1024.0f, index);
+                char* url = NULL;
+                if (s->bandwidth_item_num> 0) {
+                    url = s->bandwidth_list[index]->url;
+                }else{
+                    LOGE("Never get bandwidth list\n");
+                    return;
+                }
+                
+                int unchanged = 0;
+                void* playlist = _fetch_play_list(url,s, &unchanged);
+                if (playlist == NULL) {
+                    if (unchanged) {
+                        LOGE("Never see this line\n");            
+                    } else {
+                        LOGE("failed to load playlist at url '%s'", url);             
+                        return;
+                    }
+                } else {
+                    if(s->durationUs<1&&s->bandwidth_list[index]->playlist!=NULL){//live
+                        m3u_release(s->bandwidth_list[index]->playlist);
+                    }
+                    s->bandwidth_list[index]->playlist = playlist;
+                    s->prev_bandwidth_index = index;
+                    s->playlist = playlist; 
+                }
+                
+        }
+    }
+}
 //========================================API============================================
 
 #define AUDIO_BANDWIDTH_MAX 100000  //100k
@@ -1489,7 +1563,8 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
         _sort_m3u_session_bandwidth(session);
         m3u_release(base_list);
         session->playlist = NULL;
-        session->is_opened = 1;        
+        session->is_opened = 1;
+        session->is_variant = 1;
     }else{
         session->playlist = base_list;        
         session->is_opened = 1;        
@@ -1502,6 +1577,7 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
         return ret;
     }
 
+    _pre_estimate_bandwidth(session);
 
     ret = _open_session_download_task(session);
     

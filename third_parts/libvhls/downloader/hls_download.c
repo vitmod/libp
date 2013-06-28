@@ -25,6 +25,10 @@
 
 #define SAVE_BACKUP 1
 
+typedef struct _PreEstBWContext{
+    void * url_handle;
+}PreEstBWContext;
+
 typedef struct _HLSHttpContext{
     void* h;    
     int open_flag; 
@@ -460,6 +464,91 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
 
     }
     
+}
+
+#define PRE_ESTIMATE_BW_TIME 3*1000*1000 //us
+int pre_bw_bytes = 0;
+int pre_bw_worker_exit = 0;
+
+static void *_pre_estimate_bw_worker(void *ctx) {
+    PreEstBWContext *handle = (PreEstBWContext *)ctx;
+    void* hd = handle->url_handle;
+    int ret = -1;
+    int64_t startUs = in_gettimeUs();
+    int64_t flen = hls_http_get_fsize(hd);
+    int64_t rsize = 0;
+    unsigned char* buffer = NULL;
+    const int def_buf_size = 1024*1024;
+    int buf_len = 0;
+    int err_code = 0;
+    if(flen>0){
+        buffer = (unsigned char* )malloc(flen);
+        buf_len = flen;         
+       
+    }else{
+        buffer = (unsigned char* )malloc(def_buf_size);
+        buf_len = def_buf_size;  
+        
+    }
+    memset(buffer,0,buf_len);
+    int isize = 0;
+
+    do{
+        if(in_gettimeUs()-startUs >= PRE_ESTIMATE_BW_TIME) {
+            break;
+        }
+        ret = hls_http_read(hd,buffer+isize,buf_len);
+        if(ret<=0){
+            if (ret!= HLSERROR(EAGAIN)) {
+                break;
+            }
+            else {
+                continue;
+            }
+        }else{
+            isize+=ret;
+            pre_bw_bytes+=ret;
+        }
+    }while(isize<buf_len);
+    pre_bw_worker_exit = 1;
+    free(handle);
+    handle = NULL;
+    hls_http_close(hd);
+    return NULL;
+} 
+
+int preEstimateBandwidth(void *h, void * buf, int length) {
+    if(h == NULL) {
+        return -1;
+    }
+    PreEstBWContext *handle = (PreEstBWContext *)malloc(sizeof(PreEstBWContext));
+    if(handle == NULL) {
+        return -1;
+    }
+    handle->url_handle = h;
+    pre_bw_bytes = 0;
+    pre_bw_worker_exit = 0;
+    pthread_t tid;
+    int ret = -1;
+    pthread_attr_t pthread_attr;
+    pthread_attr_init(&pthread_attr);
+    ret = hls_task_create(&tid, &pthread_attr, _pre_estimate_bw_worker, handle);
+    pthread_setname_np(tid,"hls_estimate");
+    if(ret!=0){
+        pthread_attr_destroy(&pthread_attr);
+        return -1;
+    }
+    int64_t thread_startUs = in_gettimeUs();
+    pthread_attr_destroy(&pthread_attr);
+    while((in_gettimeUs()-thread_startUs) < PRE_ESTIMATE_BW_TIME && !url_interrupt_cb()) {
+        if(pre_bw_worker_exit>0) {
+            break;
+        }
+	 usleep(10*1000);
+    }
+    int64_t pre_bw = (int64_t)pre_bw_bytes * 8 * 1000000/(in_gettimeUs()-thread_startUs);
+    pre_bw = (pre_bw * 8)/10;
+    return pre_bw;   
 }
 
 int hls_task_create(pthread_t *thread_out, pthread_attr_t const * attr,void *(*start_routine)(void *), void * arg){

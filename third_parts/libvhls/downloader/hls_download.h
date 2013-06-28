@@ -65,6 +65,7 @@ int hls_http_seek_by_time(void* handle,int64_t timeUs);
 int hls_http_close(void* handle);
 
 int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* length,char** redirectUrl);
+int preEstimateBandwidth(void *handle, void *buf, int length);
 
 int hls_task_create(pthread_t *thread_out, pthread_attr_t const * attr, void *(*start_routine)(void *), void * arg);
 int hls_task_join(pthread_t thid, void ** ret_val);

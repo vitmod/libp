@@ -120,7 +120,7 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
     FFMPEG_HLS_CONTEXT* ctx = (FFMPEG_HLS_CONTEXT*)h->priv_data;
     void * hSession = ctx->hls_ctx;
     int len = AVERROR(EIO);
-    int counts = 200;
+    int counts = 10;
     
     do {
         if (url_interrupt_cb()>0) {
