@@ -125,7 +125,7 @@ unsigned long amsysfs_get_sysfs_ulong(const char *path)
 	int fd;
 	char bcmd[24]="";
 	unsigned long num=0;
-	if ((fd = open(path, O_RDONLY)) < 0) {
+	if ((fd = open(path, O_RDONLY)) >=0) {
     	read(fd, bcmd, sizeof(bcmd));
     	num = strtoul(bcmd, NULL, 0);
     	close(fd);

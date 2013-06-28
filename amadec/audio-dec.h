@@ -37,6 +37,18 @@ ADEC_BEGIN_DECLS
 #define AMSTREAM_IOC_APTS_LOOKUP    _IOR(AMSTREAM_IOC_MAGIC, 0x81,unsigned long)   
 #define GET_FIRST_APTS_FLAG			_IOR(AMSTREAM_IOC_MAGIC, 0x82, long)
 
+//-----------------------------------------------
+//copy from file: "../amcodec/include/amports/amstream.h"
+#ifndef AMSTREAM_IOC_PCRSCR
+#define AMSTREAM_IOC_PCRSCR           _IOR(AMSTREAM_IOC_MAGIC, 0x42, unsigned long)
+#endif
+#ifndef AMSTREAM_IOC_SET_APTS
+#define AMSTREAM_IOC_SET_APTS         _IOW(AMSTREAM_IOC_MAGIC, 0xa8, unsigned long)
+#endif
+
+//-----------------------------------------------
+
+
 /*******************************************************************************************/
 
 typedef struct aml_audio_dec    aml_audio_dec_t;

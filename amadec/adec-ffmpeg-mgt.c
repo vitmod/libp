@@ -11,6 +11,7 @@
 #include <adec_write.h>
 #include <adec_omxddpdec_brige.h>
 
+
 #include <Amsysfsutils.h>
 
 #if 1//************Macro Definitions**************
@@ -379,6 +380,32 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     return val;
 }
 
+unsigned long  armdec_get_pcrscr(dsp_operations_t *dsp_ops)
+{
+    unsigned long val;
+
+    if (dsp_ops->dsp_file_fd < 0) {
+        adec_print("read error!! audiodsp have not opened\n");
+        return -1;
+    }
+
+    ioctl(dsp_ops->dsp_file_fd, AMSTREAM_IOC_PCRSCR, &val);
+
+    return val;
+}
+unsigned long  armdec_set_pts(dsp_operations_t *dsp_ops,unsigned long apts)
+{
+    if (dsp_ops->dsp_file_fd < 0) {
+        adec_print("armdec_set_apts err!\n");
+        return -1;
+    }
+	
+    ioctl(dsp_ops->dsp_file_fd, AMSTREAM_IOC_SET_APTS, &apts);
+	
+    return 0;
+}
+
+
 //set decoder err condition
 
 static int set_sysfs_int(const char *path, int val)
@@ -573,6 +600,8 @@ static int audio_codec_init(aml_audio_dec_t *audec)
 	audec->adsp_ops.dsp_on = 1;
        audec->adsp_ops.dsp_read = armdec_stream_read;
        audec->adsp_ops.get_cur_pts = armdec_get_pts;
+       audec->adsp_ops.get_cur_pcrscr =  armdec_get_pcrscr;
+       audec->adsp_ops.set_cur_apts    = armdec_set_pts;
        return 0;
 
 err1:
