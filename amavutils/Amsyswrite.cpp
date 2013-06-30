@@ -11,6 +11,8 @@
 #include <utils/String16.h>
 #include <utils/threads.h>
 #include <Amsyswrite.h>
+#include <unistd.h>
+
 
 using namespace android;
 
@@ -141,7 +143,7 @@ int amSystemWriteReadNumSysfs(const char* path, char* value, int size)
     //ALOGD("amSystemWriteReadNumSysfs:%s",path);
 
     const sp<ISystemWriteService>& sws = getSystemWriteService();
-    if(sws != 0 && value != NULL){
+    if(sws != 0 && value != NULL && access(path, 0) != -1){
         String16 v;
         if(sws->readSysfs(String16(path), v)) {
             if(v.size() != 0) {
