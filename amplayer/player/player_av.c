@@ -2962,7 +2962,15 @@ void player_switch_sub(play_para_t *para)
     if (para->sstream_info.has_sub == 0) {
         return;
     }
-
+    if(para->playctrl_info.switch_sub_id==0xffff)
+    {
+        //<switch_sub_id==0xffff> indecate that:
+        //   the subtitle but was not supported by uplayer,
+        //     so we just set invalid num for <sstream_info.sub_index>
+        para->sstream_info.sub_index=para->playctrl_info.switch_sub_id;
+        return;
+    }
+	
     /* find stream for new id */
     for (i = 0; i < pFCtx->nb_streams; i++) {
         pstream = pFCtx->streams[i];
