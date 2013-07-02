@@ -292,7 +292,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     int angle_fd = -1;
     int ret = -1;
     int axis[4];
-
+    char enable_p2p_play[8] = {0};
     int video_on_vpp2 = is_video_on_vpp2();
     int vertical_panel = is_vertical_panel();
     int vertical_panel_reverse = is_vertical_panel_reverse();
@@ -366,25 +366,33 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         amdisplay_utils_get_size_fb2(&disp_w, &disp_h);
     else
         amdisplay_utils_get_size(&disp_w, &disp_h);
+    
     LOGI("amvideo_utils_set_virtual_position:: disp_w=%d, disp_h=%d\n", disp_w, disp_h);    
         
     video_global_offset = amvideo_utils_get_global_offset();
+
+    property_get("media.p2pplay.enable", enable_p2p_play, "false");
+    LOGI("enable_p2p_play is %s ",enable_p2p_play);
     
-    disp_w = 1280;
-    disp_h = 720;
+    if (!strncmp(enable_p2p_play, "true", 4)){
+        
+        disp_w = 1280;
+        disp_h = 720;
 
-    /* if we are doing video output to a second display device with
-     * a different resolution, scale all the numbers.
-     * E.g. when a MID pad is connected to a HDMI output.
-     */
+        /* if we are doing video output to a second display device with
+            * a different resolution, scale all the numbers.
+            * E.g. when a MID pad is connected to a HDMI output.
+            */
 
-    bzero(buf, SYSCMD_BUFSIZE);
-    property_get("const.window.w", buf, "0") ;
-    disp_w = atoi(buf)>0? atoi(buf): disp_w; 
+        bzero(buf, SYSCMD_BUFSIZE);
+        property_get("const.window.w", buf, "0") ;
+        disp_w = atoi(buf)>0? atoi(buf): disp_w; 
+        bzero(buf, SYSCMD_BUFSIZE);
+        property_get("const.window.h", buf, "0") ;
+        disp_h = atoi(buf)>0? atoi(buf): disp_h;
 
-    bzero(buf, SYSCMD_BUFSIZE);
-    property_get("const.window.h", buf, "0") ;
-    disp_h = atoi(buf)>0? atoi(buf): disp_h;
+    }
+    
     int free_scale_enable = 0;
     int ppscaler_enable = 0;
     
@@ -451,73 +459,78 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         }
     }
 #endif
-		if (free_scale_enable == 0 && ppscaler_enable == 0) {
-        OSD_DISP_MODE display_mode = OSD_DISP_1080P;
-        int x_d=0,y_d=0,w_d=0,h_d=0;
-        LOGI("set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
     
-        display_mode = get_osd_display_mode();
-        get_device_win(display_mode, &x_d, &y_d, &w_d, &h_d);
-        if(display_mode==OSD_DISP_720P) {
-            if((dst_w==1280)||(dst_w==1279)||(dst_w==0)) {
-                dst_x = x_d;
-                dst_y = y_d;
-                dst_w = w_d;
-                dst_h = h_d;
+    if (!strncmp(enable_p2p_play, "true", 4)){
+        LOGI("enable_p2p_play is true");
+        if (free_scale_enable == 0 && ppscaler_enable == 0) {
+            
+            OSD_DISP_MODE display_mode = OSD_DISP_1080P;
+            int x_d=0,y_d=0,w_d=0,h_d=0;
+            LOGI("set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+    
+            display_mode = get_osd_display_mode();
+            get_device_win(display_mode, &x_d, &y_d, &w_d, &h_d);
+            if(display_mode==OSD_DISP_720P) {
+                if((dst_w==1280)||(dst_w==1279)||(dst_w==0)) {
+                    dst_x = x_d;
+                    dst_y = y_d;
+                    dst_w = w_d;
+                    dst_h = h_d;
+                }
+                else {
+                    dst_x = dst_x*w_d/1280+x_d;
+                    dst_y = dst_y*h_d/720+y_d;
+                    dst_w = dst_w*w_d/1280;
+                    dst_h = dst_h*h_d/720;
+                }
             }
-            else {
-                dst_x = dst_x*w_d/1280+x_d;
-                dst_y = dst_y*h_d/720+y_d;
-                dst_w = dst_w*w_d/1280;
-                dst_h = dst_h*h_d/720;
+            else if((display_mode==OSD_DISP_1080I)||(display_mode==OSD_DISP_1080P)||(display_mode==OSD_DISP_LVDS1080P)) {
+                if((dst_w==1920)||(dst_w==1919)||(dst_w==0)) {
+                    dst_x = x_d;
+                    dst_y = y_d;
+                    dst_w = w_d;
+                    dst_h = h_d;
+                }
+                else {//scaled to 1080p
+                    dst_x = dst_x*w_d/1920+x_d;
+                    dst_y = dst_y*h_d/1080+y_d;
+                    dst_w = dst_w*w_d/1920;
+                    dst_h = dst_h*h_d/1080;
+
+                    LOGI("after scaled to 1080 ,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+                }
             }
-        }
-        else if((display_mode==OSD_DISP_1080I)||(display_mode==OSD_DISP_1080P)||(display_mode==OSD_DISP_LVDS1080P)) {
-            if((dst_w==1920)||(dst_w==1919)||(dst_w==0)) {
-                dst_x = x_d;
-                dst_y = y_d;
-                dst_w = w_d;
-                dst_h = h_d;
+            else if((display_mode==OSD_DISP_480I)||(display_mode==OSD_DISP_480P)) {
+                if((dst_w==720)||(dst_w==719)||(dst_w==0)) {
+                    dst_x = x_d;
+                    dst_y = y_d;
+                    dst_w = w_d;
+                    dst_h = h_d;
+                }
+                else {//scaled to 480p/480i
+                    dst_x = dst_x*w_d/720+x_d;
+                    dst_y = dst_y*h_d/480+y_d;
+                    dst_w = dst_w*w_d/720;
+                    dst_h = dst_h*h_d/480;
+
+                    LOGI("after scaled to 480,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+                }
             }
-            else {//scaled to 1080p
-                dst_x = dst_x*w_d/1920+x_d;
-                dst_y = dst_y*h_d/1080+y_d;
-                dst_w = dst_w*w_d/1920;
-                dst_h = dst_h*h_d/1080;
-			
-                LOGI("after scaled to 1080 ,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
-            }
-        }
-        else if((display_mode==OSD_DISP_480I)||(display_mode==OSD_DISP_480P)) {
-            if((dst_w==720)||(dst_w==719)||(dst_w==0)) {
-                dst_x = x_d;
-                dst_y = y_d;
-                dst_w = w_d;
-                dst_h = h_d;
-            }
-            else {//scaled to 480p/480i
-                dst_x = dst_x*w_d/720+x_d;
-                dst_y = dst_y*h_d/480+y_d;
-                dst_w = dst_w*w_d/720;
-                dst_h = dst_h*h_d/480;
-			
-                LOGI("after scaled to 480,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
-            }
-        }
-        else if((display_mode==OSD_DISP_576I)||(display_mode==OSD_DISP_576P)) {
-            if((dst_w==720)||(dst_w==719)||(dst_w==0)) {
-                dst_x = x_d;
-                dst_y = y_d;
-                dst_w = w_d;
-                dst_h = h_d;
-            }
-            else {//scaled to 576p/576i
-                dst_x = dst_x*w_d/720+x_d;
-                dst_y = dst_y*h_d/576+y_d;
-                dst_w = dst_w*w_d/720;
-                dst_h = dst_h*h_d/576;
-			
-                LOGI("after scaled to 576 ,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+            else if((display_mode==OSD_DISP_576I)||(display_mode==OSD_DISP_576P)) {
+                if((dst_w==720)||(dst_w==719)||(dst_w==0)) {
+                    dst_x = x_d;
+                    dst_y = y_d;
+                    dst_w = w_d;
+                    dst_h = h_d;
+                }
+                else {//scaled to 576p/576i
+                    dst_x = dst_x*w_d/720+x_d;
+                    dst_y = dst_y*h_d/576+y_d;
+                    dst_w = dst_w*w_d/720;
+                    dst_h = dst_h*h_d/576;
+
+                    LOGI("after scaled to 576 ,set screen position:x[%d],y[%d],w[%d],h[%d]", dst_x, dst_y, dst_w, dst_h);
+                }
             }
         }
     }

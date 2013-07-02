@@ -98,28 +98,32 @@ int amdisplay_utils_set_scale_mode(int scale_wx, int scale_hx)
     int ret;
     int neww, newh;
     char buf[40];
-
-    if(amvideo_utils_get_freescale_enable()==0)
-    {
-        LOGI("free_scale is disabled,no need to update amdisplay_utils_set_scale_mode\n");
-        return 0;
-    }
+    char enable_p2p_play[8] = {0};
+	property_get("media.p2pplay.enable", enable_p2p_play, "false");
+    LOGI("enable_p2p_play is %s ",enable_p2p_play);
     
+    if (!strncmp(enable_p2p_play, "true", 4)){
+        if(amvideo_utils_get_freescale_enable()==0)
+        {
+            LOGI("free_scale is disabled,no need to update amdisplay_utils_set_scale_mode\n");
+            return 0;
+        }
+    }
     /*scale mode only support x2,x1*/
     if ((scale_wx != 1 && scale_wx != 2) || (scale_hx != 1 && scale_hx != 2)) {
         LOGI("unsupport scaling mode,x1,x2 only\n", scale_wx, scale_hx);
         return -1;
     }
-
-    char mode[16];
-    get_display_mode(mode);
-    if(strncmp(mode, "1080i", 5) == 0 || strncmp(mode, "1080p", 5) == 0) {
+    if (!strncmp(enable_p2p_play, "true", 4)){
+        char mode[16];
+        get_display_mode(mode);
+        if(strncmp(mode, "1080i", 5) == 0 || strncmp(mode, "1080p", 5) == 0) {
         
-        LOGI("not reset SCALE_REQUEST under 1080i or 1080p\n");
-        return -1;
+            LOGI("not reset SCALE_REQUEST under 1080i or 1080p\n");
+            return -1;
         
+        }
     }
-
     if(scale_wx==2)
         ret = amsysfs_set_sysfs_str(SCALE_REQUEST, "1");
     else if(scale_wx==1)
