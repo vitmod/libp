@@ -1139,11 +1139,13 @@ int GL_2X_scale(int mSwitch)
         return 0;
     }
     
-    ret = get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
-    if((mSwitch==0)&&(ret>=0)&&strstr(buf, "1")){
+    /*ret = get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
+
+    log_print("[GL_2X_scale]get free_scale %s!\n",buf);
+    if((mSwitch==0)&&(ret>=0)&&strstr(buf, "0")){
         log_print("[GL_2X_scale] already enabled,no need to set again!\n");
         return 0;
-    }
+    }*/
 
     char* scale_Osd0_path = "/sys/class/graphics/fb0/scale";
     char* scale_Osd1_path = "/sys/class/graphics/fb1/scale";
@@ -1160,6 +1162,11 @@ int GL_2X_scale(int mSwitch)
         
         if((ret >=0) && strncmp(buf, "scale:[0x10001]", strlen("scale:[0x10001]"))==0){
             set_sysfs_str(fb0_blank_path, "1");
+        }
+        else
+        {
+            log_print("[GL_2X_scale] already disable,no need to set again!\n");
+            return 0;
         }
 
         ret = get_sysfs_str("/sys/class/graphics/fb0/request2XScale", buf, 32);
@@ -1188,7 +1195,11 @@ int GL_2X_scale(int mSwitch)
         if((ret >=0) && strncmp(buf, "scale:[0x0]", strlen("scale:[0x0]"))==0){
             set_sysfs_str(fb0_blank_path, "1");
         }
-
+        else
+        {
+            log_print("[GL_2X_scale] already enable,no need to set again!\n");
+            return 0;
+        }
         if(!strncmp(mode, "480i", 4) || !strncmp(mode, "480p", 4)){
 
             if(!strncmp(mode, "480i", 4)){
