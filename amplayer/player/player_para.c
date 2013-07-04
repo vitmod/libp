@@ -522,13 +522,16 @@ static void get_stream_info(play_para_t *p_para)
     p_para->astream_num = 0;
     p_para->sstream_num = 0;
 
+    for (i=0; i<ASTREAM_MAX_NUM; i++)
+        p_para->astream_info.audio_index_tab[i] = -1;
+
     check_no_program(p_para);
 
     for (i = 0; i < pFormat->nb_streams; i++) {
         pStream = pFormat->streams[i];
 
-        if (pStream->no_program) {
-            log_print("[%s:%d]stream %d is no_program\n", __FUNCTION__, __LINE__, i);
+        if (pStream->no_program || !pStream->stream_valid) {
+            log_print("[%s:%d]stream %d no_program:%d, stream_valid:%d, \n", __FUNCTION__, __LINE__, i, pStream->no_program, pStream->stream_valid);
             continue;
         }
         
@@ -574,6 +577,7 @@ static void get_stream_info(play_para_t *p_para)
 		*/
             int filter_afmt = PlayerGetAFilterFormat();
             p_para->astream_num ++;
+            p_para->astream_info.audio_index_tab[i] = p_para->astream_num;
             audio_format = audio_type_convert(pCodec->codec_id, p_para->file_type);
 			if (((1 << audio_format) & filter_afmt) != 0) {
 				log_print("## filtered format audio_format=%d,i=%d,----\n",audio_format,i);

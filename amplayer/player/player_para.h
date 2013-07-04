@@ -3,7 +3,7 @@
 
 #include <libavformat/avformat.h>
 #include <stream_format.h>
-
+#define ASTREAM_MAX_NUM 20
 struct play_para;
 
 //#define DEBUG_VARIABLE_DUR
@@ -48,6 +48,7 @@ typedef struct {
     int             resume_audio;
     aformat_t       audio_format;
     signed short    audio_index;
+    signed short    audio_index_tab[ASTREAM_MAX_NUM]; // some audio stream is unvalid, convert the stream.index to display num.
     unsigned short  audio_pid;
     int             audio_channel;
     int             audio_samplerate;

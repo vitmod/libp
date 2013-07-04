@@ -649,6 +649,7 @@ typedef struct AVStream {
      int rotation_degree;
     int encrypt;
      int no_program;
+    int stream_valid;
 } AVStream;
 
 #define AV_PROGRAM_RUNNING 1

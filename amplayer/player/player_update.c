@@ -69,7 +69,7 @@ static int set_stream_info(play_para_t *p_para)
         return -4;
     }
     info->cur_video_index   = p_para->vstream_info.video_index;
-    info->cur_audio_index   = p_para->astream_info.audio_index;
+    info->cur_audio_index   = p_para->astream_info.audio_index_tab[p_para->astream_info.audio_index];
     log_print("set stream info,current audio id:%d\n", p_para->media_info.stream_info.cur_audio_index);
     info->cur_sub_index     = p_para->sstream_info.sub_index;
     info->drm_check         = 0;//(p_para->pFormatCtx->drm.drm_check_value > 0) ? 1 : 0;
@@ -218,8 +218,8 @@ static int set_astream_info(play_para_t *p_para)
         for (i = 0; i < pCtx->nb_streams; i ++) {
             pStream = pCtx->streams[i];
 
-            if (pStream->no_program) {
-                log_print("[%s:%d]stream %d is no_program\n", __FUNCTION__, __LINE__, i);
+            if (pStream->no_program || !pStream->stream_valid) {
+                log_print("[%s:%d]stream %d no_program:%d, stream_valid:%d, \n", __FUNCTION__, __LINE__, i, pStream->no_program, pStream->stream_valid);
                 continue;
             }
             
