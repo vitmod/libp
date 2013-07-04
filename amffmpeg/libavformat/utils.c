@@ -881,6 +881,13 @@ int avformat_open_input_header(AVFormatContext **ps, const char *filename, AVInp
         ff_id3v2_read(s, ID3v2_DEFAULT_MAGIC); 
     }
 
+    if (!strcmp(s->iformat->name, "flv")) {
+        if(!s->pb->is_streamed || !s->pb->is_slowmedia) {
+            s->seekable = 1;
+            s->support_seek = 1;
+        }
+    }
+
     if (!(s->flags&AVFMT_FLAG_PRIV_OPT) && s->iformat->read_header)
         if ((ret = s->iformat->read_header(s, &ap)) < 0)
             goto fail;
