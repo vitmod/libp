@@ -1188,7 +1188,7 @@ int update_variable_info(play_para_t *para)
 }
 #endif
 
-int time_search(play_para_t *am_p)
+int time_search(play_para_t *am_p,int flags)
 {
     AVFormatContext *s = am_p->pFormatCtx;
     float time_point = am_p->playctrl_info.time_point;
@@ -1197,7 +1197,11 @@ int time_search(play_para_t *am_p)
     unsigned int temp = 0;
     int stream_index = -1;
     int64_t ret = PLAYER_SUCCESS;
-    int seek_flags = am_getconfig_bool("media.libplayer.seek.fwdsearch") ? 0 : AVSEEK_FLAG_BACKWARD;
+    int seek_flags;
+    if(flags < 0)
+        seek_flags = am_getconfig_bool("media.libplayer.seek.fwdsearch") ? 0 : AVSEEK_FLAG_BACKWARD;
+    else
+        seek_flags = flags;
     int sample_size;
 	//-----------------------------------
 	// forcing updating  the value of <first_time> when seeking to the start of file, 
@@ -2858,7 +2862,7 @@ void player_switch_audio(play_para_t *para)
 
         /* time search based on audio */
         para->playctrl_info.time_point = para->state.current_time;
-        ret = time_search(para);
+        ret = time_search(para,-1);
         if (ret != PLAYER_SUCCESS) {
             log_error("[%s:%d]time_search to pos:%ds failed!", __FUNCTION__, __LINE__, para->playctrl_info.time_point);
         }

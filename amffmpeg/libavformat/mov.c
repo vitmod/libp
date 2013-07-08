@@ -2628,16 +2628,16 @@ static AVIndexEntry *mov_find_next_sample(AVFormatContext *s, AVStream **st)
                  ((FFABS(best_dts - dts) <= AV_TIME_BASE && current_sample->pos < sample->pos) ||
                   (FFABS(best_dts - dts) > AV_TIME_BASE && dts < best_dts))) {
             	wantnew=1;
-            }else if((s->pb->seekable && s->pb->is_slowmedia)){/*seekable network,seek is slow...*/
-		int64_t curentpos=avio_tell(s->pb); 
-		if((FFABS(best_dts - dts) < AV_TIME_BASE*10)&&
-		    FFABS(curentpos-current_sample->pos)<FFABS(curentpos-sample->pos)){
-            		wantnew=1;
-		}else if((FFABS(best_dts - dts) >= AV_TIME_BASE*8 || FFABS(curentpos-sample->pos) )&& (dts < best_dts)){
-            		wantnew=1;
+		}else if((s->pb->seekable && s->pb->is_slowmedia)){/*seekable network,seek is slow...*/
+     		int64_t curentpos=avio_tell(s->pb); 
+     		if((FFABS(best_dts - dts) < AV_TIME_BASE*10)&& curentpos>1000*1000 && /*swtich to latest&near pkt just dts interval is less and >1M*/
+     		    FFABS(curentpos-current_sample->pos)<FFABS(curentpos-sample->pos)){
+     		    wantnew=1;
+     		}else if(curentpos< 1000*1000|| (FFABS(best_dts - dts) >= AV_TIME_BASE*8 || FFABS(curentpos-sample->pos) )&& (dts < best_dts)){
+     		    wantnew=1;
+     		}
+     		///av_log(s, AV_LOG_WARNING, "curentpos=%llx,dts=%llx,best_dts=%llx,%llx,%llx,new=%d\n",curentpos,dts,best_dts,current_sample->pos,sample->pos,wantnew);
 		}
-		///av_log(s, AV_LOG_WARNING, "curentpos=%llx,dts=%llx,best_dts=%llx,%llx,%llx,new=%d\n",curentpos,dts,best_dts,current_sample->pos,sample->pos,wantnew);
-            }
 
 	    if(wantnew){
 		sample = current_sample;

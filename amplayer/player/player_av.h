@@ -68,7 +68,7 @@ int set_cntl_syncthresh(play_para_t *para);
 void player_switch_audio(play_para_t *para);
 void player_switch_sub(play_para_t *para);
 int get_cntl_state(am_packet_t *pkt);
-int time_search(struct play_para *para);
+int time_search(struct play_para *para,int flags);
 int player_reset(play_para_t *p_para);
 int	check_avbuffer_enough(play_para_t *para);
 

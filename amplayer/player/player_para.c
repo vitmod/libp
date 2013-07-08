@@ -1146,7 +1146,7 @@ int player_dec_reset(play_para_t *p_para)
         p_para->astream_info.check_first_pts = 0;
     }
     if((p_para->playctrl_info.time_point>=0) && (p_para->state.full_time > 0)){	
-    	 ret = time_search(p_para);
+    	 ret = time_search(p_para,-1);
     }else{
     	if(p_para->playctrl_info.reset_drop_buffered_data && /*drop data for less delay*/
 			p_para->stream_type == STREAM_TS && 
@@ -1484,7 +1484,6 @@ int player_dec_init(play_para_t *p_para)
     return PLAYER_SUCCESS;
 
 init_fail:
-    ffmpeg_close_file(p_para);
     log_print("[player_dec_init]failed, ret=%x\n", ret);
     return ret;
 }
@@ -1494,7 +1493,10 @@ int player_offset_init(play_para_t *p_para)
     int ret = PLAYER_SUCCESS;
     if (p_para->playctrl_info.time_point >= 0) {
         p_para->off_init = 1;
-        ret = time_search(p_para);
+        if(p_para->playctrl_info.time_point>0)
+            ret = time_search(p_para,AVSEEK_FLAG_BACKWARD);
+        else
+            ret = time_search(p_para,AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);/*if seek to 0,don't care whether keyframe. */
         if (ret != PLAYER_SUCCESS) {
             set_player_state(p_para, PLAYER_ERROR);
             ret = PLAYER_SEEK_FAILED;
@@ -1514,7 +1516,6 @@ int player_offset_init(play_para_t *p_para)
     return PLAYER_SUCCESS;
 
 init_fail:
-    ffmpeg_close_file(p_para);
     return ret;
 }
 
@@ -1620,7 +1621,6 @@ int player_decoder_init(play_para_t *p_para)
  
     return PLAYER_SUCCESS;
 failed:
-    ffmpeg_close_file(p_para);
     return ret;
 }
 

@@ -937,8 +937,12 @@ void *player_thread(play_para_t *player)
     ret = player_offset_init(player);
     if (ret != PLAYER_SUCCESS) {
         log_error("pid[%d]::prepare offset failed!\n", player->player_id);
-        set_player_state(player, PLAYER_ERROR);
-        goto release;
+        //set_player_state(player, PLAYER_ERROR);
+        //goto release;
+        if (player->playctrl_info.raw_mode) {
+        	//log_print("*****data offset 0x%x\n", p_para->data_offset);
+        	url_fseek(player->pFormatCtx->pb, player->data_offset, SEEK_SET);
+        }
     }
     log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
