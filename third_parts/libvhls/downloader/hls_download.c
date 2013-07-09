@@ -185,7 +185,7 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
         ctx->error_code = reason_code;
         ctx->open_flag = -1;        
         *handle = ctx;        
-        LOGE("Failed to open http file,url:%s,error:%d,reason:%d\n",fileUrl,ret,reason_code);
+        LOGE("Failed to open http file,error:%d,reason:%d\n",ret,reason_code);
         return -1; 
 
     }
@@ -457,7 +457,7 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     
     if(ret<0){
         ret = err_code<0?err_code:ret;
-        LOGE("failed to fetch file,url:%s,return value:%d\n",url,ret);        
+        LOGE("failed to fetch file,return value:%d\n",ret);        
         return ret;        
     }else{
         return 0;

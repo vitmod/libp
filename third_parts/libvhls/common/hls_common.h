@@ -10,6 +10,11 @@
 extern "C" {
 #endif
 
+typedef enum {
+    HLS_LOG_BASE,
+    HLS_SHOW_URL,
+} HLS_LOG_LEVEL;
+
 #ifndef LOGV
 #define LOGV(...)	LOG_PRI(ANDROID_LOG_VERBOSE, LOG_TAG,__VA_ARGS__)
 #endif

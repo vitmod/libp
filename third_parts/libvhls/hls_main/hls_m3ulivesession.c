@@ -97,6 +97,7 @@ typedef struct _M3ULiveSession{
     int retries_num;
     int is_closed;
     int seekflag;
+    int log_level;
     int codec_data_time;
     int estimate_bandwidth_bps;
     int64_t cached_data_timeUs;
@@ -140,6 +141,7 @@ static void _init_m3u_live_session_context(M3ULiveSession* ss){
     ss->is_encrypt_media = -1;
     ss->codec_data_time = -1;
     ss->refresh_state = INITIAL_MINIMUM_RELOAD_DELAY;
+    ss->log_level = in_get_sys_prop_float("libplayer.hls.debug");
     if(in_get_sys_prop_float("libplayer.hls.ignore_range")>0){
         ss->is_http_ignore_range = 1;        
     }
@@ -179,7 +181,11 @@ static void _sort_m3u_session_bandwidth(M3ULiveSession* ss){
         if(ss->bandwidth_list[i]){
             ss->bandwidth_list[i]->index = i;
             temp = ss->bandwidth_list[i];
-            LOGV("***Item index:%d,Bandwidth:%lu,url:%s\n",temp->index,temp->mBandwidth,temp->url);
+            if(ss->log_level >= HLS_SHOW_URL) {
+                LOGV("***Item index:%d,Bandwidth:%lu,url:%s\n",temp->index,temp->mBandwidth,temp->url);
+            } else {
+                LOGV("***Item index:%d,Bandwidth:%lu\n",temp->index,temp->mBandwidth);
+            }
             
         }
     }
@@ -504,7 +510,11 @@ static int _get_decrypt_key(M3ULiveSession* s,int playlistIndex,AESKeyInfo_t* ke
             if(!strncmp(keyUrl,s->aes_keyurl_list[i]->keyUrl,MAX_URL_SIZE)){
                 
                 index = i;
-                LOGV("Found aes key,url:%s,index:%d\n",keyUrl,index);
+                if(s->log_level >= HLS_SHOW_URL) {
+                    LOGV("Found aes key,url:%s,index:%d\n",keyUrl,index);
+                } else {
+                    LOGV("Found aes key,index:%d\n",index);
+                }
                 break;
             }
             if(s->is_closed){
@@ -530,7 +540,9 @@ static int _get_decrypt_key(M3ULiveSession* s,int playlistIndex,AESKeyInfo_t* ke
             return -1;
         }
         if(redirectUrl){
-            LOGV("Display redirect url:%s\n",redirectUrl);
+	     if(s->log_level >= HLS_SHOW_URL) {
+                LOGV("Display redirect url:%s\n",redirectUrl);
+	     }
             free(redirectUrl);
         }
         
@@ -633,7 +645,9 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
             if (unchanged) {
                 LOGE("Never see this line\n");            
             } else {
-                LOGE("failed to load playlist at url '%s'", url);             
+                if(s->log_level >= HLS_SHOW_URL) {
+                    LOGE("failed to load playlist at url '%s'", url);
+                }
                 return -1;
             }
         } else {
@@ -697,8 +711,11 @@ static int _choose_bandwidth_and_init_playlist(M3ULiveSession* s){
     s->target_duration = m3u_get_target_duration(s->playlist);
     s->last_bandwidth_list_fetch_timeUs = in_gettimeUs();
 
-    LOGV("playback,first segment from seq:%d,url:%s\n",s->cur_seq_num,m3u_get_node_by_index(s->playlist,s->cur_seq_num-firstSeqNumberInPlaylist)->fileUrl);
-
+    if(s->log_level >= HLS_SHOW_URL) {
+        LOGV("playback,first segment from seq:%d,url:%s\n",s->cur_seq_num,m3u_get_node_by_index(s->playlist,s->cur_seq_num-firstSeqNumberInPlaylist)->fileUrl);
+    } else {
+        LOGV("playback,first segment from seq:%d\n",s->cur_seq_num);
+    }
     pthread_mutex_unlock(&s->session_lock);
     return 0;
 
@@ -743,7 +760,11 @@ rinse_repeat:
         if((s->playlist!=NULL&&m3u_is_complete(s->playlist)>0)//vod
             &&(s->bandwidth_item_num>0)&&s->bandwidth_list[bandwidthIndex]->playlist!=NULL){
             new_playlist = s->bandwidth_list[bandwidthIndex]->playlist;
-            LOGV("Just reuse old parsed playlist,index:%d,url:%s\n",bandwidthIndex,s->bandwidth_list[bandwidthIndex]->url);
+	     if(s->log_level >= HLS_SHOW_URL) {
+                LOGV("Just reuse old parsed playlist,index:%d,url:%s\n",bandwidthIndex,s->bandwidth_list[bandwidthIndex]->url);
+	     } else {
+	         LOGV("Just reuse old parsed playlist,index:%d\n",bandwidthIndex);
+	     }
         }else{
             char* url = NULL;
             if (s->bandwidth_item_num> 0) {
@@ -767,12 +788,16 @@ rinse_repeat:
                         _thread_wait_timeUs(s,100*1000);
                         goto rinse_repeat;
                     }
-                    LOGE("failed to load playlist at url '%s'", url); 
+		      if(s->log_level >= HLS_SHOW_URL) {
+                        LOGE("failed to load playlist at url '%s'", url); 
+		      }
                     pthread_mutex_unlock(&s->session_lock);
                     return HLSERROR(EAGAIN);
                     
                 } else {
-                    LOGE("failed to load playlist at url '%s'", url); 
+                    if(s->log_level >= HLS_SHOW_URL) {
+                        LOGE("failed to load playlist at url '%s'", url); 
+                    }
                     pthread_mutex_unlock(&s->session_lock);
                     return -1;
                 }
@@ -967,7 +992,9 @@ open_retry:
         if(in_get_sys_prop_bool("media.libplayer.curlenable")<=0){
             snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n");
         }
-        LOGV("Got headers:%s\n",headers);
+	 if(s->log_level >= HLS_SHOW_URL) {
+            LOGV("Got headers:%s\n",headers);
+	 }
 
     }else{
         if(s->headers!=NULL){
@@ -995,21 +1022,31 @@ open_retry:
     if(ret !=0){
         errcode = hls_http_get_error_code(handle);    
         if(errcode == -800){
-            LOGV("Maybe seek play,just retry to open,url:%s\n",url);
+	     if(s->log_level >= HLS_SHOW_URL) {
+                LOGV("Maybe seek play,just retry to open,url:%s\n",url);
+	     }
             hls_http_close(handle);
             handle = NULL;
             goto open_retry;            
         }
         int64_t now = in_gettimeUs();
         if(!isLive&&((now - fetch_start)<segmentDurationUs*10)){//maybe 10s*10 = 100s.
-            LOGV("[VOD]Just retry to open,url:%s,max retry time:%d s\n",url,segmentDurationUs/100000);  
+            if(s->log_level >= HLS_SHOW_URL) {
+                LOGV("[VOD]Just retry to open,url:%s,max retry time:%d s\n",url,segmentDurationUs/100000); 
+            } else {
+                LOGV("[VOD]Just retry to open,max retry time:%d s\n",segmentDurationUs/100000); 
+            }
             _thread_wait_timeUs(s,100*1000);
             hls_http_close(handle);
             handle = NULL;
             goto open_retry;
 
         }else if(isLive&&(now - fetch_start)<segmentDurationUs/2){//maybe 5s
-            LOGV("[LIVE]Just retry to open,url:%s,max retry time:%d s\n",url,segmentDurationUs/2000000);  
+            if(s->log_level >= HLS_SHOW_URL) {
+                LOGV("[LIVE]Just retry to open,url:%s,max retry time:%d s\n",url,segmentDurationUs/2000000);  
+            } else {
+                LOGV("[LIVE]Just retry to open,max retry time:%d s\n",segmentDurationUs/2000000); 
+            }
             _thread_wait_timeUs(s,100*1000);
             hls_http_close(handle);
             handle = NULL;
@@ -1285,7 +1322,11 @@ static int _download_next_segment(M3ULiveSession* s){
     
 
     int ret = -1;
-    LOGV("start fetch segment file,url:%s\n,seq:%d\n",segment.fileUrl,s->cur_seq_num);
+    if(s->log_level >= HLS_SHOW_URL) {
+        LOGV("start fetch segment file,url:%s,seq:%d\n",segment.fileUrl,s->cur_seq_num);
+    } else {
+        LOGV("start fetch segment file,seq:%d\n",s->cur_seq_num);
+    }
     ret = _fetch_segment_file(s,&segment,isLive);
     if(segment.range_length>0){        
         node->range_length = segment.range_length;
@@ -1505,7 +1546,9 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
         session->headers = strdup(headers);
     }
 
-    LOGV("Open baseUrl :%s\n",session->baseUrl);
+    if(session->log_level >= HLS_SHOW_URL) {
+        LOGV("Open baseUrl :%s\n",session->baseUrl);
+    }
 #ifdef USE_SIMPLE_CACHE
     const int cache_size_max = 1024*1024*10; //10M   
     ret = hls_simple_cache_alloc(cache_size_max,&session->cache);
@@ -1541,7 +1584,11 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
             }
             
             if(node->bandwidth<AUDIO_BANDWIDTH_MAX){
-                LOGV("This variant can't playback,drop it,url:%s,bandwidth:%d\n",node->fileUrl,node->bandwidth);
+		  if(session->log_level >= HLS_SHOW_URL) {
+                    LOGV("This variant can't playback,drop it,url:%s,bandwidth:%d\n",node->fileUrl,node->bandwidth);
+		  } else {
+		      LOGV("This variant can't playback,drop it,bandwidth:%d\n",node->bandwidth);
+		  }
                 continue;
             }
             
@@ -1816,7 +1863,11 @@ int m3u_session_close(void* hSession){
             BandwidthItem_t* item = session->bandwidth_list[i];
             if(item){
                 if(item->url!=NULL){
-                    LOGV("Release bandwidth list,index:%d,url:%s\n",i,item->url);
+		      if(session->log_level >= HLS_SHOW_URL) {
+                        LOGV("Release bandwidth list,index:%d,url:%s\n",i,item->url);
+		      } else {
+		          LOGV("Release bandwidth list,index:%d\n",i);
+		      }
                     free(item->url);
                 }
                 if(item->playlist!=NULL){

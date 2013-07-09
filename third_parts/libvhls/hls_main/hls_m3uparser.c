@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include "hls_m3uparser.h"
+#include "hls_utils.h"
 
 #ifdef HAVE_ANDROID_OS
 #include "hls_common.h"
@@ -25,9 +26,10 @@ typedef struct _M3UParser{
     int is_complete;
     int is_initcheck;
     int target_duration;
-    int64_t durationUs;
     int base_node_num;
+    int log_level;
     char *baseUrl;
+    int64_t durationUs;
 	struct list_head  head;		
 	pthread_mutex_t parser_lock; 	    
 }M3UParser;
@@ -94,19 +96,23 @@ static int dump_all_nodes(M3UParser* var){
         return 0;
     }
     LOGV("*******************Dump All nodes from list start*****************************\n");
-    LOGV("***Base url:%s\n",var->baseUrl);
+    if(var->log_level >= HLS_SHOW_URL) {
+        LOGV("***Base url:%s\n",var->baseUrl);
+    }
     if(!var->is_variant_playlist){
         LOGV("***Target duration:%d\n",var->target_duration);
         LOGV("***Have complete tag? %s,Total duration:%lld\n",var->is_complete>0?"YES":"NO",(long long)var->durationUs);    
     }
     list_for_each_entry_safe_reverse(pos, tmp, &var->head,list){
-        if(var->is_variant_playlist){
+        if(var->is_variant_playlist && var->log_level >= HLS_SHOW_URL){
             LOGV("***Stream index:%d,url:%s,bandwidth:%d,program-id:%d\n",pos->index,pos->fileUrl,pos->bandwidth,pos->program_id);
         }else{
-            LOGV("***Segment index:%d,url:%s,startUs:%lld,duration:%lld\n",pos->index,pos->fileUrl,(long long)pos->startUs,(long long)pos->durationUs);
+            if(var->log_level >= HLS_SHOW_URL) {
+                LOGV("***Segment index:%d,url:%s,startUs:%lld,duration:%lld\n",pos->index,pos->fileUrl,(long long)pos->startUs,(long long)pos->durationUs);
+            }
             LOGV("***Media range:%lld,media offset:%lld,media seq:%d",(long long)pos->range_length,(long long)pos->range_offset,pos->media_sequence);
             LOGV("***With encrypt key info:%s\n",pos->flags&CIPHER_INFO_FLAG?"YES":"NO");
-            if(pos->flags&CIPHER_INFO_FLAG){
+            if((pos->flags&CIPHER_INFO_FLAG) && var->log_level >= HLS_SHOW_URL){
                 LOGV("***Cipher key 's url:%s\n",pos->key!=NULL?pos->key->keyUrl:"unknow");
             }
         }
@@ -128,9 +134,15 @@ static int clean_all_nodes(M3UParser* var){
     LOGV("*******************Clean All nodes from list start****************************\n");
     list_for_each_entry_safe(pos, tmp, &var->head,list){
         list_del(&pos->list);
-        LOGV("***Release node index:%d,url:%s\n",pos->index,pos->fileUrl);
+	 if(var->log_level >= HLS_SHOW_URL) {
+            LOGV("***Release node index:%d,url:%s\n",pos->index,pos->fileUrl);
+	 } else {
+	     LOGV("***Release node index:%d\n",pos->index);
+	 }
         if(pos->flags&CIPHER_INFO_FLAG&&pos->key!=NULL){
-            LOGV("***Release encrypt key info,url:%s\n",pos->key->keyUrl);
+	     if(var->log_level >= HLS_SHOW_URL) {
+                LOGV("***Release encrypt key info,url:%s\n",pos->key->keyUrl);
+	     }
             free(pos->key);
             pos->key = NULL;
         }
@@ -512,7 +524,7 @@ static int parseCipherInfo(const char* line,const char* baseUrl,M3uKeyInfo* info
     parseKeyValue(match+1, (parse_key_val_cb) handle_key_args,&cInfo);   
     makeUrl(info->keyUrl,sizeof(info->keyUrl), baseUrl,cInfo.keyUrl);
 
-    LOGV("MakeUrl,before:url:%s,baseUrl:%s,after:url:%s\n",cInfo.keyUrl,baseUrl,info->keyUrl);
+    //LOGV("MakeUrl,before:url:%s,baseUrl:%s,after:url:%s\n",cInfo.keyUrl,baseUrl,info->keyUrl);
     memcpy(info->iv,cInfo.iv,sizeof(info->iv));
     memcpy(info->method,cInfo.method,sizeof(info->method));
     
@@ -632,8 +644,9 @@ static int fast_parse(M3UParser* var,const void *_data, int size){
                 hasKey = 1;
 
                 tmpNode.flags|=CIPHER_INFO_FLAG;
-
-                LOGV("Cipher info,url:%s,method:%s\n",keyinfo->keyUrl,keyinfo->method);
+                if(var->log_level >= HLS_SHOW_URL) {
+                    LOGV("Cipher info,url:%s,method:%s\n",keyinfo->keyUrl,keyinfo->method);
+                }
 
             }else if(startsWith(line,EXT_X_ENDLIST)){
                 var->is_complete = 1;
@@ -756,6 +769,7 @@ int m3u_parse(const char *baseUrl,const void *data, size_t size,void** hParse){
     p->is_extm3u = 0;
     p->is_variant_playlist = 0;
     p->target_duration = 0;
+    p->log_level = in_get_sys_prop_float("libplayer.hls.debug");
     INIT_LIST_HEAD(&p->head);
     pthread_mutex_init(&p->parser_lock, NULL);
     int ret = fast_parse(p,data,size);
