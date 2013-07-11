@@ -353,11 +353,11 @@ static int display_mode_convert(char *disp_mode)
     log_print("[display_mode_convert]disp_mode=%s\n", disp_mode);
     if (!disp_mode) {
         ret = 0xeeee;
-    } else if (!strncmp(disp_mode, "480i", 4)) {
+    } else if ((!strncmp(disp_mode,"480i", 4))||(!strncmp(disp_mode, "480cvbs", 7))) {
         ret = DISP_MODE_480I;
     } else if (!strncmp(disp_mode, "480p", 4)) {
         ret = DISP_MODE_480P;
-    } else if (!strncmp(disp_mode, "576i", 4)) {
+    } else if ((!strncmp(disp_mode,"576i", 4))||(!strncmp(disp_mode, "576cvbs", 7))) {
         ret = DISP_MODE_576I;
     } else if (!strncmp(disp_mode, "576p", 4)) {
         ret = DISP_MODE_576P;
@@ -1200,7 +1200,7 @@ int GL_2X_scale(int mSwitch)
             log_print("[GL_2X_scale] already enable,no need to set again!\n");
             return 0;
         }
-        if(!strncmp(mode, "480i", 4) || !strncmp(mode, "480p", 4)){
+        if(!strncmp(mode, "480i", 4) || !strncmp(mode, "480p", 4) || !strncmp(mode, "480cvbs", 7)){
 
             if(!strncmp(mode, "480i", 4)){
                 property_get("ubootenv.var.480ioutputx",vaxis_newx_str,"0");
@@ -1240,7 +1240,7 @@ int GL_2X_scale(int mSwitch)
             set_sysfs_str(scale_Osd1_path, "0x10001");
             
         }
-        else if(!strncmp(mode, "576i", 4) || !strncmp(mode, "576p", 4)){
+        else if(!strncmp(mode, "576i", 4) || !strncmp(mode, "576p", 4) || !strncmp(mode, "576cvbs", 7)){
             
             if(!strncmp(mode, "576i", 4)){
                 property_get("ubootenv.var.576ioutputx",vaxis_newx_str,"0");
