@@ -433,31 +433,49 @@ int set_file_type(const char *name, pfile_type *ftype, pstream_type *stype)
 
 static int compare_pkt(AVPacket *src, AVPacket *dst)
 {
-    if (dst->pts != (int64_t)AV_NOPTS_VALUE) {
-        if (dst->pts <= src->pts) {
-            return 1;
-        } else {
-            return 0;
-        }
-    } else if (dst->dts != (int64_t)AV_NOPTS_VALUE) {
-        if (dst->dts <= src->dts) {
-            return 1;
-        } else {
-            return 0;
-        }
-    } else {
-        int compare_size = MIN(src->size, dst->size);
-        compare_size = compare_size > 1024 ? 1024 : compare_size;
+    //use the AVPacket->pos to compare the data firstly, if pos is unavailable use pts.
+    if ((src->pos > 0) && (dst->pos > 0)) {
+        if (src->pos >= dst->pos) {
+            int compare_size = MIN(src->size, dst->size);
+            compare_size = compare_size > 1024 ? 1024 : compare_size;
 
-        //log_print("dst size %d, src size %d, dst data 0x%x, src data 0x%x\n",
-        //    dst->size, src->size, dst->data, src->data);
-        if (memcmp(dst->data, src->data, compare_size) == 0) {
-            return 1;
+            if (memcmp(dst->data, src->data, compare_size) == 0) {
+                log_print("[%s:%d]pos and data is the same!\n", __FUNCTION__, __LINE__);
+                return 1;
+            } else {
+                log_print("[%s:%d]pos is larger but data is not the same!\n", __FUNCTION__, __LINE__);
+                return 1;
+            }
+        } else 
+           return 0;
+    } else {
+        if (dst->pts != (int64_t)AV_NOPTS_VALUE) {
+            if (dst->pts <= src->pts) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else if (dst->dts != (int64_t)AV_NOPTS_VALUE) {
+            if (dst->dts <= src->dts) {
+                return 1;
+            } else {
+                return 0;
+            }
         } else {
-            //log_print("Packet is different\n");
-            return 0;
+            int compare_size = MIN(src->size, dst->size);
+            compare_size = compare_size > 1024 ? 1024 : compare_size;
+
+            //log_print("dst size %d, src size %d, dst data 0x%x, src data 0x%x\n",
+            //    dst->size, src->size, dst->data, src->data);
+            if (memcmp(dst->data, src->data, compare_size) == 0) {
+                log_print("[%s:%d]pts and data is the same!\n", __FUNCTION__, __LINE__);
+                return 1;
+            } else {
+                //log_print("Packet is different\n");
+                return 0;
+            }
         }
-    }
+   	}
 }
 
 static int backup_packet(play_para_t *para, AVPacket *src, AVPacket *dst)
@@ -480,7 +498,7 @@ static int backup_packet(play_para_t *para, AVPacket *src, AVPacket *dst)
     dst->pts = src->pts;
     dst->dts = src->dts;
     dst->size = src->size;
-    dst->pos = url_ftell(para->pFormatCtx->pb);
+    dst->pos = src->pos;//url_ftell(para->pFormatCtx->pb);
     MEMCPY(dst->data, src->data, src->size);
 
     return 0;
@@ -2643,9 +2661,12 @@ void player_switch_audio(play_para_t *para)
 
     /* get new information */
     audio_index = pstream->index;
-    log_print("[%s:%d]audio_index %d, i %d\n", __FUNCTION__, __LINE__, audio_index, i);
+    log_print("[%s:%d]audio_index %d, i %d, cur_audio_index: %d  \n", __FUNCTION__, __LINE__, audio_index, i, para->media_info.stream_info.cur_audio_index);
     if (audio_index == -1) {
         log_print("[%s:%d]no index found\n", __FUNCTION__, __LINE__);
+        return;
+    } else if (audio_index ==  para->media_info.stream_info.cur_audio_index) {
+        log_print("[%s:%d] switch to the same audio stream !\n", __FUNCTION__, __LINE__);
         return;
     } else {
         pCodecCtx = pFCtx->streams[audio_index]->codec;
