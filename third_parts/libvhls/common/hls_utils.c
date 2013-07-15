@@ -91,14 +91,14 @@ float in_get_sys_prop_float(char* key){
 int in_get_sys_prop_bool(char* key){
     int value = 0;
 #ifdef HAVE_ANDROID_OS
-    value = am_getconfig_bool_def(key,0);
+    value = am_getconfig_bool_def(key,-1);
     if(value<0){
-        return 0;
+        return -1;
     }
 #else
     char * ev = getenv(key);
     if(ev==NULL){
-        return 0;
+        return -1;
     }
     value = atoi(ev);
 #endif    

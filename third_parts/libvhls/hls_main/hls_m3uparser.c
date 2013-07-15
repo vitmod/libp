@@ -769,7 +769,14 @@ int m3u_parse(const char *baseUrl,const void *data, size_t size,void** hParse){
     p->is_extm3u = 0;
     p->is_variant_playlist = 0;
     p->target_duration = 0;
-    p->log_level = in_get_sys_prop_float("libplayer.hls.debug");
+    p->log_level = 0;
+    if(in_get_sys_prop_bool("media.amplayer.disp_url") != 0) {
+        p->log_level = HLS_SHOW_URL;
+    }
+    float db = in_get_sys_prop_float("libplayer.hls.debug");
+    if(db > 0) {
+        p->log_level = db;
+    }
     INIT_LIST_HEAD(&p->head);
     pthread_mutex_init(&p->parser_lock, NULL);
     int ret = fast_parse(p,data,size);

@@ -141,7 +141,14 @@ static void _init_m3u_live_session_context(M3ULiveSession* ss){
     ss->is_encrypt_media = -1;
     ss->codec_data_time = -1;
     ss->refresh_state = INITIAL_MINIMUM_RELOAD_DELAY;
-    ss->log_level = in_get_sys_prop_float("libplayer.hls.debug");
+    ss->log_level = 0;
+    if(in_get_sys_prop_bool("media.amplayer.disp_url") != 0) {
+        ss->log_level = HLS_SHOW_URL;
+    }
+    float db = in_get_sys_prop_float("libplayer.hls.debug");
+    if(db > 0) {
+        ss->log_level = db;
+    }
     if(in_get_sys_prop_float("libplayer.hls.ignore_range")>0){
         ss->is_http_ignore_range = 1;        
     }
