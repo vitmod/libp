@@ -45,6 +45,9 @@ static int stream_ts_init(play_para_t *p_para)
             if ((codec->video_type == VFORMAT_H264) && p_para->playctrl_info.no_dec_ref_buf) {
                 codec->am_sysinfo.param = (void *)(NO_DEC_REF_BUF | (int) codec->am_sysinfo.param);
             }
+            if ((vinfo->video_format == VFORMAT_H264) && p_para->playctrl_info.no_error_recovery) {
+                codec->am_sysinfo.param = (void *)(NO_ERROR_RECOVERY | (int)codec->am_sysinfo.param);
+            }
         } else if (codec->video_type == VFORMAT_VC1 || codec->video_type == VFORMAT_AVS) {
             codec->am_sysinfo.format = vinfo->video_codec_type;
             codec->am_sysinfo.width = vinfo->video_width;

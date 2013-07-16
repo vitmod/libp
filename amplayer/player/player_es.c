@@ -52,6 +52,9 @@ static void vcodec_info_init(play_para_t *p_para, codec_para_t *v_codec)
         if ((vinfo->video_format == VFORMAT_H264) && p_para->playctrl_info.no_dec_ref_buf) {
             v_codec->am_sysinfo.param = (void *)(NO_DEC_REF_BUF | (int)v_codec->am_sysinfo.param);
         }
+        if ((vinfo->video_format == VFORMAT_H264) && p_para->playctrl_info.no_error_recovery) {
+            v_codec->am_sysinfo.param = (void *)(NO_ERROR_RECOVERY | (int)v_codec->am_sysinfo.param);
+        }
     } else if ((vinfo->video_format == VFORMAT_VC1) && (p_para->file_type == AVI_FILE)) {
         v_codec->am_sysinfo.param = (void *)EXTERNAL_PTS;
     } else {

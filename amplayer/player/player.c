@@ -389,9 +389,10 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
         bit 2: iponly_flag
         bit 3: no decoder reference buffer
         bit 4: vsync_pts_inc to up
+        bit 5: no error recovery
         */
         int mode=msg->param;
-        log_print("set freerun_mode %d\n",mode);
+        log_print("set freerun_mode 0x%x\n",mode);
         if(mode || am_getconfig_bool("media.libplayer.wfd")){/*mode=1,2,is low buffer mode also*/
             if(para->pFormatCtx&& para->pFormatCtx->pb)
                 ffio_set_buf_size(para->pFormatCtx->pb,1024*4);//reset aviobuf to small.
@@ -410,6 +411,10 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
         if (mode & 0x10) {
             /* vsync pts inc to up +1 */
             para->playctrl_info.vsync_upint = 1;
+        }
+        if (mode & 0x20) {
+            /* no error recovery */
+            para->playctrl_info.no_error_recovery = 1;
         }
 
         mode = mode & 0x3;
