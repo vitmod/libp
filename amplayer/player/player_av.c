@@ -1231,6 +1231,10 @@ int time_search(play_para_t *am_p,int flags)
     if(time_point==0)
         am_p->state.first_time=-1;
 	//----------------------------------
+
+    if(time_point >= am_p->state.full_time) {
+        return ret;
+    }
 	
  
     if((am_p->pFormatCtx)&&(am_p->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(am_p->pFormatCtx->iformat->name,"DRMdemux",8))==0){
@@ -1316,9 +1320,14 @@ int time_search(play_para_t *am_p,int flags)
 		log_info("[%s:%d] stream_index=%d, timestamp=%llx, seek_flags=%d,\n",__FUNCTION__, __LINE__,stream_index, timestamp, seek_flags);
                 ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
                 if (ret < 0) {
-                    log_info("[%s] could not seek to position %0.3f s ret=%lld\n", __FUNCTION__, (double)timestamp / AV_TIME_BASE, ret);
-                    ret = PLAYER_SEEK_FAILED;
-                    goto searchexit;
+                    if (!(seek_flags & AVSEEK_FLAG_BACKWARD)) {
+                        ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags | AVSEEK_FLAG_BACKWARD);
+                    }
+                    if (ret < 0) {
+                        log_info("[%s] could not seek to position %0.3f s ret=%lld\n", __FUNCTION__, (double)timestamp / AV_TIME_BASE, ret);
+                        ret = PLAYER_SEEK_FAILED;
+                        goto searchexit;
+                    }
                 }
                 offset = url_ftell(s->pb);
                 if ((am_p->playctrl_info.last_seek_time_point != (int)time_point)

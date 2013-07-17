@@ -1879,7 +1879,10 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
     }
 	if(target_ts > ts_max){		
 		av_log(NULL, AV_LOG_ERROR, "target_ts(%llx) > ts_max(%llx)\n", target_ts , ts_max);
-        return -2;
+        if (flags & AVSEEK_FLAG_BACKWARD)
+            target_ts = ts_max;
+        else
+            return -2;
 	} else if(ts_min > ts_max){		
         return -1;
     }else if(ts_min == ts_max){
