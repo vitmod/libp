@@ -4,7 +4,7 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE
-ifdef DOLBY_UDC
+ifdef DOLBY_DAP
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
 endif
 
@@ -37,7 +37,7 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE
-ifdef DOLBY_UDC
+ifdef DOLBY_DAP
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
 endif
 
