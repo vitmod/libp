@@ -575,15 +575,15 @@ static void get_stream_info(play_para_t *p_para)
         /*
 		* firstly get the disabled audio format, if the current format is disabled, parse the next directly
 		*/
-            int filter_afmt = PlayerGetAFilterFormat();
+            int filter_afmt = PlayerGetAFilterFormat("media.amplayer.disable-acodecs");
+            audio_format = audio_type_convert(pCodec->codec_id, p_para->file_type);
+		if (((1 << audio_format) & filter_afmt) != 0) {
+			pStream->stream_valid = 0;
+			log_print("## filtered format audio_format=%d,i=%d,----\n",audio_format,i);
+			continue;
+		}
             p_para->astream_num ++;
             p_para->astream_info.audio_index_tab[i] = p_para->astream_num;
-            audio_format = audio_type_convert(pCodec->codec_id, p_para->file_type);
-			if (((1 << audio_format) & filter_afmt) != 0) {
-				log_print("## filtered format audio_format=%d,i=%d,----\n",audio_format,i);
-				continue;
-			}
-
 		
 	    //not support blueray stream,one PID has two audio track(truehd+ac3)
 	    if(strcmp(pFormat->iformat->name, "mpegts") == 0){
@@ -856,13 +856,13 @@ static int set_decode_para(play_para_t*am_p)
     }
 
 
-    property_get("media.audio.disable.dts", dts_value, NULL);
-    property_get("media.audio.disable.ac3", ac3_value, NULL);
-    if ((am_p->playctrl_info.no_audio_flag) ||
-        ((!strcmp(dts_value, "true")) && (am_p->astream_info.audio_format == AFORMAT_DTS)) ||
-        ((!strcmp(ac3_value, "true")) && (am_p->astream_info.audio_format == AFORMAT_AC3))) {
+    filter_afmt = PlayerGetAFilterFormat("media.amplayer.disable-aformat");
+    if ((am_p->playctrl_info.no_audio_flag) ||  \
+	  ((1<<am_p->astream_info.audio_format)&filter_afmt))
+	  {
+        log_print("aformat type %d disable \n",am_p->astream_info.audio_format);
         am_p->astream_info.has_audio = 0;
-        set_player_error_no(am_p, PLAYER_SET_NOAUDIO);
+        set_player_error_no(am_p, am_p->playctrl_info.no_audio_flag ?PLAYER_SET_NOAUDIO:PLAYER_UNSUPPORT_AUDIO);
         update_player_states(am_p, 1);
     } else if (!am_p->astream_info.has_audio) {
         if (am_p->vstream_info.has_video) {

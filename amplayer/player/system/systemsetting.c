@@ -117,13 +117,16 @@ int PlayerGetVFilterFormat(unsigned int codec_id)
 #define FILTER_AFMT_PCMBLU		(1 << 16)
 #define FILTER_AFMT_ALAC		(1 << 17)
 #define FILTER_AFMT_VORBIS		(1 << 18)
-
-int PlayerGetAFilterFormat()
+#define FILTER_AFMT_AAC_LATM		(1 << 19)
+#define FILTER_AFMT_APE		       (1 << 20)
+#define FILTER_AFMT_EAC3		       (1 << 21)
+int PlayerGetAFilterFormat(const char *prop)
 {
 	char value[1024];
 	int filter_fmt = 0;	
-	
-    if (GetSystemSettingString("media.amplayer.disable-acodecs", value, NULL) > 0) {
+    if(prop == NULL)
+		return 0;
+    if (GetSystemSettingString(prop, value, NULL) > 0) {
 		log_print("[%s:%d]disable_adec=%s\n", __FUNCTION__, __LINE__, value);
 		if (strstr(value,"mpeg") != NULL || strstr(value,"MPEG") != NULL) {
 			filter_fmt |= FILTER_AFMT_MPEG;
@@ -136,7 +139,7 @@ int PlayerGetAFilterFormat()
 		} 
 		if (strstr(value,"ac3") != NULL || strstr(value,"AC#") != NULL) {
 			filter_fmt |= FILTER_AFMT_AC3;
-		} 
+		}		
 		if (strstr(value,"alaw") != NULL || strstr(value,"ALAW") != NULL) {
 			filter_fmt |= FILTER_AFMT_ALAW;
 		} 
@@ -182,6 +185,15 @@ int PlayerGetAFilterFormat()
 		if (strstr(value,"vorbis") != NULL || strstr(value,"VORBIS") != NULL) {
 			filter_fmt |= FILTER_AFMT_VORBIS;
 		}
+		if (strstr(value,"aac_latm") != NULL || strstr(value,"AAC_LATM") != NULL) {
+			filter_fmt |= FILTER_AFMT_AAC_LATM;
+		} 
+		if (strstr(value,"ape") != NULL || strstr(value,"APE") != NULL) {
+			filter_fmt |= FILTER_AFMT_APE;
+		} 		
+		if (strstr(value,"eac3") != NULL || strstr(value,"EAC3") != NULL) {
+			filter_fmt |= FILTER_AFMT_EAC3;
+		} 		
     }
 	log_print("[%s:%d]filter_afmt=%x\n", __FUNCTION__, __LINE__, filter_fmt);
     return filter_fmt;

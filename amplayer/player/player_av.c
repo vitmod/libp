@@ -2644,7 +2644,6 @@ void player_switch_audio(play_para_t *para)
     AVCodecContext  *pCodecCtx;
     AVFormatContext *pFCtx = para->pFormatCtx;
     int ret = -1;
-
     /* find stream for new id */
     for (i = 0; i < pFCtx->nb_streams; i++) {
         pstream = pFCtx->streams[i];
@@ -2677,10 +2676,20 @@ void player_switch_audio(play_para_t *para)
         log_print("[%s:%d]DRM content found, not support yet.\n", __FUNCTION__, __LINE__);
         para->astream_info.audio_format = VFORMAT_UNSUPPORT;
     }
-    if (para->astream_info.audio_format < 0 || para->astream_info.audio_format >= AFORMAT_MAX) {
+    int filter_afmt = PlayerGetAFilterFormat("media.amplayer.disable-aformat");
+    if (para->astream_info.audio_format < 0 || para->astream_info.audio_format >= AFORMAT_MAX || \
+	 (filter_afmt&(1<<para->astream_info.audio_format))){	
         log_error("[%s:%d]unkown audio format\n", __FUNCTION__, __LINE__);
         para->astream_info.has_audio = 0;
-        set_player_error_no(para, PLAYER_NO_AUDIO);
+	 if(filter_afmt&(1<<para->astream_info.audio_format)){	
+        	set_player_error_no(para, PLAYER_UNSUPPORT_AUDIO);
+		/* should also update the audio index  to switch back*/
+	       para->astream_info.audio_index = audio_index;
+	       para->media_info.stream_info.cur_audio_index = para->astream_info.audio_index_tab[audio_index];
+	       para->astream_info.audio_pid = pstream->id;			
+	 }		
+	 else
+        	set_player_error_no(para, PLAYER_NO_AUDIO);	 	
         update_player_states(para, 1);
         return;
     } else if (para->astream_info.audio_format == AFORMAT_UNSUPPORT) {
