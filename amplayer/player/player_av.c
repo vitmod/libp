@@ -2994,10 +2994,20 @@ void player_switch_sub(play_para_t *para)
     }
     if(para->playctrl_info.switch_sub_id==0xffff)
     {
+        log_print("## [%s:%d]set invalid sub pid \n", __FUNCTION__, __LINE__);
         //<switch_sub_id==0xffff> indecate that:
         //   the subtitle but was not supported by uplayer,
         //     so we just set invalid num for <sstream_info.sub_index>
         para->sstream_info.sub_index=para->playctrl_info.switch_sub_id;
+        if (para->stream_type != STREAM_ES) {
+            codec_reset_subtile(para->codec);
+            /* first set an invalid sub id */
+            para->codec->sub_pid = 0xffff;
+            if (codec_set_sub_id(para->codec)) {
+                log_print("[%s:%d]set invalid sub pid failed\n", __FUNCTION__, __LINE__);
+                return;
+            }
+        }
         return;
     }
 	
