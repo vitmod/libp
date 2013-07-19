@@ -7,6 +7,7 @@
 #include <codec_type.h>
 #include <libavcodec/avcodec.h>
 #include "systemsetting.h"
+#include <unistd.h>
 
 int PlayerSettingIsEnable(const char* path)
 {
@@ -124,8 +125,13 @@ int PlayerGetAFilterFormat(const char *prop)
 {
 	char value[1024];
 	int filter_fmt = 0;	
-    if(prop == NULL)
-		return 0;
+    /* check the dts/ac3 firmware status */
+    if(access("/system/etc/firmware/audiodsp_codec_ddp_dcv.bin",F_OK)){
+		filter_fmt |= (FILTER_AFMT_AC3|FILTER_AFMT_EAC3);
+    }
+    if(access("/system/etc/firmware/audiodsp_codec_dtshd.bin",F_OK) ){
+		filter_fmt  |= FILTER_AFMT_DTS;
+    }
     if (GetSystemSettingString(prop, value, NULL) > 0) {
 		log_print("[%s:%d]disable_adec=%s\n", __FUNCTION__, __LINE__, value);
 		if (strstr(value,"mpeg") != NULL || strstr(value,"MPEG") != NULL) {
