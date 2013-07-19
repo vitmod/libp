@@ -78,6 +78,7 @@ typedef struct _AESKeyForUrl{
 
 typedef struct _M3ULiveSession{
     char* baseUrl;
+    char* last_m3u8_url;
     char* redirectUrl;
     char* headers;     
     void* playlist; 
@@ -140,6 +141,7 @@ static void _init_m3u_live_session_context(M3ULiveSession* ss){
     ss->is_variant = -1;
     ss->is_encrypt_media = -1;
     ss->codec_data_time = -1;
+    ss->last_m3u8_url = NULL;
     ss->refresh_state = INITIAL_MINIMUM_RELOAD_DELAY;
     ss->log_level = 0;
     if(in_get_sys_prop_bool("media.amplayer.disp_url") != 0) {
@@ -281,6 +283,9 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
     // bandwidth_lists as changed. from android codes
 
 #if defined(HAVE_ANDROID_OS)
+    if(ss->last_m3u8_url && strcmp(ss->last_m3u8_url, url))
+        goto PASS_THROUGH;
+
     uint8_t hash[16];
 
     MD5_CTX m;
@@ -306,9 +311,14 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
 
     memcpy(ss->last_bandwidth_list_hash, hash, sizeof(hash));
 
+PASS_THROUGH:
+
     ss->refresh_state = INITIAL_MINIMUM_RELOAD_DELAY;
 #endif
 
+    if(ss->last_m3u8_url)
+        free(ss->last_m3u8_url);
+    ss->last_m3u8_url = strdup(url);
     void*bandwidth_list = NULL;
     if(!ss->redirectUrl){
         ret = m3u_parse(url,buf,blen,&bandwidth_list);
@@ -1862,6 +1872,9 @@ int m3u_session_close(void* hSession){
     }
     if(session->redirectUrl){
         free(session->redirectUrl);
+    }
+    if(session->last_m3u8_url){
+        free(session->last_m3u8_url);
     }
     if(session->bandwidth_item_num>0){
         int i = 0;
