@@ -868,6 +868,25 @@ void *player_thread(play_para_t *player)
         goto release0;
     }
 
+    float config_value = 0.0;
+    int maxbufsize = 2*1024*1024;
+    int config_ret = am_getconfig_float("media.libplayer.startplaybuf", &config_value);
+    int lpbufsize = MIN(config_value*1024, maxbufsize);
+    if(!config_ret && player->pFormatCtx->pb->is_streamed) {
+        do {
+            if(url_interrupt_cb()) {
+                break;
+            }
+            if(url_buffed_pos(player->pFormatCtx->pb) > 0 && url_buffed_pos(player->pFormatCtx->pb) < lpbufsize) {
+                if (ffmpeg_buffering_data(player) < 0) {
+                    player_thread_wait(player, 100 * 1000);
+                }
+            } else {
+                break;
+            }
+        }while(1);
+    }
+
     set_player_state(player, PLAYER_INITOK);
     update_playing_info(player);
     update_player_states(player, 1);
