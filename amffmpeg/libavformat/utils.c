@@ -3188,6 +3188,11 @@ int av_find_stream_info(AVFormatContext *ic)
 		av_log(NULL,AV_LOG_ERROR,"localplay force close fastswitch for parser profile\n");
 		fast_switch = 0;
 	}
+	/* make all the stream  valid at the beginning*/ 
+      for(i=0;i<ic->nb_streams;i++) {
+	  	 st = ic->streams[i];
+		 st->stream_valid = 1;
+      }	  	
 
 	if ((!strcmp(ic->iformat->name, "mpegts"))){
 		if (ic->pb&&ic->pb->is_slowmedia&&am_getconfig_bool("libplayer.netts.softdemux")){
@@ -3447,7 +3452,6 @@ int av_find_stream_info(AVFormatContext *ic)
             
         av_log(NULL, AV_LOG_INFO, "[%s:%d] st %d, para: %d, codec_info_nb_frames: %d,\n", __FUNCTION__, __LINE__, i, has_codec_parameters_ex(st->codec,fast_switch)
             ,st->codec_info_nb_frames);
-        st->stream_valid = 1;
         if (!has_codec_parameters_ex(st->codec,fast_switch) && (!st->codec_info_nb_frames)
             && (st->codec->codec_type == AVMEDIA_TYPE_AUDIO)) {
             av_log(NULL, AV_LOG_INFO, "[%s:%d] stream %d is unvalid! \n", __FUNCTION__, __LINE__, i);
