@@ -3449,7 +3449,7 @@ int av_find_stream_info(AVFormatContext *ic)
         st = ic->streams[i];
         if(st->codec->codec)
             avcodec_close(st->codec);
-            
+        st->stream_valid = 1;    
         av_log(NULL, AV_LOG_INFO, "[%s:%d] st %d, para: %d, codec_info_nb_frames: %d,\n", __FUNCTION__, __LINE__, i, has_codec_parameters_ex(st->codec,fast_switch)
             ,st->codec_info_nb_frames);
         if (!has_codec_parameters_ex(st->codec,fast_switch) && (!st->codec_info_nb_frames)
