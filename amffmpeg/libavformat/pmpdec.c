@@ -110,6 +110,7 @@ static int pmp_header(AVFormatContext *s, AVFormatParameters *ap) {
     return 0;
 }
 
+#define PMP_PTS_FREQ 90000
 static int pmp_packet(AVFormatContext *s, AVPacket *pkt) {
     PMPContext *pmp = s->priv_data;
     AVIOContext *pb = s->pb;
@@ -121,12 +122,21 @@ static int pmp_packet(AVFormatContext *s, AVPacket *pkt) {
     if (pmp->cur_stream == 0) {
         int num_packets;
         pmp->audio_packets = avio_r8(pb);
+        if (!pmp->audio_packets) {                               
+            av_log_ask_for_sample(s, "0 audio packets\n");       
+            return AVERROR_EOF;
+            //return AVERROR_PATCHWELCOME;
+        }                                                    
         num_packets = (pmp->num_streams - 1) * pmp->audio_packets + 1;
         avio_skip(pb, 8);
         pmp->current_packet = 0;
         av_fast_malloc(&pmp->packet_sizes,
                        &pmp->packet_sizes_alloc,
                        num_packets * sizeof(*pmp->packet_sizes));
+        if (!pmp->packet_sizes_alloc) {                                             
+            av_log(s, AV_LOG_ERROR, "Cannot (re)allocate packet buffer\n");         
+            return AVERROR(ENOMEM);                                             
+        }                                                                       
         for (i = 0; i < num_packets; i++)
             pmp->packet_sizes[i] = avio_rl32(pb);
     }
@@ -137,6 +147,21 @@ static int pmp_packet(AVFormatContext *s, AVPacket *pkt) {
         // compute_pkt_fields can handle
         if (pmp->cur_stream == 0)
             pkt->dts = s->streams[0]->cur_dts++;
+        else
+        {
+            /* PMP media data format :  |Video-audio-audio ** |Video-audio-audio -**  |Video-audio-audio**|
+          * Video has dts-pts ,but audio not have 
+          * So,we need to rebuild audio pts, only set first audio pts after video packeage
+          */
+             if(pmp->current_packet%pmp->audio_packets == 1)
+             {
+                double pts_video_cur= (PMP_PTS_FREQ*(double)(s->streams[0]->cur_dts-1)*s->streams[0]->time_base.num/s->streams[0]->time_base.den);
+                double pts_audio_each=(PMP_PTS_FREQ* (double)(s->streams[pmp->cur_stream]->time_base.num)/s->streams[pmp->cur_stream]->time_base.den);
+                pkt->pts =(int64_t)(pts_video_cur/pts_audio_each);
+                //av_log(s,NULL," pts_video_cur:%lf  pts_audio_each:%lf pts_audio:%ld",pts_video_cur,pts_audio_each,(int64_t)(pkt->pts*pts_audio_each));
+             }
+        }
+           
         pkt->stream_index = pmp->cur_stream;
     }
     if (pmp->current_packet % pmp->audio_packets == 0)
@@ -150,7 +175,17 @@ static int pmp_seek(AVFormatContext *s, int stream_index,
     PMPContext *pmp = s->priv_data;
     pmp->cur_stream = 0;
     // fallback to default seek now
-    return -1;
+    flags=flags & AVSEEK_FLAG_BACKWARD;
+    AVStream *st = s->streams[pmp->cur_stream];
+    int index = av_index_search_timestamp(st, ts, flags);
+    int64_t pos=-1;
+    //av_log(s,NULL,"search ok,ts:%lld index:%d \n",ts,index);
+    if (index < 0)
+        return -1;
+    st->cur_dts=index;
+    pos = st->index_entries[index].pos;
+    avio_seek(s->pb, pos, SEEK_SET);
+    return 0;
 }
 
 static int pmp_close(AVFormatContext *s)

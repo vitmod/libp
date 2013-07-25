@@ -39,6 +39,7 @@ static const media_type media_array[] = {
     {"mpeg", MPEG_FILE, STREAM_PS},
     {"rm", RM_FILE, STREAM_RM},
     {"avi", AVI_FILE, STREAM_ES},
+     {"pmp", PMP_FILE, STREAM_ES},
     {"mkv", MKV_FILE, STREAM_ES},
     {"matroska", MKV_FILE, STREAM_ES},
     {"mov", MOV_FILE, STREAM_ES},
@@ -1250,6 +1251,11 @@ int time_search(play_para_t *am_p,int flags)
     if (am_p->playctrl_info.seek_base_audio) {
         seek_flags |= AVSEEK_FLAG_ANY;
         stream_index = am_p->astream_info.audio_index;
+        //for pmp file , always seek with video stream, index==0
+        if(am_p->file_type == PMP_FILE)
+          stream_index = am_p->vstream_info.video_index;
+        else
+          stream_index = am_p->astream_info.audio_index;
         am_p->playctrl_info.seek_base_audio = 0;
         log_info("[time_search]switch audio, audio_idx=%d time=%f\n", stream_index, time_point);
     }
@@ -1281,6 +1287,7 @@ int time_search(play_para_t *am_p,int flags)
             am_p->file_type == FLV_FILE ||
             am_p->file_type == MOV_FILE ||
             am_p->file_type == P2P_FILE ||
+            am_p->file_type == PMP_FILE ||
             am_p->file_type == ASF_FILE ||
             am_p->file_type == STREAM_FILE) {
             if (am_p->file_type == AVI_FILE && !s->seekable) {
@@ -1340,7 +1347,7 @@ int time_search(play_para_t *am_p,int flags)
                 am_p->playctrl_info.last_seek_time_point = time_point;
             }
         } else {
-            if (((am_p->file_type == MPEG_FILE&&time_point > 0) || (am_p->file_type == APE_FILE&& time_point >= 0))
+            if (((am_p->file_type == MPEG_FILE&&time_point > 0) || (am_p->file_type == APE_FILE&& time_point >= 0)|| (am_p->file_type == AAC_FILE&& time_point >= 0))
                 && !am_p->playctrl_info.seek_frame_fail
                 && (s->pb && !s->pb->is_slowmedia)) {
                 timestamp = (int64_t)(time_point * AV_TIME_BASE);
@@ -2312,7 +2319,7 @@ int set_header_info(play_para_t *para)
             }
         } else if (pkt->type == CODEC_AUDIO) {
             if ((!para->playctrl_info.raw_mode) &&
-		   para->file_type != MPEG_FILE	    &&/*if mpeg file used softdemux,have adts header before*/
+		   para->file_type != MPEG_FILE&&para->file_type != PMP_FILE	    &&/*if mpeg file used softdemux,have adts header before*/
                 (para->astream_info.audio_format == AFORMAT_AAC || para->astream_info.audio_format == AFORMAT_AAC_LATM)) {
                 if (pkt->hdr == NULL) {
                     pkt->hdr = MALLOC(sizeof(hdr_buf_t));
