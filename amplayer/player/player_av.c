@@ -251,6 +251,8 @@ vdec_type_t video_codec_type_convert(unsigned int id)
     case CODEC_TAG_XVID:
     case CODEC_TAG_xvid:
     case CODEC_TAG_XVIX:
+	case CODEC_TAG_3IV2:
+    case CODEC_TAG_3iv2:
         log_print("VIDEO_TYPE_XVID\n");
         dec_type = VIDEO_DEC_FORMAT_MPEG4_5;
         break;

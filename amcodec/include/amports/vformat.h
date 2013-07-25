@@ -88,6 +88,8 @@ typedef enum {
 #define CODEC_TAG_divx       (0x78766964)
 #define CODEC_TAG_DIVX      (0x58564944)
 #define CODEC_TAG_DIV5      (0x35564944)
+#define CODEC_TAG_3IV2      (0x32564933)
+#define CODEC_TAG_3iv2      (0x32766933)
 #define CODEC_TAG_DX50      (0x30355844)
 #define CODEC_TAG_DIV6      (0x36564944)
 #define CODEC_TAG_RMP4      (0x34504d52)
