@@ -498,7 +498,7 @@ static void check_no_program(play_para_t *p_para)
 
 static void get_stream_info(play_para_t *p_para)
 {
-    unsigned int i;
+    unsigned int i,k;
     AVFormatContext *pFormat = p_para->pFormatCtx;
     AVStream *pStream;
     AVCodecContext *pCodec;
@@ -514,7 +514,9 @@ static void get_stream_info(play_para_t *p_para)
     aformat_t audio_format;
     int vcodec_noparameter_idx=-1;
     int acodec_noparameter_idx=-1;
-
+    int astream_id[ASTREAM_MAX_NUM] = {0};
+    int new_flag = 1;
+	
     p_para->first_index = pFormat->first_index;
 
     /* caculate the stream numbers */
@@ -582,9 +584,22 @@ static void get_stream_info(play_para_t *p_para)
 			log_print("## filtered format audio_format=%d,i=%d,----\n",audio_format,i);
 			continue;
 		}
+			// check if current audio stream exist already.
+            for (k=0; k<p_para->astream_num; k++) {
+                if (pStream->id == astream_id[k]) {
+                    new_flag = 0;
+                    break;
+                }
+            }
+            if (!new_flag) {
+                log_print("## [%s:%d] stream i=%d is the same to k=%d, id=%d,\n", __FUNCTION__, __LINE__, i, k, pStream->id);
+                new_flag = 1;
+                pStream->stream_valid = 0;
+                continue;
+            }
+            astream_id[p_para->astream_num] = pStream->id;
             p_para->astream_num ++;
             p_para->astream_info.audio_index_tab[i] = p_para->astream_num;
-		
 	    //not support blueray stream,one PID has two audio track(truehd+ac3)
 	    if(strcmp(pFormat->iformat->name, "mpegts") == 0){
 	       if(pCodec->codec_id==CODEC_ID_TRUEHD){

@@ -2659,10 +2659,17 @@ void player_switch_audio(play_para_t *para)
     AVCodecContext  *pCodecCtx;
     AVFormatContext *pFCtx = para->pFormatCtx;
     int ret = -1;
+	
+    if (para->acodec) {
+        pcodec = para->acodec;
+    } else {
+        pcodec = para->codec;
+    }
+
     /* find stream for new id */
     for (i = 0; i < pFCtx->nb_streams; i++) {
         pstream = pFCtx->streams[i];
-        if (pstream->codec->codec_type == CODEC_TYPE_AUDIO &&
+        if (pstream->codec->codec_type == CODEC_TYPE_AUDIO && pstream->stream_valid &&
             (unsigned int)pstream->id == para->playctrl_info.switch_audio_id) {
             break;
         }
@@ -2679,7 +2686,7 @@ void player_switch_audio(play_para_t *para)
     if (audio_index == -1) {
         log_print("[%s:%d]no index found\n", __FUNCTION__, __LINE__);
         return;
-    } else if (audio_index ==  para->media_info.stream_info.cur_audio_index) {
+    } else if (para->astream_info.audio_index_tab[audio_index] ==  para->media_info.stream_info.cur_audio_index) {
         log_print("[%s:%d] switch to the same audio stream !\n", __FUNCTION__, __LINE__);
         return;
     } else {
@@ -2711,14 +2718,48 @@ void player_switch_audio(play_para_t *para)
         log_error("[%s:%d]unsupport audio format\n", __FUNCTION__, __LINE__);
         para->astream_info.has_audio = 0;
         set_player_error_no(para, PLAYER_UNSUPPORT_AUDIO);
-        update_player_states(para, 1);
+        update_player_states(para, 1);   
+		
+        //if switch to a unsupported audio format, set the tsync to 0 and close the audio. if switch back, set the tsync to 1 and let audio work.
+        set_tsync_enable(0);
+        /* close audio */
+        codec_close_audio(pcodec);
+        para->astream_info.audio_index = -1;
+        para->media_info.stream_info.cur_audio_index = -1;
+
+        /* first set an invalid audio id */
+        pcodec->audio_pid = 0xffff;
+        //para->astream_info.audio_index = -1;
+        if (codec_set_audio_pid(pcodec)) {
+            log_print("[%s:%d]set invalid audio pid failed\n", __FUNCTION__, __LINE__);
+            return;
+        }
+	    /* reset audio */
+        if (codec_reset_audio(pcodec)) {
+            log_print("[%s:%d]reset audio failed\n", __FUNCTION__, __LINE__);
+            return;
+        }
+
         return;
     }
 
     /* check if it has audio */
     if (para->astream_info.has_audio == 0) {
-        return;
-    }
+        if (para->astream_num >= 1) {
+            para->astream_info.has_audio = 1;
+            set_tsync_enable(1);
+            goto audio_init;
+        } else
+            return;
+    }    
+
+	/* automute */
+    codec_audio_automute(pcodec->adec_priv, 1);
+
+    /* close audio */
+    codec_close_audio(pcodec);
+	
+audio_init:
     if (0 != pstream->time_base.den) {
         para->astream_info.audio_duration = PTS_FREQ * ((float)pstream->time_base.num / pstream->time_base.den);
         para->astream_info.start_time = pstream->start_time * pstream->time_base.num * PTS_FREQ / pstream->time_base.den;
@@ -2756,17 +2797,6 @@ void player_switch_audio(play_para_t *para)
             return;
         }
     */
-    if (para->acodec) {
-        pcodec = para->acodec;
-    } else {
-        pcodec = para->codec;
-    }
-
-    /* automute */
-    codec_audio_automute(pcodec->adec_priv, 1);
-
-    /* close audio */
-    codec_close_audio(pcodec);
 
     /* first set an invalid audio id */
     pcodec->audio_pid = 0xffff;
