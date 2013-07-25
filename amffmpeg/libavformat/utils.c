@@ -2282,8 +2282,8 @@ static void av_estimate_timings_from_bit_rate(AVFormatContext *ic)
 	}
 }
 
-#define DURATION_MAX_READ_SIZE 150000
-#define DURATION_MAX_RETRY 3
+#define DURATION_MAX_READ_SIZE 250000LL
+#define DURATION_MAX_RETRY 4
 #define CHECK_FULL_ZERO_SIZE DURATION_MAX_READ_SIZE	
 #define RETRY_CHECK_MAX 14 //check size 150000*1024*16
 static int64_t seek_last_valid_pkt(AVFormatContext *ic)
