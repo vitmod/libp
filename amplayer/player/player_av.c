@@ -731,9 +731,6 @@ static int non_raw_read(play_para_t *para)
                             if (st->codec->codec_type == CODEC_TYPE_AUDIO && (st->codec->codec_id == CODEC_ID_APE || st->codec->codec_id == CODEC_ID_AAC || st->codec->codec_id == CODEC_ID_AMR_NB || st->codec->codec_id == CODEC_ID_MP3)) {
                                 //if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
                                 //set attr
-                                if (!get_readend_set_flag()) {
-                                    set_readend_flag(1);
-                                }
                                 pkt->avpkt->data = av_mallocz(2048);
                                 //strncpy(pkt->avpkt->data,"FREND",5);
                                 pkt->avpkt->size = 2048;
