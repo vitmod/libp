@@ -1497,7 +1497,17 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
     if (!tss)
         return 0;
     ts->current_pid = pid;
+    tss->encrypt=0;
+    /* continuity check (currently not used) */
+    if(packet[3] & 0xC0){		
+	     tss->encrypt=1;
+	     av_log(NULL, AV_LOG_WARNING, "encrypt pid=0x%x\n",tss->pid);
+    }
+    cc = (packet[3] & 0xf);
+    cc_ok = (tss->last_cc < 0) || ((((tss->last_cc + 1) & 0x0f) == cc));
+    tss->last_cc = cc;
 
+    /* skip adaptation field */
     afc = (packet[3] >> 4) & 3;
     if (afc == 0) /* reserved value */
         return 0;

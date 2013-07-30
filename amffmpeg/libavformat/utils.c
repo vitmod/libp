@@ -975,6 +975,14 @@ int av_read_packet(AVFormatContext *s, AVPacket *pkt)
 
         if (pktl) {
             *pkt = pktl->pkt;
+            if (s->raw_packet_buffer_remaining_size <= 0&&s->streams[pkt->stream_index]->request_probe>0) {
+                s->streams[pkt->stream_index]->probe_packets = 0;
+                s->streams[pkt->stream_index]->request_probe= -1;
+                if(s->streams[pkt->stream_index]->codec->codec_id != CODEC_ID_NONE){
+                    av_log(s, AV_LOG_WARNING, "probed stream %d\n", s->streams[pkt->stream_index]->index);
+                }else
+                    av_log(s, AV_LOG_WARNING, "probed stream %d failed\n", s->streams[pkt->stream_index]->index);
+            }
             if(s->streams[pkt->stream_index]->request_probe <= 0){
                 s->raw_packet_buffer = pktl->next;
                 s->raw_packet_buffer_remaining_size += pkt->size;
