@@ -95,8 +95,8 @@ int adec_pts_start(aml_audio_dec_t *audec)
 
     dsp_ops->last_pts_valid = 0;
 	
-	if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
-		if((!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag))
+	if(1/*property_get("sys.amplayer.drop_pcm",value,NULL) > 0*/)
+		if(1/*(!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag)*/)
 		{
 			adec_pts_droppcm(audec);
 			vdec_pts_resume();
@@ -204,10 +204,11 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
 #if 1
     if(apts < vpts){
         drop_size = ((vpts - apts+pts_ahead_val*audio_ahead)/90) * (audec->samplerate/1000) * audec->channels *2;
-    	
+        #define DROP_PCM_DURATION_THRESHHOLD 4 //unit:s
+    	int drop_duration=drop_size/audec->channels/2/audec->samplerate;
 		int nDropCount=0;
 		adec_print("==drop_size=%d, nDropCount:%d -----------------\n",drop_size, nDropCount);
-		while(drop_size > 0){
+		while(drop_size > 0 && drop_duration <DROP_PCM_DURATION_THRESHHOLD){
 			ret = audec->adsp_ops.dsp_read(&audec->adsp_ops, buffer, MIN(drop_size, 8192));
 			//apts = adec_calc_pts(audec);
 			//adec_print("==drop_size=%d, ret=%d, nDropCount:%d apts=0x%x,-----------------\n",drop_size, ret, nDropCount,apts);
