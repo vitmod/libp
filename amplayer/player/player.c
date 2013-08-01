@@ -877,7 +877,7 @@ void *player_thread(play_para_t *player)
     int maxbufsize = 2*1024*1024;
     int config_ret = am_getconfig_float("media.libplayer.startplaybuf", &config_value);
     int lpbufsize = MIN(config_value*1024, maxbufsize);
-    if(!config_ret && player->pFormatCtx->pb->is_streamed) {
+    if(!config_ret && player->pFormatCtx->pb &&player->pFormatCtx->pb->is_slowmedia) {
         do {
             if(url_interrupt_cb()) {
                 break;
