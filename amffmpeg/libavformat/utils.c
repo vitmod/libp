@@ -750,6 +750,26 @@ static auto_switch_protol_t *try_get_mached_new_prot(ByteIOContext *pb,const cha
 	return NULL;
 }
 
+// add this func for mms:// protocol transfer by senbai.tao
+static char *transfer_mms_protocol(AVFormatContext *s, const char *filename,const char * headers)
+{
+    int ret;
+    char * file = (char *)av_malloc(strlen(filename) + 1);
+    snprintf(file, strlen(filename) + 5, "mmsh%s", filename + 3);
+    ret = avio_open_h(&s->pb, file, AVIO_FLAG_READ, headers);
+    if(ret < 0) {
+        snprintf(file, strlen(filename) + 5, "mmst%s", filename + 3);
+        ret = avio_open_h(&s->pb, file, AVIO_FLAG_READ, headers);
+    }
+    if(ret >= 0) {
+        return file;
+    } else {
+        av_free(file);
+        file = NULL;
+        return NULL;
+    }
+}
+
 
 //add this api for open third-parts libmms supports,by peter,20121121
 #include "ammodule.h"
@@ -788,8 +808,15 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
     if ( (s->iformat && s->iformat->flags & AVFMT_NOFILE) ||
         (!s->iformat && (s->iformat = av_probe_input_format(&pd, 0))))
         return 0;
-    if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
-       return ret;
+    if(!strncmp(filename, "mms:", strlen("mms:"))) {
+        char * mms_prot = transfer_mms_protocol(s, filename, headers);
+        if(mms_prot) {
+            s->pb->filename = mms_prot;
+        }
+    } else {
+        if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
+            return ret;
+    }
     s->pb->is_segment_media = 0;		
     newp=try_get_mached_new_prot(s->pb,filename);
     if(newp!=NULL){
