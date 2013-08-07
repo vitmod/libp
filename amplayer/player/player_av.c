@@ -1348,7 +1348,7 @@ int time_search(play_para_t *am_p,int flags)
         } else {
             if (((am_p->file_type == MPEG_FILE&&time_point > 0) || (am_p->file_type == APE_FILE&& time_point >= 0)|| (am_p->file_type == AAC_FILE&& time_point >= 0))
                 && !am_p->playctrl_info.seek_frame_fail
-                && (s->pb && !s->pb->is_slowmedia)) {
+                && (s->pb && (!s->pb->is_slowmedia || am_getconfig_bool("media.libplayer.net.frameseek")))) {
                 timestamp = (int64_t)(time_point * AV_TIME_BASE);
                 if (s->start_time != (int64_t)AV_NOPTS_VALUE) {
                     timestamp += s->start_time;
