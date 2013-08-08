@@ -588,50 +588,55 @@ int check_flag(play_para_t *p_para)
         p_para->playctrl_info.seek_base_audio = 0;
     }
 
-    if (p_para->sstream_info.has_sub == 0) {
-        return NONO_FLAG;
-    }
-
-    if (p_para->sstream_info.has_sub) {
-        subtitle_curr = av_get_subtitle_curr();
-    }
-    if (subtitle_curr >= 0 && subtitle_curr < p_para->sstream_num && \
-        subtitle_curr != p_para->sstream_info.cur_subindex) {
-        log_print("start change subtitle from %d to %d \n", p_para->sstream_info.cur_subindex, subtitle_curr);
-        //find new stream match subtitle_curr
-
-        for (i = 0; i < pFormat->nb_streams; i++) {
-            pStream = pFormat->streams[i];
-            pCodec = pStream->codec;
-            if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
-                find_subtitle_index ++;
-            }
-            if (find_subtitle_index == subtitle_curr + 1) {
-                p_para->playctrl_info.switch_sub_id = pStream->id;
-                break;
-            }
+    if ((p_para->state.current_pts - p_para->state.last_pts) >= PTS_FREQ/10) {
+        p_para->state.last_pts = p_para->state.current_pts;
+        if (p_para->sstream_info.has_sub == 0) {
+            return NONO_FLAG;
         }
-        p_para->sstream_info.cur_subindex = subtitle_curr;
-        if (p_para->stream_type == STREAM_PS) {
-            p_para->codec->sub_pid = p_para->media_info.sub_info[subtitle_curr]->id;
-            p_para->codec->sub_type = CODEC_ID_DVD_SUBTITLE;
-            log_print("[%s]defatult:sub_info[1] id=0x%x\n", __FUNCTION__, p_para->media_info.sub_info[1]->id);
-            if (p_para->astream_info.start_time > 0) {
-                set_subtitle_startpts(p_para->astream_info.start_time);
-            } else if (p_para->vstream_info.start_time > 0) {
-                set_subtitle_startpts(p_para->vstream_info.start_time);
+
+        if (p_para->sstream_info.has_sub) {
+            subtitle_curr = av_get_subtitle_curr();
+        }
+	
+        if (subtitle_curr >= 0 && subtitle_curr < p_para->sstream_num && \
+            subtitle_curr != p_para->sstream_info.cur_subindex) {
+            log_print("start change subtitle from %d to %d \n", p_para->sstream_info.cur_subindex, subtitle_curr);
+            //find new stream match subtitle_curr
+
+            for (i = 0; i < pFormat->nb_streams; i++) {
+                pStream = pFormat->streams[i];
+                pCodec = pStream->codec;
+                if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
+                    find_subtitle_index ++;
+                }
+                if (find_subtitle_index == subtitle_curr + 1) {
+                    p_para->playctrl_info.switch_sub_id = pStream->id;
+                    break;
+                }
+            }
+            p_para->sstream_info.cur_subindex = subtitle_curr;
+            if (p_para->stream_type == STREAM_PS) {
+                p_para->codec->sub_pid = p_para->media_info.sub_info[subtitle_curr]->id;
+                p_para->codec->sub_type = CODEC_ID_DVD_SUBTITLE;
+                log_print("[%s]defatult:sub_info[1] id=0x%x\n", __FUNCTION__, p_para->media_info.sub_info[1]->id);
+                if (p_para->astream_info.start_time > 0) {
+                    set_subtitle_startpts(p_para->astream_info.start_time);
+                } else if (p_para->vstream_info.start_time > 0) {
+                    set_subtitle_startpts(p_para->vstream_info.start_time);
+                } else {
+                    set_subtitle_startpts(0);
+                }
+                codec_set_sub_type(p_para->codec);
+                codec_set_sub_id(p_para->codec);
+                codec_reset_subtile(p_para->codec);
+            } else if (i == pFormat->nb_streams) {
+                log_print("can not find subtitle curr\n\n");
             } else {
-                set_subtitle_startpts(0);
+                player_switch_sub(p_para);
             }
-            codec_set_sub_type(p_para->codec);
-            codec_set_sub_id(p_para->codec);
-            codec_reset_subtile(p_para->codec);
-        } else if (i == pFormat->nb_streams) {
-            log_print("can not find subtitle curr\n\n");
-        } else {
-            player_switch_sub(p_para);
-        }
+        }	
     }
+	
     return NONO_FLAG;
 }
 
