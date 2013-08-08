@@ -3268,11 +3268,12 @@ int av_find_stream_info(AVFormatContext *ic)
     for(i=0;i<ic->nb_streams;i++) {	
         AVCodec *codec;
         st = ic->streams[i];
-        if (st->codec->codec_id == CODEC_ID_AAC) {
+       /* if (st->codec->codec_id == CODEC_ID_AAC) {
+        	
             st->codec->sample_rate = 0;
             st->codec->frame_size = 0;
             st->codec->channels = 0;
-        }
+        }*/
         if (st->codec->codec_type == AVMEDIA_TYPE_VIDEO ||
             st->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) {
 /*            if(!st->time_base.num)

@@ -96,7 +96,11 @@ static int pmp_header(AVFormatContext *s, AVFormatParameters *ap) {
         ast->codec->codec_type = AVMEDIA_TYPE_AUDIO;
         ast->codec->codec_id = audio_codec_id;
         ast->codec->channels = channels;
-        ast->codec->sample_rate = srate;
+        ast->codec->sample_rate = srate; 
+        
+       if(audio_codec_id == CODEC_ID_AAC)  // William workaround : set aac profile value as a default 
+            ast->codec->audio_profile = 2; 
+        
         av_set_pts_info(ast, 32, 1, srate);
     }
     pos = avio_tell(pb) + 4*index_cnt;
