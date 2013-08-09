@@ -1139,7 +1139,8 @@ typedef struct AVPacket {
      */
     int64_t convergence_duration;
 } AVPacket;
-#define AV_PKT_FLAG_KEY   0x0001
+#define AV_PKT_FLAG_KEY     0x0001 ///< The packet contains a keyframe
+#define AV_PKT_FLAG_CORRUPT 0x0002 ///< The packet content is corrupted
 
 
 #define AV_PKT_FLAG_AAC_WITH_ADTS_HEADER   0x010000
