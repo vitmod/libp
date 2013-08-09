@@ -95,8 +95,8 @@ int adec_pts_start(aml_audio_dec_t *audec)
 
     dsp_ops->last_pts_valid = 0;
 	
-	if(1/*property_get("sys.amplayer.drop_pcm",value,NULL) > 0*/)
-		if(1/*(!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag)*/)
+	if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
+		if((!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag))
 		{
 			adec_pts_droppcm(audec);
 			vdec_pts_resume();
