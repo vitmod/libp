@@ -32,9 +32,16 @@
 #include "avio_internal.h"
 #include "flv.h"
 #include <stdio.h>
+#define VALIDATE_INDEX_TS_THRESH 2500
 
 typedef struct {
     int wrong_dts; ///< wrong dts due to negative cts
+    struct {
+        int64_t dts;
+        int64_t pos;
+    } validate_index[2];
+    int validate_next;
+    int validate_count;
 } FLVContext;
 
 static int flv_probe(AVProbeData *p)
@@ -128,12 +135,20 @@ static int amf_get_string(AVIOContext *ioc, char *buffer, int buffsize) {
 }
 
 static int parse_keyframes_index(AVFormatContext *s, AVIOContext *ioc, AVStream *vstream, int64_t max_pos) {
+    FLVContext *flv = s->priv_data;
     unsigned int timeslen = 0, fileposlen = 0, i;
     char str_val[256];
     int64_t *times = NULL;
     int64_t *filepositions = NULL;
     int ret = AVERROR(ENOSYS);
     int64_t initial_pos = avio_tell(ioc);
+    if(vstream->nb_index_entries>0){
+        av_log(s, AV_LOG_WARNING, "Skiping duplicate index\n");
+        return 0;
+    }
+
+    if (s->flags & AVFMT_FLAG_IGNIDX)
+        return 0;
 
     while (avio_tell(ioc) < max_pos - 2 && amf_get_string(ioc, str_val, sizeof(str_val)) > 0) {
         int64_t** current_array;
@@ -174,11 +189,20 @@ static int parse_keyframes_index(AVFormatContext *s, AVIOContext *ioc, AVStream 
         }
     }
 
-    if (timeslen == fileposlen) {
-         for(i = 0; i < timeslen; i++)
-             av_add_index_entry(vstream, filepositions[i], times[i]*1000, 0, 0, AVINDEX_KEYFRAME);
-    } else
+    if (timeslen == fileposlen && fileposlen>1 && max_pos <= filepositions[0]) {
+        for (i = 0; i < fileposlen; i++) {
+            av_add_index_entry(vstream, filepositions[i], times[i]*1000,
+                               0, 0, AVINDEX_KEYFRAME);
+            if (i < 2) {
+                flv->validate_index[i].pos = filepositions[i];
+                flv->validate_index[i].dts = times[i] * 1000;
+                flv->validate_count = i + 1;
+            }
+        }
+    } else {
+invalid:
         av_log(s, AV_LOG_WARNING, "Invalid keyframes object, skipping.\n");
+    }
 
 finish:
     av_freep(&times);
@@ -444,6 +468,21 @@ static int flv_get_extradata(AVFormatContext *s, AVStream *st, int size)
     return 0;
 }
 
+static void clear_index_entries(AVFormatContext *s, int64_t pos)
+{
+    int i, j, out;
+    av_log(s, AV_LOG_WARNING, "Found invalid index entries, clearing the index.\n");
+    for (i = 0; i < s->nb_streams; i++) {
+        AVStream *st = s->streams[i];
+        /* Remove all index entries that point to >= pos */
+        out = 0;
+        for (j = 0; j < st->nb_index_entries; j++) {
+            if (st->index_entries[j].pos < pos)
+                st->index_entries[out++] = st->index_entries[j];
+        }
+        st->nb_index_entries = out;
+    }
+}
 static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     FLVContext *flv = s->priv_data;
@@ -466,6 +505,21 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
     avio_skip(s->pb, 3); /* stream id, always 0 */
     flags = 0;
 
+    if (flv->validate_next < flv->validate_count) {
+        int64_t validate_pos = flv->validate_index[flv->validate_next].pos;
+        if (pos == validate_pos) {
+            if (FFABS(dts - flv->validate_index[flv->validate_next].dts) <=
+                VALIDATE_INDEX_TS_THRESH) {
+                flv->validate_next++;
+            } else {
+                clear_index_entries(s, validate_pos);
+                flv->validate_count = 0;
+            }
+        } else if (pos > validate_pos) {
+            clear_index_entries(s, validate_pos);
+            flv->validate_count = 0;
+        }
+    }
     if(size == 0)
         continue;
 
@@ -611,6 +665,8 @@ leave:
 static int flv_read_seek(AVFormatContext *s, int stream_index,
     int64_t ts, int flags)
 {
+    FLVContext *flv = s->priv_data;
+    flv->validate_count = 0;
     return avio_seek_time(s->pb, stream_index, ts, flags);
 }
 
