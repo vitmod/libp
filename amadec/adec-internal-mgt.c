@@ -972,13 +972,6 @@ int audiodec_init(aml_audio_dec_t *audec)
     int nCodecType=audec->format;
     set_audio_decoder(audec);
     audec->format_changed_flag=0;
-	
-	if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
-		if((!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag))
-		{
-			set_tsync_enable(0);
-			vdec_pts_pause();
-		}
 		
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
     		audec->adsp_ops.dsp_file_fd = -1;
