@@ -658,6 +658,7 @@ retry_probe:
     } else if(strcmp((*fmt)->name,"mpegts") && probe_flag){
 		s->data_offset = old_dataoff;	
 		probe_flag =0;
+		data_offset = 0;
 		*fmt = NULL;	
 		av_free(buf);
 		buf = NULL;
