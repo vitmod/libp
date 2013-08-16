@@ -2196,3 +2196,29 @@ int codec_set_drmmode(codec_para_t *pcodec)
     return codec_h_control(pcodec->handle, AMSTREAM_IOC_SET_DRMMODE, 0);
 }
 
+/**
+ *
+ *
+ */
+int codec_get_last_checkout_apts(codec_para_t* pcodec, unsigned long *apts)
+{
+  return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_LAST_CHECKOUT_APTS, apts);
+}
+
+/**
+ *@brief  codec_get_pcm_level get the PCM data in buffer between DSP and output
+ *
+ * @param[in] pcodec Pointer of codec parameter structre
+ * @param[in] level  Address to store "level"
+ * @return 0 for success, or fail type if<0
+ */
+
+int codec_get_pcm_level(codec_para_t* pcodec, unsigned int* level)
+{
+  return audio_get_pcm_level(pcodec->adec_priv);
+}
+
+int codec_set_skip_bytes(codec_para_t* pcodec, unsigned int bytes)
+{
+  return audio_set_skip_bytes(pcodec->adec_priv);
+}

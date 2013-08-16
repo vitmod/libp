@@ -1323,6 +1323,7 @@ int update_playing_info(play_para_t *p_para)
     struct vdec_status vdec;
     struct adec_status adec;
     player_status sta;
+    unsigned long delay_ms;
     int ret;
 
     MEMSET(&vbuf, 0, sizeof(struct buf_status));
@@ -1343,24 +1344,34 @@ int update_playing_info(play_para_t *p_para)
 
 #if 1
         /* set pcm resampling for wfd */
-        if (am_getconfig_bool("media.libplayer.wfd") && (p_para->abuffer.data_level > 2048)) {
-            // 2k to try
+        if (am_getconfig_bool("media.libplayer.wfd")) {
             codec_para_t *avcodec = NULL;
             int resample_enable;
-
+            int pcm_len = 0, pcm_ms=0;
+            unsigned int last_checkout_apts = 0, apts=0;
             if (p_para->codec) {
                 avcodec = p_para->codec;
             } else if (p_para->acodec) {
                 avcodec = p_para->acodec;
             }
             if (avcodec) {
+                codec_get_audio_cur_delay_ms(avcodec, &delay_ms);
+                codec_get_last_checkout_apts(avcodec, &last_checkout_apts);
+                pcm_len = codec_get_pcm_level(avcodec);
+                apts = codec_get_apts(avcodec);
+                pcm_ms = (last_checkout_apts - apts)/90; // total PCM not playbacked
+                //log_print("delay ms: %d, apts diff:%d , pcm len : %d\n", delay_ms, (last_checkout_apts-apts)/90, pcm_len);
                 resample_enable = codec_get_audio_resample_ena(avcodec);
-                if (!resample_enable && (p_para->abuffer.data_level > 2048)) {
+                if(delay_ms > 300){// 30ms
+                  if (!resample_enable && (pcm_ms > 200)) {// 200ms
                     codec_set_audio_resample_type(avcodec, 1);  // down resample
                     codec_set_audio_resample_ena(avcodec, 1);  // enable resample
-                } /*else if (resample_enable && (p_para->abuffer.data_level < 512)) {
-                    codec_set_audio_resample_ena(avcodec, 0);  // disable resample
-                }*/
+                  } 
+                
+                  if(p_para->abuffer.data_level > 0x1500){
+                    codec_set_skip_bytes(avcodec, 0x1500);
+                  }
+                }
             }
         }
 #endif

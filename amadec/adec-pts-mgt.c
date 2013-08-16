@@ -61,7 +61,6 @@ unsigned long adec_calc_pts(aml_audio_dec_t *audec)
     } else {
         pts = 0;
     }
-
     return pts;
 }
 
@@ -94,7 +93,6 @@ int adec_pts_start(aml_audio_dec_t *audec)
     adec_print("av sync threshold is %d , no_first_apts=%d,\n", audec->avsync_threshold, audec->no_first_apts);
 
     dsp_ops->last_pts_valid = 0;
-	
 	if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
 		if((!strcmp(value,"1")||!strcmp(value,"true")) && (audec->droppcm_flag))
 		{
@@ -369,7 +367,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
         return -1;
     }
-    adec_print("report apts as %ld,system pts=%ld, difference= %ld\n", pts, systime, (pts - systime));
+    //adec_print("report apts as %ld,system pts=%ld, difference= %ld\n", pts, systime, (pts - systime));
     return 0;
 }
 

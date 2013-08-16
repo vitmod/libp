@@ -442,3 +442,26 @@ int audiodsp_automute_off(dsp_operations_t *dsp_ops)
 
     return ret;
 }
+
+
+int audiodsp_get_pcm_level(dsp_operations_t* dsp_ops)
+{
+  int val = 0;
+  if(dsp_ops->dsp_file_fd < 0){
+    adec_print("read error !! audiodsp have not opened\n");
+    return -1;
+  }
+
+  ioctl(dsp_ops->dsp_file_fd, AUDIODSP_GET_PCM_LEVEL, &val);
+  return val;
+}
+
+int audiodsp_set_skip_bytes(dsp_operations_t* dsp_ops, unsigned int bytes)
+{
+  if(dsp_ops->dsp_file_fd < 0){
+    adec_print("read error !! audiodsp have not opened\n");
+    return -1;
+  }
+
+  return ioctl(dsp_ops->dsp_file_fd, AUDIODSP_SKIP_BYTES, bytes);
+}

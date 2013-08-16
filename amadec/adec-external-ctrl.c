@@ -594,3 +594,26 @@ int audio_get_soundtrack(void *handle, int* strack )
 
     return ret;    
 }
+
+int audio_get_pcm_level(void* handle)
+{
+  aml_audio_dec_t* audec = (aml_audio_dec_t*)handle;
+  if(!handle){
+    adec_print("audio handle is NULL !\n");
+    return -1;
+  }
+
+  return audiodsp_get_pcm_level(&audec->adsp_ops);
+
+}
+
+int audio_set_skip_bytes(void* handle, unsigned int bytes)
+{
+  aml_audio_dec_t* audec = (aml_audio_dec_t*) handle;
+  if(!handle){
+    adec_print("audio handle is NULL !!\n");
+    return -1;
+  }
+
+  return audiodsp_set_skip_bytes(&audec->adsp_ops,bytes);
+}
