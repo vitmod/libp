@@ -815,8 +815,8 @@ static int non_raw_read(play_para_t *para)
                 pkt->codec = para->acodec;
                 pkt->type = CODEC_AUDIO;
                 para->read_size.apkt_num ++;
-            //} else if (has_sub && ((1<<(pkt->avpkt->stream_index))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
-            } else if (has_sub && ((1<<(para->pFormatCtx->streams[pkt->avpkt->stream_index]->id))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
+            } else if (has_sub && ((1<<(pkt->avpkt->stream_index))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
+            //} else if (has_sub && ((1<<(para->pFormatCtx->streams[pkt->avpkt->stream_index]->id))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
 #if 0
                 /* here we get the subtitle data, something should to be done */
                 if (para->playctrl_info.audio_switch_smatch) {
@@ -3077,6 +3077,8 @@ void player_switch_sub(play_para_t *para)
     } else if (pstream->codec->codec_id == CODEC_ID_TEXT || \
                pstream->codec->codec_id == CODEC_ID_SSA) {
         set_subtitle_subtype(3);
+    } else if (pstream->codec->codec_id == CODEC_ID_DVB_SUBTITLE) {
+        set_subtitle_subtype(5);
     } else {
         set_subtitle_subtype(4);
     }

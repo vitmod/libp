@@ -1277,7 +1277,9 @@ static void subtitle_para_init(play_para_t *player)
         } else if (player->sstream_info.sub_type == CODEC_ID_TEXT || \
                    player->sstream_info.sub_type == CODEC_ID_SSA) {
             set_subtitle_subtype(3);
-        } else {
+        } else if (player->sstream_info.sub_type == CODEC_ID_DVB_SUBTITLE) {
+            set_subtitle_subtype(5);
+    	} else {
             set_subtitle_subtype(4);
         }
     } else {
@@ -1322,7 +1324,7 @@ static void set_es_sub(play_para_t *p_para)
         pCodec = pStream->codec;
         if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
             es_sub_buf[sub_index].subid = pStream->id;
-			sub_stream |= 1<<pStream->id;
+			sub_stream |= 1<<pStream->index;
             log_print("[%s:%d]es_sub_buf[sub_index].i=%d,subid = %d, sub_index =%d pStream->id=%d, sub_stream=0x%x,!\n", __FUNCTION__, __LINE__, i, es_sub_buf[sub_index].subid, sub_index, pStream->id, sub_stream);
             sub_index++;
         }
