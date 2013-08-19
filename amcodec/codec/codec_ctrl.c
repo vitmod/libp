@@ -2205,6 +2205,11 @@ int codec_get_last_checkout_apts(codec_para_t* pcodec, unsigned long *apts)
   return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_LAST_CHECKOUT_APTS, apts);
 }
 
+int codec_get_last_checkin_apts(codec_para_t* pcodec, unsigned long* apts)
+{
+  return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_LAST_CHECKIN_APTS, apts);
+}
+
 /**
  *@brief  codec_get_pcm_level get the PCM data in buffer between DSP and output
  *
@@ -2221,4 +2226,9 @@ int codec_get_pcm_level(codec_para_t* pcodec, unsigned int* level)
 int codec_set_skip_bytes(codec_para_t* pcodec, unsigned int bytes)
 {
   return audio_set_skip_bytes(pcodec->adec_priv);
+}
+
+int codec_get_dsp_apts(codec_para_t* pcodec, unsigned int * apts)
+{
+  return audio_get_pts(pcodec->adec_priv, apts);
 }

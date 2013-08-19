@@ -215,7 +215,7 @@ int audiodsp_start(aml_audio_dec_t *audec)
     }
 
     if (am_getconfig_bool("media.libplayer.wfd")) {
-        ioctl(dsp_ops->dsp_file_fd, AUDIODSP_SET_PCM_BUF_SIZE, 16*1024);
+        ioctl(dsp_ops->dsp_file_fd, AUDIODSP_SET_PCM_BUF_SIZE, 8*1024);
     } else {
         ioctl(dsp_ops->dsp_file_fd, AUDIODSP_SET_PCM_BUF_SIZE, 32*1024);
     }

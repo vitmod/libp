@@ -17,6 +17,7 @@
 #include <binder/ProcessState.h>
 #include <media/AudioParameter.h>
 #include <system/audio_policy.h>
+#include <cutils/properties.h>
 
 extern "C" {
 #include <audio-dec.h>
@@ -126,17 +127,31 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
  * \param info pointer to optional parameter according to event type
  */
 
+#define AMSTREAM_IOC_MAGIC 'S'
+#define AMSTREAM_IOC_GET_LAST_CHECKIN_APTS   _IOR(AMSTREAM_IOC_MAGIC, 0xa9, unsigned long)
+#define AMSTREAM_IOC_GET_LAST_CHECKIN_VPTS   _IOR(AMSTREAM_IOC_MAGIC, 0xaa, unsigned long)
+#define AMSTREAM_IOC_GET_LAST_CHECKOUT_APTS  _IOR(AMSTREAM_IOC_MAGIC, 0xab, unsigned long)
+#define AMSTREAM_IOC_GET_LAST_CHECKOUT_VPTS  _IOR(AMSTREAM_IOC_MAGIC, 0xac, unsigned long)
+#define AMSTREAM_IOC_AB_STATUS  _IOR(AMSTREAM_IOC_MAGIC, 0x09, unsigned long)
 
+static unsigned long long ttt = 0;
 
+static int resample = 0, last_resample = 0, resample_step = 0, last_step=0;
+static int xxx;
+static int diff_record[0x40], diff_wp = 0;
+static int wfd_enable = 0, bytes_skipped = 0x7fffffff;
 
 void audioCallback(int event, void* user, void *info)
 {
-    int len;
+    int len, i;
+    unsigned last_checkin, last_checkout;
+    unsigned diff, diff_avr;
     AudioTrack::Buffer *buffer = static_cast<AudioTrack::Buffer *>(info);
     aml_audio_dec_t *audec = static_cast<aml_audio_dec_t *>(user);
 
+
     if (event != AudioTrack::EVENT_MORE_DATA) {
-        adec_print("audioCallback: event = %d \n", event);
+        adec_print(" ****************** audioCallback: event = %d \n", event);
         return;
     }
 
@@ -144,15 +159,96 @@ void audioCallback(int event, void* user, void *info)
         adec_print("audioCallback: Wrong buffer\n");
         return;
     }
+    
+    if(wfd_enable){
+        ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_GET_LAST_CHECKIN_APTS, (int)&last_checkin);
+        last_checkout = audiodsp_get_pts(&audec->adsp_ops);
+        if(last_checkin < last_checkout){
+           diff = 0;
+        }else{
+           diff = (last_checkin-last_checkout)/90;
+        }
 
-    adec_refresh_pts(audec);
+        //ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_GET_LAST_CHECKOUT_APTS, (int)&last_checkout);
+    }
+    
+    if(!wfd_enable){
+      adec_refresh_pts(audec);
+    }
+
+    if(wfd_enable){
+      // filtering
+      diff_record[diff_wp++] = diff;
+      diff_wp = diff_wp & 0x3f;
+
+      diff_avr = 0;
+      for (i=0;i<0x40;i++) diff_avr+=diff_record[i];
+      diff_avr = diff_avr / 0x40;    
+
+      //if ((xxx++ % 30) == 0) 
+      //  adec_print("audioCallback start: request %d, in: %d, out: %d, diff: %d, filtered: %d",buffer->size, last_checkin/90, last_checkout/90, diff, diff_avr);
+      if(bytes_skipped == 0 && diff < 200){
+        audiodsp_set_skip_bytes(&audec->adsp_ops, 0x7fffffff);
+        bytes_skipped = 0x7fffffff;
+      }
+
+      if(diff >1000){ // too much data in audiobuffer,should be skipped
+        audiodsp_set_skip_bytes(&audec->adsp_ops, 0);
+        bytes_skipped = 0;
+        adec_print("skip more data: last_checkin[%d]-last_checkout[%d]=%d, diff=%d\n", last_checkin/90, last_checkout/90, (last_checkin-last_checkout)/90, diff);
+      }
+      
+      if (diff_avr > 300) {
+        resample = 1; resample_step = 2;
+      } else if (diff_avr<180) {
+        // once we see a single shot of low boundry we finish down-sampling
+        resample = 1; resample_step = -2;
+      }else if(resample && (diff_avr < 200)){
+        resample = 0;
+      }
+
+
+      if (last_resample != resample || last_step != resample_step) {
+        last_resample = resample;
+        last_step = resample_step;
+        adec_print("resample changed to %d, step=%d, diff = %d", resample, resample_step,diff_avr);
+      }
+    }
 
     if (audec->adsp_ops.dsp_on) {
-        af_resample_api((char*)(buffer->i16), &buffer->size,buffer->channelCount,audec);
+      if(wfd_enable){  
+        af_resample_api((char*)(buffer->i16), &buffer->size,buffer->channelCount,audec, resample, resample_step);
+      }else{
+        af_resample_api_normal((char*)(buffer->i16), &buffer->size, buffer->channelCount, audec);
+      }
     } else {
         adec_print("audioCallback: dsp not work!\n");
     }
 
+    if(wfd_enable){
+      if (buffer->size==0) {
+        adec_print("no sample from DSP !!! in: %d, out: %d, diff: %d, filtered: %d", last_checkin/90, last_checkout/90, (last_checkin-last_checkout)/90, diff_avr);
+
+      struct buf_status {
+        int size;
+        int data_len;
+        int free_len;
+        unsigned int read_pointer;
+        unsigned int write_pointer;
+      };
+
+      struct am_io_param {
+        int data;
+        int len; //buffer size;
+        struct buf_status status;
+      };
+
+      struct am_io_param am_io;
+
+      ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_AB_STATUS, (unsigned long)&am_io);
+      adec_print("ab_level=%x, ab_rd_ptr=%x", am_io.status.data_len, am_io.status.read_pointer);
+      }
+    }
     return;
 }
 
@@ -168,7 +264,21 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     status_t status;
     AudioTrack *track;
     audio_out_operations_t *out_ops = &audec->aout_ops;
+char wfd_prop[32];
 
+ttt = 0;
+resample = 0;
+last_resample = 0;
+xxx = 0;
+memset(&diff_record[0], 0, 0x40*sizeof(diff_record[0]));
+diff_wp = 0;
+if(property_get("media.libplayer.wfd", wfd_prop, "0") > 0){
+  wfd_enable = (strcmp(wfd_prop, "1") == 0);
+}else{
+  wfd_enable = 0;
+}
+
+adec_print("wfd_enable = %d", wfd_enable);
     Mutex::Autolock _l(mLock);
 
     track = new AudioTrack();
@@ -267,6 +377,13 @@ extern "C" int android_start(struct aml_audio_dec* audec)
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 
     Mutex::Autolock _l(mLock);
+ttt = 0;
+resample = 0;
+last_resample = 0;
+xxx = 0;
+memset(&diff_record[0], 0, 0x40*sizeof(diff_record[0]));
+diff_wp = 0;
+
 
     if (!track) {
         adec_print("No track instance!\n");
@@ -323,6 +440,13 @@ extern "C" int android_resume(struct aml_audio_dec* audec)
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 
     Mutex::Autolock _l(mLock);
+ttt = 0;
+resample = 0;
+last_resample = 0;
+xxx = 0;
+memset(&diff_record[0], 0, 0x40*sizeof(diff_record[0]));
+diff_wp = 0;
+
 
     if (!track) {
         adec_print("No track instance!\n");

@@ -1352,30 +1352,68 @@ int update_playing_info(play_para_t *p_para)
             codec_para_t *avcodec = NULL;
             int resample_enable;
             int pcm_len = 0, pcm_ms=0;
-            unsigned int last_checkout_apts = 0, apts=0;
+            unsigned int last_checkout_apts = 0, apts=0, last_checkin_apts=0, dsp_apts=0;
+            static unsigned l_last_checkout_apts = 0, l_last_checkin_apts = 0, l_dsp_apts = 0,l_delay_ms = 0;
+            static int skipped = 0;
             if (p_para->codec) {
                 avcodec = p_para->codec;
             } else if (p_para->acodec) {
                 avcodec = p_para->acodec;
             }
-            if (avcodec) {
+            if (0){//avcodec) {
                 codec_get_audio_cur_delay_ms(avcodec, &delay_ms);
                 codec_get_last_checkout_apts(avcodec, &last_checkout_apts);
+                last_checkout_apts /= 90;
+                codec_get_last_checkin_apts(avcodec, &last_checkin_apts);
+                last_checkin_apts /= 90;
                 pcm_len = codec_get_pcm_level(avcodec);
                 apts = codec_get_apts(avcodec);
-                pcm_ms = (last_checkout_apts - apts)/90; // total PCM not playbacked
-                //log_print("delay ms: %d, apts diff:%d , pcm len : %d\n", delay_ms, (last_checkout_apts-apts)/90, pcm_len);
+                pcm_ms = last_checkout_apts - apts; // total PCM not playbacked
                 resample_enable = codec_get_audio_resample_ena(avcodec);
-                if(delay_ms > 300){// 30ms
+                dsp_apts = codec_get_dsp_apts(avcodec)/90;
+#if 0                
+                if(l_delay_ms != delay_ms || l_last_checkout_apts != last_checkout_apts || l_last_checkin_apts != last_checkin_apts || l_dsp_apts != dsp_apts){
+                  log_print("delay_ms = %d, pts %d->%d, dsp pts->%d", delay_ms, last_checkin_apts, last_checkout_apts, dsp_apts);
+                  l_delay_ms = delay_ms;
+                  l_last_checkin_apts = last_checkin_apts;
+                  l_last_checkout_apts = last_checkout_apts;
+                  l_dsp_apts = dsp_apts;
+                }
+#endif
+                if(delay_ms > 800){
+                  codec_set_skip_bytes(avcodec, 0);
+                  skipped = 1;
+                }else if(skipped){
+                  codec_set_skip_bytes(avcodec, 0x7fffffff);
+                  skipped = 0;
+                }
+#if 0     
+                if(delay_ms > 300){// total delayed ms
                   if (!resample_enable && (pcm_ms > 200)) {// 200ms
                     codec_set_audio_resample_type(avcodec, 1);  // down resample
                     codec_set_audio_resample_ena(avcodec, 1);  // enable resample
-                  } 
-                
-                  if(p_para->abuffer.data_level > 0x1500){
-                    codec_set_skip_bytes(avcodec, 0x1500);
+                    log_print("start resample : %d:%d\n", delay_ms,pcm_ms);
+                  }else if(resample_enable && pcm_ms < 200){
+                    codec_set_audio_resample_ena(avcodec, 0);
+                    log_print("stop resample[1] : %d\n", pcm_ms);
+                  }else if(resample_enable ){
+                    log_print("keep resample: %d\n", pcm_ms);
                   }
+                /*  
+                  if(delay_ms > 800){
+                    codec_set_skip_bytes(avcodec, 0);//target_level);
+                    log_print("skip bytes start : %d\n", delay_ms);
+                  }else{
+                    codec_set_skip_bytes(avcodec, 0x7fffffff);
+                    log_print("stop skipe bytes: %d\n", delay_ms);
+                  }
+                  */
+                }else{
+                  //codec_set_skip_bytes(avcodec, 0x7fffffff);
+                  codec_set_audio_resample_ena(avcodec, 0);
+                  log_print("stop resample and bytes skip: %d\n", delay_ms);
                 }
+#endif
             }
         }
 #endif

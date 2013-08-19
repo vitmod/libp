@@ -49,6 +49,7 @@ int audio_decode_init(void **handle, arm_audio_info *a_ainfo)
     audec->samplerate=a_ainfo->sample_rate;
     audec->format=a_ainfo->format;
     audec->adsp_ops.dsp_file_fd=a_ainfo->handle;
+    audec->adsp_ops.amstream_fd = a_ainfo->handle;
     audec->extradata_size=a_ainfo->extradata_size;
 	audec->SessionID=a_ainfo->SessionID;
 	audec->dspdec_not_supported = a_ainfo->dspdec_not_supported;
@@ -616,4 +617,14 @@ int audio_set_skip_bytes(void* handle, unsigned int bytes)
   }
 
   return audiodsp_set_skip_bytes(&audec->adsp_ops,bytes);
+}
+
+int audio_get_pts(void* handle)
+{
+  aml_audio_dec_t* audec = (aml_audio_dec_t*)handle;
+  if(!handle){
+    adec_print("audio handle is NULL !\n");
+    return -1;
+  }
+  return audiodsp_get_pts(&audec->adsp_ops);
 }

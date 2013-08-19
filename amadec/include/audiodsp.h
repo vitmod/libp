@@ -97,7 +97,7 @@ struct dsp_operations {
     unsigned long(*get_cur_pts)(dsp_operations_t *);
     unsigned long(*get_cur_pcrscr)(dsp_operations_t *);
     int (*set_cur_apts)(dsp_operations_t *dsp_ops,unsigned long apts);
-	
+	int amstream_fd;
 };
 
 typedef struct {
@@ -124,6 +124,7 @@ int audiodsp_get_decoded_nb_frames(dsp_operations_t *dsp_ops);
 int audiodsp_get_first_pts_flag(dsp_operations_t *dsp_ops);
 int audiodsp_automute_on(dsp_operations_t *dsp_ops);
 int audiodsp_automute_off(dsp_operations_t *dsp_ops);
+int audiodsp_set_skip_bytes(dsp_operations_t* dsp_ops, unsigned int bytes);
 ADEC_END_DECLS
 
 #endif

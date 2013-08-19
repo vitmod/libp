@@ -153,8 +153,8 @@ int audiodsp_format_update(aml_audio_dec_t *audec)
             if (ret == 0) {
                 //adec_print("pcm level == 0x%x\n", val);
                 if ((val < 0x1000) && (1==audiodsp_get_pcm_resample_enable())) {
-                    adec_print("disable pcm down resample");
-                    audiodsp_set_pcm_resample_enable(0);
+                //    adec_print("disable pcm down resample");
+                //    audiodsp_set_pcm_resample_enable(0);
                 }
             } 
         }
