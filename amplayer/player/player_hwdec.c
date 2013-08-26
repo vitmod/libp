@@ -684,6 +684,7 @@ int mpeg_check_sequence(play_para_t *para)
     int64_t cur_offset = 0;
     AVFormatContext *s = para->pFormatCtx;
     unsigned char buf[MPEG_PROBE_SIZE];
+    if(!s->pb) return 0;
     cur_offset = avio_tell(s->pb);
     offset = 0;
     len = 0;
