@@ -724,7 +724,8 @@ static unsigned int get_current_time(play_para_t *p_para)
         ctime = apts;
     } else {
         pcr_scr = get_pts_pcrscr(p_para);
-        ctime = pcr_scr;
+        vpts = get_pts_video(p_para);
+        ctime = handle_current_time(p_para, pcr_scr, vpts);   
     }
     if (ctime == 0) {
         log_debug("[get_current_time] curtime=0x%x pcr=0x%x apts=0x%x vpts=0x%x\n", ctime, pcr_scr, apts, vpts);
@@ -753,6 +754,9 @@ static void update_current_time(play_para_t *p_para)
 #endif
         } else  if (!p_para->playctrl_info.end_flag) {
             time = get_current_time(p_para);
+            if( time == 0 ){
+                return ; /*don't do update if time = 0, because it maybe have not init ok.*/
+            }
             if (p_para->state.start_time == -1) {
                 if (p_para->vstream_info.start_time != -1) {
                     p_para->state.start_time = p_para->vstream_info.start_time;
