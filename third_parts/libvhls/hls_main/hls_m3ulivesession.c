@@ -985,6 +985,7 @@ static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive
     int64_t fetch_start,fetch_end;
     fetch_start = in_gettimeUs();
     int drop_estimate_bw = 0;
+    int need_retry = 0;
     
 open_retry:
 {
@@ -1018,6 +1019,15 @@ open_retry:
             strlcpy(headers,s->headers,MAX_URL_SIZE);
         }
     }
+
+    if(need_retry==1){ // segment ts maybe put on http server not https
+        if(strcasestr(url,"https")){
+            char tmp_url[MAX_URL_SIZE];
+            snprintf(tmp_url,MAX_URL_SIZE,"http%s",segment->fileUrl+5);
+            url = tmp_url;
+        }
+        need_retry=0;
+    }
     
     if(s->is_encrypt_media >0 ){
         
@@ -1042,6 +1052,7 @@ open_retry:
 	     if(s->log_level >= HLS_SHOW_URL) {
                 LOGV("Maybe seek play,just retry to open,url:%s\n",url);
 	     }
+	     _thread_wait_timeUs(s,100*1000);
             hls_http_close(handle);
             handle = NULL;
             goto open_retry;            
@@ -1056,6 +1067,7 @@ open_retry:
             _thread_wait_timeUs(s,100*1000);
             hls_http_close(handle);
             handle = NULL;
+            need_retry = 1;
             goto open_retry;
 
         }else if(isLive&&(now - fetch_start)<segmentDurationUs/2){//maybe 5s
@@ -1067,6 +1079,7 @@ open_retry:
             _thread_wait_timeUs(s,100*1000);
             hls_http_close(handle);
             handle = NULL;
+            need_retry = 1;
             goto open_retry;
         }else{//failed to download,need skip this file
             LOGV("[%s],skip this segment\n",isLive>0?"LIVE":"VOD");
