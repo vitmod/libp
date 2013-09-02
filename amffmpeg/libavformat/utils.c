@@ -832,7 +832,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
                         strcpy(listfile+strlen("mmsx:"),filename);
                         
                     }else{
-                        if(av_strstart(newp->prefix,"list:",&ptr)&&(is_use_external_module("vhls_mod")>0)){
+                        if(av_strstart(newp->prefix,"list:",&ptr)&&(!strstr(filename,"AmlogicPlayerDataSouceProtocol"))&&(is_use_external_module("vhls_mod")>0)){
                             strcpy(listfile,"vhls:");
                         }else{
                         strcpy(listfile,newp->prefix);
