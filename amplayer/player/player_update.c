@@ -399,6 +399,69 @@ static int check_acodec_state(codec_para_t *codec, struct adec_status *dec, stru
     }
     return 0;
 }
+int64_t getlpbuffer_buffedsize(play_para_t *p_para)
+{
+	int64_t buffedsize = -1;
+	if (p_para->pFormatCtx && p_para->pFormatCtx->pb){
+		buffedsize =  url_buffed_size(p_para->pFormatCtx->pb);
+		//log_print("lpbuffer buffedsize = [%d]\n",buffedsize);
+	}else {
+		buffedsize = 0;
+	}
+	return buffedsize;
+}
+int64_t getstreambuffer_buffedsize(play_para_t *p_para)
+{
+	int64_t vbuffedsize =-1;
+	int64_t abuffedsize =-1;
+	int64_t buffedsize = -1;
+	int vret = -1;
+	int aret = -1;
+	codec_para_t    *vcodec = NULL;
+	codec_para_t    *acodec = NULL;
+	struct buf_status vbuf;
+	struct buf_status abuf;	
+    if ((p_para->stream_type == STREAM_ES)
+        || (p_para->stream_type == STREAM_AUDIO)
+        || (p_para->stream_type == STREAM_VIDEO)) {
+        if (p_para->astream_info.has_audio && p_para->acodec) {
+            acodec = p_para->acodec;
+        }
+        if (p_para->vstream_info.has_video && p_para->vcodec) {
+            vcodec = p_para->vcodec;
+        }
+    } else if (p_para->codec) {
+        vcodec = p_para->codec;
+        acodec = p_para->codec;
+    }
+
+	if (vcodec && p_para->vstream_info.has_video) {
+		vret = codec_get_vbuf_state(vcodec,  &vbuf);
+		if (vret == 0) {
+			vbuffedsize = vbuf.data_len;	
+			//log_print("vbuf buffedsize[%d]  vbufsize[%d]\n",vbuf.data_len,vbuf.size);
+		}else{
+			log_error("codec_get_vbuf_state error: %x\n", -vret);
+		}
+	}
+    if (acodec && p_para->astream_info.has_audio) {
+		aret = codec_get_abuf_state(acodec, &abuf);
+		if (aret == 0) {
+			abuffedsize = abuf.data_len;		
+			//log_print("abuf buffedsize[%d]  abufsize[%d]\n",abuf.data_len,abuf.size);
+		}else{
+			log_error("codec_get_abuf_state error: %x\n", -aret);
+		}
+    }
+	if (!aret && !vret){
+		buffedsize = vbuffedsize + abuffedsize;
+		//log_print("streambuf buffedsize [%d]\n",buffedsize);	
+	}else{
+		buffedsize = 0;
+	}
+	return buffedsize;
+}
+
 static int update_codec_info(play_para_t *p_para,
                              struct buf_status *vbuf,
                              struct buf_status *abuf,
@@ -1478,7 +1541,6 @@ void set_drm_rental(play_para_t *p_para, unsigned int rental_value)
 
     return;
 }
-
 int check_audio_ready_time(int *first_time)
 {
     struct timeval  new_time;
@@ -1496,8 +1558,6 @@ int check_audio_ready_time(int *first_time)
 
     return 0;
 }
-
-
 int player_hwbuflevel_update(play_para_t *player)
 {
     struct buf_status vbuf, abuf;
@@ -1554,4 +1614,5 @@ void check_avdiff_status(play_para_t *p_para)
 
     return;
 }
+
 

@@ -904,6 +904,62 @@ int player_get_play_info(int pid, player_info_t *info)
 
     return PLAYER_SUCCESS;
 }
+/* --------------------------------------------------------------------------*/
+/**
+ * @function    player_get_lpbufbuffedsize
+ *
+ * @brief       get player current lpbufbuffedsize
+ *
+ * @param[in]   pid player tag which get from player_start return value
+ *
+ * @return      plbuffedsize;
+ *
+ * @details     state defined in player_type.h
+ */
+/* --------------------------------------------------------------------------*/
+int64_t player_get_lpbufbuffedsize(int pid)
+{
+	int64_t buffedsize = -1;
+    play_para_t *player_para;
+
+    player_para = player_open_pid_data(pid);
+    if (player_para == NULL) {
+        return PLAYER_NOT_VALID_PID;
+    }
+
+    buffedsize = getlpbuffer_buffedsize(player_para);
+    player_close_pid_data(pid);
+
+    return buffedsize;
+}
+/* --------------------------------------------------------------------------*/
+/**
+ * @function    player_get_streambufbuffedsize
+ *
+ * @brief       get player current streambufbuffedsize
+ *
+ * @param[in]   pid player tag which get from player_start return value
+ *
+ * @return      streambufbuffedsize;
+ *
+ * @details     state defined in player_type.h
+ */
+/* --------------------------------------------------------------------------*/
+int64_t player_get_streambufbuffedsize(int pid)
+{
+	int64_t buffedsize = -1;
+    play_para_t *player_para;
+
+    player_para = player_open_pid_data(pid);
+    if (player_para == NULL) {
+        return PLAYER_NOT_VALID_PID;
+    }
+
+    buffedsize = getstreambuffer_buffedsize(player_para);
+    player_close_pid_data(pid);
+
+    return buffedsize;
+}
 
 /* --------------------------------------------------------------------------*/
 /**

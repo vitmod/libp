@@ -73,6 +73,8 @@ int   enable_freescale_MBX();
 int   disable_2X_2XYscale();
 int   GL_2X_scale(int mSwitch);
 int   wait_play_end();
+int64_t player_get_lpbufbuffedsize(int pid);
+int64_t player_get_streambufbuffedsize(int pid);
 
 #ifdef  __cplusplus
 }
