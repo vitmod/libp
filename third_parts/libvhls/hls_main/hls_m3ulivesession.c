@@ -1243,7 +1243,7 @@ open_retry:
             }else{
                 s->err_code = rlen;
                 hls_http_close(handle);
-                return -1;
+                return rlen;
             }
 
         }
@@ -1366,7 +1366,7 @@ static int _download_next_segment(M3ULiveSession* s){
         }
     }
  
-    if((ret == 0 || ret == HLSERROR(EAGAIN))&&s->seekflag<=0){//must not seek
+    if((ret == 0 || ret == -1000 || ret == HLSERROR(EAGAIN))&&s->seekflag<=0){//must not seek
         pthread_mutex_lock(&s->session_lock);
         ++s->cur_seq_num;
         pthread_mutex_unlock(&s->session_lock);
@@ -1415,7 +1415,7 @@ static void* _download_worker(void* ctx){
             first_download = 0;
         }
         ret = _download_next_segment(s); //100ms delay       
-        if(ret<0){
+        if(ret<0&&ret!=-1000){
             if(ret != HLSERROR(EAGAIN)){               
                 break;
             }
