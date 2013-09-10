@@ -79,6 +79,7 @@ typedef struct MOVParseTableEntry {
 
 static const MOVParseTableEntry mov_default_parse_table[];
 #define MAX_READ_SEEK (1024*1024*3-32*1024)//DEF_MAX_READ_SEEK-block_read_size
+#define LIMIT_BUFSIZE (6.8*1024*1024)
 
 static int mov_metadata_track_or_disc_number(MOVContext *c, AVIOContext *pb, unsigned len, const char *type)
 {
@@ -2612,6 +2613,8 @@ static AVIndexEntry *mov_find_next_sample(AVFormatContext *s, AVStream **st)
     AVIndexEntry *sample = NULL;
     int64_t best_dts = INT64_MAX;
     int i;
+    float limit_sec = 0;
+    float bit_rateKB = 0;	
     for (i = 0; i < s->nb_streams; i++) {
         AVStream *avst = s->streams[i];
         MOVStreamContext *msc = avst->priv_data;
@@ -2636,7 +2639,12 @@ static AVIndexEntry *mov_find_next_sample(AVFormatContext *s, AVStream **st)
                 wantnew=1;
             }else if((s->pb->seekable && s->pb->is_slowmedia)){/*seekable network,seek is slow...*/
                 int64_t curentpos=avio_tell(s->pb); 
-                if((FFABS(best_dts - dts) < AV_TIME_BASE*10)&& beststream_readed_cnt > 10 && msc->readed_count> 10){/*not first parse.*/
+                bit_rateKB = (s->bit_rate/(1024 * 8));
+                limit_sec = (float)LIMIT_BUFSIZE / (bit_rateKB * 1024);
+                if (limit_sec > 10){
+                   limit_sec = 10;
+                }  				
+                if((FFABS(best_dts - dts) < AV_TIME_BASE*limit_sec)&& beststream_readed_cnt > 10 && msc->readed_count> 10){/*not first parse.*/
                     if(FFABS(curentpos-current_sample->pos)<FFABS(curentpos-sample->pos)){
                         wantnew=1;
                     }
