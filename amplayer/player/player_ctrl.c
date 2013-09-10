@@ -981,15 +981,30 @@ int player_get_media_info(int pid, media_info_t *minfo)
     play_para_t *player_para;
     player_status sta;
 
+	while (player_get_state(pid) < PLAYER_INITOK) {
+		sta = player_get_state(pid);
+		if (sta == NULL){
+			log_error("player_get_media_info failed pid [%d]\n",pid);
+			return PLAYER_FAILED;
+		}
+		if (sta >= PLAYER_ERROR && sta <= PLAYER_EXIT) {
+			player_close_pid_data(pid);
+			log_error("player_get_media_info status err [0x%x]\n",sta);
+			return PLAYER_INVALID_CMD;
+		}
+		if ((player_get_state(pid)) == PLAYER_ERROR ||
+			player_get_state(pid) == PLAYER_STOPED ||
+			player_get_state(pid) == PLAYER_PLAYEND ||
+			player_get_state(pid) == PLAYER_EXIT) {
+			log_error("player_get_media_info failed status [0x%x]\n",sta);
+			return PLAYER_FAILED;
+		}	
+		usleep(1000 * 10);
+	 }
+
     player_para = player_open_pid_data(pid);
     if (player_para == NULL) {
         return PLAYER_NOT_VALID_PID;    /*this data is 0 for default!*/
-    }
-
-    sta = get_player_state(player_para);
-    if (sta >= PLAYER_ERROR && sta <= PLAYER_EXIT) {
-        player_close_pid_data(pid);
-        return PLAYER_INVALID_CMD;
     }
 
     MEMSET(minfo, 0, sizeof(media_info_t));
