@@ -111,6 +111,8 @@ include $(CLEAR_VARS)
 
 ifeq ($(TARGET_BOARD_PLATFORM),meson6)
     audio_firmware_dir := firmware-m6
+else ifeq ($(TARGET_BOARD_PLATFORM),meson8)
+    audio_firmware_dir := firmware-m8
 else
     audio_firmware_dir := firmware
 endif
