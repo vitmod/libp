@@ -3098,6 +3098,10 @@ void player_switch_sub(play_para_t *para)
         if (codec_reset_subtile(para->scodec)) {
             log_print("[%s:%d]reset subtile failed\n", __FUNCTION__, __LINE__);
         }
+		
+        //xsub avpkt->pts is not the valid timestamp, if sub format is xsub, don't drop packet.
+        if (pstream->codec->codec_id == CODEC_ID_XSUB)
+            cur_pts = 0;
         write_size = get_cur_sub(pstream->id, cur_pts);
         log_print("[%s:%d]pstream->id = %d, write_size = %d, es_sub_buf[8].size = %d\n", __FUNCTION__, __LINE__, pstream->id, write_size, es_sub_buf[8].size);
         while ((es_sub_buf[8].size - total_size) > 0) {
