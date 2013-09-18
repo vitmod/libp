@@ -18,8 +18,7 @@
 #include <cutils/properties.h>
 
 extern es_sub_t es_sub_buf[9];
-extern char sub_buf[9][SUBTITLE_SIZE];
-extern int sub_stream;
+
 DECLARE_ALIGNED(16, uint8_t, dec_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
 
 static int try_decode_picture(play_para_t *p_para, int video_index)
@@ -1297,7 +1296,7 @@ static void subtitle_para_init(play_para_t *player)
 }
 
 ///////////////////////////////////////////////////////////////////
-static void init_es_sub(void)
+static void init_es_sub(play_para_t *p_para)
 {
     int i;
 
@@ -1306,10 +1305,15 @@ static void init_es_sub(void)
         es_sub_buf[i].rdp = 0;
         es_sub_buf[i].wrp = 0;
         es_sub_buf[i].size = 0;
-        es_sub_buf[i].sub_buf = &sub_buf[i][0];
-        memset(&sub_buf[i][0], 0, SUBTITLE_SIZE);
+        p_para->sstream_info.sub_buf[i] = (char *)malloc(SUBTITLE_SIZE*sizeof(char));
+        if (p_para->sstream_info.sub_buf[i] == NULL) {
+            log_print("## [%s:%d] malloc subbuf i=%d, failed! ---------\n", __FUNCTION__, __LINE__, i);
+            p_para->sstream_info.has_sub = 0;
+        }
+        es_sub_buf[i].sub_buf = &(p_para->sstream_info.sub_buf[i][0]);
+        memset(&(p_para->sstream_info.sub_buf[i][0]), 0, SUBTITLE_SIZE);
     }
-	sub_stream = 0;
+    p_para->sstream_info.sub_stream = 0;
 }
 static void set_es_sub(play_para_t *p_para)
 {
@@ -1319,13 +1323,17 @@ static void set_es_sub(play_para_t *p_para)
     AVCodecContext *pCodec;
     int sub_index = 0;
 
+    if (p_para->sstream_info.has_sub == 0) {
+        return ;
+    }
+
     for (i = 0; i < pFormat->nb_streams; i++) {
         pStream = pFormat->streams[i];
         pCodec = pStream->codec;
         if (pCodec->codec_type == CODEC_TYPE_SUBTITLE) {
             es_sub_buf[sub_index].subid = pStream->id;
-			sub_stream |= 1<<pStream->index;
-            log_print("[%s:%d]es_sub_buf[sub_index].i=%d,subid = %d, sub_index =%d pStream->id=%d, sub_stream=0x%x,!\n", __FUNCTION__, __LINE__, i, es_sub_buf[sub_index].subid, sub_index, pStream->id, sub_stream);
+            p_para->sstream_info.sub_stream |= 1<<pStream->index;
+            log_print("[%s:%d]es_sub_buf[sub_index].i=%d,subid = %d, sub_index =%d pStream->id=%d, sub_stream=0x%x,!\n", __FUNCTION__, __LINE__, i, es_sub_buf[sub_index].subid, sub_index, pStream->id, p_para->sstream_info.sub_stream);
             sub_index++;
         }
     }
@@ -1343,8 +1351,7 @@ int player_dec_init(play_para_t *p_para)
     int wvenable = 0;
     AVStream *st;
 	int64_t streamtype=-1;
-
-    init_es_sub();
+	
     ret = ffmpeg_parse_file(p_para);
     if (ret != FFMPEG_SUCCESS) {
         log_print("[player_dec_init]ffmpeg_parse_file failed(%s)*****ret=%x!\n", p_para->file_name, ret);
@@ -1417,11 +1424,15 @@ int player_dec_init(play_para_t *p_para)
         p_para->vstream_num = 1;
     }
 
-    set_es_sub(p_para);
     ret = set_decode_para(p_para);
     if (ret != PLAYER_SUCCESS) {
         log_error("set_decode_para failed, ret = -0x%x\n", -ret);
         goto init_fail;
+    }
+
+    if (p_para->sstream_info.has_sub) {
+        init_es_sub(p_para);
+        set_es_sub(p_para);
     }
 #ifdef DUMP_INDEX
     int i, j;

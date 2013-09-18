@@ -31,8 +31,6 @@ int fdr_raw = -1, fdr_video = -1, fdr_audio = -1;
 int fdw_raw = -1, fdw_video = -1, fdw_audio = -1;
 
 es_sub_t es_sub_buf[9];
-char sub_buf[9][SUBTITLE_SIZE];
-int sub_stream;
 
 static const media_type media_array[] = {
     {"mpegts", MPEG_FILE, STREAM_TS},
@@ -678,6 +676,7 @@ static int non_raw_read(play_para_t *para)
     int has_video = para->vstream_info.has_video;
     int has_audio = para->astream_info.has_audio;
     int has_sub = para->sstream_info.has_sub;
+    int sub_stream = para->sstream_info.sub_stream;
     float value;
     int dump_data_mode = 0;
     char dump_path[128];
@@ -2969,13 +2968,14 @@ audio_init:
     }
     return;
 }
-static int get_cur_sub(int id, int64_t cur_pts)
+static int get_cur_sub(play_para_t *para, int id, int64_t cur_pts)
 {
     int index = 0;
     int size = 0;
     int i = 0;
     int64_t sub_pts = 0;
     int data_len = 0;
+    char **sub_buf = para->sstream_info.sub_buf;
 
     for (index = 0; index < 8; index++) {
         if (id == es_sub_buf[index].subid) {
@@ -3032,6 +3032,7 @@ void player_switch_sub(play_para_t *para)
     int total_size = 0;
     s_stream_info_t *sinfo = &para->sstream_info;
     int64_t cur_pts = para->state.current_pts;
+    char **sub_buf = para->sstream_info.sub_buf;
 	
     /* check if it has audio */
     if (para->sstream_info.has_sub == 0) {
@@ -3102,7 +3103,7 @@ void player_switch_sub(play_para_t *para)
         //xsub avpkt->pts is not the valid timestamp, if sub format is xsub, don't drop packet.
         if (pstream->codec->codec_id == CODEC_ID_XSUB)
             cur_pts = 0;
-        write_size = get_cur_sub(pstream->id, cur_pts);
+        write_size = get_cur_sub(para, pstream->id, cur_pts);
         log_print("[%s:%d]pstream->id = %d, write_size = %d, es_sub_buf[8].size = %d\n", __FUNCTION__, __LINE__, pstream->id, write_size, es_sub_buf[8].size);
         while ((es_sub_buf[8].size - total_size) > 0) {
             log_print("[%s:%d]total_size = %d\n", __FUNCTION__, __LINE__, total_size);

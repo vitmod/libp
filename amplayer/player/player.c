@@ -79,6 +79,12 @@ static int player_para_release(play_para_t *para)
                 para->media_info.sub_info[i] = NULL;
             }
         }
+        for (i=0; i<9; i++) {
+            if (para->sstream_info.sub_buf[i] != NULL) {
+                FREE(para->sstream_info.sub_buf[i]);
+                para->sstream_info.sub_buf[i] = NULL;
+            }
+        }
     }
     ffmpeg_close_file(para);
 
