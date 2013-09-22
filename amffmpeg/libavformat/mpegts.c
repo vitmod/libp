@@ -1637,9 +1637,6 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
 	     tss->encrypt=1;
 	     av_log(NULL, AV_LOG_WARNING, "encrypt pid=0x%x\n",tss->pid);
     }
-    cc = (packet[3] & 0xf);
-    cc_ok = (tss->last_cc < 0) || ((((tss->last_cc + 1) & 0x0f) == cc));
-    tss->last_cc = cc;
 
     /* skip adaptation field */
     afc = (packet[3] >> 4) & 3;
