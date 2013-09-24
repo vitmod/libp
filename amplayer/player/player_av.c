@@ -63,6 +63,7 @@ static const media_type media_array[] = {
     {"DRMdemux", MP4_FILE, STREAM_ES},
     {"cmf", MP4_FILE, STREAM_ES},
     {"amr", AMR_FILE, STREAM_AUDIO},
+    {"rtp", STREAM_FILE, STREAM_ES},
 };
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
