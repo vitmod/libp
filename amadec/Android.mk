@@ -8,6 +8,10 @@ ifdef DOLBY_DAP
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
 endif
 
+ifeq ($(TARGET_BOARD_PLATFORM),meson8)
+    LOCAL_CFLAGS+=-DMESON=8
+endif
+
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/../amavutils/include \
@@ -39,6 +43,10 @@ LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE
 ifdef DOLBY_DAP
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
+endif
+
+ifeq ($(TARGET_BOARD_PLATFORM),meson8)
+    LOCAL_CFLAGS+=-DMESON=8
 endif
 
 LOCAL_C_INCLUDES:= \

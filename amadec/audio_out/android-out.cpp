@@ -51,7 +51,7 @@ static int get_digitalraw_mode(void)
 }
 void restore_system_samplerate()
 {
-	int sr = 0;
+	unsigned int sr = 0;
 	//TODO ,other output deivce routed ??
 	AudioSystem::getOutputSamplingRate(&sr,AUDIO_STREAM_MUSIC);
 	if(sr != 48000){
@@ -148,6 +148,8 @@ void audioCallback(int event, void* user, void *info)
     unsigned diff, diff_avr;
     AudioTrack::Buffer *buffer = static_cast<AudioTrack::Buffer *>(info);
     aml_audio_dec_t *audec = static_cast<aml_audio_dec_t *>(user);
+    audio_out_operations_t *out_ops = &audec->aout_ops;
+    AudioTrack *track = (AudioTrack *)out_ops->private_data;
 
 
     if (event != AudioTrack::EVENT_MORE_DATA) {
@@ -216,14 +218,23 @@ void audioCallback(int event, void* user, void *info)
     }
 
     if (audec->adsp_ops.dsp_on) {
-      if(wfd_enable){  
+      if(wfd_enable){ 
+        #if (MESON == 8)
+        af_resample_api((char*)(buffer->i16), &buffer->size,track->channelCount(),audec, resample, resample_step);
+        #else
         af_resample_api((char*)(buffer->i16), &buffer->size,buffer->channelCount,audec, resample, resample_step);
+        #endif 
       }else{
+        #if (MESON == 8)
+        af_resample_api_normal((char*)(buffer->i16), &buffer->size, track->channelCount(), audec);
+        #else
         af_resample_api_normal((char*)(buffer->i16), &buffer->size, buffer->channelCount, audec);
+        #endif 
       }
-    } else {
+     } else {
         adec_print("audioCallback: dsp not work!\n");
     }
+
 
     if(wfd_enable){
       if (buffer->size==0) {
@@ -525,7 +536,11 @@ extern "C" int android_mute(struct aml_audio_dec* audec, adec_bool_t en)
         return -1;
     }
 
-    track->mute(en);
+   
+#if (MESON == 8)
+#else
+	track->mute(en);
+#endif
 
     return 0;
 }
