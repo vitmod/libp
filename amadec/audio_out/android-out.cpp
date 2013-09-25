@@ -51,7 +51,11 @@ static int get_digitalraw_mode(void)
 }
 void restore_system_samplerate()
 {
+#if (MESON == 8)
 	unsigned int sr = 0;
+#else
+    int sr = 0;
+#endif 
 	//TODO ,other output deivce routed ??
 	AudioSystem::getOutputSamplingRate(&sr,AUDIO_STREAM_MUSIC);
 	if(sr != 48000){
