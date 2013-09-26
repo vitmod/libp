@@ -51,8 +51,8 @@ static int get_digitalraw_mode(void)
 }
 void restore_system_samplerate()
 {
-#if (MESON == 8)
-	unsigned int sr = 0;
+#if defined(ANDROID_VERSION_JBMR2_UP)
+    unsigned int sr = 0;
 #else
     int sr = 0;
 #endif 
@@ -223,13 +223,13 @@ void audioCallback(int event, void* user, void *info)
 
     if (audec->adsp_ops.dsp_on) {
       if(wfd_enable){ 
-        #if (MESON == 8)
+        #ifdef ANDROID_VERSION_JBMR2_UP
         af_resample_api((char*)(buffer->i16), &buffer->size,track->channelCount(),audec, resample, resample_step);
         #else
         af_resample_api((char*)(buffer->i16), &buffer->size,buffer->channelCount,audec, resample, resample_step);
         #endif 
       }else{
-        #if (MESON == 8)
+        #ifdef ANDROID_VERSION_JBMR2_UP
         af_resample_api_normal((char*)(buffer->i16), &buffer->size, track->channelCount(), audec);
         #else
         af_resample_api_normal((char*)(buffer->i16), &buffer->size, buffer->channelCount, audec);
@@ -541,7 +541,7 @@ extern "C" int android_mute(struct aml_audio_dec* audec, adec_bool_t en)
     }
 
    
-#if (MESON == 8)
+#ifdef ANDROID_VERSION_JBMR2_UP
 #else
 	track->mute(en);
 #endif

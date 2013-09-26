@@ -8,13 +8,15 @@ ifdef DOLBY_DAP
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
 endif
 
-ifeq ($(TARGET_BOARD_PLATFORM),meson8)
-    LOCAL_CFLAGS+=-DMESON=8
-endif
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/../amavutils/include \
+
+
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
+    LOCAL_CFLAGS += -DANDROID_VERSION_JBMR2_UP=1
+endif
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
     LOCAL_CFLAGS += -D_VERSION_JB
@@ -45,13 +47,15 @@ ifdef DOLBY_DAP
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
 endif
 
-ifeq ($(TARGET_BOARD_PLATFORM),meson8)
-    LOCAL_CFLAGS+=-DMESON=8
-endif
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/../amavutils/include \
+
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
+    LOCAL_CFLAGS += -DANDROID_VERSION_JBMR2_UP=1
+endif
+
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
     LOCAL_CFLAGS += -D_VERSION_JB
