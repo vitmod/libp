@@ -1906,6 +1906,8 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
     if(ts_max == AV_NOPTS_VALUE){
         int64_t step= 1024;
         filesize = avio_size(s->pb);
+        if(filesize > (s->valid_offset+0x1600000)) 
+            filesize = s->valid_offset;
         pos_max = filesize - 1;
         do{
 			//if(url_interrupt_cb())
