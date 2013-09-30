@@ -353,6 +353,8 @@ typedef struct RTSPState {
 	total received bytes;
 	*/	
     uint64_t rcv_bytes;
+
+    void *priv_data;
 } RTSPState;
 
 /**
