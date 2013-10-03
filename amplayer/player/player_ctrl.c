@@ -1562,6 +1562,9 @@ static char* player_vformat2str(vformat_t value)
         case VFORMAT_H264MVC:
             return "VFORMAT_H264MVC";
             
+        case VFORMAT_H264_4K2K:
+            return "VFORMAT_H264_4K2K";
+
         default:
             return "NOT_SUPPORT VFORMAT";
     }

@@ -2030,7 +2030,7 @@ int set_header_info(play_para_t *para)
         }
 
         if (pkt->type == CODEC_VIDEO) {
-            if (((para->vstream_info.video_format == VFORMAT_H264) || (para->vstream_info.video_format == VFORMAT_H264MVC)) &&
+            if (((para->vstream_info.video_format == VFORMAT_H264) || (para->vstream_info.video_format == VFORMAT_H264MVC) || (para->vstream_info.video_format == VFORMAT_H264_4K2K)) &&
                 (para->file_type != STREAM_FILE)) {
                 if(para->file_type == AVI_FILE){
                     if((pkt->data_size>=3&&(pkt->data[0]==0)&&(pkt->data[1]==0)&&(pkt->data[2]==1))
@@ -2039,12 +2039,12 @@ int set_header_info(play_para_t *para)
                     }
                 }	
 
-				if (!(para->p_pkt->avpkt->flags & AV_PKT_FLAG_ISDECRYPTINFO)){
-                	ret = h264_update_frame_header(pkt);
-                	if (ret != PLAYER_SUCCESS) {
-                    	return ret;
-                	}
-				}
+                if (!(para->p_pkt->avpkt->flags & AV_PKT_FLAG_ISDECRYPTINFO)){
+                    ret = h264_update_frame_header(pkt);
+                    if (ret != PLAYER_SUCCESS) {
+                        return ret;
+                    }
+                }
 
             } else if (para->vstream_info.video_format == VFORMAT_MPEG4) {
                 if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_MPEG4_3) {

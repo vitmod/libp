@@ -515,6 +515,7 @@ static void get_stream_info(play_para_t *p_para)
     int acodec_noparameter_idx=-1;
     int astream_id[ASTREAM_MAX_NUM] = {0};
     int new_flag = 1;
+    int unsupported_video = 0;
 	
     p_para->first_index = pFormat->first_index;
 
@@ -729,9 +730,42 @@ static void get_stream_info(play_para_t *p_para)
     }
 
     if (video_index != -1) {
-        if ((p_para->vstream_info.video_width > 1920)
-            || (p_para->vstream_info.video_height > 1088)) {
-            log_error("[%s]can't support exceeding video \n", __FUNCTION__);
+        if (p_para->vstream_info.video_format == VFORMAT_H264) {
+            if ((p_para->vstream_info.video_width > 3840) ||
+                (p_para->vstream_info.video_height > 2160)) {
+                unsupported_video = 1;
+                log_print("[%s:%d] H.264 video profile not supported", __FUNCTION__, __LINE__);
+            } else if ((p_para->vstream_info.video_width > 1920) ||
+                       (p_para->vstream_info.video_height > 1088)) {
+                if (p_para->vdec_profile.h264_4k2k_para.exist) {
+                    p_para->vstream_info.video_format = VFORMAT_H264_4K2K;
+                    log_print("H.264 4K2K video format applied.");
+                } else {
+                    unsupported_video = 1;
+                    log_print("[%s:%d] H.264 video profile not supported");
+                }
+            }
+        } else {
+            if ((p_para->vstream_info.video_width > 1920) ||
+                (p_para->vstream_info.video_height > 1088)) {
+                unsupported_video = 1;
+            } else if (p_para->vstream_info.video_format == VFORMAT_VC1) {
+                if ((!p_para->vdec_profile.vc1_para.interlace_enable) &&
+                    (p_para->pFormatCtx->streams[video_index]->codec->frame_interlace)) {
+                    unsupported_video = 1;
+                    log_print("[%s:%d]vc1 interlace video, not support!\n", __FUNCTION__, __LINE__);
+                }
+                if (p_para->pFormatCtx->streams[video_index]->codec->vc1_profile == 2) {
+                    // complex profile, we don't support now
+                    unsupported_video = 1;
+                    log_print("[%s:%d]vc1 complex profile video, not support!\n", __FUNCTION__, __LINE__);
+                }
+            }
+
+        }
+
+        if (unsupported_video) {
+            log_error("[%s]can't support exceeding video profile\n", __FUNCTION__);
             set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
             update_player_states(p_para, 1);
             p_para->vstream_info.has_video = 0;
@@ -739,38 +773,6 @@ static void get_stream_info(play_para_t *p_para)
         }
     }
 
-    if (p_para->vstream_info.video_format == VFORMAT_VC1 && video_index != -1) {
-
-        if (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WVC1 &&
-            p_para->vstream_info.video_width > 1920) {
-            log_error("[%s]can't support wvc1 exceed 1920\n", __FUNCTION__);
-            p_para->vstream_info.has_video = 0;
-        } else if (!p_para->vdec_profile.vc1_para.interlace_enable) {
-            if (p_para->pFormatCtx->streams[video_index]->codec->frame_interlace) {
-                log_print("[%s:%d]vc1 interlace video, not support!\n", __FUNCTION__, __LINE__);
-                set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
-                p_para->vstream_info.has_video = 0;
-                p_para->vstream_info.video_index = -1;
-            }
-
-        }
-
-        if (p_para->pFormatCtx->streams[video_index]->codec->vc1_profile == 2) {
-            // complex profile, we don't support now
-            log_print("[%s:%d]vc1 complex profile video, not support!\n", __FUNCTION__, __LINE__);
-            set_player_error_no(p_para, PLAYER_UNSUPPORT_VIDEO);
-            p_para->vstream_info.has_video = 0;
-            p_para->vstream_info.video_index = -1;
-        }
-    }
-
-    if ((p_para->vstream_info.video_format == VFORMAT_H264 || p_para->vstream_info.video_format == VFORMAT_H264MVC) && video_index != -1) {
-        if (p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_H264 &&
-            p_para->vstream_info.video_height > 1088) {
-            log_error("[%s]can't support h264 height exceed 1088\n", __FUNCTION__);
-            p_para->vstream_info.has_video = 0;
-        }
-    }
     return;
 }
 
