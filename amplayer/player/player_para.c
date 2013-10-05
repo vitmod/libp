@@ -731,8 +731,8 @@ static void get_stream_info(play_para_t *p_para)
 
     if (video_index != -1) {
         if (p_para->vstream_info.video_format == VFORMAT_H264) {
-            if ((p_para->vstream_info.video_width > 3840) ||
-                (p_para->vstream_info.video_height > 2160)) {
+            if ((p_para->vstream_info.video_width > 4096) ||
+                (p_para->vstream_info.video_height > 2304)) {
                 unsupported_video = 1;
                 log_print("[%s:%d] H.264 video profile not supported", __FUNCTION__, __LINE__);
             } else if ((p_para->vstream_info.video_width > 1920) ||
