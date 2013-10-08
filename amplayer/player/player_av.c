@@ -1232,7 +1232,7 @@ int time_search(play_para_t *am_p,int flags)
         am_p->state.first_time=-1;
 	//----------------------------------
 
-    if(time_point >= am_p->state.full_time) {
+    if((am_p->state.full_time > 0) && (time_point >= am_p->state.full_time)) {
         return ret;
     }
 	
