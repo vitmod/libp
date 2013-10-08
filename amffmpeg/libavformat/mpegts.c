@@ -35,6 +35,9 @@
 #include "mpeg.h"
 #include "isom.h"
 
+#include <dlfcn.h>
+#include <stdio.h>
+
 /* maximum size in which we look for synchronisation if
    synchronisation is lost */
 #define MAX_RESYNC_SIZE 65536
@@ -56,7 +59,7 @@
 #define RECALC_DISPTS_TAG ("amlogictsdiscontinue")
 
 //#define TS_DEBUG
-
+//#define PES_DUMP
 #ifdef TS_DEBUG
 #define ts_print(level,fmt...) av_log(NULL,level,##fmt)
 #else
@@ -167,6 +170,8 @@ struct MpegTSContext {
     int current_pid;
 };
 
+typedef int HDCPDecryptFunc(const void *inData, size_t size, uint32_t streamCTR, uint64_t inputCTR, void *outData);
+
 static const AVOption options[] = {
     {"compute_pcr", "Compute exact PCR for each transport stream packet.", offsetof(MpegTSContext, mpeg2ts_compute_pcr), FF_OPT_TYPE_INT,
      {.dbl = 0}, 0, 1, AV_OPT_FLAG_DECODING_PARAM },
@@ -179,6 +184,8 @@ static const AVClass mpegtsraw_class = {
     .option     = options,
     .version    = LIBAVUTIL_VERSION_INT,
 };
+
+static HDCPDecryptFunc* HDCP_decrypt = NULL;
 
 /* TS stream handling */
 
@@ -212,7 +219,11 @@ typedef struct PESContext {
     int extended_stream_id;
     int64_t pts, dts;
     int64_t ts_packet_pos; /**< position of first TS packet of this PES packet */
+    int     has_private_data;
+    uint32_t track_index;
+    uint64_t input_CTR;
     uint8_t header[MAX_PES_HEADER_SIZE];
+    
     uint8_t *buffer;
 } PESContext;
 
@@ -686,10 +697,100 @@ static int mpegts_set_stream_info(AVStream *st, PESContext *pes,
     return 0;
 }
 
+static HDCPDecryptFunc* get_HDCP_decrypt()
+{
+    void * mLibHandle = dlopen("libstagefright_hdcp.so", RTLD_NOW);
+
+    if (mLibHandle == NULL) {
+        av_log(NULL, AV_LOG_ERROR, "Unable to locate libstagefright_hdcp.so\n");
+        return NULL;
+    }
+    av_log(NULL, AV_LOG_ERROR, "get_HDCP_decrypt\n");
+
+    return (HDCPDecryptFunc*)dlsym(mLibHandle, "_ZN7android17HDCPModuleAmlogic7decryptEPKvjjyPv");
+}
+
+static int get_nal_size(uint8_t* buf, int size)
+{
+    int nal_size;
+    for(nal_size = 0; nal_size < size - 4; nal_size++) {
+        if(*(buf + nal_size) == 0 && *(buf + nal_size + 1) == 0 && 
+           *(buf + nal_size + 2) == 0 && *(buf + nal_size + 3) == 1) {
+            return nal_size;
+        }
+    }
+    return -1;
+}
+
 static void new_pes_packet(PESContext *pes, AVPacket *pkt)
 {
     av_init_packet(pkt);
+#ifdef PES_DUMP
+    {
+        static FILE* fd1 = NULL;
+        
+        if(fd1 == NULL) {
+            fd1 = fopen("/temp/data1.dat", "w+");
+        }
+        if(fd1 == NULL) {
+            av_log(NULL, AV_LOG_ERROR, "open file1 failed.");
+        }
+        if(fd1!=NULL) {
+            fwrite(pes->buffer, pes->data_index, 1, fd1);
+        }  
+    }
+#endif
+    if(pes->has_private_data == 1) {
+        if(HDCP_decrypt == NULL) {
+            HDCP_decrypt = get_HDCP_decrypt();
+            if(HDCP_decrypt == NULL) {
+                av_log(NULL, AV_LOG_ERROR, "get HDCP_decrypt failed.");
+            }
+        }
+        int skip = 0;
+        if (pes->buffer[0] == 0x00 && pes->buffer[1] == 0x00 &&
+                    pes->buffer[2] == 0x00 && pes->buffer[3] == 0x01) {
+            skip += 4;
+            if((*(pes->buffer + skip) & 0x1f) == 7) {
+                int skip_sps = get_nal_size(pes->buffer + skip, pes->data_index - skip);
+                if(skip_sps != -1) {
+                    skip += skip_sps + 4;
+                    if((*(pes->buffer + skip) & 0x1f) == 8) {
+                        int skip_pps = get_nal_size(pes->buffer + skip, pes->data_index - skip);
+                        if(skip_pps != -1) {
+                            skip += skip_pps +4;
+                        }
+                    }
+                 }
+            }
+        }
 
+		if(HDCP_decrypt != NULL) {
+			int err = HDCP_decrypt(
+					pes->buffer + skip, pes->data_index - skip,
+					pes->track_index ,
+					pes->input_CTR,
+					pes->buffer + skip);
+			if (err) {
+				av_log(NULL, AV_LOG_ERROR, "HDCP_decrypt:%d, pes->track_index:%d,pes->input_CTR:%llx:skip:%d\n", pes->data_index, pes->track_index, pes->input_CTR, skip);
+				av_log(NULL, AV_LOG_ERROR, "HDCP_decrypt,ret:%d\n", err);
+			}
+		}
+#ifdef PES_DUMP
+        {
+            static FILE* fd2 = NULL;
+            if(fd2 == NULL) {
+                fd2  = fopen("/temp/data2.dat", "w+");
+            }
+            if(fd2 == NULL) {
+                av_log(NULL, AV_LOG_ERROR, "open file2 failed.");
+            }
+            if(fd2!=NULL) {
+                fwrite(pes->buffer, pes->data_index, 1, fd2);
+            }  
+        }
+#endif        
+    }
     pkt->destruct = av_destruct_packet;
     pkt->data = pes->buffer;
     pkt->size = pes->data_index;
@@ -710,6 +811,9 @@ static void new_pes_packet(PESContext *pes, AVPacket *pkt)
     pes->dts = AV_NOPTS_VALUE;
     pes->buffer = NULL;
     pes->data_index = 0;
+    pes->has_private_data = 0;
+    pes->track_index = 0;
+    pes->input_CTR = 0;
 }
 
 /* return non zero if a packet could be constructed */
@@ -717,6 +821,8 @@ static int mpegts_push_data(MpegTSFilter *filter,
                             const uint8_t *buf, int buf_size, int is_start,
                             int64_t pos)
 {
+    //av_log(NULL, AV_LOG_ERROR, "mpegts_push_data,is_start:%d, buf_size:%d\n",is_start, buf_size);
+
     PESContext *pes = filter->u.pes_filter.opaque;
     MpegTSContext *ts = pes->ts;
     const uint8_t *p;
@@ -847,6 +953,29 @@ static int mpegts_push_data(MpegTSFilter *filter,
                 pes->extended_stream_id = -1;
                 if (flags & 0x01) { /* PES extension */
                     pes_ext = *r++;
+                    if(pes_ext & 0x8) {
+                        //uint8_t private_data[16];
+                        //memcpy(private_data, r, 16);
+                     
+                        pes->track_index =  (uint32_t)(r[1] &0xfe) << 29 |
+                                            (uint32_t)r[2] << 22 |
+                                            (uint32_t)(r[3] &0xfe) << 14 |
+                                            (uint32_t)r[4] << 7 |
+                                            (uint32_t)(r[5]&0xfe) >> 1;
+                                            
+                        pes->input_CTR =    (uint64_t)(r[7] &0xfe) << 59 |
+                                            (uint64_t)r[8] << 52 |
+                                            (uint64_t)(r[9] &0xfe) << 44 |
+                                            (uint64_t)r[10] << 37 |
+                                              (uint64_t)(r[11] &0xfe) << 29 |
+                                            (uint64_t)r[12] << 22 |
+                                            (uint64_t)(r[13] &0xfe) << 14 |
+                                            (uint64_t)r[14] << 7 |
+                                            (uint64_t)(r[15]&0xfe) >> 1;
+                        pes->has_private_data = 1;
+
+                    }
+                    
                     /* Skip PES private data, program packet sequence counter and P-STD buffer */
                     skip = (pes_ext >> 4) & 0xb;
                     skip += skip & 0x9;
@@ -865,6 +994,8 @@ static int mpegts_push_data(MpegTSFilter *filter,
             }
             break;
         case MPEGTS_PAYLOAD:
+            //av_log(NULL, AV_LOG_ERROR, "MPEGTS_PAYLOAD :%d\n", buf_size);
+
             if (buf_size > 0 && pes->buffer) {
                 if (pes->data_index > 0 && pes->data_index+buf_size > pes->total_size) {
                     new_pes_packet(pes, ts->pkt);
@@ -923,6 +1054,9 @@ static PESContext *add_pes_stream(MpegTSContext *ts, int pid, int pcr_pid)
         av_free(pes);
         return 0;
     }
+    pes->has_private_data = 0;
+    pes->track_index = 0;
+    pes->input_CTR = 0;
     return pes;
 }
 
@@ -2024,7 +2158,7 @@ static int mpegts_read_close(AVFormatContext *s)
 
     for(i=0;i<NB_PID_MAX;i++)
         if (ts->pids[i]) mpegts_close_filter(ts, ts->pids[i]);
-
+    HDCP_decrypt = NULL;
     return 0;
 }
 
@@ -2266,6 +2400,9 @@ void ff_mpegts_parse_close(MpegTSContext *ts)
         av_free(ts->pids[i]);
     av_free(ts);
 }
+
+
+
 
 AVInputFormat ff_mpegts_demuxer = {
     "mpegts",

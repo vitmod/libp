@@ -1370,6 +1370,11 @@ int player_dec_init(play_para_t *p_para)
 	   	file_type=STREAM_FILE;
 		stream_type=STREAM_ES;
 		ret = PLAYER_SUCCESS;
+	   }else if(p_para->start_param->is_ts_soft_demux){
+            log_print("Player config used soft demux,used soft demux now.\n");
+            file_type=STREAM_FILE;
+            stream_type=STREAM_ES;
+            ret = PLAYER_SUCCESS;
 	   }
     }
    

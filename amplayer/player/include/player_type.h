@@ -311,6 +311,7 @@ typedef struct
 	int buffing_force_delay_s;
 	int lowbuffermode_flag;
 	int lowbuffermode_limited_ms;
+	int is_ts_soft_demux;
 	int reserved [56];					//reserved  for furthur used,some one add more ,can del reserved num
 	int SessionID;
  }play_control_t; 
