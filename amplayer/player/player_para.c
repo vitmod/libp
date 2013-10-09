@@ -779,7 +779,6 @@ static void get_stream_info(play_para_t *p_para)
 static int set_decode_para(play_para_t*am_p)
 {
     signed short audio_index = am_p->astream_info.audio_index;
-	signed short video_index = am_p->vstream_info.video_index;
     int ret = -1;
     int rev_byte = 0;
     int total_rev_bytes = 0;
@@ -797,22 +796,8 @@ static int set_decode_para(play_para_t*am_p)
     log_print("[%s:%d]has_video=%d vformat=%d has_audio=%d aformat=%d", __FUNCTION__, __LINE__, \
               am_p->vstream_info.has_video, am_p->vstream_info.video_format, \
               am_p->astream_info.has_audio, am_p->astream_info.audio_format);
-
-	video_index = am_p->vstream_info.video_index;
-	if (video_index != -1) {
-		AVStream *pStream;
-		AVCodecContext  *pCodecCtx;
-		pStream = am_p->pFormatCtx->streams[video_index];
-		pCodecCtx = pStream->codec;
-		if (am_p->stream_type == STREAM_ES && pCodecCtx->codec_tag != 0) {
-			video_codec_id=pCodecCtx->codec_tag;
-		}
-		else {
-			video_codec_id=pCodecCtx->codec_id;
-		}
-	}
 	
-	filter_vfmt = PlayerGetVFilterFormat(video_codec_id);	
+	filter_vfmt = PlayerGetVFilterFormat(am_p);	
 
     if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
         log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
