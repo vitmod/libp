@@ -282,9 +282,45 @@ int get_device_win(OSD_DISP_MODE dismod, int *x, int *y, int *w, int *h)
     return 0;
 }
 
+int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *rotation,int osd_rotation){
+	int fb0_w, fb0_h;
+	amdisplay_utils_get_size(&fb0_w, &fb0_h);
+	ALOGD("amvideo_convert_axis convert before %d,%d,%d,%d -- %d,%d",*x,*y,*w,*h,*rotation,osd_rotation);
+
+    if(osd_rotation == 90){
+        *rotation = (*rotation + osd_rotation)%360;
+        int tmp = *w;
+        *w = *h;
+        *h = tmp;
+
+        tmp = *y;
+        *y = fb0_w - *h - *x + 1;
+        *x = tmp;
+    } else if(osd_rotation == 270){// 270
+        *rotation = (*rotation + osd_rotation)%360;
+        int tmp = *w;
+        *w = *h;
+        *h = tmp;
+
+        tmp = *x;
+        *x = fb0_h - *w - *y + 1;
+        *y = tmp;
+    } else {
+        ALOGE("should no this rotation!");
+    }
+    ALOGD("amvideo_convert_axis convert end %d,%d,%d,%d -- %d",*x,*y,*w,*h,*rotation);
+    return 0;
+}
+
+
 int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t h, int rotation)
 {
     LOG_FUNCTION_NAME
+	//for osd rotation, need convert the axis first
+	int osd_rotation = amdisplay_utils_get_osd_rotation();
+	if(osd_rotation > 0)
+        amvideo_convert_axis(&x,&y,&w,&h,&rotation,osd_rotation);
+	
     int video_fd;
     int dev_fd = -1, dev_w, dev_h, disp_w, disp_h, video_global_offset;
     int dst_x, dst_y, dst_w, dst_h;

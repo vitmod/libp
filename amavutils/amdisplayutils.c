@@ -9,10 +9,12 @@
 #include <sys/ioctl.h>
 #include "include/Amdisplayutils.h"
 
+
 #define FB_DEVICE_PATH   "/sys/class/graphics/fb0/virtual_size"
 #define SCALE_AXIS_PATH  "/sys/class/graphics/fb0/scale_axis"
 #define SCALE_PATH       "/sys/class/graphics/fb0/scale"
 #define SCALE_REQUEST 	 "/sys/class/graphics/fb0/request2XScale"
+#define OSD_ROTATION_PATH "/sys/class/graphics/fb0/prot_angle"
 #define SYSCMD_BUFSIZE 40
 
 #ifndef LOGD
@@ -116,6 +118,38 @@ int amdisplay_utils_set_scale_mode(int scale_wx, int scale_hx)
     }
     
     return ret;
+}
+
+
+int amdisplay_utils_get_osd_rotation()
+{
+    char buf[40];
+    int ret;
+    ret = amsysfs_get_sysfs_str(OSD_ROTATION_PATH, buf, SYSCMD_BUFSIZE);
+    if(ret < 0)
+        return 0;//no rotation
+
+    int rotation = 0;
+    if (sscanf(buf, "osd_rotate:%d", &rotation) == 1) {
+        LOGI("get osd rotation  %d\n", rotation);
+    }
+
+    switch (rotation) {
+        case 0:
+            rotation = 0;
+            break;
+        case 1:
+            rotation = 90;
+            break;
+        case 2:
+            rotation = 270;
+            break;
+        default:
+            break;
+    }
+
+    LOGD("amdisplay_utils_get_osd_rotation return %d",rotation);
+    return rotation;
 }
 
 
