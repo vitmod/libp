@@ -697,6 +697,17 @@ static unsigned int is_chapter_discontinue(play_para_t *p_para)
     return 0;
 }
 
+/*
+  *brief: check if a-v discontinue event both occued
+  *         a-v diff <threshold means a-v discontinue both occued
+  *param: diff, a-v diff
+  *return: 1 if both occued 0 if not
+*/
+static unsigned int av_interrupted_finished(int diff)
+{
+    int threshold=PTS_FREQ*2;//2s
+    return (diff>threshold)?0:1;
+}
 static unsigned int get_current_time(play_para_t *p_para)
 {
     unsigned int pcr_scr = 0, vpts = 0, apts = 0;
@@ -726,7 +737,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 	//log_info("video pts discontinue!, adiff=%lu,vdiff=%lu,\n",audio_pts_discontinue_diff,video_pts_discontinue_diff);		
         if (p_para->astream_info.has_audio) {
 	    use_apts_as_time = 1;
-            if (check_time_interrupt(&p_para->playctrl_info.pts_discontinue_check_time, video_pts_discontinue_diff)){
+            if (av_interrupted_finished(video_pts_discontinue_diff)){
                 time_adjust_flag = 1;
                 use_apts_as_time = 0;
             }
@@ -741,6 +752,12 @@ static unsigned int get_current_time(play_para_t *p_para)
                 set_discontinue = 1;
                 p_para->discontinue_flag = 0;
                 log_info("vpts discontinue, point=%d\n", p_para->discontinue_point);
+                //discontinue handled, remove audio discontinue flag
+                if (p_para->astream_info.has_audio&&codec)
+                {
+                    codec_set_sync_audio_discont(codec, 0);
+    		      codec_set_sync_audio_discont_diff(codec, 0);
+                }
             }
             if (codec) {
                 codec_set_sync_video_discont(codec, 0);
@@ -750,21 +767,36 @@ static unsigned int get_current_time(play_para_t *p_para)
         log_info("vpts discontinue, vpts=0x%x scr=0x%x apts=0x%x vdiff=%lu\n", 
                     get_pts_video(p_para), get_pts_pcrscr(p_para), get_pts_audio(p_para),video_pts_discontinue_diff);
     }
-
+    time_adjust_flag=0;
     if (audio_pts_discontinue > 0) {
         //log_info("audio pts discontinue, curtime=%d lasttime=%d\n", p_para->state.current_time, p_para->state.last_time);
         use_apts_as_time = 0;
-        if (!set_discontinue && is_chapter_discontinue(p_para) /*&&
-			(p_para->state.current_time < p_para->state.last_time)*/)
-		{
-            p_para->discontinue_point = p_para->state.current_time;
-            set_discontinue = 1;
-            p_para->discontinue_flag = 0;
-            log_info("apts discontinue, point=%d\n", p_para->discontinue_point);
+         if (p_para->vstream_info.has_video) {
+            if (av_interrupted_finished(audio_pts_discontinue_diff)){
+                time_adjust_flag = 1;
+                use_apts_as_time = 1;
+            }
         }
-        if (codec) {
-            codec_set_sync_audio_discont(codec, 0);
-			codec_set_sync_audio_discont_diff(codec, 0);
+        else {
+            time_adjust_flag = 1;
+        }
+        if (time_adjust_flag == 1){
+          if (!set_discontinue && is_chapter_discontinue(p_para)/* &&
+			(p_para->state.current_time < p_para->state.last_time)*/)
+		  {
+              p_para->discontinue_point = p_para->state.current_time;
+              set_discontinue = 1;
+              p_para->discontinue_flag = 0;
+              log_info("apts discontinue, point=%d\n", p_para->discontinue_point);
+              if (p_para->vstream_info.has_video&&codec) {
+                  codec_set_sync_video_discont(codec, 0);
+    		      codec_set_sync_video_discont_diff(codec, 0);
+              }
+          }
+          if (codec) {
+              codec_set_sync_audio_discont(codec, 0);
+			  codec_set_sync_audio_discont_diff(codec, 0);
+          }
         }
         log_info("apts discontinue, vpts=0x%x scr=0x%x apts=0x%x adiff=%lu\n", 
                     get_pts_video(p_para), get_pts_pcrscr(p_para), get_pts_audio(p_para),audio_pts_discontinue_diff);
