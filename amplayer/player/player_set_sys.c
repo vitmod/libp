@@ -492,8 +492,21 @@ int DisableFreeScale(display_mode mode, const int vpp) {
     char* ppmgr_rect_path = "/sys/class/ppmgr/ppscaler_rect";
     char* video_path = "/sys/class/video/disable_video";
     char* vaxis_path = "/sys/class/video/axis";
-    
-    //log_print("DisableFreeScale: mode=%d", mode);
+    log_print("DisableFreeScale: mode=%d vpp=%d ", mode,vpp);
+
+	int isM8 = 0;
+	char value[128];
+	memset(value, 0 ,128);
+	property_get("ro.product.model", value, "1");
+	if(strstr(value,"M8"))
+	{
+		isM8 =1;
+		log_print("hi,amplayer DisableFreeScale say hello to new chip M8.");
+	}
+
+
+
+
     if (mode < DISP_MODE_480I || mode > DISP_MODE_1080P)
         return 0;
 
@@ -556,7 +569,8 @@ int DisableFreeScale(display_mode mode, const int vpp) {
         case DISP_MODE_480P: //480p
             set_sysfs_str(ppmgr_path, "0");
             set_sysfs_str(video_path, "1");
-            ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
+			if(isM8==0)
+				ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
             
             if (!vpp) 
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
@@ -571,7 +585,8 @@ int DisableFreeScale(display_mode mode, const int vpp) {
         case DISP_MODE_720P: //720p
             set_sysfs_str(ppmgr_path, "0");
             set_sysfs_str(video_path, "1");
-            ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
+			if(isM8==0)
+           		 ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
             if (!vpp) ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
             sprintf(daxis_str, "%d %d %d %d %d %d 18 18", 1280 > vinfo.xres ? (1280 - vinfo.xres) / 2 : 0,
                     720 > vinfo.yres ? (720 - vinfo.yres) / 2 : 0,
@@ -589,7 +604,8 @@ int DisableFreeScale(display_mode mode, const int vpp) {
         case DISP_MODE_1080P: //1080p  
             set_sysfs_str(ppmgr_path, "0");
             set_sysfs_str(video_path, "1");
-            ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
+            if(isM8==0)
+				ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
             if (!vpp) 
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
             sprintf(daxis_str, "%d %d %d %d %d %d 18 18", 1920 > vinfo.xres ? (1920 - vinfo.xres) / 2 : 0,
@@ -626,7 +642,19 @@ int EnableFreeScale(display_mode mode, const int vpp) {
     char* ppmgr_rect_path = "/sys/class/ppmgr/ppscaler_rect";
     char* video_path = "/sys/class/video/disable_video";
     char* vaxis_path = "/sys/class/video/axis";
-    //log_print("EnableFreeScale: mode=%d", mode);	
+    log_print("EnableFreeScale: mode=%d", mode);	
+
+	int isM8 = 0;
+	char value[128];
+	memset(value, 0 ,128);
+	property_get("ro.product.model", value, "1");
+	if(strstr(value,"M8"))
+	{
+		isM8 =1;
+		log_print("hi,amplayer EnableFreeScale say hello to new chip M8.");
+	}
+
+
     if (mode < DISP_MODE_480I || mode > DISP_MODE_1080P)
         return 0;
     
@@ -693,7 +721,8 @@ int EnableFreeScale(display_mode mode, const int vpp) {
             }
             
             set_sysfs_str(daxis_path, daxis_str);
-            ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
+			if(isM8==0)
+            	ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
             
             if (!vpp)
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
@@ -728,7 +757,8 @@ int EnableFreeScale(display_mode mode, const int vpp) {
             
             set_sysfs_str(daxis_path, daxis_str);
 
-            ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
+			if(isM8==0)
+            	ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
             
             if (!vpp) 
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
@@ -741,7 +771,9 @@ int EnableFreeScale(display_mode mode, const int vpp) {
             
             if (!vpp) 
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_HEIGHT,osd_height);  
-            
+
+			
+			if(isM8==0)
                 ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 1);
 
             if (!vpp) 
@@ -762,7 +794,9 @@ int EnableFreeScale(display_mode mode, const int vpp) {
             }
             
             set_sysfs_str(daxis_path, daxis_str);
-            ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
+			
+			if(isM8==0)
+            	ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 0);
             
             if (!vpp) 
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,0);
@@ -775,8 +809,10 @@ int EnableFreeScale(display_mode mode, const int vpp) {
             
             if (!vpp) 
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_HEIGHT,osd_height);  
-            
-            ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 1);
+
+			
+			if(isM8==0)
+            	ioctl(fd0, FBIOPUT_OSD_FREE_SCALE_ENABLE, 1);
 
             if (!vpp) 
                 ioctl(fd1,FBIOPUT_OSD_FREE_SCALE_ENABLE,1);
