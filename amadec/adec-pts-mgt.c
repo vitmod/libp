@@ -299,8 +299,6 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         //}
     }
 
-    //adec_print("adec_get_pts() pts=%x\n",pts);
-
     if ((abs(pts - last_pts) > APTS_DISCONTINUE_THRESHOLD) && (audec->adsp_ops.last_pts_valid)) {
         /* report audio time interruption */
         adec_print("pts = %lx, last pts = %lx\n", pts, last_pts);

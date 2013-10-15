@@ -321,7 +321,7 @@ static int dsp_pcm_read(aml_audio_dec_t*audec,char *data_in,int len)
    int wait_times=0;
    while(pcm_cnt_bytes<len){
       pcm_ret=audec->adsp_ops.dsp_read(&audec->adsp_ops, data_in+pcm_cnt_bytes, len-pcm_cnt_bytes);
-	  if(pcm_ret==0){//indicate there is no data in dsp_buf,still try to read more data:
+	  if(pcm_ret<=0){//indicate there is no data in dsp_buf,still try to read more data:
 #if 0 
           wait_times++;
           adec_print("wait dsp times: %d\n", wait_times);
@@ -331,6 +331,7 @@ static int dsp_pcm_read(aml_audio_dec_t*audec,char *data_in,int len)
 		    break;
 		  }
 #else
+          adec_print("can not read out PCM : %d\n", pcm_ret);
           break;
 #endif          
 	  }
@@ -426,7 +427,6 @@ void af_resample_api(char* buffer, unsigned int * size, int Chnum, aml_audio_dec
         k += -resample_delta;
       }
 
-      h = i*(128+resample_delta);
 
       num_sample = k* sizeof(short)*Chnum;
       if(num_sample < *size){

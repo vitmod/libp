@@ -78,6 +78,35 @@ void restore_system_samplerate()
 		}		
 	}
 }
+
+static int old_frame_count = 0;
+
+void restore_system_framesize()
+{
+  adec_print("restore system frame size\n");
+	int sr = 0;
+	audio_io_handle_t handle = -1;		
+	handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+	                            48000,
+	                            AUDIO_FORMAT_PCM_16_BIT,
+	                            AUDIO_CHANNEL_OUT_STEREO,
+#if defined(_VERSION_ICS) 
+					AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+#else	//JB...			
+	                            AUDIO_OUTPUT_FLAG_PRIMARY
+#endif	                            
+	                            );
+		if(handle > 0){
+			char str[64];
+            int ret;
+			memset(str,0,sizeof(str));
+			sprintf(str,"frame_count=%d",old_frame_count);
+			ret = AudioSystem::setParameters(handle, String8(str));	
+            adec_print("restore frame success: %d\n", old_frame_count);
+
+        }
+}		
+
 void reset_system_samplerate(struct aml_audio_dec* audec)
 {
 	unsigned digital_raw = 0;
@@ -156,6 +185,7 @@ void audioCallback(int event, void* user, void *info)
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 
 
+
     if (event != AudioTrack::EVENT_MORE_DATA) {
         adec_print(" ****************** audioCallback: event = %d \n", event);
         return;
@@ -178,7 +208,7 @@ void audioCallback(int event, void* user, void *info)
         //ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_GET_LAST_CHECKOUT_APTS, (int)&last_checkout);
     }
     
-    if(!wfd_enable){
+    if(1){//!wfd_enable){
       adec_refresh_pts(audec);
     }
 
@@ -204,7 +234,7 @@ void audioCallback(int event, void* user, void *info)
         adec_print("skip more data: last_checkin[%d]-last_checkout[%d]=%d, diff=%d\n", last_checkin/90, last_checkout/90, (last_checkin-last_checkout)/90, diff);
       }
       
-      if (diff_avr > 300) {
+      if (diff_avr > 220) {
         resample = 1; resample_step = 2;
       } else if (diff_avr<180) {
         // once we see a single shot of low boundry we finish down-sampling
@@ -289,6 +319,32 @@ memset(&diff_record[0], 0, 0x40*sizeof(diff_record[0]));
 diff_wp = 0;
 if(property_get("media.libplayer.wfd", wfd_prop, "0") > 0){
   wfd_enable = (strcmp(wfd_prop, "1") == 0);
+  {
+    audio_io_handle_t handle = AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+	                                    48000,
+	                                    AUDIO_FORMAT_PCM_16_BIT,
+	                                    AUDIO_CHANNEL_OUT_STEREO,
+#if defined(_VERSION_ICS) 
+					AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+#else	//JB...			
+	                            AUDIO_OUTPUT_FLAG_PRIMARY
+#endif	                            
+        );
+    if(handle > 0){
+	  char str[64];
+      status_t ret;
+	  memset(str,0,sizeof(str));
+      // backup old framecount
+      AudioSystem::getFrameCount(handle, AUDIO_STREAM_MUSIC, &old_frame_count);
+	  
+      sprintf(str,"frame_count=%d",256);
+	  ret = AudioSystem::setParameters(handle, String8(str));
+      if(ret != 0){
+        adec_print("change frame count failed: ret = %d\n", ret);
+      }
+      adec_print("wfd: %s", str);
+    }
+  }
 }else{
   wfd_enable = 0;
 }
@@ -498,6 +554,9 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
     delete track;
     out_ops->private_data = NULL;
     restore_system_samplerate();	
+
+    restore_system_framesize();
+
     return 0;
 }
 
