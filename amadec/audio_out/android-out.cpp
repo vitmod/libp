@@ -79,7 +79,7 @@ void restore_system_samplerate()
 	}
 }
 
-static int old_frame_count = 0;
+static size_t old_frame_count = 0;
 
 void restore_system_framesize()
 {
@@ -100,9 +100,9 @@ void restore_system_framesize()
 			char str[64];
             int ret;
 			memset(str,0,sizeof(str));
-			sprintf(str,"frame_count=%d",old_frame_count);
+			sprintf(str,"frame_count=%zd",old_frame_count);
 			ret = AudioSystem::setParameters(handle, String8(str));	
-            adec_print("restore frame success: %d\n", old_frame_count);
+            adec_print("restore frame success: %zd\n", old_frame_count);
 
         }
 }		
