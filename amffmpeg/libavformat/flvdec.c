@@ -393,6 +393,12 @@ static int flv_read_avcodec_info(AVFormatContext *s)
 		
 		next= size + avio_tell(s->pb);
 		if (type == FLV_TAG_TYPE_VIDEO) {
+            if(!vst)
+            {
+                if(!create_stream(s, 0))
+                    return AVERROR(ENOMEM);
+                vst = s->streams[0];
+            }
 		  	if(vst && vst->codec->codec_id == 0) {			
 				info = avio_r8(s->pb);	//get video info
 				if ((info & 0xf0) == 0x50){ /* video info / command frame */
@@ -403,6 +409,12 @@ static int flv_read_avcodec_info(AVFormatContext *s)
 		  	}
 		}
 		else if(type == FLV_TAG_TYPE_AUDIO) {
+            if(!ast)
+            {
+                if(!create_stream(s, 1))
+                    return AVERROR(ENOMEM);
+                ast = s->streams[1];
+            }
 			if(ast && ast->codec->codec_id == 0){
 				 info = avio_r8(s->pb);	//get audio info		
 				 flv_set_audio_codec(s, ast, info & FLV_AUDIO_CODECID_MASK);	
