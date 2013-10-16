@@ -79,7 +79,11 @@ void restore_system_samplerate()
 	}
 }
 
+#if defined(ANDROID_VERSION_JBMR2_UP)
 static size_t old_frame_count = 0;
+#else
+static int old_frame_count = 0;
+#endif
 
 void restore_system_framesize()
 {
@@ -100,10 +104,15 @@ void restore_system_framesize()
 			char str[64];
             int ret;
 			memset(str,0,sizeof(str));
+#if defined(ANDROID_VERSION_JBMR2_UP)
 			sprintf(str,"frame_count=%zd",old_frame_count);
-			ret = AudioSystem::setParameters(handle, String8(str));	
-            adec_print("restore frame success: %zd\n", old_frame_count);
-
+			ret = AudioSystem::setParameters(handle, String8(str));
+			adec_print("restore frame success: %zd\n", old_frame_count);
+#else
+			sprintf(str,"frame_count=%zd",old_frame_count);
+			ret = AudioSystem::setParameters(handle, String8(str));
+			adec_print("restore frame success: %zd\n", old_frame_count);
+#endif
         }
 }		
 
