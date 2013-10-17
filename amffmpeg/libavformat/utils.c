@@ -1357,7 +1357,8 @@ static void compute_pkt_fields(AVFormatContext *s, AVStream *st,
         if(pkt->dts == AV_NOPTS_VALUE)
             pkt->dts= st->pts_buffer[0];
         if(st->codec->codec_id == CODEC_ID_H264){ //we skiped it above so we try here
-            update_initial_timestamps(s, pkt->stream_index, pkt->dts, pkt->pts); // this should happen on the first packet
+            //update_initial_timestamps(s, pkt->stream_index, pkt->dts, pkt->pts); // this should happen on the first packet
+            update_initial_timestamps(s, pkt->stream_index, pkt->dts, pkt->dts);
         }
         if(pkt->dts > st->cur_dts)
             st->cur_dts = pkt->dts;
