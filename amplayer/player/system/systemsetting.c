@@ -154,7 +154,9 @@ int PlayerGetAFilterFormat(const char *prop)
 	int filter_fmt = 0;	
     /* check the dts/ac3 firmware status */
     if(access("/system/etc/firmware/audiodsp_codec_ddp_dcv.bin",F_OK)){
+                #ifndef DOLBY_DAP_EN
 		filter_fmt |= (FILTER_AFMT_AC3|FILTER_AFMT_EAC3);
+                #endif
     }
     if(access("/system/etc/firmware/audiodsp_codec_dtshd.bin",F_OK) ){
 		filter_fmt  |= FILTER_AFMT_DTS;
