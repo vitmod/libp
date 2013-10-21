@@ -740,7 +740,7 @@ static void get_stream_info(play_para_t *p_para)
                 if (p_para->vdec_profile.h264_4k2k_para.exist) {
                     p_para->vstream_info.video_format = VFORMAT_H264_4K2K;
                     log_print("H.264 4K2K video format applied.");
-                } else {
+                } else if ((p_para->vstream_info.video_width * p_para->vstream_info.video_height) >(1920*1088))  {
                     unsupported_video = 1;
                     log_print("[%s:%d] H.264 video profile not supported");
                 }
