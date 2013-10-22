@@ -1817,7 +1817,16 @@ int write_av_packet(play_para_t *para)
                     } else {
                         para->playctrl_info.check_lowlevel_eagain_cnt = 0;
                     }
-                    if (para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
+					
+                    if (para->playctrl_info.check_lowlevel_eagain_cnt > 500 ||
+                        (para->playctrl_info.check_lowlevel_eagain_cnt > 50 && 
+                         (((pkt->type == CODEC_VIDEO && para->vbuffer.data_level <10000) || 
+                         (pkt->type == CODEC_AUDIO && para->abuffer.data_level <1000)) ||
+                         (pkt->type == CODEC_COMPLEX && (para->vbuffer.data_level <10000) ||  (para->abuffer.data_level <1000))
+                         )
+                        )
+                       )
+                      {
                         /* reset decoder */
                         para->playctrl_info.check_lowlevel_eagain_cnt = 0;
                         para->playctrl_info.reset_flag = 1;
@@ -1828,7 +1837,9 @@ int write_av_packet(play_para_t *para)
                         } else {
                             para->playctrl_info.time_point = para->state.pts_video / PTS_FREQ;
                         }
-                        log_print("$$$$$$[type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
+                        if(para->stream_type == STREAM_RM)
+                            para->playctrl_info.time_point = -1.0;//if searchime is -1 ,just do reset;
+                        log_print("$$$$$$[type:%d] write blocked, need reset decoder!$$$$$$ at time =%f\n", pkt->type,para->playctrl_info.time_point);
                     }
                     pkt->data += len;
                     pkt->data_size -= len;

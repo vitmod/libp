@@ -1146,9 +1146,39 @@ int player_dec_reset(play_para_t *p_para)
     if (p_para->stream_type == STREAM_AUDIO) {
         p_para->astream_info.check_first_pts = 0;
     }
+	log_print("player dec reset p_para->playctrl_info.time_point=%f\n",p_para->playctrl_info.time_point);
     if((p_para->playctrl_info.time_point>=0) && (p_para->state.full_time > 0)){	
     	 ret = time_search(p_para,-1);
     }else{
+        if(p_para->pFormatCtx && p_para->pFormatCtx->pb && p_para->stream_type == STREAM_RM){
+            int errorretry = 100;
+            AVPacket pkt;
+            log_print("do real read seek to next frame...\n");
+            av_read_frame_flush(p_para->pFormatCtx);
+            ret = av_read_frame(p_para->pFormatCtx, &pkt);
+            do{
+                ret = av_read_frame(p_para->pFormatCtx, &pkt);/*read utils to good pkt*/
+                if(ret>=0)
+                break;
+            }while(errorretry-->0);
+            if(errorretry<=0 && ret<0)
+                log_print("NOT find a good frame .....\n");
+            if(!ret){
+                if(pkt.pts>0 && pkt.pos >0){
+                    log_print("read a good frame  t=%lld.....\n",pkt.pts);
+                    AVStream *st= p_para->pFormatCtx->streams[pkt.stream_index];
+                    int64_t t=av_rescale(pkt.pts, AV_TIME_BASE*st->time_base.num,(int64_t)st->time_base.den);  
+                    if (st->start_time != (int64_t)AV_NOPTS_VALUE) {
+                        t -= st->start_time;
+                    }
+                    if(t<0) t=0;
+                    log_print("read a good frame changedd  t=%lld..and seek to next key frame...\n",t);
+                    av_seek_frame(p_para->pFormatCtx,p_para->vstream_info.video_index,t,0);/*seek to next KEY frame*/
+                    p_para->playctrl_info.time_point=(float)t/AV_TIME_BASE;
+                }
+                av_free_packet(&pkt);
+            }
+        }
     	if(p_para->playctrl_info.reset_drop_buffered_data && /*drop data for less delay*/
 			p_para->stream_type == STREAM_TS && 
 			p_para->pFormatCtx->pb){
