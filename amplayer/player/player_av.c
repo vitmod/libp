@@ -1458,6 +1458,7 @@ int time_search(play_para_t *am_p,int flags)
                 AVPacket pkt;
                 do {
                     av_init_packet(&pkt);
+                    av_read_frame_flush(s);
                     ret = av_read_frame(s, &pkt);
                     if (ret != 0) {
                         break;
