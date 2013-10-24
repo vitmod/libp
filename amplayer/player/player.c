@@ -155,14 +155,15 @@ static int check_decoder_worksta(play_para_t *para)
                         para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
                     }
                     if ((para->vbuffer.check_rp_change_cnt <= 0 && para->playctrl_info.video_low_buffer) || 
-						((vdec.status >> 16) & PARSER_FATAL_ERROR)/*||
-                    (para->vbuffer.check_rp_change_cnt < CHECK_VIDEO_HALT_CNT && para->playctrl_info.video_low_buffer)) &&
-                    ((para->state.full_time - para->state.current_time) > 10 )*/) {
+		        ((vdec.status >> 16) & PARSER_FATAL_ERROR && para->playctrl_info.video_low_buffer) ||/* parser error,do reset on low buffer level.*/
+                        para->vbuffer.check_rp_change_cnt < - CHECK_VIDEO_HALT_CNT*2 ) {/*too long time no changes.*/
                         para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
-						if( para->state.full_time > 0&& (para->state.current_time < para->state.full_time - 5))
-                        	para->playctrl_info.time_point = para->state.current_time + 1;
-						else
-							para->playctrl_info.time_point =-1;/*do reset only.*/
+                        if(para->stream_type == STREAM_RM){
+			     para->playctrl_info.time_point =-1;/*do reset  only & find next key frame only,*/
+                        }else if( para->state.full_time > 0&& (para->state.current_time < para->state.full_time - 5))
+                            para->playctrl_info.time_point = para->state.current_time + 1;
+			else
+			    para->playctrl_info.time_point =-1;/*do reset only.*/
                         para->playctrl_info.reset_flag = 1;
                         set_black_policy(0);
                         para->playctrl_info.end_flag = 1;
