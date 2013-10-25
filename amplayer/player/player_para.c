@@ -802,9 +802,25 @@ static int set_decode_para(play_para_t*am_p)
     if (((1 << am_p->vstream_info.video_format) & filter_vfmt) != 0) {
         log_error("Can't support video codec! filter_vfmt=%x vfmt=%x  (1<<vfmt)=%x\n", \
                   filter_vfmt, am_p->vstream_info.video_format, (1 << am_p->vstream_info.video_format));
-        am_p->vstream_info.has_video = 0;
-        set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
-        update_player_states(am_p, 1);
+        if(VFORMAT_H264MVC==am_p->vstream_info.video_format){
+            am_p->vstream_info.video_format=VFORMAT_H264;/*if kernel not support mvc,just playing as 264 now.*/
+            if ((am_p->vstream_info.video_width > 1920) ||
+           	(am_p->vstream_info.video_height > 1088)) {
+                if (am_p->vdec_profile.h264_4k2k_para.exist) {
+                    am_p->vstream_info.video_format = VFORMAT_H264_4K2K;
+                    log_print("H.264 4K2K video format applied.");
+                } else {
+                    am_p->vstream_info.has_video = 0;
+                    set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
+                    update_player_states(am_p, 1);
+                    log_print("[%s:%d] H.264 video profile not supported");
+                }
+            }
+        }else{
+            am_p->vstream_info.has_video = 0;
+            set_player_error_no(am_p, PLAYER_UNSUPPORT_VCODEC);
+            update_player_states(am_p, 1);
+        }
     }
 #if 0
 	/*
