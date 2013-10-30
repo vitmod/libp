@@ -340,10 +340,12 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
                 para->playctrl_info.fast_backward = 0;
 					        
                 if (para->playctrl_info.pause_flag) {
+                    int has_audio_saved=para->codec->has_audio ;
 		    if (para->codec->has_audio) {
                         para->codec->has_audio = 0;
      	            }	
                     codec_resume(para->codec);      //clear pause state
+                    para->codec->has_audio=has_audio_saved;
                     para->playctrl_info.pause_flag = 0;
                 }
                 set_player_state(para, PLAYER_RUNNING);
@@ -362,10 +364,12 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
                 para->playctrl_info.fast_backward = 1;
                 para->playctrl_info.fast_forward = 0;					        
                 if (para->playctrl_info.pause_flag) {
+                    int has_audio_saved=para->codec->has_audio ;
 		     if (para->codec->has_audio) {
                          para->codec->has_audio = 0;
      	             }	
                     codec_resume(para->codec);      //clear pause state
+                    para->codec->has_audio=has_audio_saved;
                     para->playctrl_info.pause_flag = 0;
                 }
                 set_player_state(para, PLAYER_RUNNING);

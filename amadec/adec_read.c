@@ -45,7 +45,7 @@ static unsigned long  get_num_infile(char *file)
 	return amsysfs_get_sysfs_ulong(file);
 }
 
-int uio_init(int fd){
+int uio_init(aml_audio_dec_t *audec){
 //	int fd = -1; 
 	int pagesize = getpagesize();
 	int phys_start;
@@ -54,8 +54,8 @@ int uio_init(int fd){
 	volatile unsigned memmap;	
 
 
-	fd = open(ASTREAM_DEV, O_RDWR);
-	if(fd < 0){
+	audec->fd_uio = open(ASTREAM_DEV, O_RDWR);
+	if(audec->fd_uio < 0){
 		adec_print("error open UIO 0\n");
 		return -1;
 	}
@@ -66,7 +66,7 @@ int uio_init(int fd){
 	adec_print("add=%08x, size=%08x, offset=%08x\n", phys_start, phys_size, phys_offset);
 
 	phys_size = (phys_size + pagesize -1) & (~ (pagesize-1));
-	memmap = mmap(NULL, phys_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0* pagesize);
+	memmap = mmap(NULL, phys_size, PROT_READ|PROT_WRITE, MAP_SHARED, audec->fd_uio, 0* pagesize);
 	
 	adec_print("memmap = %x , pagesize = %x\n", memmap,pagesize);
 	if(memmap == MAP_FAILED){
@@ -89,7 +89,6 @@ static inline void waiting_bits(int bits)
 	}	
 }
 
-extern int exit_decode_thread;
 
 #define EXTRA_DATA_SIZE 128
 int read_buffer(unsigned char *buffer,int size)

@@ -36,6 +36,7 @@ struct audio_decoder_operations
 	    void * priv_data;//point to audec
 	    void * priv_dec_data;//decoder private data
 	    int channels;
+            unsigned long pts;
            int samplerate;
            int bps;
 	    int extradata_size;      ///< extra data size

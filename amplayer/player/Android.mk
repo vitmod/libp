@@ -10,7 +10,9 @@ endif
 ifdef DOLBY_DAP
 LOCAL_CFLAGS += -DDOLBY_DAP_EN
 endif
-
+ifdef DOLBY_UDC 
+LOCAL_CFLAGS += -DUSE_ARM_AUDIO_DEC
+endif
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 												
 
 LOCAL_SRC_FILES +=system/android.c system/systemsetting.c

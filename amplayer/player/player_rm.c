@@ -60,6 +60,7 @@ static int stream_rm_init(play_para_t *p_para)
 		codec->switch_audio_flag = 0;
         if (ainfo->extradata && ainfo->extradata_size > 0) {
             MEMCPY(codec->audio_info.extradata, ainfo->extradata, ainfo->extradata_size);
+            codec->audio_info.extradata_size = ainfo->extradata_size;
         } else {
             log_error("[%s:%d]real cook info error!\n", __FUNCTION__, __LINE__);
         }

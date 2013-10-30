@@ -21,6 +21,7 @@ typedef struct buffer_stream_st{
     int data_width;
     int channels;	
 	int samplerate;
+	int format;
 }buffer_stream_t;
 
 int init_buff(buffer_stream_t *bs,int length);

@@ -65,7 +65,7 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_DTS, "dts"},
     {ACODEC_FMT_FLAC, "flac"},
     {ACODEC_FMT_COOK, "cook"},
-    {ACODEC_FMT_AMR, "arm"},
+    {ACODEC_FMT_AMR, "amr"},
     {ACODEC_FMT_RAAC, "raac"},
     {ACODEC_FMT_ADPCM, "adpcm"},
     {ACODEC_FMT_WMA, "wma"},

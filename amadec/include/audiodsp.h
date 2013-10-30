@@ -94,10 +94,12 @@ struct dsp_operations {
     unsigned long last_audio_pts;
     unsigned long last_pts_valid;
     int (*dsp_read)(dsp_operations_t *dsp_ops, char *buffer, int len);                                        /* read pcm stream from dsp */
+    int (*dsp_read_raw)(dsp_operations_t *dsp_ops, char *buffer, int len); /* read raw stream from dsp */
     unsigned long(*get_cur_pts)(dsp_operations_t *);
     unsigned long(*get_cur_pcrscr)(dsp_operations_t *);
     int (*set_cur_apts)(dsp_operations_t *dsp_ops,unsigned long apts);
 	int amstream_fd;
+    void *audec;
 };
 
 typedef struct {

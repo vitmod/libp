@@ -19,6 +19,7 @@
 #include <adec-message.h>
 #include <log-print.h>
 #include <adec-armdec-mgt.h>
+#include <adec_write.h>
 ADEC_BEGIN_DECLS
 
 #define  AUDIO_CTRL_DEVICE    "/dev/amaudio_ctl"
@@ -52,12 +53,46 @@ ADEC_BEGIN_DECLS
 /*******************************************************************************************/
 
 typedef struct aml_audio_dec    aml_audio_dec_t;
+#define DECODE_ERR_PATH "/sys/class/audiodsp/codec_fatal_err"
+#define DECODE_NONE_ERR 0
+#define DECODE_INIT_ERR 1
+#define DECODE_FATAL_ERR 2
+#define lock_t            pthread_mutex_t
+#define lp_lock_init(x,v)     pthread_mutex_init(x,v)
+#define lp_lock(x)        pthread_mutex_lock(x)
+#define lp_unlock(x)       pthread_mutex_unlock(x)
 typedef enum {
     HW_STEREO_MODE = 0,
     HW_LEFT_CHANNEL_MONO,
     HW_RIGHT_CHANNEL_MONO,
     HW_CHANNELS_SWAP,
 } hw_command_t;
+struct package{
+    char *data;//buf ptr
+    int size;               //package size
+    struct package * next;//next ptr
+};
+
+typedef struct {
+    struct package *first;
+    int pack_num;
+    struct package *current;
+    lock_t tslock;
+}Package_List;
+
+typedef struct {
+    char buff[10];
+    int size;
+    int status;//0 init 1 finding sync word 2 finding framesize 3 frame size found
+}StartCode;
+typedef void (*fp_arm_omx_codec_init)(aml_audio_dec_t*,int,void*,int*);
+typedef void (*fp_arm_omx_codec_read)(aml_audio_dec_t*,unsigned char *,unsigned *,int *);
+typedef void (*fp_arm_omx_codec_close)(aml_audio_dec_t*);
+typedef void (*fp_arm_omx_codec_start)(aml_audio_dec_t*);
+typedef void (*fp_arm_omx_codec_pause)(aml_audio_dec_t*);
+typedef int  (*fp_arm_omx_codec_get_declen)(aml_audio_dec_t*);
+typedef int  (*fp_arm_omx_codec_get_FS)(aml_audio_dec_t*);
+typedef int  (*fp_arm_omx_codec_get_Nch)(aml_audio_dec_t*);
 
 struct aml_audio_dec {
     adec_state_t  state;
@@ -86,6 +121,41 @@ struct aml_audio_dec {
 	unsigned dspdec_not_supported;//check some profile that audiodsp decoder can not support,we switch to arm decoder	
 	int droppcm_flag;				// drop pcm flag, if switch audio (1)
 	int no_first_apts;				// if can't get the first apts (1), default (0)
+	int StageFrightCodecEnableType;
+	int64_t pcm_bytes_readed;
+	int64_t raw_bytes_readed;
+	int codec_type;
+	int raw_frame_size;
+	int pcm_frame_size;
+	int i2s_iec958_sync_flag;
+	int max_bytes_readded_diff;
+    int i2s_iec958_sync_gate;
+
+    buffer_stream_t *g_bst;
+    buffer_stream_t *g_bst_raw;
+    int sn_threadid;
+    int sn_getpackage_threadid;
+    int exit_decode_thread;
+    int exit_decode_thread_success;
+    unsigned long decode_offset;
+    int nDecodeErrCount;
+    int fd_uio;
+    int last_valid_pts;
+    int out_len_after_last_valid_pts;
+    int pcm_cache_size;
+    Package_List pack_list;
+    StartCode start_code;
+    
+    void *arm_omx_codec;
+    fp_arm_omx_codec_init       parm_omx_codec_init;
+    fp_arm_omx_codec_read       parm_omx_codec_read ;
+    fp_arm_omx_codec_close      parm_omx_codec_close;
+    fp_arm_omx_codec_start      parm_omx_codec_start;
+    fp_arm_omx_codec_pause      parm_omx_codec_pause;
+    fp_arm_omx_codec_get_declen parm_omx_codec_get_declen;
+    fp_arm_omx_codec_get_FS     parm_omx_codec_get_FS;
+    fp_arm_omx_codec_get_Nch    parm_omx_codec_get_Nch;
+    int OmxFirstFrameDecoded;
 };
 
 //from amcodec
@@ -100,6 +170,18 @@ typedef struct {
 	int dspdec_not_supported;//check some profile that audiodsp decoder can not support,we switch to arm decoder	
 	int droppcm_flag;				// drop pcm flag, if switch audio (1)
 } arm_audio_info;
+
+ typedef struct {
+    int valid;               ///< audio extradata valid(1) or invalid(0), set by dsp
+    int sample_rate;         ///< audio stream sample rate
+    int channels;            ///< audio stream channels
+    int bitrate;             ///< audio stream bit rate
+    int codec_id;            ///< codec format id
+    int block_align;         ///< audio block align from ffmpeg
+    int extradata_size;      ///< extra data size
+    char extradata[512];;   ///< extra data information for decoder
+} Asf_audio_info_t;
+
 //status check
 struct adec_status {
     unsigned int channels;

@@ -337,6 +337,7 @@ static int dsp_pcm_read(aml_audio_dec_t*audec,char *data_in,int len)
 	  }
 	  pcm_cnt_bytes+=pcm_ret;
    }
+   audec->pcm_bytes_readed += pcm_cnt_bytes;
    return pcm_cnt_bytes/sizeof(short);
 }
 
@@ -564,6 +565,7 @@ void af_resample_api_normal(char *buffer, unsigned int *size,int Chnum, aml_audi
 			  if(NumSamp_out > 0){
 			  	  len=audec->adsp_ops.dsp_read(&audec->adsp_ops, (char*)(data_out+outbuf_offset),NumSamp_out*sizeof(short));
                   outbuf_offset += len/sizeof(short);
+                  audec->pcm_bytes_readed +=len;
 			  }
         }
 	resample_out:

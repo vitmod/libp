@@ -91,7 +91,7 @@ static int audiodsp_set_pcm_resample_enable(unsigned long enable)
 
 void adec_reset_track(aml_audio_dec_t *audec)
 {
-	if(audec->format_changed_flag){
+	if(audec->format_changed_flag && audec->state >= INITTED){
 		adec_print("reset audio_track: samplerate=%d channels=%d\n", audec->samplerate,audec->channels);
         audio_out_operations_t *out_ops = &audec->aout_ops;
 		out_ops->mute(audec, 1);

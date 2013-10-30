@@ -692,11 +692,28 @@ int codec_init(codec_para_t *pcodec)
 		a_ainfo.droppcm_flag = 0;
         if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type))
         {
-            a_ainfo.extradata_size=pcodec->audio_info.extradata_size;
-            if(a_ainfo.extradata_size>0&&a_ainfo.extradata_size<=AUDIO_EXTRA_DATA_SIZE)
-                memcpy((char*)a_ainfo.extradata,pcodec->audio_info.extradata,a_ainfo.extradata_size);
-            else
-                a_ainfo.extradata_size=0;
+            if(pcodec->audio_type!=AFORMAT_WMA && pcodec->audio_type!=AFORMAT_WMAPRO)
+            {
+                 a_ainfo.extradata_size=pcodec->audio_info.extradata_size;
+                 if(a_ainfo.extradata_size>0&&a_ainfo.extradata_size<=AUDIO_EXTRA_DATA_SIZE)
+                     memcpy((char*)a_ainfo.extradata,pcodec->audio_info.extradata,a_ainfo.extradata_size);
+                 else
+                    a_ainfo.extradata_size=0;
+            }else{
+                 Asf_audio_info_t asfinfo={0};
+                 asfinfo.bitrate    =pcodec->audio_info.bitrate;
+                 asfinfo.block_align=pcodec->audio_info.block_align;
+                 asfinfo.channels   =pcodec->audio_info.channels;
+                 asfinfo.codec_id   =pcodec->audio_info.codec_id;
+                 asfinfo.sample_rate=pcodec->audio_info.sample_rate;
+                 asfinfo.valid      =pcodec->audio_info.valid;
+                 if(pcodec->audio_info.extradata_size<=512){
+                     memcpy(asfinfo.extradata,pcodec->audio_info.extradata,pcodec->audio_info.extradata_size);  
+                     asfinfo.extradata_size=pcodec->audio_info.extradata_size;
+                 }
+                 memcpy((char*)a_ainfo.extradata,&asfinfo,sizeof(Asf_audio_info_t));
+                 a_ainfo.extradata_size=sizeof(Asf_audio_info_t);
+            }
         }
         audio_start(&pcodec->adec_priv, &a_ainfo);
         if(pcodec->avsync_threshold > 0)
@@ -814,13 +831,29 @@ void codec_resume_audio(codec_para_t *pcodec, unsigned int orig)
 		}
         if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type))
         {
-            a_ainfo.extradata_size=pcodec->audio_info.extradata_size;
-            if(a_ainfo.extradata_size>0&&a_ainfo.extradata_size<=AUDIO_EXTRA_DATA_SIZE)
-                memcpy((char*)a_ainfo.extradata,pcodec->audio_info.extradata,a_ainfo.extradata_size);
-            else
-                a_ainfo.extradata_size=0;
+            if(pcodec->audio_type!=AFORMAT_WMA && pcodec->audio_type!=AFORMAT_WMAPRO)
+            {
+                 a_ainfo.extradata_size=pcodec->audio_info.extradata_size;
+                 if(a_ainfo.extradata_size>0&&a_ainfo.extradata_size<=AUDIO_EXTRA_DATA_SIZE)
+                     memcpy((char*)a_ainfo.extradata,pcodec->audio_info.extradata,a_ainfo.extradata_size);
+                 else
+                     a_ainfo.extradata_size=0;
+            }else{
+                 Asf_audio_info_t asfinfo={0};
+                 asfinfo.bitrate    =pcodec->audio_info.bitrate;
+                 asfinfo.block_align=pcodec->audio_info.block_align;
+                 asfinfo.channels   =pcodec->audio_info.channels;
+                 asfinfo.codec_id   =pcodec->audio_info.codec_id;
+                 asfinfo.sample_rate=pcodec->audio_info.sample_rate;
+                 asfinfo.valid	   =pcodec->audio_info.valid;
+                 if(pcodec->audio_info.extradata_size<=512){
+                     memcpy(asfinfo.extradata,pcodec->audio_info.extradata,pcodec->audio_info.extradata_size);  
+                     asfinfo.extradata_size=pcodec->audio_info.extradata_size;
+                 }
+                 memcpy((char*)a_ainfo.extradata,&asfinfo,sizeof(Asf_audio_info_t));
+                 a_ainfo.extradata_size=sizeof(Asf_audio_info_t);
+            }
         }
-		
         audio_start(&pcodec->adec_priv, &a_ainfo);
     }
     return;

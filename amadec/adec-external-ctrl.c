@@ -60,7 +60,7 @@ int audio_decode_init(void **handle, arm_audio_info *a_ainfo)
 	}
     if(a_ainfo->extradata_size>0&&a_ainfo->extradata_size<=AUDIO_EXTRA_DATA_SIZE)
         memcpy((char*)audec->extradata,(char*)a_ainfo->extradata,a_ainfo->extradata_size);
-   
+    audec->adsp_ops.audec=audec;
 //	adec_print("audio_decode_init  pcodec = %d, pcodec->ctxCodec = %d!\n", pcodec, pcodec->ctxCodec);
     ret = audiodec_init(audec);
     if (ret) {

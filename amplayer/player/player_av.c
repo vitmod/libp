@@ -728,7 +728,7 @@ static int non_raw_read(play_para_t *para)
                         reach_end++;
                         if (audio_idx >= 0)  {
                             st = para->pFormatCtx->streams[audio_idx];
-                            if (st->codec->codec_type == CODEC_TYPE_AUDIO && (st->codec->codec_id == CODEC_ID_APE || st->codec->codec_id == CODEC_ID_AAC || st->codec->codec_id == CODEC_ID_AMR_NB || st->codec->codec_id == CODEC_ID_MP3)) {
+                            if (st->codec->codec_type == CODEC_TYPE_AUDIO && (st->codec->codec_id == CODEC_ID_APE || st->codec->codec_id == CODEC_ID_AAC || st->codec->codec_id == CODEC_ID_AMR_NB || st->codec->codec_id == CODEC_ID_MP3 || st->codec->codec_id == CODEC_ID_AMR_WB)) {
                                 //if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
                                 //set attr
                                 pkt->avpkt->data = av_mallocz(2048);
@@ -815,6 +815,27 @@ static int non_raw_read(play_para_t *para)
                 pkt->codec = para->acodec;
                 pkt->type = CODEC_AUDIO;
                 para->read_size.apkt_num ++;
+                if(para->astream_info.audio_format ==  AFORMAT_VORBIS)
+                { 
+                     char value[256]={0};
+                     int tmp=0;
+                     tmp =property_get("media.arm.audio.decoder",value,NULL);
+                     if(tmp>0 && strstr(value,"vorbis")!=NULL){
+                       //only insert head for vorbis_armdecoder,not for vorbis_dsp_decoder
+                        int new_pkt_size=pkt->avpkt->size+8;
+                        char *pdat=malloc(new_pkt_size);
+                        if(pdat==NULL){
+                            log_print("[%s %d]malloc memory failed!\n",__FUNCTION__,__LINE__);
+                        }else{
+                            memcpy(pdat,"HEAD",4);
+                            memcpy(pdat+4,&pkt->avpkt->size,4);
+                            memcpy(pdat+8,pkt->avpkt->data,pkt->avpkt->size);
+                            free(pkt->avpkt->data);
+                            pkt->avpkt->data=pdat;
+                            pkt->avpkt->size=new_pkt_size;
+                        }
+                     }
+                }
             } else if (has_sub && ((1<<(pkt->avpkt->stream_index))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
             //} else if (has_sub && ((1<<(para->pFormatCtx->streams[pkt->avpkt->stream_index]->id))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
 #if 0
@@ -1236,6 +1257,9 @@ int time_search(play_para_t *am_p,int flags)
         return ret;
     }
 	
+     am_p->state.last_time = am_p->playctrl_info.time_point;
+     am_p->state.current_time = am_p->playctrl_info.time_point;
+     am_p->state.current_ms = (unsigned int)(am_p->playctrl_info.time_point * 1000);
  
     if((am_p->pFormatCtx)&&(am_p->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(am_p->pFormatCtx->iformat->name,"DRMdemux",8))==0){
 	if (am_p->vcodec){

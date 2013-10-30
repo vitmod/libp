@@ -152,15 +152,26 @@ int PlayerGetAFilterFormat(const char *prop)
 {
 	char value[1024];
 	int filter_fmt = 0;	
+#ifndef 	USE_ARM_AUDIO_DEC
     /* check the dts/ac3 firmware status */
     if(access("/system/etc/firmware/audiodsp_codec_ddp_dcv.bin",F_OK)){
-                #ifndef DOLBY_DAP_EN
+#ifndef DOLBY_DAP_EN
 		filter_fmt |= (FILTER_AFMT_AC3|FILTER_AFMT_EAC3);
-                #endif
+#endif
     }
     if(access("/system/etc/firmware/audiodsp_codec_dtshd.bin",F_OK) ){
 		filter_fmt  |= FILTER_AFMT_DTS;
     }
+#else
+    if(access("/system/lib/libstagefright_soft_dcvdec.so",F_OK)){
+#ifndef DOLBY_DAP_EN
+	filter_fmt |= (FILTER_AFMT_AC3|FILTER_AFMT_EAC3);
+#endif
+    }
+    if(access("/system/lib/libstagefright_soft_dtshd.so",F_OK) ){
+		filter_fmt  |= FILTER_AFMT_DTS;
+    }
+#endif	
     if (GetSystemSettingString(prop, value, NULL) > 0) {
 		log_print("[%s:%d]disable_adec=%s\n", __FUNCTION__, __LINE__, value);
 		if (strstr(value,"mpeg") != NULL || strstr(value,"MPEG") != NULL) {

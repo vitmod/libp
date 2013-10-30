@@ -4,8 +4,8 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE
-ifdef DOLBY_DAP
-    LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
+ifdef DOLBY_UDC
+    LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC -DUSE_ARM_AUDIO_DEC
 endif
 
 
@@ -28,8 +28,8 @@ endif
 
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
-           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c \
-	  adec_omxddpdec_brige.c ../amavutils/amconfigutils.c
+           dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c spdif_api.c pcmenc_api.c \
+           dts_transenc_api.c dts_enc.c adec_omx_brige.c ../amavutils/amconfigutils.c
 
 LOCAL_MODULE := libamadec
 
@@ -43,7 +43,7 @@ include $(CLEAR_VARS)
 
 LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE
-ifdef DOLBY_DAP
+ifdef DOLBY_UDC
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
 endif
 
@@ -68,7 +68,7 @@ endif
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
            dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c \
-           spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c adec_omxddpdec_brige.c ../amavutils/amconfigutils.c
+           spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c adec_omx_brige.c ../amavutils/amconfigutils.c
 
 LOCAL_MODULE := libamadec
 
@@ -98,8 +98,14 @@ LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/omx_audio/../../../../../frameworks/native/include/utils
 
 LOCAL_SRC_FILES := \
-           /omx_audio/adec_omx.cpp /omx_audio/audio_mediasource.cpp  
-	   #../adec_read.c
+           /omx_audio/adec_omx.cpp \
+           /omx_audio/audio_mediasource.cpp \
+           /omx_audio/DDP_mediasource.cpp \
+           /omx_audio/ALAC_mediasource.cpp \
+           /omx_audio/MP3_mediasource.cpp \
+	   /omx_audio/ASF_mediasource.cpp  \
+	   /omx_audio/DTSHD_mediasource.cpp \
+	   /omx_audio/Vorbis_mediasource.cpp \
 
 LOCAL_MODULE := libamadec_omx_api
 LOCAL_MODULE_TAGS := optional
