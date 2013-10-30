@@ -821,10 +821,22 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
             s->pb->filename = mms_prot;
         }
     } else {
-        if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
-            return ret;
+        if(strstr(filename,"shttp") !=NULL && strstr(filename,"mpd") !=NULL){	// dash protocol
+    		char *listfile=av_mallocz(MAX_URL_SIZE);
+		strcpy(listfile,"dash");
+    		strcpy(listfile+ 4,filename + 5);
+    		av_log(NULL, AV_LOG_ERROR, "[%s:%d] url to %s\n", __FUNCTION__,__LINE__,listfile);
+		if ((ret = avio_open_h(&s->pb, listfile, AVIO_FLAG_READ, headers)) < 0)
+            		return ret;
+		s->pb->filename=listfile;
+    	 }
+    	 else{
+        	if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
+            		return ret;
+    	 }
     }
-    s->pb->is_segment_media = 0;		
+
+    s->pb->is_segment_media = 0;	
     newp=try_get_mached_new_prot(s->pb,filename);
     if(newp!=NULL){
 			char *listfile;
@@ -854,10 +866,10 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
 			if ((err=avio_open_h(&s->pb,listfile, AVIO_FLAG_READ, headers)) < 0) {
 				av_log(NULL, AV_LOG_ERROR, "init_input:%s failed,line=%d err=0x%x\n",listfile,__LINE__,err);
 				av_free(listfile);
-	            return AVERROR(EIO);;
-        	}
+	            		return AVERROR(EIO);;
+        		}
 			s->pb->filename=listfile;
-	}
+    }
     if (s->iformat)
         return 0;
     return av_probe_input_buffer(s->pb, &s->iformat, filename, s, 0, 0);
