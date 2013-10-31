@@ -409,6 +409,13 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
    
     int free_scale_enable = 0;
     int ppscaler_enable = 0;
+
+    /** surfaceflinger computes y coords which is not matched with amvideo after rotation, to fix it */
+    if(!video_on_vpp2) {
+        if(y != 0) {
+            dst_y = 0;
+        }
+    }
     
     if (((disp_w != dev_w) || (disp_h / 2 != dev_h)) &&
         (video_global_offset == 0)) {
