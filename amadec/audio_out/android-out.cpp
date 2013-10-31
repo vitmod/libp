@@ -306,7 +306,7 @@ void audioCallback(int event, void* user, void *info)
     }
     return;
 }
-
+#ifdef USE_ARM_AUDIO_DEC
 //-------------------------------------------------------------------------
 static void i2s_iec958_sync_force(struct aml_audio_dec* audec,int bytes_readed_diff_allowd)
 {
@@ -414,6 +414,7 @@ void audioCallback_raw(int event, void* user, void *info)
     }
     return;
 }
+
 extern "C" int android_init_raw(struct aml_audio_dec* audec)
 {
     adec_print("[%s %d]android raw_out init",__FUNCTION__,__LINE__);
@@ -501,6 +502,7 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
        audec->i2s_iec958_sync_gate=audec->samplerate*audec->raw_frame_size*audec->codec_type*0.4;//400ms
        return 0;
 }
+#endif
 //-------------------------------------------------------------------------
 /**
  * \brief output initialization
@@ -644,7 +646,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     out_ops->private_data = (void *)track;
     return 0;
 }
-
+#ifdef USE_ARM_AUDIO_DEC
 extern "C" int android_start_raw(struct aml_audio_dec* audec)
 {
     adec_print("[%s %d]android raw_out start",__FUNCTION__,__LINE__);
@@ -667,6 +669,7 @@ extern "C" int android_start_raw(struct aml_audio_dec* audec)
     adec_print("[%s %d]AudioTrack_raw initCheck OK and started.",__FUNCTION__,__LINE__);
     return 0;
 }
+#endif
 /**
  * \brief start output
  * \param audec pointer to audec
@@ -801,7 +804,7 @@ extern "C" int android_resume(struct aml_audio_dec* audec)
  
     return 0;
 }
-
+#ifdef USE_ARM_AUDIO_DEC
 extern "C" int android_stop_raw(struct aml_audio_dec* audec)
 {
     adec_print("[%s %d]android raw_out stop",__FUNCTION__,__LINE__);
@@ -823,7 +826,7 @@ extern "C" int android_stop_raw(struct aml_audio_dec* audec)
     out_ops->private_data_raw= NULL;
     return 0;
 }
-
+#endif
 /**
  * \brief stop output
  * \param audec pointer to audec
