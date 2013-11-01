@@ -150,10 +150,14 @@ status_t AmlOMXCodec::read(unsigned char *buf,unsigned *size,int *exit)
     }
     
     if (srcBuffer->range_length() == 0) {
+#ifdef USE_ARM_AUDIO_DEC		
          m_codec->adec_omx_lock_locked();
+#endif
          srcBuffer->release();
          srcBuffer = NULL;
+#ifdef USE_ARM_AUDIO_DEC		 
          m_codec->adec_omx_lock_unlocked();
+#endif
     }
    
     return OK;
