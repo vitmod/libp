@@ -1072,7 +1072,7 @@ exit_decode_loop:
                while (declen<rlen && !audec->exit_decode_thread) 
                {
                      outlen = AVCODEC_MAX_AUDIO_FRAME_SIZE;
-                     if(nAudioFormat == ACODEC_FMT_COOK || nAudioFormat == ACODEC_FMT_RAAC){
+                     if(nAudioFormat == ACODEC_FMT_COOK || nAudioFormat == ACODEC_FMT_RAAC || nAudioFormat == ACODEC_FMT_AMR){
                           if(needdata > 0){
                                pRestData=malloc(inlen);
                                if(pRestData)
@@ -1102,7 +1102,7 @@ exit_decode_loop:
                       declen += dlen;
                       inlen -= dlen;
 
-                      if(nAudioFormat == ACODEC_FMT_COOK || nAudioFormat == ACODEC_FMT_RAAC){
+                      if(nAudioFormat == ACODEC_FMT_COOK || nAudioFormat == ACODEC_FMT_RAAC || nAudioFormat == ACODEC_FMT_AMR){
                            if(inlen <= dlen){
                              needdata ++;
                            }
