@@ -1795,7 +1795,7 @@ int av_seek_frame_binary(AVFormatContext *s, int stream_index, int64_t target_ts
     int index;
     int64_t ret;
     AVStream *st;
-	int64_t ts_limit;
+	int64_t ts_limit=0;
 
     if (stream_index < 0)
         return -1;
@@ -1852,7 +1852,7 @@ int av_seek_frame_binary(AVFormatContext *s, int stream_index, int64_t target_ts
 		av_log(NULL, AV_LOG_INFO, "[%s]ts_limit=%llx\n", __FUNCTION__, ts_limit);
 	}
 	if (ts_limit < AV_TIME_BASE)
-		ts_limit = AV_TIME_BASE << 1;
+		ts_limit = AV_TIME_BASE << 2;//experiment value:for ape, 2s(AV_TIME_BASE <<1) maybe not enough
 	
 	if(ts > target_ts && (ts-target_ts) > ts_limit)
 		return -2;
