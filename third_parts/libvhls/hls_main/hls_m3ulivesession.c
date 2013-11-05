@@ -52,6 +52,8 @@
 #include "hls_simple_cache.h"
 #endif
 
+#define AUDIO_BANDWIDTH_MAX 100000  //100k
+#define BANDWIDTH_THRESHOLD 5000 //5k
 
 #define ERROR_MSG() LOGE("Null session pointer check:%s,%s,%d\n",__FILE__,__FUNCTION__,__LINE__)
 enum RefreshState {
@@ -184,12 +186,20 @@ static void _sort_m3u_session_bandwidth(M3ULiveSession* ss){
             }
         }
         i--;
-    }    
+    }
+
+    /* m3u8 bandwidth may not be compatible with HLS draft, fix it*/
+    int coeff = 1;
+    if(ss->bandwidth_list[ss->bandwidth_item_num-1]->mBandwidth > 0
+        && ss->bandwidth_list[ss->bandwidth_item_num-1]->mBandwidth < BANDWIDTH_THRESHOLD) {
+        coeff = 1000;
+    }
     LOGV("*************************Dump all bandwidth list start ********************\n");
     for(i=0; i<ss->bandwidth_item_num; i++){
         if(ss->bandwidth_list[i]){
             ss->bandwidth_list[i]->index = i;
             temp = ss->bandwidth_list[i];
+            temp->mBandwidth *= coeff;
             if(ss->log_level >= HLS_SHOW_URL) {
                 LOGV("***Item index:%d,Bandwidth:%lu,url:%s\n",temp->index,temp->mBandwidth,temp->url);
             } else {
@@ -1552,8 +1562,6 @@ static void _pre_estimate_bandwidth(M3ULiveSession* s){
 }
 //========================================API============================================
 
-#define AUDIO_BANDWIDTH_MAX 100000  //100k
-
 int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     if(baseUrl == NULL||strlen(baseUrl)<2){
         LOGE("Check input baseUrl\n");
@@ -1612,8 +1620,10 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
                 return -1;
                 
             }
-            
-            if(node->bandwidth<AUDIO_BANDWIDTH_MAX){
+
+#if 1
+            if(node->bandwidth>0&&((node->bandwidth<AUDIO_BANDWIDTH_MAX&&node->bandwidth>BANDWIDTH_THRESHOLD)
+                || (node->bandwidth<AUDIO_BANDWIDTH_MAX/1000))){
 		  if(session->log_level >= HLS_SHOW_URL) {
                     LOGV("This variant can't playback,drop it,url:%s,bandwidth:%d\n",node->fileUrl,node->bandwidth);
 		  } else {
@@ -1621,6 +1631,7 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
 		  }
                 continue;
             }
+#endif
             
             BandwidthItem_t* item = (BandwidthItem_t*)malloc(sizeof(BandwidthItem_t));
             
