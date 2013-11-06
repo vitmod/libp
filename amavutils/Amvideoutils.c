@@ -25,6 +25,11 @@
 #define FREE_SCALE_PATH_FB2  "/sys/class/graphics/fb2/free_scale"
 #define PPSCALER_PATH  "/sys/class/ppmgr/ppscaler"
 #define HDMI_AUTHENTICATE_PATH "/sys/module/hdmitx/parameters/hdmi_authenticated"
+#define FREE_SCALE_MODE_PATH   "/sys/class/graphics/fb0/freescale_mode"
+#define WINDOW_AXIS_PATH       "/sys/class/graphics/fb0/window_axis"
+#define DISPLAY_AXIS_PATH       "/sys/class/display/axis"
+#define FREE_SCALE_AXIS_PATH   "/sys/class/graphics/fb0/free_scale_axis"
+#define REQUEST_2XSCALE_PATH   "/sys/class/graphics/fb0/request2XScale"
 
 
 static int rotation = 0;
@@ -312,6 +317,39 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
     return 0;
 }
 
+void get_axis(const char *path, int *x, int *y, int *w, int *h)
+{
+    int fd = -1;
+    char buf[SYSCMD_BUFSIZE];
+
+    fd = open(path, O_RDONLY);
+    if (fd < 0)
+        return;
+
+    read(fd, buf, SYSCMD_BUFSIZE);
+    if (sscanf(buf, "%d %d %d %d", x, y, w, h) == 4) {
+        LOGI("%s axis: %d %d %d %d\n", path, *x, *y, *w, *h);
+    }
+
+    if (fd >= 0)
+        close(fd);
+}
+
+void set_scale(int x, int y, int w, int h, int *dst_x, int *dst_y, int *dst_w, int *dst_h, int disp_w, int disp_h)
+{
+    if ((*dst_w >= disp_w - 1) || (*dst_w == 0)) {
+        *dst_x = 0;
+        *dst_w = disp_w;
+    }
+    if ((*dst_h >= disp_h - 1) || (*dst_h == 0)) {
+        *dst_y = 0;
+        *dst_h = disp_h;
+    }
+    *dst_x = (*dst_x) * w / disp_w + x;
+    *dst_y = (*dst_y) * h / disp_h + y;
+    *dst_w = (*dst_w) * w / disp_w;
+    *dst_h = (*dst_h) * h / disp_h;
+}
 
 int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t h, int rotation)
 {
@@ -409,6 +447,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
    
     int free_scale_enable = 0;
     int ppscaler_enable = 0;
+    int freescale_mode_enable = 0;
     
     if (((disp_w != dev_w) || (disp_h / 2 != dev_h)) &&
         (video_global_offset == 0)) {
@@ -431,6 +470,12 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         if (amsysfs_get_sysfs_str(PPSCALER_PATH, val, sizeof(val)) == 0) {
             /* the returned string should be "current ppscaler mode is disabled/enable" */            
             ppscaler_enable = (val[25] == 'd') ? 0 : 1;
+        }
+
+        memset(val, 0, sizeof(val));
+        if (amsysfs_get_sysfs_str(FREE_SCALE_MODE_PATH, val, sizeof(val)) == 0) {
+            /* the returned string should be "free_scale_mode:new/default" */
+            freescale_mode_enable = (val[16] == 'd') ? 0 : 1;
         }
     }
 
@@ -537,6 +582,84 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
             }
         }
     }*/
+    if (free_scale_enable == 0 && ppscaler_enable == 0) {
+        char val[256];
+
+        if (freescale_mode_enable == 1) {
+            int left = 0, top = 0, right = 0, bottom = 0;
+            int x = 0, y = 0, w = 0, h = 0;
+
+            memset(val, 0, sizeof(val));
+            if (amsysfs_get_sysfs_str(WINDOW_AXIS_PATH, val, sizeof(val)) == 0) {
+                /* the returned string should be "window axis is [a b c d]" */
+                if (sscanf(val + 15, "[%d %d %d %d]", &left, &top, &right, &bottom) == 4) {
+                    x = left;
+                    y = top;
+                    w = right - left + 1;
+                    h = bottom - top + 1;
+                    if ((dst_w >= dev_w - 1) || (dst_w == 0)) {
+                        dst_x = 0;
+                        dst_w = w;
+                    }
+                    if ((dst_h >= dev_h - 1) || (dst_h == 0)) {
+                        dst_y = 0;
+                        dst_h = h;
+                    }
+
+                    dst_x = dst_x * w / dev_w + x;
+                    dst_y = dst_y * h / dev_h + y;
+                    LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+                }
+            }
+        } else {
+            int x = 0, y = 0, w = 0, h = 0;
+            int fb_w = 0, fb_h = 0;
+            int req_2xscale = 0;
+
+            memset(val, 0, sizeof(val));
+            if (amsysfs_get_sysfs_str(REQUEST_2XSCALE_PATH, val, sizeof(val)) == 0) {
+                /* the returned string should be "a b c" */
+                if (sscanf(val, "%d", &req_2xscale) == 1) {
+                    if (req_2xscale == 7 || req_2xscale == 16) {
+                        if (sscanf(val, "%d %d %d", &req_2xscale, &w, &h) == 3) {
+                            if (req_2xscale == 7)
+                                w *= 2;
+                            get_axis(DISPLAY_AXIS_PATH, &x, &y, &fb_w, &fb_h);
+                            if (fb_w == 0 || fb_h == 0) {
+                                fb_w = 1280;
+                                fb_h = 720;
+                            }
+                            set_scale(x, y, w, h, &dst_x, &dst_y, &dst_w, &dst_h, fb_w, fb_h);
+                            LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+                        }
+                    }
+                }
+            }
+        }
+    } else if (free_scale_enable == 1 && ppscaler_enable == 0) {
+        char val[256];
+        int left = 0, top = 0, right = 0, bottom = 0;
+        int x = 0, y = 0, w = 0, h = 0;
+        int freescale_x = 0, freescale_y = 0, freescale_w = 0, freescale_h = 0;
+
+        if (amsysfs_get_sysfs_str(WINDOW_AXIS_PATH, val, sizeof(val)) == 0) {
+            /* the returned string should be "window axis is [a b c d]" */
+            if (sscanf(val + 15, "[%d %d %d %d]", &left, &top, &right, &bottom) == 4) {
+                x = left;
+                y = top;
+                w = right - left + 1;
+                h = bottom - top + 1;
+
+                get_axis(FREE_SCALE_AXIS_PATH, &freescale_x, &freescale_y, &freescale_w, &freescale_h);
+                freescale_w = (freescale_w + 1) & (~1);
+                freescale_h = (freescale_h + 1) & (~1);
+
+                set_scale(x, y, w, h, &dst_x, &dst_y, &dst_w, &dst_h, freescale_w, freescale_h);
+                LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+            }
+        }
+    }
+
     axis[0] = dst_x;
     axis[1] = dst_y;
     axis[2] = dst_x + dst_w - 1;
