@@ -522,6 +522,10 @@ static unsigned int handle_current_time(play_para_t *para, unsigned int scr, uns
     }
 
     if (para->playctrl_info.pts_valid) {
+        if ((!para->astream_info.has_audio) && (scr > 0 && abs(scr - pts) >= PTS_FREQ/2)) {
+            // no audio, pcr will wait video for 3s, so compare
+            return 0;
+        }
         return scr;
     } else {
         return 0;
