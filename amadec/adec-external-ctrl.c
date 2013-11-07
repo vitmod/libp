@@ -54,6 +54,9 @@ int audio_decode_init(void **handle, arm_audio_info *a_ainfo)
 	audec->SessionID=a_ainfo->SessionID;
 	audec->dspdec_not_supported = a_ainfo->dspdec_not_supported;
 	audec->droppcm_flag = 0;	
+	audec->bitrate=a_ainfo->bitrate;
+	audec->block_align=a_ainfo->block_align;
+	audec->codec_id=a_ainfo->codec_id;
 	if (a_ainfo->droppcm_flag) {
 		audec->droppcm_flag = a_ainfo->droppcm_flag;
 		a_ainfo->droppcm_flag = 0;

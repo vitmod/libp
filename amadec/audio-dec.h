@@ -101,6 +101,9 @@ struct aml_audio_dec {
     int channels;
     int samplerate;
     int data_width;
+    int bitrate;
+    int block_align;
+    int codec_id;
     int need_stop;
     int auto_mute;
     int muted;
@@ -163,6 +166,9 @@ typedef struct {
     int sample_rate;         ///< audio stream sample rate
     int channels;            ///< audio stream channels
     int format;            ///< codec format id
+    int bitrate;
+    int block_align;
+    int codec_id;         //original codecid corespingding to ffmepg
     int handle;        ///< codec device handler
     int extradata_size;      ///< extra data size
     char extradata[AUDIO_EXTRA_DATA_SIZE];
@@ -220,6 +226,8 @@ struct adec_status {
 #define    ACODEC_FMT_AAC_LATM    19
 #define    ACODEC_FMT_APE    20
 #define    ACODEC_FMT_EAC3    21 
+#define    ACODEC_FMT_WIFIDISPLAY 22
+
 
 /***********************************************************************************************/
 extern void android_basic_init(void);

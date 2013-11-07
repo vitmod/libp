@@ -116,6 +116,9 @@ typedef struct {
     int sample_rate;         ///< audio stream sample rate
     int channels;            ///< audio stream channels
     int format;            ///< codec format id
+    int bitrate;
+    int block_align;
+    int codec_id;         //original codecid corespingding to ffmepg
     int handle;        ///< codec device handler
     int extradata_size;      ///< extra data size
     char extradata[AUDIO_EXTRA_DATA_SIZE];

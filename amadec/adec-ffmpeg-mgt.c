@@ -39,11 +39,19 @@ audio_lib_t audio_lib_list[] =
     {ACODEC_FMT_AAC_LATM, "libfaad.so"},
     {ACODEC_FMT_APE, "libape.so"},
     {ACODEC_FMT_MPEG, "libmad.so"},
-    {ACODEC_FMT_FLAC, "libflac.so"},
-    {ACODEC_FMT_DTS, "libdtsdec.so"},   
+    {ACODEC_FMT_FLAC, "libflac.so"},  
     {ACODEC_FMT_COOK, "libcook.so"},
     {ACODEC_FMT_RAAC, "libraac.so"},
     {ACODEC_FMT_AMR, "libamr.so"},
+
+    {ACODEC_FMT_PCM_S16BE,"libpcm.so"},
+    {ACODEC_FMT_PCM_S16LE,"libpcm.so"},
+    {ACODEC_FMT_PCM_U8,"libpcm.so"},
+    {ACODEC_FMT_PCM_BLURAY,"libpcm.so"},
+    {ACODEC_FMT_WIFIDISPLAY,"libpcm.so"},
+    {ACODEC_FMT_ALAW,"libpcm.so"},
+    {ACODEC_FMT_MULAW,"libpcm.so"},
+    {ACODEC_FMT_ADPCM,"libadpcm.so"},
     NULL
 } ;
 
@@ -53,7 +61,7 @@ int find_audio_lib(aml_audio_dec_t *audec)
     int num;
     audio_lib_t *f;
     int fd = 0;
-
+    adec_print("[%s %d]audec->format/%d audec->codec_id/0x%x\n",__FUNCTION__,__LINE__,audec->format,audec->codec_id);
     num = ARRAY_SIZE(audio_lib_list);   
     audio_decoder_operations_t *adec_ops=audec->adec_ops;
     //-------------------------
@@ -437,6 +445,7 @@ static int OutBufferRelease_raw(aml_audio_dec_t *audec)
     }
     return 0;
 }
+
 static int audio_codec_init(aml_audio_dec_t *audec)
 {
       //reset static&global
@@ -465,11 +474,18 @@ static int audio_codec_init(aml_audio_dec_t *audec)
 
       audec->data_width=AV_SAMPLE_FMT_S16;
       if(audec->channels>0){
+          int NumChSave=audec->channels;
           audec->channels=(audec->channels>2? 2:audec->channels);
           audec->adec_ops->channels=audec->channels;
+          if(audec->format==ACODEC_FMT_PCM_S16BE  || audec->format==ACODEC_FMT_PCM_S16LE  ||
+             audec->format==ACODEC_FMT_PCM_U8     || audec->format==ACODEC_FMT_PCM_BLURAY ||
+             audec->format==ACODEC_FMT_WIFIDISPLAY|| audec->format==ACODEC_FMT_ALAW       ||
+             audec->format==ACODEC_FMT_MULAW      || audec->format==ACODEC_FMT_ADPCM)
+                 audec->adec_ops->channels=NumChSave;
       }else{
           audec->adec_ops->channels=audec->channels=2;
       }
+
       if(audec->samplerate>0)
           audec->adec_ops->samplerate=audec->samplerate;
       else

@@ -10,7 +10,6 @@
 //#define AUDIO_ARM_DECODER 1
 //#define AUDIO_FFMPEG_DECODER 2
 
-#define READ_ABUFFER_SIZE 2*10*1024 //default in buffer size
 #define DEFAULT_PCM_BUFFER_SIZE 192000*2//default out buffer size
 
 #define AUDIO_EXTRA_DATA_SIZE   (4096)

@@ -28,31 +28,6 @@ static int set_tsync_enable(int enable)
     return amsysfs_set_sysfs_int(path, enable);
 }
 
-/**
- * \brief set audio output mode.
- * \param cmd control commands
- * \return 0 on success otherwise -1
- */
- #if 0
-#define ACODEC_FMT_NULL 	0
-#define ACODEC_FMT_AAC		1
-#define ACODEC_FMT_AC3		2
-#define ACODEC_FMT_DTS		3
-#define ACODEC_FMT_FLAC		4
-#define ACODEC_FMT_COOK		5
-#define ACODEC_FMT_AMR		6
-#define ACODEC_FMT_RAAC		7
-#define ACODEC_FMT_ADPCM	8
-#define ACODEC_FMT_WMA		9
-#define ACODEC_FMT_PCM		10
-#define ACODEC_FMT_WMAPRO	11
-#define ACODEC_FMT_ALAC		12
-#define ACODEC_FMT_VORBIS	13
-#define ACODEC_FMT_AAC_LATM	14
-#define ACODEC_FMT_APE		15
-#define ACODEC_FMT_MPEG123 	16
-#endif
-
 typedef struct {
 //	int no;
 	int audio_id;
@@ -67,7 +42,6 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_COOK, "cook"},
     {ACODEC_FMT_AMR, "amr"},
     {ACODEC_FMT_RAAC, "raac"},
-    {ACODEC_FMT_ADPCM, "adpcm"},
     {ACODEC_FMT_WMA, "wma"},
     {ACODEC_FMT_WMAPRO, "wmapro"},
     {ACODEC_FMT_ALAC, "alac"},
@@ -76,7 +50,18 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_APE, "ape"},
     {ACODEC_FMT_MPEG, "mp3"},
     {ACODEC_FMT_EAC3,"eac3"},
+
+    {ACODEC_FMT_PCM_S16BE,"pcm"},
+    {ACODEC_FMT_PCM_S16LE,"pcm"},
+    {ACODEC_FMT_PCM_U8,"pcm"},
+    {ACODEC_FMT_PCM_BLURAY,"pcm"},
+    {ACODEC_FMT_WIFIDISPLAY,"pcm"},
+    {ACODEC_FMT_ALAW,"pcm"},
+    {ACODEC_FMT_MULAW,"pcm"},
+
+    {ACODEC_FMT_ADPCM,"adpcm"},
     {ACODEC_FMT_NULL, "null"},
+   
 };
 
 static int audio_decoder = AUDIO_ARC_DECODER;
@@ -310,34 +295,6 @@ static void adec_flag_check(aml_audio_dec_t *audec)
     }
 }
 
-/**
- * \brief adec main thread
- * \param args pointer to thread private data
- * \return NULL
- */
- #if 0 
-static int decode_audio(AVCodecContext *ctxCodec, char *outbuf, int *outlen, char *inbuf, int inlen){
-	AVPacket avpkt;
-	int ret;
-
-	av_init_packet(&avpkt);
-	avpkt.data = inbuf;
-	avpkt.size = inlen;
-	int i;
-
-	switch (ctxCodec->codec_id) {
-	case CODEC_ID_AAC:
-		ret = avcodec_decode_audio3(ctxCodec, (int16_t *)outbuf, outlen, &avpkt);
-		//adec_print("ape samplerate=%d,channels=%d,framesize=%d,ret=%d,outlen=%d,inlen=%d,-------------------------------------------\n",
-	    //		ctxCodec->sample_rate,ctxCodec->channels,ctxCodec->frame_size,ret,*outlen,inlen);
-		break;
-	default: 
-		break;
-	}
-
-	return ret;
-}
-#endif
 static int write_buffer(char *outbuf, int outlen){
 	return 0;
 }
@@ -494,297 +451,11 @@ static void *adec_message_loop(void *args)
     return NULL;
 }
 
-#define READ_ABUFFER_SIZE 10*1024
-#define APACKET_END_SIZE 15*1024
-#if 0
-static void *adec_armdec_loop(void *args)
-{
-    int ret;
-	int rlen = 0;
-	int inlen = 0;
-	int dlen = 0;
-	int declen = 0;
-    aml_audio_dec_t *audec;
-    audio_out_operations_t *aout_ops;
-    adec_cmd_t *msg = NULL;
-	AVPacket apkt;
-	char *inbuf = NULL;
-	char apkt_end[APACKET_END_SIZE];
-	char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];
-	int outlen = 0;
-	AVCodecContext *ctxCodec = NULL;
-	AVCodec *acodec = NULL;
-	int in_ape_fp = -1;
-	int out_ape_fp = -1;
-	int audio_handle = -1;
-	
-	adec_print("adec_armdec_loop start!\n");
-
-	audec = (aml_audio_dec_t *)args;
-    aout_ops = &audec->aout_ops;
-	av_init_packet(&apkt); 
-	//memset(inbuf, 0, READ_ABUFFER_SIZE);
-	memset(outbuf, 0, AVCODEC_MAX_AUDIO_FRAME_SIZE);
-
-	//buffer_stream_t init and set adsp_ops param
-	audec->bs=malloc(sizeof(buffer_stream_t));
-	int ret_value=init_buff(audec->bs);
-	if(ret_value==1)
-		adec_print("=====pcm buffer init ok buf_size:%d buf_data:0x%x  end:0x%x !\n",audec->bs->buf_length,audec->bs->data,audec->bs->data+1024*1024);
-	audec->adsp_ops.dsp_on=1;
-	aout_ops->init(audec);
-	aout_ops->start(audec);
-
-	ctxCodec = avcodec_alloc_context();
-	if(!ctxCodec) {
-		adec_print("APE AVCodecContext allocate error!\n");
-		ctxCodec = NULL;
-	}
-	adec_print("ctxCodec!\n");
-
-	
-	adec_print("adec_armdec_loop   audec->pcodec = %d, audec->pcodec->ctxCodec = %d!\n", audec->pcodec, audec->pcodec->ctxCodec);
-		
-	ctxCodec = audec->pcodec->ctxCodec;
-	ctxCodec->codec_type = CODEC_TYPE_AUDIO;
-		
-	adec_print("open codec_id = %d--\n",ctxCodec->codec_id);
-	acodec = avcodec_find_decoder(ctxCodec->codec_id);
-	if (!acodec) {
-		adec_print("acodec not found\n");
-	}
-	adec_print("open codec_id = %d----------------------------------\n",ctxCodec->codec_id);
-		
-	if (avcodec_open(ctxCodec, acodec) < 0) {
-		adec_print("Could not open acodec = %d\n", acodec);
-	}
-
-	out_ape_fp = open("./dump/123.dat", O_CREAT | O_RDWR);
-	if (out_ape_fp < 0) {
-        adec_print("Create input file failed! fd=%d------------------------------\n", out_ape_fp);
-    }
-    adec_print("out_ape_fp = %d!", out_ape_fp);
-	in_ape_fp = open("./dump/in.dat", O_CREAT | O_RDWR);
-	if (in_ape_fp < 0) {
-        adec_print("Create input file failed! fd=%d------------------------------\n", out_ape_fp);
-    }
-    adec_print("in_ape_fp = %d!", in_ape_fp);
-
-	ret = uio_init();
-	if (ret < 0){
-		adec_print("uio init error! \n");
-		goto error;
-	}
-		
-    while (1){
-
-		if (inlen > 0) {
-			if (inbuf) {
-				free(inbuf);
-				inbuf = NULL;
-			}
-			inbuf = malloc(READ_ABUFFER_SIZE + inlen);
-			memcpy(inbuf, apkt_end, inlen);
-			rlen = read_buffer(inbuf+inlen, READ_ABUFFER_SIZE);
-			rlen += inlen;
-		}
-		else {
-			if (inbuf) {
-				free(inbuf);
-				inbuf = NULL;
-			}
-			inbuf = malloc(READ_ABUFFER_SIZE);
-			rlen = read_buffer(inbuf+inlen, READ_ABUFFER_SIZE);
-		}
-		if (out_ape_fp >= 0) {
-			write(in_ape_fp, inbuf, rlen);
-			adec_print("write ape data in rlen = %d bytes\n",rlen);
-		}
-		declen = 0;
-		if (rlen > 0){
-			inlen = rlen;
-			while (declen<rlen) {	
-				outlen = AVCODEC_MAX_AUDIO_FRAME_SIZE;
-				dlen = decode_audio(ctxCodec, outbuf, &outlen, inbuf+declen, inlen);
-				if (dlen <= 0){
-					adec_print("dlen = %d error----\n",dlen);
-					if (inlen > 0) {
-						adec_print("packet end %d bytes----\n",inlen);
-						memcpy(apkt_end, (uint8_t *)(inbuf+declen), inlen);
-					}
-					break;
-				}
-				declen += dlen;
-				inlen -= dlen;
-				write_pcm_buffer(outbuf, audec->bs,outlen);
-				//write_buffer(outbuf, outlen);
-				if (outlen > 0) {
-					if (out_ape_fp >= 0) {
-						write(out_ape_fp, outbuf, outlen);
-					}
-				}
-			} 
-		
-#if 0			
-			outsize = AVCODEC_MAX_AUDIO_FRAME_SIZE;
-			apkt.data = inbuffer;
-			apkt.size = rlen;
-			while (apkt.size > 0){
-				dlen = avcodec_decode_audio3(ctxCodec, (int16_t *)outbuffer, &outsize, &apkt);
-				if (dlen <= 0){
-					adec_print("dlen = %d error----\n",dlen);
-				}
-				if (outsize > 0) {
-					if (out_ape_fp >= 0) {
-						write(out_ape_fp, outbuffer, outsize);
-						adec_print("write ape data%d bytes\n UUUUUUUU----\n",outsize);
-					}
-				}				
-				declen += dlen;
-				apkt.size -= dlen;					
-				if (apkt.size > 0){
-					apkt.data += dlen;
-				}
-				else if (apkt.size < 0){
-					adec_print("wrong aptk.size = %d, declen = %d, dlen = %d!", apkt.size, declen, dlen);
-				}					
-			}
-#endif			
-		}
-		else {			
-			adec_print("rlen = %d", rlen);
-			break;
-		}
-	}
-    close(out_ape_fp);
-    close(in_ape_fp);
-	
-    adec_print("Exit adec_armdec_loop Thread!");
-
-error:	
-    pthread_exit(NULL);
-    return NULL;
-}
-#endif
 /**
  * \brief start audio dec
  * \param audec pointer to audec
  * \return 0 on success otherwise -1 if an error occurred
  */
- #if 0
-static int get_dectype(int id)
-{
-	switch (id) {
-		case  CODEC_ID_MP3:
-			return ACODEC_FMT_MPEG;
-	
-		case  CODEC_ID_AAC_LATM:
-			return ACODEC_FMT_AAC_LATM;
-	
-		case  CODEC_ID_AAC:
-			return ACODEC_FMT_AAC;
-	
-		case  CODEC_ID_AC3:
-			return ACODEC_FMT_AC3;
-	
-		case  CODEC_ID_DTS:
-			return ACODEC_FMT_DTS;
-	
-		case  CODEC_ID_FLAC:
-			return ACODEC_FMT_FLAC;
-	
-		case  CODEC_ID_COOK:
-			return ACODEC_FMT_COOK;
-	
-		case  CODEC_ID_AMR_NB:
-		case  CODEC_ID_AMR_WB:
-			return ACODEC_FMT_AMR;
-	
-		case  CODEC_ID_RA_144:
-		case  CODEC_ID_RA_288:
-			return ACODEC_FMT_RAAC;
-	
-		case  CODEC_ID_ADPCM_IMA_QT:
-		case  CODEC_ID_ADPCM_IMA_WAV:
-		case  CODEC_ID_ADPCM_IMA_DK3:
-		case  CODEC_ID_ADPCM_IMA_DK4:
-		case  CODEC_ID_ADPCM_IMA_WS:
-		case  CODEC_ID_ADPCM_IMA_SMJPEG:
-		case  CODEC_ID_ADPCM_MS:
-		case  CODEC_ID_ADPCM_4XM:
-		case  CODEC_ID_ADPCM_XA:
-		case  CODEC_ID_ADPCM_ADX:
-		case  CODEC_ID_ADPCM_EA:
-		case  CODEC_ID_ADPCM_G726:
-		case  CODEC_ID_ADPCM_CT:
-		case  CODEC_ID_ADPCM_SWF:
-		case  CODEC_ID_ADPCM_YAMAHA:
-		case  CODEC_ID_ADPCM_SBPRO_4:
-		case  CODEC_ID_ADPCM_SBPRO_3:
-		case  CODEC_ID_ADPCM_SBPRO_2:
-		case  CODEC_ID_ADPCM_THP:
-		case  CODEC_ID_ADPCM_IMA_AMV:
-		case  CODEC_ID_ADPCM_EA_R1:
-		case  CODEC_ID_ADPCM_EA_R3:
-		case  CODEC_ID_ADPCM_EA_R2:
-		case  CODEC_ID_ADPCM_IMA_EA_SEAD:
-		case  CODEC_ID_ADPCM_IMA_EA_EACS:
-		case  CODEC_ID_ADPCM_EA_XAS:
-		case  CODEC_ID_ADPCM_EA_MAXIS_XA:
-		case  CODEC_ID_ADPCM_IMA_ISS:
-		case  CODEC_ID_ADPCM_G722:
-			return ACODEC_FMT_ADPCM;
-
-		case CODEC_ID_PCM_S16LE:
-		case CODEC_ID_PCM_S16BE:
-		case CODEC_ID_PCM_U16LE:
-		case CODEC_ID_PCM_U16BE:
-		case CODEC_ID_PCM_S8:
-		case CODEC_ID_PCM_U8:
-		case CODEC_ID_PCM_MULAW:
-		case CODEC_ID_PCM_ALAW:
-		case CODEC_ID_PCM_S32LE:
-		case CODEC_ID_PCM_S32BE:
-		case CODEC_ID_PCM_U32LE:
-		case CODEC_ID_PCM_U32BE:
-		case CODEC_ID_PCM_S24LE:
-		case CODEC_ID_PCM_S24BE:
-		case CODEC_ID_PCM_U24LE:
-		case CODEC_ID_PCM_U24BE:
-		case CODEC_ID_PCM_S24DAUD:
-		case CODEC_ID_PCM_ZORK:
-		case CODEC_ID_PCM_S16LE_PLANAR:
-		case CODEC_ID_PCM_DVD:
-		case CODEC_ID_PCM_F32BE:
-		case CODEC_ID_PCM_F32LE:
-		case CODEC_ID_PCM_F64BE:
-		case CODEC_ID_PCM_F64LE:
-		case CODEC_ID_PCM_BLURAY:
-		case CODEC_ID_PCM_LXF:
-		case CODEC_ID_S302M:
-			return ACODEC_FMT_PCM_U8;
-	
-		case CODEC_ID_WMAV1:
-    	case CODEC_ID_WMAV2:
-			return ACODEC_FMT_WMA;
-	
-		case CODEC_ID_WMAPRO:
-			return ACODEC_FMT_WMAPRO;
-
-		case CODEC_ID_ALAC:
-			return ACODEC_FMT_ALAC;
-			
-		case CODEC_ID_VORBIS:
-			return ACODEC_FMT_VORBIS;
-			
-		case CODEC_ID_APE:
-			return ACODEC_FMT_APE;
-			
-		default:
-			return ACODEC_FMT_NULL;
-	}
-}
-#endif
 int match_types(const char *filetypestr,const char *typesetting)
 {
 	const char * psets=typesetting;
@@ -813,55 +484,7 @@ int match_types(const char *filetypestr,const char *typesetting)
 	}
 	return 0;
 }
-#if 0
-static int set_audio_decoder(codec_para_t *pcodec)
-{
-	int audio_id;
-	int i;	
-    int num;
-	int ret;
-    audio_type_t *t;
-	char value[PROPERTY_VALUE_MAX];
-	
 
-	audio_id = get_dectype(pcodec->ctxCodec->codec_id);
-
-    num = ARRAY_SIZE(audio_type);
-    for (i = 0; i < num; i++) {
-        t = &audio_type[i];
-        if (t->audio_id == audio_id) {
-            break;
-        }
-    }
-	
-	ret = property_get("media.arm.audio.decoder",value,NULL);
-	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
-	if (ret>0 && match_types(t->type,value))
-	{	
-		audio_decoder = AUDIO_ARM_DECODER;
-		return 0;
-	} 
-	
-	ret = property_get("media.arc.audio.decoder",value,NULL);
-	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
-	if (ret>0 && match_types(t->type,value))
-	{	
-		audio_decoder = AUDIO_ARC_DECODER;
-		return 0;
-	} 
-	
-	ret = property_get("media.ffmpeg.audio.decoder",value,NULL);
-	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
-	if (ret>0 && match_types(t->type,value))
-	{	
-		audio_decoder = AUDIO_FFMPEG_DECODER;
-		return 0;
-	} 
-	
-	audio_decoder = AUDIO_ARC_DECODER; //set arc decoder as default
-	return 0;
-}
-#endif
 static int set_audio_decoder(aml_audio_dec_t *audec)
 {
 	int audio_id;
@@ -934,27 +557,7 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 int get_audio_decoder(void)
 {
 	//adec_print("audio_decoder = %d\n", audio_decoder);
-
 	return audio_decoder;
-#if 0
-	char value[PROPERTY_VALUE_MAX];
-	if(property_get("media.amplayer.audiocodec",value,NULL)>0)
-	{	
-		adec_print("media.amplayer.audiocodec = %s\n", value);
-		if (strcmp(value, "arc_decoder")==0){
-			return AUDIO_ARC_DECODER;
-		}
-		else if (strcmp(value, "arm_decoder")==0){
-			return AUDIO_ARM_DECODER;
-		}
-		else if(strcmp(value, "ffmpeg_decoder")==0){
-			return AUDIO_FFMPEG_DECODER;
-		}
-		
-		return AUDIO_ARC_DECODER;
-	}
-	return AUDIO_ARC_DECODER;
-#endif	
 }
 
 int vdec_pts_pause(void)
