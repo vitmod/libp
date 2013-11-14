@@ -28,13 +28,13 @@ int amvideocap_capframe(char *buf,int size,int *w,int *h,int fmt_ignored,int at_
 	if(at_end){
 		ret=ioctl(fd,AMVIDEOCAP_IOW_SET_WANTFRAME_AT_FLAGS,CAP_FLAG_AT_END);
 	}
+	ret=read(fd,buf,size);
 	if(w<0){
 		ret=ioctl(fd,AMVIDEOCAP_IOR_GET_FRAME_WIDTH,&w);
 	}
 	if(h<0){
 		ret=ioctl(fd,AMVIDEOCAP_IOR_GET_FRAME_HEIGHT,&h);
 	}
-	ret=read(fd,buf,size);
 	close(fd);
 	return ret;
 }
