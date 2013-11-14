@@ -15,6 +15,7 @@
 #define SCALE_PATH       "/sys/class/graphics/fb0/scale"
 #define SCALE_REQUEST 	 "/sys/class/graphics/fb0/request2XScale"
 #define OSD_ROTATION_PATH "/sys/class/graphics/fb0/prot_angle"
+#define OSD_ROTATION_ON "/sys/class/graphics/fb0/prot_on"
 #define SYSCMD_BUFSIZE 40
 
 #ifndef LOGD
@@ -125,6 +126,15 @@ int amdisplay_utils_get_osd_rotation()
 {
     char buf[40];
     int ret;
+
+	ret = amsysfs_get_sysfs_str(OSD_ROTATION_ON, buf, SYSCMD_BUFSIZE);
+	if((ret<0) || strstr(buf,"OFF"))
+	{
+		return 0;//no rotation+   
+	}
+	memset(buf, 0 ,40);
+
+	
     ret = amsysfs_get_sysfs_str(OSD_ROTATION_PATH, buf, SYSCMD_BUFSIZE);
     if(ret < 0)
         return 0;//no rotation
