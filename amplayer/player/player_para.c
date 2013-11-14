@@ -1670,9 +1670,9 @@ int player_decoder_init(play_para_t *p_para)
 				codec_set_audio_delay_limited_ms(p_para->codec,p_para->playctrl_info.buf_limited_time_ms);
 		}
 	}
-
-	if((p_para->pFormatCtx)&&(p_para->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(p_para->pFormatCtx->iformat->name,"DRMdemux",8))==0){
-		log_print("DRMdemux :: LOCAL_OEMCRYPTO_LEVEL -> L1\n");
+	if(p_para->pFormatCtx&&p_para->pFormatCtx->iformat&&p_para->pFormatCtx->iformat->name&&(((p_para->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(p_para->pFormatCtx->iformat->name,"DRMdemux",8)==0))||
+	       ((p_para->pFormatCtx->flags & AVFMT_FLAG_PR_TVP)&&(memcmp(p_para->pFormatCtx->iformat->name,"Demux_no_prot",13)==0)))){
+		log_print("DRMdemux :: LOCAL_OEMCRYPTO_LEVEL -> L1 or PlayReady TVP\n");
 		if (p_para->vcodec){
 			log_print("DRMdemux setdrmmodev vcodec\n");
 			codec_set_drmmode(p_para->vcodec);

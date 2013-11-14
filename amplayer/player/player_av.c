@@ -61,6 +61,7 @@ static const media_type media_array[] = {
     {"ape", APE_FILE, STREAM_ES},
     {"hls,applehttp", MP4_FILE, STREAM_ES},
     {"DRMdemux", MP4_FILE, STREAM_ES},
+    {"Demux_no_prot", MP4_FILE, STREAM_ES},
     {"cmf", MP4_FILE, STREAM_ES},
     {"amr", AMR_FILE, STREAM_AUDIO},
     {"rtp", STREAM_FILE, STREAM_ES},
@@ -1261,7 +1262,8 @@ int time_search(play_para_t *am_p,int flags)
      am_p->state.current_time = am_p->playctrl_info.time_point;
      am_p->state.current_ms = (unsigned int)(am_p->playctrl_info.time_point * 1000);
  
-    if((am_p->pFormatCtx)&&(am_p->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(am_p->pFormatCtx->iformat->name,"DRMdemux",8))==0){
+    if(am_p->pFormatCtx&&am_p->pFormatCtx->iformat&&am_p->pFormatCtx->iformat->name&&(((am_p->pFormatCtx->flags & AVFMT_FLAG_DRMLEVEL1)&&(memcmp(am_p->pFormatCtx->iformat->name,"DRMdemux",8)==0))||
+	((am_p->pFormatCtx->flags & AVFMT_FLAG_PR_TVP)&&(memcmp(am_p->pFormatCtx->iformat->name,"Demux_no_prot",13)==0)))){
 	if (am_p->vcodec){
 		codec_set_drmmode(am_p->vcodec);
 	}
@@ -2284,7 +2286,7 @@ int set_header_info(play_para_t *para)
 
                     pkt->hdr->size = data_len + 22;
                     pkt->avpkt_newflag = 1;
-                } else if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WVC1) {
+                } else if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WVC1&&!(para->p_pkt->avpkt->flags & AV_PKT_FLAG_ISDECRYPTINFO)/*TVP not need add header*/) {
                     if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
                         FREE(pkt->hdr->data);
                         pkt->hdr->data = NULL;

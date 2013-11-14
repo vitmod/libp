@@ -699,6 +699,7 @@ typedef struct AVFormatContext {
     struct AVOutputFormat *oformat;
     void *priv_data;
     AVIOContext *pb;
+    AVProbeData pd;
     unsigned int nb_streams;
     AVStream **streams;
     char filename[1024]; /**< input or output filename */
@@ -779,6 +780,7 @@ typedef struct AVFormatContext {
 
 #define AVFMT_FLAG_DRMLEVEL1 0x200000 ///< Set Drm Level ;
 
+#define AVFMT_FLAG_PR_TVP 0x400000 ///< Playready TVP ;
 
     int loop_input;
 

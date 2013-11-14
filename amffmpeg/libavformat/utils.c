@@ -807,8 +807,14 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
         return 0;
     }
     if ( (s->iformat && s->iformat->flags & AVFMT_NOFILE) ||
-        (!s->iformat && (s->iformat = av_probe_input_format(&pd, 0))))
-        return 0;
+        (!s->iformat && (s->iformat = av_probe_input_format(&pd, 0)))){
+            s->pd.filename = pd.filename;
+            s->pd.buf = pd.buf;
+            s->pd.s = pd.s;
+            memcpy(s->pd.pads, pd.pads, 8*sizeof(long));
+            av_log(NULL, AV_LOG_WARNING, "[init-input] iformat name%s return\n",s->iformat->name);
+            return 0;
+    }
     if(!strncmp(filename, "mms:", strlen("mms:"))) {
         char * mms_prot = transfer_mms_protocol(s, filename, headers);
         if(mms_prot) {
@@ -3252,7 +3258,7 @@ int av_find_stream_info(AVFormatContext *ic)
 	
     if(ic->pb!=NULL)
     	old_offset= avio_tell(ic->pb);	
-    if(!strcmp(ic->iformat->name, "DRMdemux")) {       
+    if(!strcmp(ic->iformat->name, "DRMdemux") || !strcmp(ic->iformat->name, "Demux_no_prot")) {       
         for(i = 0;i < ic->nb_streams; i++) {
             st = ic->streams[i];
             if (st->codec->bit_rate > 0){
@@ -3265,7 +3271,7 @@ int av_find_stream_info(AVFormatContext *ic)
             ic->file_size = file_size;
          if(bit_rate > 0)
             ic->bit_rate = bit_rate;
-        av_log(NULL, AV_LOG_INFO, "]av_find_stream_info]DRMdemux, do not check stream info ,return directly\n");
+        av_log(NULL, AV_LOG_INFO, "[av_find_stream_info]DRMdemux&Demux_no_prot, do not check stream info ,return directly\n");
         return 0;
     }
     av_log(NULL, AV_LOG_INFO, "[%s:%d]fast_switch=%d\n", __FUNCTION__, __LINE__, fast_switch);
