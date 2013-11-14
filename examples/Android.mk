@@ -56,3 +56,19 @@ LOCAL_SHARED_LIBRARIES += libbinder  \
                           libsystemwriteservice
 include $(BUILD_EXECUTABLE)
 
+
+include $(CLEAR_VARS)
+LOCAL_MODULE    := amvideocaptest
+LOCAL_MODULE_TAGS := samples
+LOCAL_SRC_FILES := amvideocaptest.c
+LOCAL_ARM_MODE := arm
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/../amplayer/player/include \
+    $(LOCAL_PATH)/../amavutils/include \
+    $(JNI_H_INCLUDE)
+
+LOCAL_STATIC_LIBRARIES := libavutil libamadec libamavutils
+LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils libssl libcrypto
+
+LOCAL_SHARED_LIBRARIES += libbinder  \
+                          libsystemwriteservice
+include $(BUILD_EXECUTABLE)
