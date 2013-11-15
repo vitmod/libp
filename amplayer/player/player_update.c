@@ -1154,6 +1154,7 @@ static int  update_buffering_states(play_para_t *p_para,
     float alevel, vlevel;
     float minlevel, maxlevel;
     float avlevel;
+    int adelayms=0,vdelayms=0,avdelayms=0;
     if (abuf->size > 0) {
         alevel = (float)abuf->data_len / abuf->size;
 	  ffmepg_seturl_codec_buf_info(p_para,2,abuf->size);	
@@ -1187,20 +1188,33 @@ static int  update_buffering_states(play_para_t *p_para,
     }
     ffmpeg_seturl_buffered_level(p_para,(int)(10000*avlevel));
     
-    if (p_para->buffering_enable && p_para->buffering_start_time_s > 0) {
+    if (p_para->buffering_enable && p_para->buffering_start_time_s > 0 && !p_para->buffering_bitrate_finished) {
         /*reset  buffering parameters for  frame rate*/
         int bitrate = 0;
         int buftime = p_para->buffering_start_time_s;
-
+        int vbitrate=0,abitrate=0;
+		
         if (p_para->pFormatCtx) {
             bitrate = p_para->pFormatCtx->bit_rate;
             if (bitrate <= 0 && p_para->pFormatCtx->file_size > 0 && p_para->pFormatCtx->duration > 0) { /*caculate is better */
                 bitrate = (p_para->pFormatCtx->file_size * 8) / (p_para->pFormatCtx->duration / AV_TIME_BASE);
             }
         }
-	  if(bitrate<=0){
-		bitrate = get_playing_bandwidth(p_para);
-	  }	
+        if(bitrate<=0){
+            bitrate = get_playing_bandwidth(p_para);
+        }
+        if(p_para->vstream_info.has_video && bitrate<1000 || bitrate<10)/*maybe not get real bitrate*/
+        {
+            if(p_para->vstream_info.has_video){
+                codec_get_video_cur_bitrate(get_video_codec(p_para),&vbitrate);
+            }
+            if(p_para->astream_info.has_audio){
+               codec_get_audio_cur_bitrate(get_audio_codec(p_para),&abitrate);
+            }
+            if(abitrate+vbitrate>bitrate*5){
+                bitrate=abitrate+vbitrate;
+            }
+        }
         if (bitrate > 0 && (vbuf->size > 0 || abuf->size > 0)) {
             /*===time * bitrate/8/bufsize=buflevel =====*/
             p_para->buffering_threshhold_middle = ((float)buftime * bitrate / 8) / (vbuf->size + abuf->size); //for tmp start.we will reset after playing
@@ -1210,8 +1224,10 @@ static int  update_buffering_states(play_para_t *p_para,
             if (p_para->buffering_threshhold_middle >= p_para->buffering_threshhold_max * 9 / 10) {
                 p_para->buffering_threshhold_middle = p_para->buffering_threshhold_max * 9 / 10;
             }
+            p_para->buffering_bitrate_finished=1;
         } else {
-            p_para->buffering_threshhold_middle = 0.02; /*used default value*/
+            p_para->buffering_threshhold_middle = 0.05; /*used default value*/
+			p_para->buffering_bitrate_finished=0;
         }
         log_print("buffering threadhold  changed by bufering time(must min=%f<middle=%f<max=%f),buftime=%dS,bitrate=%d\n",
                   p_para->buffering_threshhold_min,
@@ -1220,7 +1236,6 @@ static int  update_buffering_states(play_para_t *p_para,
                   buftime,
                   bitrate);
         /*seted,clear the value,we can changed later,and reset here again*/
-        p_para->buffering_start_time_s = 0;
     }
 
     p_para->state.audio_bufferlevel = alevel;
@@ -1258,6 +1273,11 @@ static int  update_buffering_states(play_para_t *p_para,
         }
         p_para->buffering_force_delay_s = 0;
     }
+    if(p_para->buffering_start_time_s>0){
+        codec_get_video_cur_delay_ms(get_video_codec(p_para),&vdelayms);
+        codec_get_audio_cur_delay_ms(get_video_codec(p_para),&adelayms);
+        avdelayms=MIN(vdelayms,adelayms);
+    }
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&
@@ -1269,7 +1289,8 @@ static int  update_buffering_states(play_para_t *p_para,
             update_player_states(p_para, 1);
             log_print("enter buffering!!!\n");
         } else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
-                   ((minlevel > p_para->buffering_threshhold_middle)  ||
+                   ((avdelayms > p_para->buffering_start_time_s*1000)  ||
+                    (avdelayms<=0 && minlevel > p_para->buffering_threshhold_middle)  ||
                     (maxlevel > p_para->buffering_threshhold_max) ||
                     p_para->playctrl_info.read_end_flag)) {
             codec_resume(p_para->codec);

@@ -200,7 +200,7 @@ typedef struct play_para {
     float buffering_start_time_s;
     float buffering_force_delay_s; 
     long buffering_check_point;	
-   
+    int buffering_bitrate_finished;  
     struct am_packet *p_pkt;
 
 	void *player_mate;/*player's mate thread handle*/
