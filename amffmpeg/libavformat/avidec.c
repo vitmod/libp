@@ -1112,6 +1112,9 @@ resync:
         // if exceed valid data, return EOF
         if (s->valid_offset_done && (i >= s->valid_offset))
             return AVERROR_EOF;
+
+        if (url_interrupt_cb())
+            return AVERROR_EXIT;
         
         for(j=0; j<7; j++)
             d[j]= d[j+1];
