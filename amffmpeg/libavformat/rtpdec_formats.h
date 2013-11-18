@@ -1,4 +1,4 @@
-/*
+	/*
  * RTP depacketizer declarations
  * Copyright (c) 2010 Martin Storsjo
  *
@@ -52,4 +52,5 @@ extern RTPDynamicProtocolHandler ff_theora_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_vorbis_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_vp8_dynamic_handler;
 
+extern RTPDynamicProtocolHandler ff_ac3_dynamic_handler;
 #endif /* AVFORMAT_RTPDEC_FORMATS_H */
