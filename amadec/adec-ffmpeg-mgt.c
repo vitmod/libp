@@ -291,7 +291,10 @@ unsigned long  armdec_set_pts(dsp_operations_t *dsp_ops,unsigned long apts)
     ioctl(dsp_ops->dsp_file_fd, AMSTREAM_IOC_SET_APTS, &apts);
     return 0;
 }
-
+int armdec_set_skip_bytes(dsp_operations_t* dsp_ops, unsigned int bytes)
+{
+	return	0;
+}
 static int set_sysfs_int(const char *path, int val)
 {
     return amsysfs_set_sysfs_int(path, val);
@@ -366,7 +369,7 @@ static int OutBufferInit(aml_audio_dec_t *audec)
     }else{
         adec_print("[%s %d] audec->g_bst/%p",__FUNCTION__,__LINE__,audec->g_bst);
     }
-    
+
 
     if(audec->adec_ops->nOutBufSize<=0) //set default if not set
         audec->adec_ops->nOutBufSize=DEFAULT_PCM_BUFFER_SIZE;
@@ -402,7 +405,7 @@ static int OutBufferInit_raw(aml_audio_dec_t *audec)
     }else{
         adec_print("[%s %d] audec->audec->g_bst_raw/%p",__FUNCTION__,__LINE__,audec->g_bst_raw);
     }
-    
+
     if(audec->adec_ops->nOutBufSize<=0) //set default if not set
            audec->adec_ops->nOutBufSize=DEFAULT_PCM_BUFFER_SIZE;
 
@@ -545,6 +548,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
       audec->adsp_ops.get_cur_pts = armdec_get_pts;
       audec->adsp_ops.get_cur_pcrscr =  armdec_get_pcrscr;
       audec->adsp_ops.set_cur_apts    = armdec_set_pts;
+      audec->adsp_ops.set_skip_bytes = armdec_set_skip_bytes;		  
       audec->adsp_ops.dsp_read_raw=armdec_stream_read_raw;
       audec->pcm_bytes_readed=0;
       audec->raw_bytes_readed=0;
@@ -918,7 +922,11 @@ void *audio_getpackage_loop(void *args)
     char *inbuf = NULL;//real buffer
     int rlen = 0;//read buffer ret size
     int nAudioFormat;
-        
+    unsigned wfd = 0;	
+    if(am_getconfig_bool("media.libplayer.wfd"))  {
+  	wfd = 1;
+   }	  	
+      
     adec_print("[%s]adec_getpackage_loop start!\n",__FUNCTION__);
     audec = (aml_audio_dec_t *)args;
     adec_ops=audec->adec_ops;
@@ -956,19 +964,27 @@ exit_decode_loop:
           int nCurrentReadCount=0;
           int nReadSizePerTime=1*1024;
           rlen=0;
+	   int sleeptime = 0; 
           while(nNextReadSize>0 && !audec->exit_decode_thread)
           {
                if(nNextReadSize<=nReadSizePerTime)
                     nReadSizePerTime=nNextReadSize;
                nRet = read_buffer(inbuf+rlen, nReadSizePerTime);//read 10K per time
-               if(nRet<=0){    
+               if(nRet<=0){   
+			sleeptime++;   	
                     usleep(1000);
                     continue;
                }
                rlen+=nRet;
-               nNextReadSize-=nRet;      
+               nNextReadSize-=nRet;   
+		 if(wfd && nAudioFormat == ACODEC_FMT_AAC){
+		 	if(rlen > 300)
+				break;
+		 }
           }
-
+//	    adec_print(" read data %d,sleep time %d ms    \n",	rlen,sleeptime);	   
+	    	  
+	   sleeptime= 0;
           nCurrentReadCount=rlen;
           rlen += inlen;
           while(package_add(audec,inbuf,rlen) && !audec->exit_decode_thread)

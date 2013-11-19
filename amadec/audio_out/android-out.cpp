@@ -32,6 +32,7 @@ namespace android
 {
 
 static Mutex mLock;
+extern "C" int get_audio_decoder(void);
 static int get_digitalraw_mode(void)
 {
     int fd;
@@ -183,7 +184,8 @@ static int resample = 0, last_resample = 0, resample_step = 0, last_step=0;
 static int xxx;
 static int diff_record[0x40], diff_wp = 0;
 static int wfd_enable = 0, bytes_skipped = 0x7fffffff;
-
+static int wfd_ds_thrdhold = 250; //audio pts delay threadhold for down sampling
+static int wfd_us_thrdhold = 150;//audio pts delay threadhold for up  sampling
 void audioCallback(int event, void* user, void *info)
 {
     int len, i;
@@ -192,6 +194,7 @@ void audioCallback(int event, void* user, void *info)
     AudioTrack::Buffer *buffer = static_cast<AudioTrack::Buffer *>(info);
     aml_audio_dec_t *audec = static_cast<aml_audio_dec_t *>(user);
     audio_out_operations_t *out_ops = &audec->aout_ops;
+    dsp_operations_t *dsp_ops = &audec->adsp_ops;	
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 
 
@@ -208,7 +211,7 @@ void audioCallback(int event, void* user, void *info)
     
     if(wfd_enable){
         ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_GET_LAST_CHECKIN_APTS, (int)&last_checkin);
-        last_checkout = audiodsp_get_pts(&audec->adsp_ops);
+        last_checkout = dsp_ops->get_cur_pts(dsp_ops);
         if(last_checkin < last_checkout){
            diff = 0;
         }else{
@@ -231,28 +234,29 @@ void audioCallback(int event, void* user, void *info)
       for (i=0;i<0x40;i++) diff_avr+=diff_record[i];
       diff_avr = diff_avr / 0x40;    
 
-      //if ((xxx++ % 30) == 0) 
-      //  adec_print("audioCallback start: request %d, in: %d, out: %d, diff: %d, filtered: %d",buffer->size, last_checkin/90, last_checkout/90, diff, diff_avr);
+   //   if ((xxx++ % 30) == 0) 
+   //    adec_print("audioCallback start: request %d, in: %d, out: %d, diff: %d, filtered: %d",buffer->size, last_checkin/90, last_checkout/90, diff, diff_avr);
       if(bytes_skipped == 0 && diff < 200){
-        audiodsp_set_skip_bytes(&audec->adsp_ops, 0x7fffffff);
+	 if(dsp_ops->set_skip_bytes)	
+        	dsp_ops->set_skip_bytes(&audec->adsp_ops, 0x7fffffff);
         bytes_skipped = 0x7fffffff;
       }
 
       if(diff >1000){ // too much data in audiobuffer,should be skipped
-        audiodsp_set_skip_bytes(&audec->adsp_ops, 0);
+	 if(dsp_ops->set_skip_bytes)	      
+        	dsp_ops->set_skip_bytes(&audec->adsp_ops, 0);
         bytes_skipped = 0;
         adec_print("skip more data: last_checkin[%d]-last_checkout[%d]=%d, diff=%d\n", last_checkin/90, last_checkout/90, (last_checkin-last_checkout)/90, diff);
       }
       
-      if (diff_avr > 220) {
+      if (diff_avr > /*220*/wfd_ds_thrdhold) {
         resample = 1; resample_step = 2;
-      } else if (diff_avr<180) {
+      } else if (diff_avr</*180*/wfd_us_thrdhold) {
         // once we see a single shot of low boundry we finish down-sampling
         resample = 1; resample_step = -2;
       }else if(resample && (diff_avr < 200)){
         resample = 0;
       }
-
 
       if (last_resample != resample || last_step != resample_step) {
         last_resample = resample;
@@ -303,7 +307,7 @@ void audioCallback(int event, void* user, void *info)
       ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_AB_STATUS, (unsigned long)&am_io);
       adec_print("ab_level=%x, ab_rd_ptr=%x", am_io.status.data_len, am_io.status.read_pointer);
       }
-    }
+    }    
     return;
 }
 #ifdef USE_ARM_AUDIO_DEC
@@ -526,11 +530,21 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     xxx = 0;
     memset(&diff_record[0], 0, 0x40*sizeof(diff_record[0]));
     diff_wp = 0;
+    if (get_audio_decoder() == AUDIO_ARC_DECODER) {
+		wfd_ds_thrdhold = 220;
+		wfd_us_thrdhold = 180;
+			
+    }	
+     else{
+		wfd_ds_thrdhold = 250;
+		wfd_us_thrdhold = 150;	 	
+     }
+     adec_print("up/down sampling thread 	 %d /%d ms \n",wfd_us_thrdhold,wfd_ds_thrdhold);	
     if(property_get("media.libplayer.wfd", wfd_prop, "0") > 0){
        wfd_enable = (strcmp(wfd_prop, "1") == 0);
     if(wfd_enable)	   
-  {
-    audio_io_handle_t handle = AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+   {		
+    	audio_io_handle_t handle = AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
 	                                    48000,
 	                                    AUDIO_FORMAT_PCM_16_BIT,
 	                                    AUDIO_CHANNEL_OUT_STEREO,
