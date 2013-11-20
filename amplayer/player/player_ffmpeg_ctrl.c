@@ -63,8 +63,9 @@ int ffmpeg_interrupt_callback(unsigned long npid)
         dealock_detected_cnt = 0;
         return 0;
     }
-    if (dealock_detected_cnt++ < 10000) {
-        log_info("...ffmpeg callback interrupted...\n");
+    if (dealock_detected_cnt++ < 100000) {
+        if(dealock_detected_cnt%100==1)
+            log_info("...ffmpeg callback interrupted... %d\n",dealock_detected_cnt);
         return 1;
     }
     /*player maybe locked,kill my self now*/
@@ -251,14 +252,6 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
 					am_p->media_info.stream_info.adif_file_flag=1;
 				}
 			  }
-			  if((strstr(type->fmt_string,"asf")!=NULL) && pFCtx->drmcontent )
-			  {
-				log_print("drm wma detected\n");
-			       memset(format_string, 0, sizeof(format_string));
-			       sprintf(format_string, "%s","asf-drm");
-				type->fmt_string = format_string;
-   				
-			  }			  
 		 }
 	   //-----------------------------------------------------
         // special process for webm/vpx, flv/vp6

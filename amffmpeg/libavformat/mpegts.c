@@ -1737,6 +1737,8 @@ static int mpegts_resync(AVFormatContext *s)
             avio_seek(pb, -1, SEEK_CUR);
             return 0;
         }
+        if(i%100==1 && url_interrupt_cb())
+            return -1;
     }
     av_log(s, AV_LOG_ERROR, "max resync size reached, could not find sync byte\n");
     /* no sync found */
