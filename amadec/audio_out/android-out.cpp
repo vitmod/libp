@@ -516,12 +516,12 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
 extern "C" int android_init(struct aml_audio_dec* audec)
 {
    
-    
+    Mutex::Autolock _l(mLock);
     status_t status;
     AudioTrack *track;
     audio_out_operations_t *out_ops = &audec->aout_ops;
     char wfd_prop[32];
-    Mutex::Autolock _l(mLock);
+    
     int rawoutput_enable=0;
     
     ttt = 0;
@@ -694,11 +694,12 @@ extern "C" int android_start_raw(struct aml_audio_dec* audec)
 extern "C" int android_start(struct aml_audio_dec* audec)
 {
 
+    Mutex::Autolock _l(mLock);
     status_t status;
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 
-    Mutex::Autolock _l(mLock);
+   
 #ifdef USE_ARM_AUDIO_DEC	
     i2s_iec958_sync_force(audec,0);
     
@@ -748,10 +749,9 @@ extern "C" int android_pause_raw(struct aml_audio_dec* audec)
 extern "C" int android_pause(struct aml_audio_dec* audec)
 {
     
-
+    Mutex::Autolock _l(mLock);
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
-    Mutex::Autolock _l(mLock);
  #ifdef USE_ARM_AUDIO_DEC   
     android_pause_raw(audec);
 #endif 
@@ -777,7 +777,7 @@ extern "C" int android_resume_raw(struct aml_audio_dec* audec)
 {
 
     adec_print("[%s %d]android raw_out resume",__FUNCTION__,__LINE__);
-    
+  
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data_raw;
     if (!track) {
@@ -794,11 +794,11 @@ extern "C" int android_resume_raw(struct aml_audio_dec* audec)
  */
 extern "C" int android_resume(struct aml_audio_dec* audec)
 {
-    
 
+    Mutex::Autolock _l(mLock);
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
-    Mutex::Autolock _l(mLock);
+   
   #ifdef USE_ARM_AUDIO_DEC  
     i2s_iec958_sync_force(audec,0);
     android_resume_raw(audec);
@@ -848,9 +848,9 @@ extern "C" int android_stop_raw(struct aml_audio_dec* audec)
  */
 extern "C" int android_stop(struct aml_audio_dec* audec)
 {
+    Mutex::Autolock _l(mLock);
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
-    Mutex::Autolock _l(mLock);
  #ifdef USE_ARM_AUDIO_DEC
     android_stop_raw(audec);
 #endif 
@@ -864,7 +864,6 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
     delete track;
     out_ops->private_data = NULL;
     restore_system_samplerate();	
-
     restore_system_framesize();
 
     return 0;
@@ -911,19 +910,16 @@ extern "C" int android_mute_raw(struct aml_audio_dec* audec, adec_bool_t en)
 #endif
 extern "C" int android_mute(struct aml_audio_dec* audec, adec_bool_t en)
 {
+    Mutex::Autolock _l(mLock);
     adec_print("android out mute");
-
+    
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
-
-    Mutex::Autolock _l(mLock);
-
     if (!track) {
         adec_print("No track instance!\n");
         return -1;
     }
 
-   
 #ifdef ANDROID_VERSION_JBMR2_UP
 #else
  #ifdef USE_ARM_AUDIO_DEC
@@ -943,13 +939,11 @@ extern "C" int android_mute(struct aml_audio_dec* audec, adec_bool_t en)
  */
 extern "C" int android_set_volume(struct aml_audio_dec* audec, float vol)
 {
+    Mutex::Autolock _l(mLock);
     adec_print("android set volume");
-
+    
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
-
-    Mutex::Autolock _l(mLock);
-
     if (!track) {
         adec_print("No track instance!\n");
         return -1;
@@ -969,13 +963,11 @@ extern "C" int android_set_volume(struct aml_audio_dec* audec, float vol)
  */
 extern "C" int android_set_lrvolume(struct aml_audio_dec* audec, float lvol,float rvol)
 {
+    Mutex::Autolock _l(mLock);
     adec_print("android set left and right volume separately");
-
+    
     audio_out_operations_t *out_ops = &audec->aout_ops;
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
-
-    Mutex::Autolock _l(mLock);
-
     if (!track) {
         adec_print("No track instance!\n");
         return -1;
@@ -988,10 +980,8 @@ extern "C" int android_set_lrvolume(struct aml_audio_dec* audec, float lvol,floa
 
 extern "C" void android_basic_init()
 {
-    adec_print("android basic init!");
-
     Mutex::Autolock _l(mLock);
-
+    adec_print("android basic init!");
     sp<ProcessState> proc(ProcessState::self());
 }
 

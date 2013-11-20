@@ -1029,7 +1029,7 @@ void *audio_decode_loop(void *args)
     struct package *p_Package;
     buffer_stream_t *g_bst;
     AudioInfo g_AudioInfo;
-    adec_print("[%s]adec_armdec_loop start!\n",__FUNCTION__);
+    adec_print("\n\n[%s]adec_armdec_loop start!\n",__FUNCTION__);
     audec = (aml_audio_dec_t *)args;
     aout_ops = &audec->aout_ops;
     adec_ops=audec->adec_ops;
@@ -1060,15 +1060,16 @@ exit_decode_loop:
                if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
                {   
                     while(audec->format_changed_flag && !audec->exit_decode_thread ){
-                       adec_print("[%s]last FormatChangedEvent was not processed,wait 20,000 ms!\n",__FUNCTION__);
                        usleep(20000);
                     }
-                    adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",
+                    if(!audec->exit_decode_thread){
+                        adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",
                                   __FUNCTION__,g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
-                    g_bst->channels=audec->channels=g_AudioInfo.channels;
-                    g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
-                    aout_ops->pause(audec);
-                    audec->format_changed_flag = 1;
+                        g_bst->channels=audec->channels=g_AudioInfo.channels;
+                        g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+                        aout_ops->pause(audec);
+                        audec->format_changed_flag = 1;
+                    }
                }
           }
           //step 2  get read buffer size

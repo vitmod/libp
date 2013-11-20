@@ -175,15 +175,16 @@ exit_decode_loop:
                       if((g_AudioInfo.channels!=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
                       {   
                            while(audec->format_changed_flag && !audec->exit_decode_thread){
-                               adec_print("last FormatChangedEvent was not processed,wait 20,000 ms!\n");
                                usleep(20000);
                            }
-                           adec_print("Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",
-                                    g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
-                           g_bst->channels=audec->channels=g_AudioInfo.channels;
-                           g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
-                           aout_ops->pause(audec);
-                           audec->format_changed_flag = 1;  
+                           if(!audec->exit_decode_thread){
+                               adec_print("Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",
+                                          g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
+                               g_bst->channels=audec->channels=g_AudioInfo.channels;
+                               g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+                               aout_ops->pause(audec);
+                               audec->format_changed_flag = 1;  
+                           }
                       }
                   }
               } 
