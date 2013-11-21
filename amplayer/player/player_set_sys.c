@@ -647,8 +647,8 @@ int EnableFreeScale(display_mode mode, const int vpp) {
 	int isM8 = 0;
 	char value[128];
 	memset(value, 0 ,128);
-	property_get("ro.product.model", value, "1");
-	if(strstr(value,"M8"))
+	property_get("ro.module.dualscaler", value, "false");
+	if(strstr(value,"true"))
 	{
 		isM8 =1;
 		log_print("hi,amplayer EnableFreeScale say hello to new chip M8.");
@@ -833,6 +833,7 @@ exit:
 
 int disable_freescale(int cfg)
 {
+	
 #ifndef ENABLE_FREE_SCALE
     log_print("ENABLE_FREE_SCALE not define!\n");
     return 0;
@@ -843,6 +844,12 @@ int disable_freescale(int cfg)
         && strcmp(prop2, "true") == 0) {
         vpp2_freescale = 1;
     }
+
+	if(property_get("ro.module.dualscaler", prop2, "false")
+		&&strcmp(prop2, "true") == 0)
+	{
+		return 0;
+	}
     
     char mode[16];
     display_mode disp_mode;
@@ -877,6 +884,11 @@ int enable_freescale(int cfg)
         && strcmp(prop2, "true") == 0) {
         vpp2_freescale = 1;
     }
+	if(property_get("ro.module.dualscaler", prop2, "false")
+		&&strcmp(prop2, "true") == 0)
+	{
+		return 0;
+	}
 
     char mode[16];
     display_mode disp_mode;
