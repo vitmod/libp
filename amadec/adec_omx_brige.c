@@ -134,9 +134,7 @@ exit_decode_loop:
          (*audec->parm_omx_codec_read)(audec,outbuf,&outlen,&audec->exit_decode_thread);
              
          outlen_raw=0;
-         if((audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_DTSHD) ||
-            (audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_AC3)   ||
-            (audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_EAC3))
+         if(audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_DTSHD)
          {
              if(outlen>8) {
                   memcpy(&outlen,outbuf,4);
@@ -146,6 +144,20 @@ exit_decode_loop:
              }else{
                   outlen=0;
              }
+         }
+         else if((audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_AC3)   ||
+                 (audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_EAC3))
+         {
+             #ifndef DOLBY_DS1_UDC
+             if(outlen>8) {
+                  memcpy(&outlen,outbuf,4);
+                  outbuf+=4;
+                  memcpy(&outlen_raw,outbuf+outlen,4);
+                  outbuf_raw=outbuf+outlen+4;
+             }else{
+                  outlen=0;
+             }
+             #endif
          }
          
          if(outlen>0){

@@ -8,6 +8,9 @@ ifdef DOLBY_UDC
     LOCAL_CFLAGS+=-DDOLBY_USE_ARMDEC
 endif
 
+ifdef DOLBY_DS1_UDC
+  LOCAL_CFLAGS += -DDOLBY_DS1_UDC
+endif
 
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
