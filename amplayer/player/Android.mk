@@ -46,6 +46,7 @@ LOCAL_ARM_MODE := arm
 
 include $(BUILD_STATIC_LIBRARY)
 
+####################################################################33
 include $(CLEAR_VARS)
 
 ifneq ($(BOARD_VOUT_USES_FREESCALE),false)
@@ -54,6 +55,10 @@ endif
 
 ifdef DOLBY_DAP
 LOCAL_CFLAGS += -DDOLBY_DAP_EN
+endif
+
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
+    LOCAL_CFLAGS +=   -DUSE_ARM_AUDIO_DEC 
 endif
 
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 									
