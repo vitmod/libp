@@ -1205,10 +1205,10 @@ static int  update_buffering_states(play_para_t *p_para,
         }
         if(p_para->vstream_info.has_video && bitrate<1000 || bitrate<10)/*maybe not get real bitrate*/
         {
-            if(p_para->vstream_info.has_video){
+            if(p_para->vstream_info.has_video && get_video_codec(p_para)){
                 codec_get_video_cur_bitrate(get_video_codec(p_para),&vbitrate);
             }
-            if(p_para->astream_info.has_audio){
+            if(p_para->astream_info.has_audio && get_audio_codec(p_para)){
                codec_get_audio_cur_bitrate(get_audio_codec(p_para),&abitrate);
             }
             if(abitrate+vbitrate>bitrate*5){
@@ -1274,8 +1274,10 @@ static int  update_buffering_states(play_para_t *p_para,
         p_para->buffering_force_delay_s = 0;
     }
     if(p_para->buffering_start_time_s>0){
-        codec_get_video_cur_delay_ms(get_video_codec(p_para),&vdelayms);
-        codec_get_audio_cur_delay_ms(get_video_codec(p_para),&adelayms);
+        if(p_para->vstream_info.has_video && get_video_codec(p_para))
+            codec_get_video_cur_delay_ms(get_video_codec(p_para),&vdelayms);
+        if(p_para->astream_info.has_audio && get_audio_codec(p_para))
+            codec_get_audio_cur_delay_ms(get_audio_codec(p_para),&adelayms);
         avdelayms=MIN(vdelayms,adelayms);
     }
     //if (!p_para->playctrl_info.read_end_flag){
