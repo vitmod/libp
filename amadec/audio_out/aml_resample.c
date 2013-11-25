@@ -350,108 +350,95 @@ static void dump_pcm_bin(char *path,char *buf,int size)
 	}
 }
 
-
+#define  RESAMPLE_FRAMES  128
 void af_resample_api(char* buffer, unsigned int * size, int Chnum, aml_audio_dec_t* audec, int enable, int delta)
 {
-  short data_in[128*2];
-  short *pbuf;
-  int resample_enable;
-  int resample_type;
-  int resample_delta;
-  int sample_read;
-  int num_sample = 0;
-  int i,j,k,h;
-  int request = *size;
-  int dsp_read = 0;
-  static int last_resample_enable = 0;
-  pbuf = (short*)date_temp;
+	short data_in[RESAMPLE_FRAMES*2];
+	short *pbuf;
+	int resample_enable;
+	int resample_type;
+	int resample_delta;
+	int sample_read;
+	int num_sample = 0;
+	int i,j,k,h;
+	int request = *size;
+	int dsp_read = 0;
+	static int last_resample_enable = 0;
+	pbuf = (short*)date_temp;
+	unsigned index = 0;
+	float mPhaseFraction;
+	float  phaseIncrement ;
+	float mPhaseFraction1;
+	unsigned in_sr;
+	unsigned out_sr;
+	short  *input;
+	short  *output;
+    	unsigned frames = 0;	
+	in_sr = (RESAMPLE_FRAMES - 1);
+	out_sr = (RESAMPLE_FRAMES - delta-1);
+	phaseIncrement =  (float)in_sr/out_sr;
+	resample_enable = enable;
+	//resample_delta = 0;i
+	resample_delta = delta;
   
-  //resample_enable = 1;//af_get_resample_enable_flag();
-  resample_enable = enable;
-  //resample_delta = 0;i
-  resample_delta = delta;
-  
-  if(last_resample_enable != resample_enable){
-    adec_print("resample changed: %s\n", resample_enable ? "Enabled":"Disabled");
-    last_resample_enable = resample_enable;
-  }
+	if(last_resample_enable != resample_enable){
+		adec_print("resample changed: %s\n", resample_enable ? "Enabled":"Disabled");
+		last_resample_enable = resample_enable;
+	}
 
-  if(resample_enable && resample_delta >0 && *size>=128*sizeof(short)*Chnum){
+  if(resample_enable && resample_delta  && *size>=RESAMPLE_FRAMES*sizeof(short)*Chnum){
     //adec_print("resample start ... %d, step=%d\n", *size, resample_delta);
+    if(resample_delta < 0){
+		*size = *size*RESAMPLE_FRAMES/(RESAMPLE_FRAMES-resample_delta);
+    }
     sample_read = dsp_pcm_read(audec, pbuf, *size); // return mono sample number
     dsp_read += sample_read;
     //adec_print("dsp read %d\n", sample_read);
-    if(sample_read >= 128 * Chnum){
-      k = 0;
-      for(i=0; i<(sample_read/Chnum)/128; i++){
-        for(j=0; j<128-resample_delta; j++){
-          *((short*)buffer + (k*Chnum + 0)) = pbuf[(i*128+j)*Chnum+0];
-          *((short*)buffer + (k*Chnum + 1)) = pbuf[(i*128+j)*Chnum+1];
-          k++;
-        }
-      }
+    k = 0;
+    while(sample_read >= RESAMPLE_FRAMES * Chnum){
+		mPhaseFraction = 0;
+		mPhaseFraction1 = 0;
+		index = 0;
+		input = (short*)pbuf+frames*Chnum;
+		output = (short*)buffer + k*Chnum;
+		for(j=0; j<RESAMPLE_FRAMES-resample_delta; j++){
+			output[2*j] =   input[index*2]+(short)((input[(index+1)*2] - input[index*2])*mPhaseFraction1);
+			output[2*j+1] = input[index*2+1]+ (short)((input[(index+1)*2+1] - input[index*2+1])*mPhaseFraction1);
+			mPhaseFraction += phaseIncrement;
+			index =  mPhaseFraction;
+			mPhaseFraction1 = mPhaseFraction-index;
+			k++;
+		}
+		frames += RESAMPLE_FRAMES;
+		sample_read -= RESAMPLE_FRAMES*Chnum;
+    	}
+	if(sample_read > 0){
+		memcpy((short*)buffer+k*Chnum,(short*)pbuf+frames*Chnum,sample_read*sizeof(short) );
+		k += sample_read/Chnum;
+	}
 
-      num_sample  = k * sizeof(short) * Chnum;
-      if(num_sample < *size){
-        sample_read = dsp_pcm_read(audec, pbuf, *size-num_sample);
-        dsp_read += sample_read;
-        if(sample_read > 0){
-          for(i=0; i<sample_read/Chnum; i++){
-            *((short*)buffer + (k*Chnum + 0)) = pbuf[i*Chnum + 0];
-            *((short*)buffer + (k*Chnum + 1)) = pbuf[i*Chnum + 1];
-            k++;
-          }
-        }
-      }
+      	
+	num_sample  = k * sizeof(short) * Chnum;
+	if(num_sample < *size){
+		sample_read = dsp_pcm_read(audec, pbuf, *size-num_sample);
+		dsp_read += sample_read;
+		if(sample_read > 0){
+			for(i=0; i<sample_read/Chnum; i++){
+				*((short*)buffer + (k*Chnum + 0)) = pbuf[i*Chnum + 0];
+				*((short*)buffer + (k*Chnum + 1)) = pbuf[i*Chnum + 1];
+				k++;
+			}
+		}
+	}
       *size = k* sizeof(short)*Chnum;
       //adec_print("resample end ... %d\n", *size);
-    }else{
-      memcpy(buffer, pbuf, sample_read*sizeof(short));
-      *size = sample_read* sizeof(short);
     }
-  }else if(resample_enable && resample_delta < 0 && *size >= (128+resample_delta)*sizeof(short)*Chnum){
-    sample_read = dsp_pcm_read(audec, pbuf, *size*(128+resample_delta)/128 );
-    dsp_read += sample_read;
-    if(sample_read >= (128+resample_delta)*Chnum){
-      k = 0;
-      for(i=0; i< (sample_read/Chnum)/(128+resample_delta); i++){
-        for(j=0; j<(128+resample_delta); j++){
-          *((short*)buffer + (k*Chnum + 0)) = pbuf[(i*(128+resample_delta)+j)*Chnum+0];
-          *((short*)buffer + (k*Chnum + 1)) = pbuf[(i*(128+resample_delta)+j)*Chnum+1];
-          k++;
-        }
-
-        for(j=0; j< -resample_delta; j++){
-          *((short*)buffer + ((j+k)*Chnum + 0)) = *((short*)buffer + ((k-1)*Chnum + 0)); 
-          *((short*)buffer + ((j+k)*Chnum + 1)) = *((short*)buffer + ((k-1)*Chnum + 1)); 
-        }
-        k += -resample_delta;
-      }
-
-
-      num_sample = k* sizeof(short)*Chnum;
-      if(num_sample < *size){
-        sample_read = dsp_pcm_read(audec, pbuf, *size-num_sample);
-        dsp_read += sample_read;
-        if(sample_read > 0){
-          for(i=0; i<sample_read/Chnum; i++){
-            *((short*)buffer + (k*Chnum + 0)) = pbuf[i*Chnum + 0];
-            *((short*)buffer + (k*Chnum + 1)) = pbuf[i*Chnum + 1];
-            k++;
-          }
-        }
-      }
-      *size = k*sizeof(short)*Chnum;
-    }else{
-      memcpy(buffer, pbuf, sample_read*sizeof(short));
-      *size = sample_read* sizeof(short);
+    else
+    {
+	sample_read = dsp_pcm_read(audec, pbuf, *size-num_sample);
+	memcpy(buffer, pbuf, sample_read*sizeof(short));
+	*size = sample_read* sizeof(short);
     }
-  }else{
-    sample_read = dsp_pcm_read(audec, buffer, *size);
-    *size = sample_read*sizeof(short);
-    dsp_read = sample_read;
-  }
-
   //adec_print("resample size from %d to %d, original %d\n", request, *size, dsp_read);
 }
 
