@@ -960,7 +960,10 @@ static void update_dec_info(play_para_t *p_para,
             //some size changed info,temporary changed size ,don't the info;
             //p_para->vstream_info.video_width = vdec->width;
             //p_para->vstream_info.video_height = vdec->height;
-            send_event(p_para, PLAYER_EVENTS_VIDEO_SIZE_CHANGED,vdec->width,vdec->height);
+            if (!(p_para->playctrl_info.write_end_header_flag && (vdec->width == 16) && (vdec->height == 16))) {
+                /* end header is 16x16, skip it */
+                send_event(p_para, PLAYER_EVENTS_VIDEO_SIZE_CHANGED,vdec->width,vdec->height);
+            }
         } 
         p_para->state.video_error_cnt = vdec->error_count;
     }

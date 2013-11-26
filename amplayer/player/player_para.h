@@ -134,6 +134,8 @@ typedef  struct {
     int no_dec_ref_buf;
     int vsync_upint;
     int no_error_recovery;
+
+    int write_end_header_flag;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);

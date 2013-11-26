@@ -1064,6 +1064,7 @@ void player_para_reset(play_para_t *para)
     para->discontinue_point = 0;
     //para->playctrl_info.pts_valid = 0;
     para->playctrl_info.check_audio_ready_ms = 0;
+    para->playctrl_info.write_end_header_flag = 0;
 
     MEMSET(&para->write_size, 0, sizeof(read_write_size));
     MEMSET(&para->read_size, 0, sizeof(read_write_size));

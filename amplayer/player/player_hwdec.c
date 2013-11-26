@@ -1283,6 +1283,7 @@ int h264_write_end_header(play_para_t *para)
     MEMCPY(tmp_data, &end_header, header_size);
     ret = codec_write(para->vcodec, (void *)tmp_data, 1024);
     log_print("[%s:%d]ret %d\n", __FUNCTION__, __LINE__, ret);
+    para->playctrl_info.write_end_header_flag = 1;
     FREE(tmp_data);
 
     return ret;
