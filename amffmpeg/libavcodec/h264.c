@@ -3881,9 +3881,13 @@ static int decode_frame(AVCodecContext *avctx,
     MpegEncContext *s = &h->s;
     AVFrame *pict = data;
     int buf_index;
+    int old_codecid, old_nal_unit_type;
 
     s->flags= avctx->flags;
     s->flags2= avctx->flags2;
+
+    old_codecid = avctx->codec_id;
+    old_nal_unit_type = h->nal_unit_type;
 
    /* end of stream, output what is still in the buffers */
  out:
@@ -3926,6 +3930,10 @@ static int decode_frame(AVCodecContext *avctx,
         if (avctx->skip_frame >= AVDISCARD_NONREF)
             return 0;
         av_log(avctx, AV_LOG_ERROR, "no frame!\n");
+
+        /* error frame, use old codecid and nal */
+        avctx->codec_id = old_codecid;
+        h->nal_unit_type = old_nal_unit_type;
         return -1;
     }
 
