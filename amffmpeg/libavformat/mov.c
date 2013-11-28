@@ -1054,7 +1054,9 @@ int ff_mov_read_stsd_entries(MOVContext *c, AVIOContext *pb, int entries)
             continue;
         }
         /* we cannot demux concatenated h264 streams because of different extradata */
-        if (st->codec->codec_tag && st->codec->codec_tag == AV_RL32("avc1"))
+        if (st->codec->codec_tag && (st->codec->codec_tag == AV_RL32("avc1")
+            || st->codec->codec_tag == AV_RL32("hvc1")
+            || st->codec->codec_tag == AV_RL32("hev1")))
             goto multiple_stsd;
         sc->pseudo_stream_id = st->codec->codec_tag ? -1 : pseudo_stream_id;
         sc->dref_id= dref_id;
@@ -2438,6 +2440,7 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('w','f','e','x'), mov_read_wfex },
 { MKTAG('c','m','o','v'), mov_read_cmov },
 { MKTAG('c','h','a','n'), mov_read_chan },
+{ MKTAG('h','v','c','C'), mov_read_glbl }, /* HEVC/H.265 */
 { 0, NULL }
 };
 
