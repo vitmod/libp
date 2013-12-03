@@ -299,8 +299,8 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
         *h = tmp;
 
         tmp = *y;
-        *y = fb0_w - *h - *x + 1;
-        *x = tmp;
+        *y = *x;
+        *x = fb0_h - tmp - *w + 1;
     } else if(osd_rotation == 270){// 270
         *rotation = (*rotation + osd_rotation)%360;
         int tmp = *w;
@@ -308,8 +308,8 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
         *h = tmp;
 
         tmp = *x;
-        *x = fb0_h - *w - *y + 1;
-        *y = tmp;
+        *x = *y;
+        *y = fb0_w - tmp - *h + 1;
     } else {
         ALOGE("should no this rotation!");
     }
