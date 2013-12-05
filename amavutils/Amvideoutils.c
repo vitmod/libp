@@ -337,14 +337,6 @@ void get_axis(const char *path, int *x, int *y, int *w, int *h)
 
 void set_scale(int x, int y, int w, int h, int *dst_x, int *dst_y, int *dst_w, int *dst_h, int disp_w, int disp_h)
 {
-    if ((*dst_w >= disp_w - 1) || (*dst_w == 0)) {
-        *dst_x = 0;
-        *dst_w = disp_w;
-    }
-    if ((*dst_h >= disp_h - 1) || (*dst_h == 0)) {
-        *dst_y = 0;
-        *dst_h = disp_h;
-    }
     *dst_x = (*dst_x) * w / disp_w + x;
     *dst_y = (*dst_y) * h / disp_h + y;
     *dst_w = (*dst_w) * w / disp_w;
@@ -597,15 +589,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
                     y = top;
                     w = right - left + 1;
                     h = bottom - top + 1;
-                    if ((dst_w >= dev_w - 1) || (dst_w == 0)) {
-                        dst_x = 0;
-                        dst_w = w;
-                    }
-                    if ((dst_h >= dev_h - 1) || (dst_h == 0)) {
-                        dst_y = 0;
-                        dst_h = h;
-                    }
-
+                    
                     dst_x = dst_x * w / dev_w + x;
                     dst_y = dst_y * h / dev_h + y;
                     LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
