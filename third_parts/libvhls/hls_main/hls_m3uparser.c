@@ -526,7 +526,9 @@ static int parseCipherInfo(const char* line,const char* baseUrl,M3uKeyInfo* info
     if (match == NULL) {
         return -1;
     }
-    M3uKeyInfo cInfo;    
+    M3uKeyInfo cInfo;
+    memset(cInfo.method, 0x00, sizeof(cInfo.method));
+    memset(cInfo.iv, 0x00, sizeof(cInfo.iv));
        
     parseKeyValue(match+1, (parse_key_val_cb) handle_key_args,&cInfo);   
     makeUrl(info->keyUrl,sizeof(info->keyUrl), baseUrl,cInfo.keyUrl);

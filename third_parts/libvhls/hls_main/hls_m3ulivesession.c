@@ -590,7 +590,7 @@ static int _get_decrypt_key(M3ULiveSession* s,int playlistIndex,AESKeyInfo_t* ke
     const char* iv = node->key->iv;
     int is_iv_load = 0;
     if(iv != NULL&&strlen(iv)>0){
-        if ((!strncmp(iv,"0x",strlen("0x")) && !strncmp(iv,"0X",strlen("0X")))) {
+        if (strncmp(iv,"0x",strlen("0x")) && strncmp(iv,"0X",strlen("0X"))) {
             LOGE("malformed cipher IV '%s'.\n", iv);
             return -1;
         }  
