@@ -82,7 +82,7 @@ int is_video_on_vpp2(void)
 {
     int ret = 0;
     
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));
     if (property_get("ro.vout.dualdisplay4", val, "false")
         && strcmp(val, "true") == 0) {       
@@ -102,7 +102,7 @@ int is_vertical_panel(void)
     int ret = 0;
     
     // ro.vout.dualdisplay4.ver-panel
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));
     if (property_get("ro.vout.dualdisplay4.ver-panel", val, "false")
         && strcmp(val, "true") == 0) {       
@@ -143,7 +143,7 @@ int is_vertical_panel_reverse(void)
     int ret = 0;
     
     // ro.vout.dualdisplay4.ver-panel
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));
     if (property_get("ro.ver-panel.reverse", val, "false")
         && strcmp(val, "true") == 0) {       
@@ -167,7 +167,7 @@ typedef enum _OSD_DISP_MODE {
 OSD_DISP_MODE get_osd_display_mode()
 {
     OSD_DISP_MODE ret = OSD_DISP_1080P; 
-    char buf[32]; 
+    char buf[PROPERTY_VALUE_MAX];
     memset(buf,0,sizeof(buf));	
     property_get("ubootenv.var.outputmode",buf,"1080p");
     if(!strncmp(buf,"720p",4)){
@@ -234,14 +234,14 @@ int get_device_win(OSD_DISP_MODE dismod, int *x, int *y, int *w, int *h)
     const char *prop576p_x ="ubootenv.var.576poutputx";
     const char *prop576p_y ="ubootenv.var.576poutputy";
 
-    char prop_value_h[32];
-    memset(prop_value_h,0,32);
-    char prop_value_w[32];
-    memset(prop_value_w,0,32);
-    char prop_value_x[32];
-    memset(prop_value_x,0,32);
-    char prop_value_y[32];
-    memset(prop_value_y,0,32);
+    char prop_value_h[PROPERTY_VALUE_MAX];
+    memset(prop_value_h,0,PROPERTY_VALUE_MAX);
+    char prop_value_w[PROPERTY_VALUE_MAX];
+    memset(prop_value_w,0,PROPERTY_VALUE_MAX);
+    char prop_value_x[PROPERTY_VALUE_MAX];
+    memset(prop_value_x,0,PROPERTY_VALUE_MAX);
+    char prop_value_y[PROPERTY_VALUE_MAX];
+    memset(prop_value_y,0,PROPERTY_VALUE_MAX);
 	
     switch(dismod)
     {

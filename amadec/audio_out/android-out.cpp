@@ -520,7 +520,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     status_t status;
     AudioTrack *track;
     audio_out_operations_t *out_ops = &audec->aout_ops;
-    char wfd_prop[32];
+    char wfd_prop[PROPERTY_VALUE_MAX];
     
     int rawoutput_enable=0;
     
