@@ -117,7 +117,7 @@ int is_screen_portrait(void)
     int ret = 0;
     
     // ro.vout.dualdisplay4.ver-panel
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));
     if (property_get("ro.screen.portrait", val, "false")
         && strcmp(val, "true") == 0) {       
@@ -131,7 +131,7 @@ int is_video_on_vpp2_new(void)
 {
     int ret = 0;
     
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));   
     if (amsysfs_get_sysfs_str("/sys/class/graphics/fb2/clone", val, sizeof(val)) == 0) {
 		ret = (val[19] == '1') ? 1 : 0;
