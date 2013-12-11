@@ -4,7 +4,6 @@
 #include "OMX_Index.h"
 #include "OMX_Core.h"
 #include "OMXClient.h"
-#include "StrongPointer.h"
 #include "audio_mediasource.h"
 #include "../audio-dec.h"
 
