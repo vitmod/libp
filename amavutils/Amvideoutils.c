@@ -112,6 +112,32 @@ int is_vertical_panel(void)
     return ret;
 }
 
+int is_screen_portrait(void)
+{
+    int ret = 0;
+    
+    // ro.vout.dualdisplay4.ver-panel
+    char val[32];
+    memset(val, 0, sizeof(val));
+    if (property_get("ro.screen.portrait", val, "false")
+        && strcmp(val, "true") == 0) {       
+        ret = 1;
+    }
+
+    return ret;
+}
+
+int is_video_on_vpp2_new(void)
+{
+    int ret = 0;
+    
+    char val[32];
+    memset(val, 0, sizeof(val));   
+    if (amsysfs_get_sysfs_str("/sys/class/graphics/fb2/clone", val, sizeof(val)) == 0) {
+		ret = (val[19] == '1') ? 1 : 0;
+    }
+    return ret;
+}
 int is_vertical_panel_reverse(void)
 {
     int ret = 0;
@@ -359,6 +385,8 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     int ret = -1;
     int axis[4];
     char enable_p2p_play[8] = {0};
+	int video_on_vpp2_new = is_video_on_vpp2_new();
+	int screen_portrait = is_screen_portrait();
     int video_on_vpp2 = is_video_on_vpp2();
     int vertical_panel = is_vertical_panel();
     int vertical_panel_reverse = is_vertical_panel_reverse();
@@ -473,7 +501,8 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 
     angle_fd = open(ANGLE_PATH, O_WRONLY);
     if (angle_fd >= 0) {
-        if (video_on_vpp2 && vertical_panel)
+        if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new ))
+        //if (video_on_vpp2 && vertical_panel)
             ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, 0);
         else
             ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, (rotation/90) & 3);
