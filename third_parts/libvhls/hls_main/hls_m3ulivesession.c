@@ -122,7 +122,7 @@ typedef struct _M3ULiveSession{
     int eof_flag;
     pthread_mutex_t session_lock;
     pthread_cond_t  session_cond;
-    
+    int (*interrupt)(void);
 }M3ULiveSession;
 
 
@@ -146,6 +146,7 @@ static void _init_m3u_live_session_context(M3ULiveSession* ss){
     ss->last_m3u8_url = NULL;
     ss->refresh_state = INITIAL_MINIMUM_RELOAD_DELAY;
     ss->log_level = 0;
+    ss->interrupt = NULL;
     if(in_get_sys_prop_bool("media.amplayer.disp_url") != 0) {
         ss->log_level = HLS_SHOW_URL;
     }
@@ -1124,6 +1125,12 @@ open_retry:
     
 
     for(;;){
+        if(s->interrupt && (*s->interrupt)()) {
+            LOGV("[%s:%d]: interrupted! \n", __FUNCTION__, __LINE__);
+            hls_http_close(handle);
+            return 0;
+        }
+
         if(s->is_closed||s->seekflag>0){
             LOGV("Get close flag(value:%d) or seek flag(value:%d)\n",s->is_closed,s->seekflag);
             hls_http_close(handle);
@@ -1873,6 +1880,16 @@ int m3u_session_read_data(void* hSession,void* buf,int len){
     }    
     
     return ret;
+}
+
+int m3u_session_register_interrupt(void* hSession, int (*interupt_func_cb)()) {
+    if(hSession ==NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    M3ULiveSession* session = (M3ULiveSession*)hSession;
+    session->interrupt = interupt_func_cb;
+    return 0;
 }
 
 int m3u_session_close(void* hSession){

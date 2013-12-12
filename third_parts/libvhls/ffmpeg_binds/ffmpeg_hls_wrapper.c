@@ -85,6 +85,8 @@ static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
 
     FFMPEG_HLS_CONTEXT* f = av_mallocz(sizeof(FFMPEG_HLS_CONTEXT));
 
+    m3u_session_register_interrupt(session, interrupt_call_cb);
+
     int stream_num = 0;
     ret = m3u_session_get_stream_num(session,&stream_num);
     f->bandwidth_num = stream_num;
