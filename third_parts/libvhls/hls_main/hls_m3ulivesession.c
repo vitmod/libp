@@ -123,6 +123,8 @@ typedef struct _M3ULiveSession{
     pthread_mutex_t session_lock;
     pthread_cond_t  session_cond;
     int (*interrupt)(void);
+    int64_t output_stream_offset;
+    int startsegment_index;
 }M3ULiveSession;
 
 
@@ -161,6 +163,9 @@ static void _init_m3u_live_session_context(M3ULiveSession* ss){
     in_generate_guid(&ss->session_guid);
     pthread_mutex_init(&ss->session_lock, NULL);
     pthread_cond_init(&ss->session_cond, NULL); 
+
+    ss->output_stream_offset=0;
+    ss->startsegment_index=0;
 }
 
 
@@ -1312,11 +1317,11 @@ static int _download_next_segment(M3ULiveSession* s){
                     LOGI("seeking to seq no %d", newSeqNumber);
 
                     s->cur_seq_num = newSeqNumber;
-
+                    
+		      
                     //reset current download cache node
 #ifdef USE_SIMPLE_CACHE
-                    hls_simple_cache_reset(s->cache);
-    
+                    hls_simple_cache_reset(s->cache);  
 #endif
                     seekDiscontinuity = 1;                    
                 }                
@@ -1733,6 +1738,9 @@ int64_t m3u_session_seekUs(void* hSession,int64_t posUs,int (*interupt_func_cb)(
     session->seekflag = 1;
     session->seektimeUs = posUs;
     session->eof_flag = 0;
+    session->startsegment_index=node->index;
+    session->output_stream_offset=0;
+    LOGI("[%s:%d]startsegment_index=%d,posUs=%lld,realPosUs=%lld\n", __FUNCTION__,__LINE__,session->startsegment_index,posUs,realPosUs);
     pthread_mutex_unlock(&session->session_lock);
     
     while(session->seekflag == 1){//ugly codes,just block app
@@ -1745,8 +1753,47 @@ int64_t m3u_session_seekUs(void* hSession,int64_t posUs,int (*interupt_func_cb)(
     }      
     return realPosUs;
 }
+int64_t m3u_session_seekUs_offset(void* hSession,int64_t posUs, int64_t *streamoffset){
+    if(hSession == NULL){
+        ERROR_MSG();
+        return -1;
+    }
+    LOGI("[%s:%d]Doing loopbuffer offset seek posUs=%lld\n", __FUNCTION__,__LINE__,posUs);
+    M3ULiveSession* session = (M3ULiveSession*)hSession;   
 
+    int cur_index=0,seek_index=0;
+    int firstSeqNumberInPlaylist=0;
+    if(session->playlist==NULL)
+    	return -1;
 
+    firstSeqNumberInPlaylist = m3u_get_node_by_index(session->playlist,0)->media_sequence;
+    cur_index=session->cur_seq_num- firstSeqNumberInPlaylist;								// hls current download segment index
+    	 
+    M3uBaseNode* node = m3u_get_node_by_time(session->playlist,posUs);
+    if(node==NULL){
+    	LOGE("[%s:%d]can't find posUs=%lld",posUs);
+   	return -1;
+    }
+    seek_index=node->index;														// seek segment index
+
+    if(seek_index>=cur_index || seek_index < session->startsegment_index){
+	LOGE("[%s:%d]seek out of range posUs=%lld,seek=%d,cur=%d,start=%d\n", __FUNCTION__,__LINE__,
+				posUs,seek_index,cur_index,session->startsegment_index);
+	return -1;
+    }
+
+    int64_t ret=m3u_get_node_span_size(session->playlist,session->startsegment_index,seek_index);
+    if(ret<0){
+	LOGE("[%s:%d]get span failed posUs=%lld,seek=%d,cur=%d,start=%d\n", __FUNCTION__,__LINE__,
+				posUs,seek_index,cur_index,session->startsegment_index);
+	return -1;
+    }
+    *streamoffset=session->output_stream_offset-ret;
+    
+    LOGI("[%s:%d]posUs=%lld,startUs=%lld; seek=%d,cur=%d,start=%d; streamoffset=%lld,output_stream=%lld,ret=%lld\n", __FUNCTION__,__LINE__,
+				posUs,node->startUs,seek_index,cur_index,session->startsegment_index,*streamoffset,session->output_stream_offset,ret);
+    return node->startUs;
+}
 int m3u_session_get_stream_num(void* hSession,int* num){
     if(hSession ==NULL){
         ERROR_MSG();
@@ -1885,6 +1932,9 @@ int m3u_session_read_data(void* hSession,void* buf,int len){
         }
         return HLSERROR(EAGAIN);
     }    
+
+    if(ret>0)
+    	session->output_stream_offset+=ret;
     
     return ret;
 }

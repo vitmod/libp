@@ -506,7 +506,43 @@ int64_t url_lpseek(URLContext *s, int64_t offset, int whence)
 	lp_unlock(&lp->mutex);
 	return offset;
 }
+int64_t url_lpexseekoffset(URLContext *s, int64_t offset)
+{
+	int forward_data=0;
+	int back_data=0;
+	lp_print( AV_LOG_INFO,"[%s:%d] doing url_lpexseekoffset\n",__FUNCTION__,__LINE__);
+	int buffer_validdata_size=url_lp_getbuffering_size(s,&forward_data,&back_data);
+	if(buffer_validdata_size<=0){
+		lp_print( AV_LOG_ERROR,"[%s:%d] LOOPBUFFER buffer is empty\n",__FUNCTION__,__LINE__);
+		return -1;
+	}
 
+	int64_t seek_time=0;	
+	if((seek_time=s->prot->url_exseek(s, offset, AVSEEK_LOOPBUFFER_OFFSET))<0){
+		lp_print( AV_LOG_ERROR,"[%s:%d] LOOPBUFFER seek failed seek_time=%d\n",__FUNCTION__,__LINE__,seek_time);
+		return -1;			
+	}	
+
+	int64_t seek_pos=0;
+	if(s->priv_info>buffer_validdata_size){
+		lp_print( AV_LOG_ERROR,"[%s:%d] LOOPBUFFER seek out of range\n",__FUNCTION__,__LINE__);
+		return -1;	
+	}
+	else{
+		seek_pos=forward_data-s->priv_info;
+	}
+
+	if(url_lpseek(s,seek_pos,SEEK_CUR)<0){
+		lp_print( AV_LOG_ERROR,"[%s:%d] Failed to seek SEEK_CUR pos=%lld,time=%lld,forward_data=%d\n",
+			__FUNCTION__,__LINE__,seek_pos,seek_time,forward_data);		
+		return -1;
+	}
+
+	lp_print( AV_LOG_INFO,"[%s:%d] seek SEEK_CUR pos=%lld,time=%lld,forward_data=%d\n",
+		__FUNCTION__,__LINE__,seek_pos,seek_time,forward_data);
+
+	return seek_time;
+}
 int64_t url_lpexseek(URLContext *s, int64_t offset, int whence)
 {
 	url_lpbuf_t *lp;
@@ -527,6 +563,17 @@ int64_t url_lpexseek(URLContext *s, int64_t offset, int whence)
 	}
 	else if(whence == AVSEEK_TO_TIME ){
 	 	if(s->prot->url_exseek){
+	 		if(strcmp(s->prot->name, "vhls")==0){							// hls can return the stream offset
+	 			lp_print( AV_LOG_INFO,"[%s:%d] doing LOOPBUFFER seek\n",__FUNCTION__,__LINE__);
+	 			lp_unlock(&lp->mutex);
+				ret=url_lpexseekoffset(s,offset);
+	 			lp_lock(&lp->mutex);
+	 			if(ret>=0){
+	 				lp_print( AV_LOG_INFO,"[%s:%d] LOOPBUFFER seek deal successful\n",__FUNCTION__,__LINE__);
+	 				goto seek_end;
+	 			}
+	 			lp_print( AV_LOG_INFO,"[%s:%d] Failed LOOPBUFFER seek\n",__FUNCTION__,__LINE__);
+	 		}
 			if((ret=s->prot->url_exseek(s, offset, AVSEEK_TO_TIME))>=0)
 			{
 				lp->rp=lp->buffer;

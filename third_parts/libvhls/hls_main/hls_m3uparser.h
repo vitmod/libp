@@ -49,6 +49,7 @@ int64_t m3u_get_durationUs(void* hParse);
 int m3u_get_target_duration(void* hParse);
 M3uBaseNode* m3u_get_node_by_index(void* hParse,int index);
 M3uBaseNode* m3u_get_node_by_time(void* hParse,int64_t timeUs);
+int64_t m3u_get_node_span_size(void* hParse,int start_index,int end_index);
 int m3u_release(void* hParse);
 
 

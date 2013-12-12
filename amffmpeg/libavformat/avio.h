@@ -145,6 +145,7 @@ typedef struct URLContext {
 	int seekflags;
 	int is_segment_media;
     int priv_flags;	
+    int64_t priv_info;	
 } URLContext;
 
 #define FLAGS_ISCMF	1<<0 
@@ -529,7 +530,7 @@ int avio_put_str16le(AVIOContext *s, const char *str);
 #define AVSEEK_ITEM_TIME            (0x80000+3)
 #define AVSEEK_CMF_TS_TIME       (0x80000+4)
 #define AVSEEK_CURL_HTTP_KEEPALIVE	(0x80000+5)
-
+#define AVSEEK_LOOPBUFFER_OFFSET		(0x80000+6)
 
 int64_t avio_seek(AVIOContext *s, int64_t offset, int whence);
 
