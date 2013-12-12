@@ -885,10 +885,15 @@ extern "C" int android_stop_raw(struct aml_audio_dec* audec)
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     AudioTrack *track = (AudioTrack *)out_ops->private_data_raw;
 #else
-    AudioTrack *track = mpAudioTrack.get();
+    sp<AudioTrack> track = mpAudioTrack;
 #endif
 
-    if (track == 0) {
+#if ANDROID_PLATFORM_SDK_VERSION < 19
+    if (track == 0)
+#else
+    if (track.get() == 0)
+#endif
+    {
         adec_print("[%s %d]No track instance!\n",__FUNCTION__,__LINE__);
         return -1;
     }
@@ -919,14 +924,19 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 #else
-    AudioTrack *track = mpAudioTrack.get();
+    sp<AudioTrack> track = mpAudioTrack;
 #endif
 #ifdef USE_ARM_AUDIO_DEC
     android_stop_raw(audec);
 #endif 
     adec_print("android out stop");
 
-    if (track == 0) {
+#if ANDROID_PLATFORM_SDK_VERSION < 19
+    if (track == 0)
+#else
+    if (track.get() == 0)
+#endif
+    {
         adec_print("No track instance!\n");
         return -1;
     }
