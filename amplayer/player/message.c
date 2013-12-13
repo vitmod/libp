@@ -49,7 +49,7 @@ int send_message_update(play_para_t *para, player_cmd_t *cmd)
     pthread_mutex_lock(&pool->msg_mutex);
     j = pool->message_out_index;
     for (i = 0; i < pool->message_num; i++) {
-        oldcmd = pool->message_list[j];
+        oldcmd = pool->message_list[j++];
         if (oldcmd && (oldcmd->ctrl_cmd == cmd->ctrl_cmd)) { /*same cmd*/
             *oldcmd = *cmd; /*update old one*/
             log_print("found old message update old one.\n");
