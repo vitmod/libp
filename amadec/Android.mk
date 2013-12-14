@@ -15,6 +15,7 @@ endif
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/../amavutils/include \
+   
 
 # PLATFORM_SDK_VERSION:
 # 4.4 = 19
@@ -37,7 +38,7 @@ endif
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
            dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c spdif_api.c pcmenc_api.c \
-           dts_transenc_api.c dts_enc.c adec_omx_brige.c ../amavutils/amconfigutils.c
+           dts_transenc_api.c dts_enc.c adec_omx_brige.c ../amavutils/amconfigutils.c  adec-wfd.c
 
 LOCAL_MODULE := libamadec
 
@@ -59,6 +60,7 @@ endif
 LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/../amavutils/include \
+   
 
 LOCAL_CFLAGS += -DANDROID_PLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
@@ -77,7 +79,7 @@ endif
 LOCAL_SRC_FILES := \
            adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
            dsp/audiodsp-ctl.c audio_out/android-out.cpp audio_out/aml_resample.c audiodsp_update_format.c \
-           spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c adec_omx_brige.c ../amavutils/amconfigutils.c
+           spdif_api.c pcmenc_api.c dts_transenc_api.c dts_enc.c adec_omx_brige.c ../amavutils/amconfigutils.c  adec-wfd.c
 
 LOCAL_MODULE := libamadec
 
@@ -85,7 +87,7 @@ LOCAL_ARM_MODE := arm
 ##################################################
 #$(shell cp $(LOCAL_PATH)/acodec_lib/*.so $(TARGET_OUT)/lib)
 ###################################################
-LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamadec_omx_api libamavutils
+LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libamadec_omx_api libamavutils 
 
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_TAGS := optional
@@ -122,6 +124,31 @@ LOCAL_ARM_MODE := arm
 
 LOCAL_SHARED_LIBRARIES += libutils libmedia libz libbinder libdl libcutils libc libstagefright \
                           libstagefright_omx  libstagefright_yuv libmedia_native liblog 
+LOCAL_PRELINK_MODULE := false
+LOCAL_MODULE_TAGS := optional
+
+include $(BUILD_SHARED_LIBRARY)
+#########################################################
+
+
+###################module make wfd audioout api ######################################
+include $(CLEAR_VARS)
+
+LOCAL_CFLAGS := \
+        -fPIC -D_POSIX_SOURCE  -DDOLBY_DDPDEC51_MULTICHANNEL_ENDPOINT
+
+LOCAL_C_INCLUDES:= \
+    external/tinyalsa/include
+
+LOCAL_SRC_FILES := \
+	adec-wfd-out.c
+
+LOCAL_MODULE := libamadec_wfd_out
+LOCAL_MODULE_TAGS := optional
+LOCAL_ARM_MODE := arm
+
+LOCAL_SHARED_LIBRARIES += libutils libtinyalsa  liblog
+                          
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_TAGS := optional
 

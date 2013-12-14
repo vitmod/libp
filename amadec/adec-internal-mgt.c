@@ -568,18 +568,26 @@ int audiodec_init(aml_audio_dec_t *audec)
 {
     int ret = 0;
     pthread_t    tid;
-	char value[PROPERTY_VALUE_MAX]={0};
+    char value[PROPERTY_VALUE_MAX]={0};
+    unsigned wfd = 0;	
     adec_print("audiodec_init!");
     adec_message_pool_init(audec);
     get_output_func(audec);
     int nCodecType=audec->format;
     set_audio_decoder(audec);
     audec->format_changed_flag=0;
-		
+    if(am_getconfig_bool("media.libplayer.wfd"))  {
+  	wfd = 1;
+   }		
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
     		audec->adsp_ops.dsp_file_fd = -1;
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);
 		pthread_setname_np(tid,"AmadecMsgloop");
+    }
+    else if(wfd && (/*nCodecType == ACODEC_FMT_AAC ||*/nCodecType ==  ACODEC_FMT_WIFIDISPLAY)){
+		adec_print("using wfd audio decoder \n");
+		ret = pthread_create(&tid, NULL, (void *)adec_wfddec_msg_loop, (void *)audec);
+		pthread_setname_np(tid,"AmadecWFDMsgloop");		
     }
     else 
     {

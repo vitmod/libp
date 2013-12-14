@@ -240,5 +240,6 @@ adec_cmd_t *adec_get_message(aml_audio_dec_t *);
 int feeder_init(aml_audio_dec_t *);
 int feeder_release(aml_audio_dec_t *);
 void *adec_armdec_loop(void *args);
+void *adec_wfddec_msg_loop(void *args);
 ADEC_END_DECLS
 #endif
