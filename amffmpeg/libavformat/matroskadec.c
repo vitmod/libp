@@ -697,6 +697,12 @@ static int ebml_read_ascii(AVIOContext *pb, int size, char **str)
 static int ebml_read_binary(AVIOContext *pb, int length, EbmlBin *bin)
 {
     av_free(bin->data);
+    if (length > 0x8000000) {
+        bin->size = 0;
+        avio_skip(pb, length);
+        return 0;
+    }
+    
     if (!(bin->data = av_malloc(length)))
         return AVERROR(ENOMEM);
 
@@ -933,7 +939,11 @@ static void ebml_free(EbmlSyntax *syntax, void *data)
         switch (syntax[i].type) {
         case EBML_STR:
         case EBML_UTF8:  av_freep(data_off);                      break;
-        case EBML_BIN:   av_freep(&((EbmlBin *)data_off)->data);  break;
+        case EBML_BIN:
+            if (&((EbmlBin *)data_off)->data) {
+                av_freep(&((EbmlBin *)data_off)->data);
+            }
+            break;
         case EBML_NEST:
             if (syntax[i].list_elem_size) {
                 EbmlList *list = data_off;

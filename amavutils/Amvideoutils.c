@@ -82,7 +82,7 @@ int is_video_on_vpp2(void)
 {
     int ret = 0;
     
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));
     if (property_get("ro.vout.dualdisplay4", val, "false")
         && strcmp(val, "true") == 0) {       
@@ -102,7 +102,7 @@ int is_vertical_panel(void)
     int ret = 0;
     
     // ro.vout.dualdisplay4.ver-panel
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));
     if (property_get("ro.vout.dualdisplay4.ver-panel", val, "false")
         && strcmp(val, "true") == 0) {       
@@ -112,12 +112,38 @@ int is_vertical_panel(void)
     return ret;
 }
 
+int is_screen_portrait(void)
+{
+    int ret = 0;
+    
+    // ro.vout.dualdisplay4.ver-panel
+    char val[PROPERTY_VALUE_MAX];
+    memset(val, 0, sizeof(val));
+    if (property_get("ro.screen.portrait", val, "false")
+        && strcmp(val, "true") == 0) {       
+        ret = 1;
+    }
+
+    return ret;
+}
+
+int is_video_on_vpp2_new(void)
+{
+    int ret = 0;
+    
+    char val[PROPERTY_VALUE_MAX];
+    memset(val, 0, sizeof(val));   
+    if (amsysfs_get_sysfs_str("/sys/class/graphics/fb2/clone", val, sizeof(val)) == 0) {
+		ret = (val[19] == '1') ? 1 : 0;
+    }
+    return ret;
+}
 int is_vertical_panel_reverse(void)
 {
     int ret = 0;
     
     // ro.vout.dualdisplay4.ver-panel
-    char val[32];
+    char val[PROPERTY_VALUE_MAX];
     memset(val, 0, sizeof(val));
     if (property_get("ro.ver-panel.reverse", val, "false")
         && strcmp(val, "true") == 0) {       
@@ -141,7 +167,7 @@ typedef enum _OSD_DISP_MODE {
 OSD_DISP_MODE get_osd_display_mode()
 {
     OSD_DISP_MODE ret = OSD_DISP_1080P; 
-    char buf[32]; 
+    char buf[PROPERTY_VALUE_MAX];
     memset(buf,0,sizeof(buf));	
     property_get("ubootenv.var.outputmode",buf,"1080p");
     if(!strncmp(buf,"720p",4)){
@@ -208,14 +234,14 @@ int get_device_win(OSD_DISP_MODE dismod, int *x, int *y, int *w, int *h)
     const char *prop576p_x ="ubootenv.var.576poutputx";
     const char *prop576p_y ="ubootenv.var.576poutputy";
 
-    char prop_value_h[32];
-    memset(prop_value_h,0,32);
-    char prop_value_w[32];
-    memset(prop_value_w,0,32);
-    char prop_value_x[32];
-    memset(prop_value_x,0,32);
-    char prop_value_y[32];
-    memset(prop_value_y,0,32);
+    char prop_value_h[PROPERTY_VALUE_MAX];
+    memset(prop_value_h,0,PROPERTY_VALUE_MAX);
+    char prop_value_w[PROPERTY_VALUE_MAX];
+    memset(prop_value_w,0,PROPERTY_VALUE_MAX);
+    char prop_value_x[PROPERTY_VALUE_MAX];
+    memset(prop_value_x,0,PROPERTY_VALUE_MAX);
+    char prop_value_y[PROPERTY_VALUE_MAX];
+    memset(prop_value_y,0,PROPERTY_VALUE_MAX);
 	
     switch(dismod)
     {
@@ -299,8 +325,8 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
         *h = tmp;
 
         tmp = *y;
-        *y = fb0_w - *h - *x + 1;
-        *x = tmp;
+        *y = *x;
+        *x = fb0_h - tmp - *w + 1;
     } else if(osd_rotation == 270){// 270
         *rotation = (*rotation + osd_rotation)%360;
         int tmp = *w;
@@ -308,8 +334,8 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
         *h = tmp;
 
         tmp = *x;
-        *x = fb0_h - *w - *y + 1;
-        *y = tmp;
+        *x = *y;
+        *y = fb0_w - tmp - *h + 1;
     } else {
         ALOGE("should no this rotation!");
     }
@@ -337,14 +363,6 @@ void get_axis(const char *path, int *x, int *y, int *w, int *h)
 
 void set_scale(int x, int y, int w, int h, int *dst_x, int *dst_y, int *dst_w, int *dst_h, int disp_w, int disp_h)
 {
-    if ((*dst_w >= disp_w - 1) || (*dst_w == 0)) {
-        *dst_x = 0;
-        *dst_w = disp_w;
-    }
-    if ((*dst_h >= disp_h - 1) || (*dst_h == 0)) {
-        *dst_y = 0;
-        *dst_h = disp_h;
-    }
     *dst_x = (*dst_x) * w / disp_w + x;
     *dst_y = (*dst_y) * h / disp_h + y;
     *dst_w = (*dst_w) * w / disp_w;
@@ -367,6 +385,8 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     int ret = -1;
     int axis[4];
     char enable_p2p_play[8] = {0};
+	int video_on_vpp2_new = is_video_on_vpp2_new();
+	int screen_portrait = is_screen_portrait();
     int video_on_vpp2 = is_video_on_vpp2();
     int vertical_panel = is_vertical_panel();
     int vertical_panel_reverse = is_vertical_panel_reverse();
@@ -481,7 +501,8 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 
     angle_fd = open(ANGLE_PATH, O_WRONLY);
     if (angle_fd >= 0) {
-        if (video_on_vpp2 && vertical_panel)
+        if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new ))
+        //if (video_on_vpp2 && vertical_panel)
             ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, 0);
         else
             ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, (rotation/90) & 3);
@@ -597,15 +618,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
                     y = top;
                     w = right - left + 1;
                     h = bottom - top + 1;
-                    if ((dst_w >= dev_w - 1) || (dst_w == 0)) {
-                        dst_x = 0;
-                        dst_w = w;
-                    }
-                    if ((dst_h >= dev_h - 1) || (dst_h == 0)) {
-                        dst_y = 0;
-                        dst_h = h;
-                    }
-
+                    
                     dst_x = dst_x * w / dev_w + x;
                     dst_y = dst_y * h / dev_h + y;
                     LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);

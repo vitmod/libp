@@ -1136,7 +1136,7 @@ exit_decode_loop:
                       inlen -= dlen;
 
                       if(nAudioFormat == ACODEC_FMT_COOK || nAudioFormat == ACODEC_FMT_RAAC || nAudioFormat == ACODEC_FMT_AMR){
-                           if(inlen <= dlen){
+                           if(inlen <= declen){
                              needdata ++;
                            }
                       }

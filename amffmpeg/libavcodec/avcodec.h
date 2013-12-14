@@ -210,6 +210,9 @@ enum CodecID {
     /* H264 MVC type */
     CODEC_ID_H264MVC,
 
+    /* HEVC/H.265 type */
+    CODEC_ID_HEVC,
+
     /* various PCM "codecs" */
     CODEC_ID_PCM_S16LE= 0x10000,
     CODEC_ID_PCM_S16BE,

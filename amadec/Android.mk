@@ -16,6 +16,11 @@ LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/../amavutils/include \
 
+# PLATFORM_SDK_VERSION:
+# 4.4 = 19
+# 4.3 = 18
+# 4.2 = 17
+LOCAL_CFLAGS += -DANDROID_PLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
     LOCAL_CFLAGS += -DANDROID_VERSION_JBMR2_UP=1  -DUSE_ARM_AUDIO_DEC	
@@ -55,10 +60,11 @@ LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/../amavutils/include \
 
+LOCAL_CFLAGS += -DANDROID_PLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
+
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
     LOCAL_CFLAGS += -DANDROID_VERSION_JBMR2_UP=1
 endif
-
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
     LOCAL_CFLAGS += -D_VERSION_JB

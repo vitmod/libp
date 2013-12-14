@@ -191,7 +191,15 @@ int thumbnail_find_stream_info(void *handle, const char* filename)
     }
     log_print("*********************************************\n");
 #endif
-
+    if(stream->videoStream>=0){
+        stream->pCodecCtx = stream->pFormatCtx->streams[stream->videoStream]->codec;
+        if (stream->pCodecCtx == NULL) {
+            log_print("pCodecCtx is NULL !\n");
+        }
+        
+        frame->width = stream->pCodecCtx->width;
+        frame->height = stream->pCodecCtx->height;
+    }
     return 0;
 
 err1:
