@@ -89,7 +89,11 @@ static int old_frame_count = 0;
 
 void restore_system_framesize()
 {
-  adec_print("restore system frame size\n");
+	if(old_frame_count == 0){
+    	 adec_print("frame size can't be zero !\n");
+		 return;
+	}
+  	adec_print("restore system frame size\n");
 	int sr = 0;
 	audio_io_handle_t handle = -1;		
 	handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
@@ -949,9 +953,10 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
     mpAudioTrack.clear();
 #endif
     out_ops->private_data = NULL;
-    restore_system_samplerate();	
-    restore_system_framesize();
-
+	if(wfd_enable){
+    	restore_system_samplerate();	
+    	restore_system_framesize();
+	}
     return 0;
 }
 
