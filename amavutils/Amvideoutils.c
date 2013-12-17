@@ -153,6 +153,18 @@ int is_vertical_panel_reverse(void)
     return ret;
 }
 
+int is_panel_mode(void)
+{
+    int ret = 0;
+    char val[PROPERTY_VALUE_MAX];
+    memset(val, 0, sizeof(val));   
+    if (amsysfs_get_sysfs_str("/sys/class/display/mode", val, sizeof(val)) == 0) {
+		ret = (val[0] == 'p') ? 1 : 0;
+    }
+    return ret;
+}
+
+
 typedef enum _OSD_DISP_MODE {
 	OSD_DISP_480I,
 	OSD_DISP_480P,
@@ -611,17 +623,18 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
             int x = 0, y = 0, w = 0, h = 0;
 
             memset(val, 0, sizeof(val));
-            if (amsysfs_get_sysfs_str(WINDOW_AXIS_PATH, val, sizeof(val)) == 0) {
+            if (amsysfs_get_sysfs_str(WINDOW_AXIS_PATH, val, sizeof(val)) == 0
+				&& (is_panel_mode() == 0)) {
                 /* the returned string should be "window axis is [a b c d]" */
                 if (sscanf(val + 15, "[%d %d %d %d]", &left, &top, &right, &bottom) == 4) {
                     x = left;
                     y = top;
                     w = right - left + 1;
                     h = bottom - top + 1;
-                    
+					
                     dst_x = dst_x * w / dev_w + x;
                     dst_y = dst_y * h / dev_h + y;
-                    LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+                    LOGI("after scaled, screen position1: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
                 }
             }
         } else {
@@ -643,7 +656,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
                                 fb_h = 720;
                             }
                             set_scale(x, y, w, h, &dst_x, &dst_y, &dst_w, &dst_h, fb_w, fb_h);
-                            LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+                            LOGI("after scaled, screen position2: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
                         }
                     }
                 }
@@ -668,7 +681,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
                 freescale_h = (freescale_h + 1) & (~1);
 
                 set_scale(x, y, w, h, &dst_x, &dst_y, &dst_w, &dst_h, freescale_w, freescale_h);
-                LOGI("after scaled, screen position: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+                LOGI("after scaled, screen position3: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
             }
         }
     }
