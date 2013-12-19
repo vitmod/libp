@@ -332,14 +332,6 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
 	/*if the video's width  >= fb0_w  and x == 0 , we think this a full screen video,then transfer the whole display size to decode
 	    either is to y == 0 and hight >= fb0_h.
 	    this is added for platforms which is 4:3 and hdmi mode are 16:9*/
-	if(is_video_on_vpp2_new() == 1){
-		if(((*x == 0)&&(*w >= fb0_w)) || ((*y == 0)&&(h >= fb0_h))){
-			*x = 0;
-			*y = 0;
-			*w = fb0_w;
-			*h = fb0_h;
-		}
-	}
     if(osd_rotation == 90){
         *rotation = (*rotation + osd_rotation)%360;
         int tmp = *w;
@@ -364,6 +356,22 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
     ALOGD("amvideo_convert_axis convert end %d,%d,%d,%d -- %d",*x,*y,*w,*h,*rotation);
     return 0;
 }
+
+void amvideo_setfullscreen_byvideosize(int32_t* x, int32_t* y, int32_t* w, int32_t* h){
+	int fb0_w, fb0_h;
+	amdisplay_utils_get_size(&fb0_w, &fb0_h);
+	ALOGD("amvideo_setfullscreen_byvideosize before %d,%d,%d,%d",*x,*y,*w,*h);
+	if(is_video_on_vpp2_new() == 1){
+		if(((*x == 0)&&(*w >= fb0_w)) || ((*y == 0)&&(h >= fb0_h))){
+			*x = 0;
+			*y = 0;
+			*w = fb0_w;
+			*h = fb0_h;
+		}
+	}
+	ALOGD("amvideo_setfullscreen_byvideosize end %d,%d,%d,%d",*x,*y,*w,*h);
+}
+
 
 void get_axis(const char *path, int *x, int *y, int *w, int *h)
 {
@@ -395,6 +403,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 {
     LOG_FUNCTION_NAME
 	//for osd rotation, need convert the axis first
+	amvideo_setfullscreen_byvideosize(&x,&y,&w,&h);
 	int osd_rotation = amdisplay_utils_get_osd_rotation();
 	if(osd_rotation > 0)
         amvideo_convert_axis(&x,&y,&w,&h,&rotation,osd_rotation);
