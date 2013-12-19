@@ -244,4 +244,6 @@ int player_mate_sleep(play_para_t *player);
 int player_mate_release(play_para_t *player);
 void check_msg(play_para_t *para, player_cmd_t *msg);
 int nextcmd_is_cmd(play_para_t *player, ctrl_cmd_t c_cmd);
+int update_dump_dir_path(void);
+
 #endif

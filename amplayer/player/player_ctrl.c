@@ -26,6 +26,7 @@
 #include "thread_mgt.h"
 #include "player_ffmpeg_ctrl.h"
 #include "player_cache_mgt.h"
+#include "player_priv.h"
 
 
 #ifndef FBIOPUT_OSD_SRCCOLORKEY
@@ -75,7 +76,6 @@ int player_init(void)
     rm_register_stream_decoder();
     audio_register_stream_decoder();
     video_register_stream_decoder();
-
     return PLAYER_SUCCESS;
 }
 
@@ -103,6 +103,7 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     //char stb_source[32];
 
     update_loglevel_setting();
+	update_dump_dir_path();
     print_version_info();
     log_print("[player_start:enter]p=%p black=%d\n", ctrl_p, get_black_policy());
 
