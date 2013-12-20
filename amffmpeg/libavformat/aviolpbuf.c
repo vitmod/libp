@@ -93,7 +93,11 @@ int url_lpopen(URLContext *s,int size)
 	if(size==0){
 		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemax",&value);
 		if(ret<0 || value < 1024*32)
-			size=IO_LP_BUFFER_SIZE;
+			if(am_getconfig_bool_def("ro.config.low_ram",0)){
+				size=IO_LP_BUFFER_SIZE/8;
+			}else{
+			    size=IO_LP_BUFFER_SIZE;
+			}
 		else{
 			size=(int)value;
 		}

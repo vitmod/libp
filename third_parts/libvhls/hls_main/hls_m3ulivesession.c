@@ -1588,7 +1588,10 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
         LOGV("Open baseUrl :%s\n",session->baseUrl);
     }
 #ifdef USE_SIMPLE_CACHE
-    const int cache_size_max = 1024*1024*10; //10M   
+    int cache_size_max = 1024*1024*10; //10M
+    if(am_getconfig_bool_def("ro.config.low_ram",0)){
+		cache_size_max=cache_size_max/4;
+    }
     ret = hls_simple_cache_alloc(cache_size_max,&session->cache);
     if(ret!=0){
         ERROR_MSG();
