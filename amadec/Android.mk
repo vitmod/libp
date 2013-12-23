@@ -1,4 +1,37 @@
 LOCAL_PATH:= $(call my-dir)
+include $(CLEAR_VARS)
+ 
+LOCAL_CFLAGS := \
+        -fPIC -D_POSIX_SOURCE
+ 
+LOCAL_C_INCLUDES:= \
+    $(LOCAL_PATH)/include \
+    $(LOCAL_PATH)/../amavutils/include \
+    $(LOCAL_PATH)/../../../../external/alsa-lib/include
+ 
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
+    LOCAL_CFLAGS += -D_VERSION_JB
+else
+    ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
+        LOCAL_CFLAGS += -D_VERSION_ICS
+    endif
+endif
+ 
+LOCAL_CFLAGS += -DALSA_OUT
+ 
+LOCAL_SHARED_LIBRARIES += libasound
+ 
+LOCAL_SRC_FILES := \
+           adec-external-ctrl.c adec-internal-mgt.c adec-ffmpeg-mgt.c adec-message.c adec-pts-mgt.c feeder.c adec_write.c adec_read.c\
+           dsp/audiodsp-ctl.c audio_out/alsa-out.c audio_out/aml_resample.c audiodsp_update_format.c spdif_api.c pcmenc_api.c \
+           dts_transenc_api.c dts_enc.c adec_omx_brige.c ../amavutils/amconfigutils.c  adec-wfd.c
+ 
+LOCAL_MODULE := libamadec_alsa
+ 
+LOCAL_ARM_MODE := arm
+ 
+include $(BUILD_STATIC_LIBRARY)
+
 
 include $(CLEAR_VARS)
 

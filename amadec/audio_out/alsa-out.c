@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <sys/soundcard.h>
+#include <linux/soundcard.h>
 //#include <config.h>
 #include <alsa/asoundlib.h>
 

@@ -18,8 +18,11 @@
     #define LOGE ALOGE
 #endif
 
-
+#ifndef NO_USE_SYSWRITE  //added by lifengcao for startup video
 #define USE_SYSWRITE
+#endif
+
+
 #ifndef USE_SYSWRITE
 int amsysfs_set_sysfs_str(const char *path, const char *val)
 {

@@ -1,7 +1,8 @@
 #ifndef ALSA_OUT_H
 #define ALSA_OUT_H
 
-#define PCM_DEVICE_DEFAULT      "default"
+//#define PCM_DEVICE_DEFAULT      "default"
+#define PCM_DEVICE_DEFAULT  "hw:0,2"
 #define OUTPUT_BUFFER_SIZE      (8*1024)
 
 typedef struct {
