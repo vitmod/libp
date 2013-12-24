@@ -93,6 +93,8 @@ static int get_spdif_port(){
         return -EINVAL;
     }
 	pd = strstr(read_buf, "SPDIF");
+	if(!pd)
+		goto OUT;
 	adec_print("%s  \n",pd );
 	
 	port = *(pd -3) - '0';
@@ -120,7 +122,7 @@ int  pcm_output_init()
     device = get_spdif_port();
     if(device < 0)
     {
-    	device = 2;
+    	device = 0;
 	adec_print("get aml card device fail, use default \n");
     }
     adec_print("open output device card %d, device %d \n",card,device);	

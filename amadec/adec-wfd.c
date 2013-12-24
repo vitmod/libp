@@ -444,6 +444,11 @@ static int wfd_audio_codec_init(aml_audio_dec_t *audec){
       audec->adsp_ops.set_cur_apts    = wfd_dec_set_pts;
       audec->adsp_ops.set_skip_bytes = wfd_dec_set_skip_bytes;		  
       audec->adsp_ops.dsp_read_raw=  NULL;
+      while(0!=set_sysfs_int(DECODE_ERR_PATH,DECODE_NONE_ERR))
+      {
+          adec_print("[%s %d]set codec fatal failed ! \n",__FUNCTION__,__LINE__);
+          usleep(100000);
+      }	  
 /*
 	  //enable uio interface
 	ret = uio_init(audec);

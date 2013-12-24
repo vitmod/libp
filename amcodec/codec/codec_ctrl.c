@@ -952,7 +952,7 @@ int codec_get_vdec_state(codec_para_t *p, struct vdec_status *vdec)
 /* --------------------------------------------------------------------------*/
 int codec_get_adec_state(codec_para_t *p, struct adec_status *adec)
 {
-    if(get_audio_decoder()!=AUDIO_ARC_DECODER)
+    if(get_audio_decoder() ==AUDIO_ARM_DECODER)
 	return get_decoder_status(p->adec_priv,adec);
     int r;
     struct am_io_param am_io;

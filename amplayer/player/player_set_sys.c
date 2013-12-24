@@ -106,7 +106,6 @@ int check_audiodsp_fatal_err()
     {
         log_print("unable to open file check_audiodsp_fatal_err,err: %s", strerror(errno));
     }
-
     return fatal_err;
 }
 

@@ -521,8 +521,8 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 			#endif
 		}else{
             audio_decoder = AUDIO_ARM_DECODER;
-        }
-		return 0;
+         }
+		goto exit;		
 	} 
 	
 	ret = property_get("media.arc.audio.decoder",value,NULL);
@@ -535,7 +535,7 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 			audio_decoder = AUDIO_ARM_DECODER;	
 			adec_print("[%s:%d]arc decoder not support this audio yet,switch to ARM decoder \n",__FUNCTION__, __LINE__);
 		}
-		return 0;
+		goto exit;
 	} 
 	
 	ret = property_get("media.ffmpeg.audio.decoder",value,NULL);
@@ -543,13 +543,18 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 	if (ret>0 && match_types(t->type,value))
 	{	
 		audio_decoder = AUDIO_FFMPEG_DECODER;
-		return 0;
+		goto exit;
 	} 
 	
 	audio_decoder = AUDIO_ARC_DECODER; //set arc decoder as default
 	if(audec->dspdec_not_supported == 1){
 		audio_decoder = AUDIO_ARM_DECODER;	
 		adec_print("[%s:%d]arc decoder not support this audio yet,switch to ARM decoder \n",__FUNCTION__, __LINE__);
+	}
+exit:
+	if(am_getconfig_bool("media.libplayer.wfd") && (audio_id ==ACODEC_FMT_WIFIDISPLAY ||audio_id==ACODEC_FMT_AAC)){
+		adec_print("wfd use arm decoder \n");
+		audio_decoder = AUDIO_ARMWFD_DECODER;
 	}	
 	return 0;
 }
@@ -584,7 +589,7 @@ int audiodec_init(aml_audio_dec_t *audec)
 		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);
 		pthread_setname_np(tid,"AmadecMsgloop");
     }
-    else if(wfd && (/*nCodecType == ACODEC_FMT_AAC ||*/nCodecType ==  ACODEC_FMT_WIFIDISPLAY)){
+    else if(wfd && (nCodecType == ACODEC_FMT_AAC ||nCodecType ==  ACODEC_FMT_WIFIDISPLAY)){
 		adec_print("using wfd audio decoder \n");
 		ret = pthread_create(&tid, NULL, (void *)adec_wfddec_msg_loop, (void *)audec);
 		pthread_setname_np(tid,"AmadecWFDMsgloop");		

@@ -131,4 +131,5 @@ typedef struct {
 #define AUDIO_ARC_DECODER 0
 #define AUDIO_ARM_DECODER 1
 #define AUDIO_FFMPEG_DECODER 2
+#define AUDIO_ARMWFD_DECODER  3
 #endif
