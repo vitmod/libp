@@ -1047,7 +1047,8 @@ void *player_thread(play_para_t *player)
     do {
         if ((!(player->vstream_info.video_format == VFORMAT_SW)
              && !(player->vstream_info.video_format == VFORMAT_VC1 && player->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WMV3)) || \
-            (IS_AUIDO_NEED_PREFEED_HEADER(player->astream_info.audio_format) && player->astream_info.has_audio)) {
+            (IS_AUIDO_NEED_PREFEED_HEADER(player->astream_info.audio_format) && player->astream_info.has_audio) ||
+            (IS_SUB_NEED_PREFEED_HEADER(player->sstream_info.sub_type) && player->sstream_info.has_sub)) {
             pre_header_feeding(player);
         }
         do {

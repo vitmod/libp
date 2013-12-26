@@ -3221,6 +3221,10 @@ void player_switch_sub(play_para_t *para)
     if (codec_reset_subtile(pcodec)) {
         log_print("[%s:%d]reset subtile failed\n", __FUNCTION__, __LINE__);
     }
+    
+    if (IS_SUB_NEED_PREFEED_HEADER(para->sstream_info.sub_type)) {
+        pre_header_feeding(para);
+    }
 
     return;
 }

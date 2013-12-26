@@ -932,12 +932,49 @@ static int audio_add_header(play_para_t *para)
 
 }
 
+static int sub_add_header(play_para_t *para) {
+    unsigned ext_size = para->pFormatCtx->streams[para->sstream_info.sub_index]->codec->extradata_size;
+    unsigned char *extradata = para->pFormatCtx->streams[para->sstream_info.sub_index]->codec->extradata;
+    am_packet_t *pkt = para->p_pkt;
+    if (ext_size > 0 && extradata) {
+        log_print("==============sub add header =======================\n");
+        pkt->avpkt->data[0] = 'E';
+        pkt->avpkt->data[1] = 'X';
+        pkt->avpkt->data[2] = 'T';
+        pkt->avpkt->data[3] = 'R';
+        pkt->avpkt->data[4] = 'A';
+		MEMCPY(pkt->avpkt->data+5, extradata , ext_size);
+		pkt->avpkt->size = ext_size + 5;
+		pkt->avpkt->pts = 0;
+
+		pkt->data = pkt->avpkt->data;
+		pkt->data_size = pkt->avpkt->size;
+		
+		pkt->avpkt_newflag = 1;
+		pkt->avpkt_isvalid = 1;
+		pkt->pts_checkin_ok = 0;
+		pkt->avpkt->stream_index = para->pFormatCtx->streams[para->sstream_info.sub_index]->index;
+
+        if (para->scodec) {
+            pkt->codec = para->scodec;
+        }
+        pkt->type = CODEC_SUBTITLE;
+        if (ext_size > 4) {
+            log_print("sub header first four bytes[0x%x],[0x%x],[0x%x],[0x%x]\n", extradata[0], extradata[1], extradata[2], extradata[3]);
+        }
+        return write_av_packet(para);
+    }
+
+	return 0;
+}
+
 int pre_header_feeding(play_para_t *para)
 {
     int ret = -1;
-    AVStream *pStream = NULL;
-    AVCodecContext *avcodec;
+    AVStream *pStream = NULL, *subStream = NULL;
+    AVCodecContext *avcodec, *scodec;
     int index = para->vstream_info.video_index;
+    int subindex = para->sstream_info.sub_index;
     am_packet_t *pkt = para->p_pkt;
     int extra_size = 0;
     if (-1 == index) {
@@ -970,6 +1007,34 @@ int pre_header_feeding(play_para_t *para)
         }
         if (ret != PLAYER_SUCCESS) {
             return ret;
+        }
+    }
+
+    if (IS_SUB_NEED_PREFEED_HEADER(para->sstream_info.sub_type) && para->sstream_info.has_sub) {
+	    subStream = para->pFormatCtx->streams[subindex];
+        scodec = subStream->codec;
+        if (pkt->avpkt->data == NULL) {
+            extra_size = scodec->extradata_size + 5;
+            if (extra_size > 0 && scodec->extradata) {
+                pkt->avpkt->data = (char *)MALLOC(extra_size);
+                if (!pkt->avpkt->data) {
+                    log_print("[pre_header_feeding] NOMEM!");
+                    return PLAYER_NOMEM;
+                }
+            }
+
+            ret = sub_add_header(para);
+			if (pkt->hdr) {
+				if (pkt->hdr->data) {
+					FREE(pkt->hdr->data);
+					pkt->hdr->data = NULL;
+				}
+				FREE(pkt->hdr);
+				pkt->hdr = NULL;
+			}
+			if (ret != PLAYER_SUCCESS) {
+				return ret;
+			}
         }
     }
 

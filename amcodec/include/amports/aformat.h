@@ -98,5 +98,8 @@ typedef enum {
 #define IS_AUDIO_NOT_SUPPORTED_BY_AUDIODSP(afmt,codec)  \
 							((afmt == AFORMAT_AAC_LATM || afmt == AFORMAT_AAC) \
 							 &&codec->profile == 0/* FF_PROFILE_AAC_MAIN*/)
+
+#define IS_SUB_NEED_PREFEED_HEADER(sfmt) ((sfmt == CODEC_ID_DVD_SUBTITLE) )
+
 #endif /* AFORMAT_H */
 
