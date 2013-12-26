@@ -28,7 +28,8 @@ typedef struct {
     unsigned long(*latency)(struct aml_audio_dec *);                    /* get latency in ms */
     int (*mute)(struct aml_audio_dec *, adec_bool_t);           /* 1: enable mute ; 0: disable mute */
     int (*set_volume)(struct aml_audio_dec *, float);
-    int (*set_lrvolume)(struct aml_audio_dec *, float,float);	
+    int (*set_lrvolume)(struct aml_audio_dec *, float,float);
+	int audio_out_raw_enable;
 } audio_out_operations_t;
 
 ADEC_END_DECLS

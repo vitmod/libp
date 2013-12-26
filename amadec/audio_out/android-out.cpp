@@ -32,6 +32,8 @@ namespace android
 {
 
 static Mutex mLock;
+static Mutex mLock_raw;
+
 extern "C" int get_audio_decoder(void);
 static int get_digitalraw_mode(void)
 {
@@ -193,6 +195,7 @@ static int wfd_us_thrdhold = 150;//audio pts delay threadhold for up  sampling
 
 #if ANDROID_PLATFORM_SDK_VERSION >= 19
 static sp<AudioTrack> mpAudioTrack;
+static sp<AudioTrack> mpAudioTrack_raw;
 #endif
 
 void audioCallback(int event, void* user, void *info)
@@ -428,6 +431,7 @@ void audioCallback_raw(int event, void* user, void *info)
 
 extern "C" int android_init_raw(struct aml_audio_dec* audec)
 {
+	Mutex::Autolock _l(mLock_raw);
     adec_print("[%s %d]android raw_out init",__FUNCTION__,__LINE__);
     status_t status;
     AudioTrack *track;
@@ -474,8 +478,8 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
         return -1;
     }
 #else
-    mpAudioTrack = new AudioTrack();
-    track = mpAudioTrack.get();
+    mpAudioTrack_raw = new AudioTrack();
+    track = mpAudioTrack_raw.get();
 #endif
 
     int SessionID = 0;//audec->SessionID;
@@ -509,7 +513,7 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
               track = NULL;
 #else
               track = NULL;
-              mpAudioTrack.clear();
+              mpAudioTrack_raw.clear();
 #endif
               out_ops->private_data_raw=NULL;
              return -1;
@@ -538,8 +542,6 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     AudioTrack *track;
     audio_out_operations_t *out_ops = &audec->aout_ops;
     char wfd_prop[PROPERTY_VALUE_MAX];
-    
-    int rawoutput_enable=0;
     
     ttt = 0;
     resample = 0;
@@ -593,9 +595,12 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     adec_print("wfd_enable = %d", wfd_enable);
 
     reset_system_samplerate(audec);
-#ifdef USE_ARM_AUDIO_DEC	
-    rawoutput_enable=amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
-    if(rawoutput_enable)
+#ifdef USE_ARM_AUDIO_DEC
+	int user_raw_enable = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
+	out_ops->audio_out_raw_enable = user_raw_enable && (audec->format == ADEC_AUDIO_FORMAT_DTS || 
+														audec->format == ADEC_AUDIO_FORMAT_AC3 ||
+														audec->format == ADEC_AUDIO_FORMAT_EAC3 );
+    if(out_ops->audio_out_raw_enable)
        android_init_raw(audec);
 #endif	
     //---------------------------
@@ -690,6 +695,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
 #ifdef USE_ARM_AUDIO_DEC
 extern "C" int android_start_raw(struct aml_audio_dec* audec)
 {
+	Mutex::Autolock _l(mLock_raw);
     adec_print("[%s %d]android raw_out start",__FUNCTION__,__LINE__);
     status_t status;
     audio_out_operations_t *out_ops = &audec->aout_ops;
@@ -697,7 +703,7 @@ extern "C" int android_start_raw(struct aml_audio_dec* audec)
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     AudioTrack *track = (AudioTrack *)out_ops->private_data_raw;
 #else
-    AudioTrack *track = mpAudioTrack.get();
+    AudioTrack *track = mpAudioTrack_raw.get();
 #endif
     if (track == 0) {
            adec_print("[%s %d]No track instance!\n",__FUNCTION__,__LINE__);
@@ -709,7 +715,7 @@ extern "C" int android_start_raw(struct aml_audio_dec* audec)
 #if ANDROID_PLATFORM_SDK_VERSION < 19
            delete track;
 #else
-           mpAudioTrack.clear();
+           mpAudioTrack_raw.clear();
 #endif
             out_ops->private_data_raw= NULL;
            return -1;
@@ -742,8 +748,8 @@ extern "C" int android_start(struct aml_audio_dec* audec)
    
 #ifdef USE_ARM_AUDIO_DEC	
     i2s_iec958_sync_force(audec,0);
-    
-    android_start_raw(audec);
+    if(out_ops->audio_out_raw_enable)
+    	android_start_raw(audec);
 #endif	
     adec_print("android out start");
     ttt = 0;
@@ -774,13 +780,14 @@ extern "C" int android_start(struct aml_audio_dec* audec)
 
 extern "C" int android_pause_raw(struct aml_audio_dec* audec)
 {
+		Mutex::Autolock _l(mLock_raw);
         adec_print("[%s %d]android raw_out pause",__FUNCTION__,__LINE__);
         audio_out_operations_t *out_ops = &audec->aout_ops;
 
 #if ANDROID_PLATFORM_SDK_VERSION < 19
         AudioTrack *track = (AudioTrack *)out_ops->private_data_raw;
 #else
-        AudioTrack *track = mpAudioTrack.get();
+        AudioTrack *track = mpAudioTrack_raw.get();
 #endif
         if (track == 0) {
               adec_print("[%s %d]No track instance!\n",__FUNCTION__,__LINE__);
@@ -806,7 +813,8 @@ extern "C" int android_pause(struct aml_audio_dec* audec)
     AudioTrack *track = mpAudioTrack.get();
 #endif
 #ifdef USE_ARM_AUDIO_DEC
-    android_pause_raw(audec);
+	if(out_ops->audio_out_raw_enable)
+    	android_pause_raw(audec);
 #endif 
     adec_print("android out pause");
 
@@ -829,14 +837,14 @@ extern "C" int android_pause(struct aml_audio_dec* audec)
 
 extern "C" int android_resume_raw(struct aml_audio_dec* audec)
 {
-
+	Mutex::Autolock _l(mLock_raw);
     adec_print("[%s %d]android raw_out resume",__FUNCTION__,__LINE__);
   
     audio_out_operations_t *out_ops = &audec->aout_ops;
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     AudioTrack *track = (AudioTrack *)out_ops->private_data_raw;
 #else
-    AudioTrack *track = mpAudioTrack.get();
+    AudioTrack *track = mpAudioTrack_raw.get();
 #endif
     if (track == 0) {
         adec_print("[%s %d]No track instance!\n",__FUNCTION__,__LINE__);
@@ -863,7 +871,8 @@ extern "C" int android_resume(struct aml_audio_dec* audec)
 
 #ifdef USE_ARM_AUDIO_DEC
     i2s_iec958_sync_force(audec,0);
-    android_resume_raw(audec);
+	if(out_ops->audio_out_raw_enable)
+    	android_resume_raw(audec);
 #endif	
     adec_print("android out resume");
     ttt = 0;
@@ -883,21 +892,17 @@ extern "C" int android_resume(struct aml_audio_dec* audec)
 #ifdef USE_ARM_AUDIO_DEC
 extern "C" int android_stop_raw(struct aml_audio_dec* audec)
 {
+	Mutex::Autolock _l(mLock_raw);
     adec_print("[%s %d]android raw_out stop",__FUNCTION__,__LINE__);
 
     audio_out_operations_t *out_ops = &audec->aout_ops;
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     AudioTrack *track = (AudioTrack *)out_ops->private_data_raw;
 #else
-    sp<AudioTrack> track = mpAudioTrack;
+    AudioTrack *track = mpAudioTrack_raw.get();
 #endif
 
-#if ANDROID_PLATFORM_SDK_VERSION < 19
-    if (track == 0)
-#else
-    if (track.get() == 0)
-#endif
-    {
+    if (track == 0){
         adec_print("[%s %d]No track instance!\n",__FUNCTION__,__LINE__);
         return -1;
     }
@@ -906,7 +911,7 @@ extern "C" int android_stop_raw(struct aml_audio_dec* audec)
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     delete track;
 #else
-    mpAudioTrack.clear();
+    mpAudioTrack_raw.clear();
 #endif
     if((audec->format==ACODEC_FMT_DTS) ||
        (audec->format == ACODEC_FMT_AC3) ||
@@ -928,19 +933,15 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     AudioTrack *track = (AudioTrack *)out_ops->private_data;
 #else
-    sp<AudioTrack> track = mpAudioTrack;
+    AudioTrack *track = mpAudioTrack.get();
 #endif
 #ifdef USE_ARM_AUDIO_DEC
-    android_stop_raw(audec);
+	if(out_ops->audio_out_raw_enable)
+    	android_stop_raw(audec);
 #endif 
     adec_print("android out stop");
 
-#if ANDROID_PLATFORM_SDK_VERSION < 19
-    if (track == 0)
-#else
-    if (track.get() == 0)
-#endif
-    {
+    if (track == 0){
         adec_print("No track instance!\n");
         return -1;
     }
@@ -953,8 +954,8 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
     mpAudioTrack.clear();
 #endif
     out_ops->private_data = NULL;
+	restore_system_samplerate();
 	if(wfd_enable){
-    	restore_system_samplerate();	
     	restore_system_framesize();
 	}
     return 0;
@@ -991,13 +992,14 @@ extern "C" unsigned long android_latency(struct aml_audio_dec* audec)
  */
 extern "C" int android_mute_raw(struct aml_audio_dec* audec, adec_bool_t en)
 {
-    adec_print("[%s %d]android raw_out mute",__FUNCTION__,__LINE__);
+	Mutex::Autolock _l(mLock_raw);
+	adec_print("[%s %d]android raw_out mute",__FUNCTION__,__LINE__);
 
     audio_out_operations_t *out_ops = &audec->aout_ops;
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     AudioTrack *track = (AudioTrack *)out_ops->private_data_raw;
 #else
-    AudioTrack *track = mpAudioTrack.get();
+    AudioTrack *track = mpAudioTrack_raw.get();
 #endif
     if (track == 0) {
         adec_print("No track instance!\n");
@@ -1027,7 +1029,8 @@ extern "C" int android_mute(struct aml_audio_dec* audec, adec_bool_t en)
 #ifdef ANDROID_VERSION_JBMR2_UP
 #else
     #ifdef USE_ARM_AUDIO_DEC
-    android_mute_raw(audec,en);
+	if(out_ops->audio_out_raw_enable)
+    	android_mute_raw(audec,en);
     #endif
 	track->mute(en);
 #endif
