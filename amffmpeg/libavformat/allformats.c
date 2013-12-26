@@ -298,6 +298,9 @@ extern AVInputFormat ff_hls_demuxer;
 extern URLProtocol ff_hls_protocol ;
 	ffurl_register_protocol(&ff_hls_protocol,sizeof(ff_hls_protocol));
 
+extern URLProtocol ff_rtsp_protocol ;
+	ffurl_register_protocol(&ff_rtsp_protocol,sizeof(ff_rtsp_protocol));
+
 extern URLProtocol ff_cmftest_protocol	;
 	ffurl_register_protocol(&ff_cmftest_protocol,sizeof(ff_cmftest_protocol));
 	ffmpeg_pthread_map_init();

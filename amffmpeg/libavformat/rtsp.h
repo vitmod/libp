@@ -179,6 +179,7 @@ enum RTSPClientState {
     RTSP_STATE_STREAMING, /**< initialized and sending/receiving data */
     RTSP_STATE_PAUSED,  /**< initialized, but not receiving data */
     RTSP_STATE_SEEKING, /**< initialized, requesting a seek */
+    RTSP_STATE_NOSUPPORT_PT,
 };
 
 /**
@@ -353,7 +354,10 @@ typedef struct RTSPState {
 	total received bytes;
 	*/	
     uint64_t rcv_bytes;
-
+    /*
+    whether to use the rtsp as protocol in ffmpeg.default is demuxer.set by output.
+    */
+    int use_protocol_mode;
     void *priv_data;
 } RTSPState;
 

@@ -51,6 +51,7 @@
 #define AVERROR_PROTOCOL_NOT_FOUND (-MKTAG(0xF8,'P','R','O')) ///< Protocol not found
 #define AVERROR_STREAM_NOT_FOUND   (-MKTAG(0xF8,'S','T','R')) ///< Stream not found
 #define AVERROR_STREAM_SIZE_NOTVALID   (-MKTAG(0xF8,'E','S','Z')) ///< Stream not found
+#define AVERROR_MODULE_UNSUPPORT   (-MKTAG(0xF8,'U','S','T')) ///< module not support the function  
 /**
  * Put a description of the AVERROR code errnum in errbuf.
  * In case of failure the global variable errno is set to indicate the

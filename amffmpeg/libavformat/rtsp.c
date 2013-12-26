@@ -325,6 +325,17 @@ static void sdp_parse_line(AVFormatContext *s, SDPParseState *s1,
 
         if (!strcmp(ff_rtp_enc_name(rtsp_st->sdp_payload_type), "MP2T")) {
             /* no corresponding stream */
+            // this is an fake stream, because it really mp2t format and no codec.add by le.yang 2013/12/26
+            if(rt->use_protocol_mode > 0){
+	     	st = av_new_stream(s, rt->nb_rtsp_streams - 1);
+            	if (!st)
+              	return;
+            	rtsp_st->stream_index = st->index;
+            	st->codec->codec_type = AVMEDIA_TYPE_RTSP_MPEGTS;
+            }
+            else{
+		rt->state=RTSP_STATE_NOSUPPORT_PT;
+            }
         } else {
             st = av_new_stream(s, rt->nb_rtsp_streams - 1);
             if (!st)

@@ -1161,6 +1161,7 @@ typedef struct AVPacket {
     int64_t dts;
     uint8_t *data;
     int   size;
+    int   offset;						// the offset in data buffer
     int   stream_index;
     int   flags;
     /**

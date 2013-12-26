@@ -217,6 +217,11 @@ int ff_rtsp_setup_input_streams(AVFormatContext *s, RTSPMessageHeader *reply)
     if (ret < 0)
         return ret;
 
+    // rtsp demuxer unsupport the payload
+    if(rt->state==RTSP_STATE_NOSUPPORT_PT){
+    	av_log(s, AV_LOG_ERROR, "rtsp demuxer with playload is mpegts is not support\n");
+	return AVERROR_MODULE_UNSUPPORT;
+    }
     return 0;
 }
 
@@ -565,4 +570,170 @@ AVInputFormat ff_rtsp_demuxer = {
     .read_play = rtsp_read_play,
     .read_pause = rtsp_read_pause,
     .priv_class = &rtsp_demuxer_class,
+};
+
+// ----------------------------------------------------------------------------------------
+// rtsp protocol. Used only by mpegts over rtsp. This is only an interface to work like an protocol.
+// Add by le.yang. 2013/12/24
+#include <itemlist.h>
+#ifndef min
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#endif
+
+typedef struct RTSPProtocolContext {
+    struct itemlist bufferlist;
+    AVFormatContext *ctx;
+}RTSPProtocolContext;
+
+static int rtsp_protocol_open(URLContext *h, const char *uri, int flags)
+{
+    int ret=0;
+    AVDictionary *tmp = NULL;
+    RTSPProtocolContext *rtspCtx = av_mallocz(sizeof(RTSPProtocolContext)) ;
+    if(NULL==rtspCtx)
+	return AVERROR(ENOMEM);
+    
+    rtspCtx->ctx=avformat_alloc_context();
+    if (NULL==rtspCtx->ctx)
+    	return AVERROR(ENOMEM);
+
+    if ((ret = av_opt_set_dict(rtspCtx->ctx, &tmp)) < 0){
+    	ret = AVERROR(ENOMEM);
+       goto fail;
+    }
+
+    rtspCtx->ctx->iformat = &ff_rtsp_demuxer;
+    
+    /* allocate private data */
+    if (rtspCtx->ctx->iformat->priv_data_size > 0) {
+        if (!(rtspCtx->ctx->priv_data = av_mallocz(rtspCtx->ctx->iformat->priv_data_size))) {
+            ret = AVERROR(ENOMEM);
+            av_log(NULL, AV_LOG_ERROR, "[%s:%d\n]ENOMEM", __FUNCTION__, __LINE__);
+            goto fail;
+        }
+        if (rtspCtx->ctx->iformat->priv_class) {
+            *(const AVClass**)rtspCtx->ctx->priv_data =rtspCtx->ctx->iformat->priv_class;
+            av_opt_set_defaults(rtspCtx->ctx->priv_data);
+            if ((ret = av_opt_set_dict(rtspCtx->ctx->priv_data, &tmp)) < 0){
+            	  av_log(NULL, AV_LOG_ERROR, "[%s:%d\n]av_opt_set_dict failed", __FUNCTION__, __LINE__);
+                goto fail;
+            }
+        }
+    } 
+
+    AVFormatParameters ap = { 0 };
+    RTSPState *rt = rtspCtx->ctx->priv_data;
+    rt->use_protocol_mode=1;
+    av_strlcpy(rtspCtx->ctx->filename, uri+1, 1024);
+    if ((ret = rtspCtx->ctx->iformat->read_header(rtspCtx->ctx, &ap)) < 0){
+    	av_log(NULL, AV_LOG_ERROR, "[%s:%d\n]read_header failed ret=%d,filename=%s", __FUNCTION__, __LINE__,ret,rtspCtx->ctx->filename);
+    	goto fail;
+    }
+
+    rtspCtx->bufferlist.max_items = 2000;
+    rtspCtx->bufferlist.item_ext_buf_size = 0;   
+    rtspCtx->bufferlist.muti_threads_access = 1;
+    rtspCtx->bufferlist.reject_same_item_data = 1;  
+    itemlist_init(&rtspCtx->bufferlist) ;
+    
+    h->support_time_seek = 0;
+    h->seekflags=0;
+    h->is_slowmedia = 0;			
+    h->is_streamed = 1;
+    h->priv_data = rtspCtx;
+    av_log(NULL, AV_LOG_INFO, "[%s:%d\n]open success uri=%s", __FUNCTION__, __LINE__,uri);
+    return 0;
+fail:
+    avformat_free_context(rtspCtx->ctx);
+    av_free(rtspCtx);
+    return ret;
+}
+static int rtsp_protocol_read(URLContext *h, uint8_t *buf, int size)
+{
+    RTSPProtocolContext* rtspCtx = (RTSPProtocolContext*)h->priv_data;
+    if(NULL == rtspCtx)
+	return AVERROR(ENOMEM);
+    
+    int ret = 0;
+    int readsize=0;
+    AVPacket *rpkt=NULL;
+    AVPacket *wpkt=av_mallocz(sizeof(AVPacket));
+    if(NULL == wpkt)
+    	return AVERROR(ENOMEM);
+    
+ retry_read:
+    if (url_interrupt_cb()){ 
+    	av_free(wpkt);
+	return AVERROR_EXIT;
+    }
+
+    // add to the buffer list
+    av_init_packet(wpkt);
+    ret= rtspCtx->ctx->iformat->read_packet(rtspCtx->ctx, wpkt);
+    if(ret < 0){
+    	av_free_packet(wpkt);
+    	av_free(wpkt);
+   	if(ret == AVERROR(EAGAIN)) {
+   		av_log(NULL, AV_LOG_ERROR, "[%s:%d] retry_read!\n", __FUNCTION__, __LINE__);    
+ 		goto retry_read;
+   	}
+   	else if(ret == AVERROR_EXIT)
+   		av_log(NULL, AV_LOG_ERROR, "[%s:%d] AVERROR_EXIT!\n", __FUNCTION__, __LINE__);
+   	else if(ret == AVERROR_EOF)
+		av_log(NULL, AV_LOG_ERROR, "[%s:%d] File to EOF!\n", __FUNCTION__, __LINE__);
+   	return ret;
+    }
+    if(wpkt->size<=0){
+    	 av_free_packet(wpkt);
+    	 goto retry_read;
+    }
+    itemlist_add_tail_data(&(rtspCtx->bufferlist), (unsigned long) wpkt);
+
+    // read from the buffer list  
+    int single_readsize=0;
+    while(size>readsize){
+    	if (url_interrupt_cb()) 
+	     	return AVERROR_EXIT;
+    	
+    	if(itemlist_peek_head_data(&(rtspCtx->bufferlist), (unsigned long *)&rpkt) == -1)
+		break;		// no data to read, return
+		
+	single_readsize=min(rpkt->size-rpkt->offset, size-readsize);
+       memcpy(buf+readsize,rpkt->data+rpkt->offset,single_readsize);
+
+       readsize+=single_readsize;
+       rpkt->offset+=single_readsize;
+       if(rpkt->offset>=rpkt->size){
+       	// already read, no valid data clean it
+       	itemlist_del_match_data_item(&rtspCtx->bufferlist, (unsigned long)rpkt);
+		av_free_packet(rpkt);
+		av_free(rpkt);
+       }
+    }
+
+    return readsize;
+}
+static int rtsp_protocol_close(URLContext *h)
+{
+    RTSPProtocolContext* rtspCtx = (RTSPProtocolContext*)h->priv_data;
+    if(NULL == rtspCtx)
+	return AVERROR(ENOMEM);
+
+    itemlist_clean(&rtspCtx->bufferlist, free_packet);
+    if(rtspCtx->ctx != NULL){
+    	rtspCtx->ctx->iformat->read_close(rtspCtx->ctx);
+    	avformat_free_context(rtspCtx->ctx);
+    }
+    av_free(rtspCtx);
+    av_log(NULL, AV_LOG_INFO, "[%s:%d\n]Close success ", __FUNCTION__, __LINE__);
+    return 0;
+}
+
+URLProtocol ff_rtsp_protocol = {
+    .name                = "rtsp",
+    .url_open            = rtsp_protocol_open,
+    .url_read            = rtsp_protocol_read,
+    .url_write           = NULL,
+    .url_close           = rtsp_protocol_close,
+    .url_get_file_handle = NULL,
 };

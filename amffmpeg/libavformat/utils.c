@@ -892,7 +892,8 @@ int avformat_open_input_header(AVFormatContext **ps, const char *filename, AVInp
     int ret = 0;
     AVFormatParameters ap = { 0 };
     AVDictionary *tmp = NULL;
-
+    
+retry_open:
     if (!s && !(s = avformat_alloc_context()))
         return AVERROR(ENOMEM);
     if (fmt)
@@ -945,9 +946,20 @@ int avformat_open_input_header(AVFormatContext **ps, const char *filename, AVInp
     }
 
     if (!(s->flags&AVFMT_FLAG_PRIV_OPT) && s->iformat->read_header)
-        if ((ret = s->iformat->read_header(s, &ap)) < 0)
-            goto fail;
+        if ((ret = s->iformat->read_header(s, &ap)) < 0){
+	     if(ret==AVERROR_MODULE_UNSUPPORT){
+	     	avformat_free_context(s);
+	     	s=NULL;
+	     	
+	       extern AVInputFormat ff_mpegts_demuxer;
+	     	fmt=&ff_mpegts_demuxer;
 
+	     	av_log(NULL, AV_LOG_ERROR, "[%s:%d]read_header unsupport error change url=%s\n",__FUNCTION__,__LINE__,filename);
+	     	goto retry_open;
+	     }
+            goto fail;
+        }
+        
     if (!(s->flags&AVFMT_FLAG_PRIV_OPT) && s->pb && !s->data_offset)
         s->data_offset = avio_tell(s->pb);
 
