@@ -106,7 +106,7 @@ OUT:
 	return port;
 }
 
-int  pcm_output_init()
+int  pcm_output_init(int sr,int ch)
 {
     int card = 0;
     int device = 2;
@@ -126,6 +126,12 @@ int  pcm_output_init()
 	adec_print("get aml card device fail, use default \n");
     }
     adec_print("open output device card %d, device %d \n",card,device);	
+    if(sr < 32000|| sr > 48000 || ch != 2){
+		adec_print("wfd output: not right parameter sr %d,ch %d \n",sr,ch);
+		return -1;
+    }
+    wfd_config_out.rate = sr;
+    wfd_config_out.channels = ch;
     wfd_pcm = pcm_open(card, device, PCM_OUT /*| PCM_MMAP | PCM_NOIRQ*/, &wfd_config_out);
     if (!pcm_is_ready(wfd_pcm)) {
         adec_print("wfd cannot open pcm_out driver: %s", pcm_get_error(wfd_pcm));		
@@ -143,10 +149,13 @@ int  pcm_output_write(char *buf,unsigned size)
 	int ret = 0;	
 	char *data,  *data_dst;
 	char *data_src;	
-	char outbuf[4096];
+	char outbuf[8192];
 	int total_len,ouput_len;
 	if(size < 64)
 		return 0;	
+	if(size > sizeof(outbuf)){
+		adec_print("write size tooo big %d \n",size);
+	}
 	total_len = size + cached_len;
 
 	//adec_print("total_len(%d) =  + cached_len111(%d)", size, cached_len);

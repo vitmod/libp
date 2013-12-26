@@ -20,7 +20,7 @@ typedef struct
     char    name[64];
 } audio_lib_t;
 
-typedef int  (*fn_pcm_output_init)();
+typedef int  (*fn_pcm_output_init)(int sr,int ch);
 typedef int  (*fn_pcm_output_write)(char *buf,unsigned size);
 typedef int  (*fn_pcm_output_uninit)();
 typedef int  (*fn_pcm_output_latency)();
@@ -469,11 +469,13 @@ static int wfd_audio_codec_init(aml_audio_dec_t *audec){
 	  	adec_print("wfd register  output failed \n");
 		return -1;		
 	}
-	// output init
+	// output init,not init here as we should get the sr/ch info when decode one frame 
+#if 0	
        if(wfd_out_init()){
 	   	adec_print("wfd init pcm output device failed\n");
 		return -1;
-       }	
+       }
+#endif	   
 	ret=audec->adec_ops->init(audec->adec_ops);
 	if(ret){
 	  	adec_print("wfd audio decoder init failed \n");		
@@ -565,6 +567,8 @@ static void  audio_resample_api(char* buffer, unsigned int *size, int Chnum, int
 static  int skip_thred = 400;	
 static  int up_thred =  100;
 static   int dn_thred = 200;
+static int   dn_resample_delta = 2;
+static int   up_resample_delta = -4;
 static void set_wfd_pcm_thredhold()
 {
 	char value[PROPERTY_VALUE_MAX];	
@@ -579,54 +583,78 @@ static void set_wfd_pcm_thredhold()
 	if( property_get("media.wfd.dn",value,NULL) > 0)
 	{
 		dn_thred = atoi(value);
+	}
+	if( property_get("media.wfd.dn_delta",value,NULL) > 0)
+	{
+		dn_resample_delta = atoi(value);
+	}
+	if( property_get("media.wfd.up_delta",value,NULL) > 0)
+	{
+		up_resample_delta = atoi(value);
 	}	
 }
 void *audio_wfd_decode_loop(void *args)
 {
-    int ret;
-    aml_audio_dec_t *audec;
-    audio_out_operations_t *aout_ops;
-    audio_decoder_operations_t *adec_ops;
-    short  outbuf[2048];
-    int outlen = 0;
-    int write_size  = 0;	
-
+	int ret;
+	aml_audio_dec_t *audec;
+	audio_out_operations_t *aout_ops;
+	audio_decoder_operations_t *adec_ops;
+	short  outbuf[2048];
+	int outlen = 0;
+	int write_size  = 0;	
 	int  in_latency = 0;
 	int out_latency = 0;
 	int total_latency = 0;
+	int out_init_flag = 0;
 	char value[PROPERTY_VALUE_MAX];	
-	
-    adec_print("audio_wfd_decode_loop start!\n");
-    audec = (aml_audio_dec_t *)args;
-    aout_ops = &audec->aout_ops;
-    adec_ops=audec->adec_ops;
+	unsigned char debug_latency = 0;
+	adec_print("audio_wfd_decode_loop start!\n");
+	audec = (aml_audio_dec_t *)args;
+	aout_ops = &audec->aout_ops;
+	adec_ops=audec->adec_ops;
+	if( property_get("media.wfd.debug_latency",value,NULL) > 0)
+	{
+		debug_latency = atoi(value);
+	}	
     while (!audec->exit_decode_thread){
 		outlen = 0;
 	//	adec_refresh_pts(audec);
 		set_wfd_pcm_thredhold();
 		audec->decode_offset = adec_ops->decode(adec_ops,outbuf, &outlen, (char*)&in_latency,0);
-		out_latency = wfd_out_latency();
-		if(out_latency < 0)
-			out_latency = 0;
-		total_latency = in_latency + out_latency;
+
 		if(outlen > 0){
+		       if(!out_init_flag){
+			   	if(wfd_out_init(adec_ops->samplerate,adec_ops->channels)){
+			   		adec_print("wfd init pcm output device failed\n");
+					continue;
+			   	}
+				out_init_flag = 1;
+		       }
+			out_latency = wfd_out_latency();
+			if(out_latency < 0)
+				out_latency = 0;
+			total_latency = in_latency + out_latency;			   
     			audec->out_len_after_last_valid_pts += outlen;
-			adec_print("latency in %d ms,out %d ms.total %d ms\n",in_latency,out_latency,total_latency);	
-			if(total_latency < 150){
-				if( property_get("sys.pkginfo",value,NULL) > 0)
-				{
-					adec_print("latency pkg info %s \n",value);
-				}		 	
+			if(debug_latency){	
+				adec_print("latency in %d ms,out %d ms.total %d ms\n",in_latency,out_latency,total_latency);	
+				if(total_latency < 150){
+					if( property_get("sys.pkginfo",value,NULL) > 0)
+					{
+						adec_print("latency pkg info %s \n",value);
+					}		 	
+				}
 			}
 			if(total_latency > skip_thred ){
-				adec_print(" total latency  %d ms ,skip bytes %d \n",total_latency,outlen);
+				if(debug_latency)
+					adec_print(" total latency  %d ms ,skip bytes %d \n",total_latency,outlen);
 				outlen = 0;
 			}
 			else if (total_latency > dn_thred)
-				audio_resample_api(outbuf, &outlen,2, 1, 2);
+				audio_resample_api(outbuf, &outlen,2, 1, dn_resample_delta);
 			else if(total_latency < up_thred)
-				audio_resample_api(outbuf, &outlen,2, 1, -4);				
-			adec_print("wfd dec out %d byts pcm \n",outlen);
+				audio_resample_api(outbuf, &outlen,2, 1, up_resample_delta);
+			if(debug_latency)
+				adec_print("wfd dec out %d byts pcm \n",outlen);
 			write_size = wfd_out_write(outbuf,outlen);		
 		}
 		//TODO decode function
