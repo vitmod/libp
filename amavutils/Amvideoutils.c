@@ -20,6 +20,8 @@
 #define FB_DEVICE_PATH   "/sys/class/graphics/fb0/virtual_size"
 #define ANGLE_PATH       "/dev/ppmgr"
 #define VIDEO_PATH       "/dev/amvideo"
+#define VIDEO_AXIS_PATH       "sys/class/video/axis"
+#define PPMGR_ANGLE_PATH      "sys/class/ppmgr/angle"
 #define VIDEO_GLOBAL_OFFSET_PATH "/sys/class/video/global_offset"
 #define FREE_SCALE_PATH  "/sys/class/graphics/fb0/free_scale"
 #define FREE_SCALE_PATH_FB2  "/sys/class/graphics/fb2/free_scale"
@@ -398,18 +400,11 @@ void get_axis(const char *path, int *x, int *y, int *w, int *h)
 {
     int fd = -1;
     char buf[SYSCMD_BUFSIZE];
-
-    fd = open(path, O_RDONLY);
-    if (fd < 0)
-        return;
-
-    read(fd, buf, SYSCMD_BUFSIZE);
-    if (sscanf(buf, "%d %d %d %d", x, y, w, h) == 4) {
-        LOGI("%s axis: %d %d %d %d\n", path, *x, *y, *w, *h);
+    if (amsysfs_get_sysfs_str(path, buf, sizeof(buf)) == 0) {
+        if (sscanf(buf, "%d %d %d %d", x, y, w, h) == 4) {
+            LOGI("%s axis: %d %d %d %d\n", path, *x, *y, *w, *h);
+        }
     }
-
-    if (fd >= 0)
-        close(fd);
 }
 
 void set_scale(int x, int y, int w, int h, int *dst_x, int *dst_y, int *dst_w, int *dst_h, int disp_w, int disp_h)
@@ -428,8 +423,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 	if(osd_rotation > 0)
         amvideo_convert_axis(&x,&y,&w,&h,&rotation,osd_rotation);
 	
-    int video_fd;
-    int dev_fd = -1, dev_w, dev_h, disp_w, disp_h, video_global_offset;
+    int dev_w, dev_h, disp_w, disp_h, video_global_offset;
     int dst_x, dst_y, dst_w, dst_h;
     char buf[SYSCMD_BUFSIZE];
     int angle_fd = -1;
@@ -488,24 +482,17 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     dst_w = w;
     dst_h = h;
 
-    video_fd = open(VIDEO_PATH, O_RDWR);
-    if (video_fd < 0) {
-        goto OUT;
-    }
-
-    dev_fd = open(DISP_DEVICE_PATH, O_RDONLY);
-    if (dev_fd < 0) {
-        goto OUT;
-    }
-
-    read(dev_fd, buf, SYSCMD_BUFSIZE);
-
-    if (sscanf(buf, "%dx%d", &dev_w, &dev_h) == 2) {
-        LOGI("device resolution %dx%d\n", dev_w, dev_h);
+    if (amsysfs_get_sysfs_str(DISP_DEVICE_PATH, buf, sizeof(buf)) == 0) {
+        if (sscanf(buf, "%dx%d", &dev_w, &dev_h) == 2) {
+            LOGI("device resolution %dx%d\n", dev_w, dev_h);
+        } else {
+            ret = -2;
+            goto OUT;
+        }
     } else {
-        ret = -2;
         goto OUT;
     }
+
 
     if (video_on_vpp2)
         amdisplay_utils_get_size_fb2(&disp_w, &disp_h);
@@ -550,15 +537,12 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         }
     }
 
-    angle_fd = open(ANGLE_PATH, O_WRONLY);
-    if (angle_fd >= 0) {
-        if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new ))
-        //if (video_on_vpp2 && vertical_panel)
-            ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, 0);
-        else
-            ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, (rotation/90) & 3);
-        LOGI("set ppmgr angle %d\n", (rotation/90) & 3);
-    }
+    if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new ))
+        amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, 0);
+    else
+        amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, (rotation/90) & 3);
+
+    LOGI("set ppmgr angle :%d\n", (rotation/90) & 3);
 
     /* this is unlikely and only be used when ppmgr does not exist
      * to support video rotation. If that happens, we convert the window
@@ -729,22 +713,12 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     axis[1] = dst_y;
     axis[2] = dst_x + dst_w - 1;
     axis[3] = dst_y + dst_h - 1;
-    
-    ioctl(video_fd, AMSTREAM_IOC_SET_VIDEO_AXIS, &axis[0]);
+    sprintf(buf,"%d %d %d %d", axis[0], axis[1], axis[2], axis[3]);
+    amsysfs_set_sysfs_str(VIDEO_AXIS_PATH, buf);
 
     ret = 0;
 OUT:
-    if (video_fd >= 0) {
-        close(video_fd);
-    }
-    
-    if (dev_fd >= 0) {
-        close(dev_fd);
-    }
-    
-    if (angle_fd >= 0) {
-        close(angle_fd);
-    }
+   
     LOGI("amvideo_utils_set_virtual_position (corrected):: x=%d y=%d w=%d h=%d\n", dst_x, dst_y, dst_w, dst_h);
 	amvideo_setscreenmode();
 
@@ -754,37 +728,25 @@ OUT:
 int amvideo_utils_set_absolute_position(int32_t x, int32_t y, int32_t w, int32_t h, int rotation)
 {
     LOG_FUNCTION_NAME
-    int video_fd;
-    int angle_fd = -1;
+    char buf[SYSCMD_BUFSIZE];
     int axis[4];
     int video_on_vpp2 = is_video_on_vpp2();
     int vertical_panel = is_vertical_panel();
     
     LOGI("amvideo_utils_set_absolute_position:: x=%d y=%d w=%d h=%d\n", x, y, w, h);
 
-    video_fd = open(VIDEO_PATH, O_RDWR);
-    if (video_fd < 0) {
-        return -1;
-    }
-
-    angle_fd = open(ANGLE_PATH, O_WRONLY);
-    if (angle_fd >= 0) {
-        if (video_on_vpp2 && vertical_panel)
-            ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, 0);
-        else
-            ioctl(angle_fd, PPMGR_IOC_SET_ANGLE, (rotation/90) & 3);
-        LOGI("set ppmgr angle %d\n", (rotation/90) & 3);
-        close(angle_fd);
-    }
+    if ((video_on_vpp2 && vertical_panel))
+        amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, 0);
+    else
+        amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, (rotation/90) & 3);
 
     axis[0] = x;
     axis[1] = y;
     axis[2] = x + w - 1;
     axis[3] = y + h - 1;
     
-    ioctl(video_fd, AMSTREAM_IOC_SET_VIDEO_AXIS, &axis[0]);
-
-    close(video_fd);
+    sprintf(buf,"%d %d %d %d", axis[0], axis[1], axis[2], axis[3]);
+    amsysfs_set_sysfs_str(VIDEO_AXIS_PATH, buf);
 
     return 0;
 }
@@ -792,18 +754,8 @@ int amvideo_utils_set_absolute_position(int32_t x, int32_t y, int32_t w, int32_t
 int amvideo_utils_get_position(int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
     LOG_FUNCTION_NAME
-    int video_fd;
     int axis[4];
-
-    video_fd = open(VIDEO_PATH, O_RDWR);
-    if (video_fd < 0) {
-        return -1;
-    }
-
-    ioctl(video_fd, AMSTREAM_IOC_GET_VIDEO_AXIS, &axis[0]);
-
-    close(video_fd);
-
+    get_axis(VIDEO_AXIS_PATH, &axis[0], &axis[1], &axis[2], &axis[3]);
     *x = axis[0];
     *y = axis[1];
     *w = axis[2] - axis[0] + 1;
@@ -853,18 +805,13 @@ int amvideo_utils_set_screen_mode(int mode)
 int amvideo_utils_get_video_angle(int *angle)
 {
     LOG_FUNCTION_NAME
-    int angle_fd;
-    int angle_value = 0;
-    
-    angle_fd = open(ANGLE_PATH, O_RDONLY);
-    if (angle_fd >= 0) {
-        ioctl(angle_fd, PPMGR_IOC_GET_ANGLE, &angle_value);
-        //LOGI("get ppmgr angle %d\n", angle_value);
-        close(angle_fd);
+    char buf[SYSCMD_BUFSIZE];
+    int angle_val;
+    if (amsysfs_get_sysfs_str(PPMGR_ANGLE_PATH, buf, sizeof(buf)) == 0) {
+        if (sscanf(buf, "current angel is %d", &angle_val) == 1) {
+            *angle = angle_val;
+        }
     }
-    
-    *angle = angle_value;
-
     return 0;
 }
 
