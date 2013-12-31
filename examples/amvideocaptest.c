@@ -49,6 +49,7 @@ int main(int argc,char **argv)
 	int bufsize;
 	int ret;
 	int fd;
+	int ret_size;
 	if(argc<2){
 		printf("usage:%s {file} <width> <height> <end>\n",argv[1]);
 		printf("          width&height=0 means used video own size\n");
@@ -91,6 +92,29 @@ int main(int argc,char **argv)
 	write(fd,buf,ret);
 	close(fd);
 #endif	
+
+    w = 800;
+    h = 600;
+	printf("1==start rect capture %d w=%d h=%d capendfram=%d\n",bufsize,w,h,needend);
+	ret=amvideocap_capframe_with_rect(buf,bufsize,50, 100, &w, &h,0,needend, &ret_size);
+	printf("finished rect capture %d,w=%d,h=%d\n",ret_size,w,h);
+	if(ret<0)
+		return -3;
+#if 1	
+	char *rectname=malloc(strlen(filename)+10);
+	rectname[0]=0;
+	strcat(rectname,filename);
+	strcat(rectname,".rect");
+	fd=open(rectname,O_WRONLY | O_CREAT,0644);
+	
+	if(fd<0){
+		printf("create %s failed\n",filename);
+		return -2;
+	}
+	write(fd,buf,ret_size);
+	close(fd);
+#endif	
+	
 	ret=simmap_map_cap(buf,bufsize);
 	printf("finished mam map capture %d\n",ret);
 	char *mapname=malloc(strlen(filename)+10);
