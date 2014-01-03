@@ -357,19 +357,40 @@ int amvideo_convert_axis(int32_t* x, int32_t* y, int32_t* w, int32_t* h, int *ro
     return 0;
 }
 
-void amvideo_setfullscreen_byvideosize(int32_t* x, int32_t* y, int32_t* w, int32_t* h){
-	int fb0_w, fb0_h;
-	amdisplay_utils_get_size(&fb0_w, &fb0_h);
-	ALOGD("amvideo_setfullscreen_byvideosize before %d,%d,%d,%d",*x,*y,*w,*h);
-	if(is_video_on_vpp2_new() == 1){
-		if(((*x == 0)&&(*w >= fb0_w)) || ((*y == 0)&&(h >= fb0_h))){
-			*x = 0;
-			*y = 0;
-			*w = fb0_w;
-			*h = fb0_h;
-		}
+void amvideo_setscreenmode(){
+
+	float wh_ratio = 0;
+	float ratio4_3 = 1.3333;
+	float ratio16_9 = 1.7778;
+	float offset = 0.2;
+
+	int enable_fullscreen = 1;
+	
+	/*if(x<0 || y<0)
+		return;*/
+	
+	int fs_x=0,fs_y=0,fs_w=0,fs_h=0;
+	get_axis(FREE_SCALE_AXIS_PATH, &fs_x, &fs_y, &fs_w, &fs_h);
+
+	if(fs_h>fs_w){
+		int i = fs_w;
+		fs_w = fs_h;
+		fs_h = i;
 	}
-	ALOGD("amvideo_setfullscreen_byvideosize end %d,%d,%d,%d",*x,*y,*w,*h);
+	
+	if(fs_h>0)
+		wh_ratio = fs_w*(float)1.0/fs_h;
+	
+	ALOGD("amvideo_setscreenmode as %f",wh_ratio);
+	if((wh_ratio < (ratio4_3+offset))
+		&& (wh_ratio > 0)
+		&& (is_panel_mode() == 0)){
+			amvideo_utils_set_screen_mode(1);
+			ALOGD("set screen mode as 1");
+	}else{
+	        amvideo_utils_set_screen_mode(0);
+			ALOGD("set screen mode as 0");
+	}
 }
 
 
@@ -403,7 +424,6 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 {
     LOG_FUNCTION_NAME
 	//for osd rotation, need convert the axis first
-	amvideo_setfullscreen_byvideosize(&x,&y,&w,&h);
 	int osd_rotation = amdisplay_utils_get_osd_rotation();
 	if(osd_rotation > 0)
         amvideo_convert_axis(&x,&y,&w,&h,&rotation,osd_rotation);
@@ -726,6 +746,7 @@ OUT:
         close(angle_fd);
     }
     LOGI("amvideo_utils_set_virtual_position (corrected):: x=%d y=%d w=%d h=%d\n", dst_x, dst_y, dst_w, dst_h);
+	amvideo_setscreenmode();
 
     return ret;
 }
