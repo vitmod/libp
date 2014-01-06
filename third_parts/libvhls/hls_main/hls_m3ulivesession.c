@@ -1603,7 +1603,7 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     if(ret!=0){
         ERROR_MSG();
         *hSession = session;
-        return ret;
+        goto fail_open;
     }
 #endif
 
@@ -1612,8 +1612,8 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     if(base_list == NULL){        
         ERROR_MSG();
         *hSession = session;
-        return -1;
-
+        ret=-1;
+        goto fail_open;
     }
     if(m3u_is_variant_playlist(base_list)>0){//add to bandwidth list
         int i = 0;
@@ -1627,8 +1627,8 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
                 session->bandwidth_list = NULL;
                 session->playlist = NULL;
                 *hSession = session;
-                return -1;
-                
+        	  ret=-1;
+        	  goto fail_open;
             }
 
 #if 1
@@ -1672,7 +1672,7 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     if(ret<0){
         ERROR_MSG();
         *hSession = session;
-        return ret;
+        goto fail_open;
     }
 
     _pre_estimate_bandwidth(session);
@@ -1687,7 +1687,14 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     LOGV("Session open complete\n");
     *hSession = session;
     return 0;
-    
+
+fail_open:
+   LOGV("failed to open Session %x\n", *hSession);
+   if(*hSession!=NULL){
+   	m3u_session_close(*hSession);
+   }
+   *hSession=NULL;
+   return ret; 
 }
 
 int m3u_session_is_seekable(void* hSession){
