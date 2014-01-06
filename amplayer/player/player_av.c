@@ -745,12 +745,17 @@ static int non_raw_read(play_para_t *para)
                         if (audio_idx >= 0)  {
                             st = para->pFormatCtx->streams[audio_idx];
                             if (st->codec->codec_type == CODEC_TYPE_AUDIO && (st->codec->codec_id == CODEC_ID_APE || st->codec->codec_id == CODEC_ID_AAC || st->codec->codec_id == CODEC_ID_AMR_NB || st->codec->codec_id == CODEC_ID_MP3 || st->codec->codec_id == CODEC_ID_AMR_WB)) {
-                                //if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
-                                //set attr
-                                pkt->avpkt->data = av_mallocz(2048);
+                               int r;
+                               //if (st->codec->codec_type==CODEC_TYPE_AUDIO) {
+                               //set attr
+                               r=av_new_packet(pkt->avpkt,2048);
+                               if(r<0)
+                                   return r;
+                                memset(pkt->avpkt->data,0,2048);
+                                //pkt->avpkt->data = av_mallocz(2048);
                                 //strncpy(pkt->avpkt->data,"FREND",5);
                                 pkt->avpkt->size = 2048;
-                                pkt->avpkt->stream_index = st->index;
+                                //pkt->avpkt->stream_index = st->index;
                                 ret = 0;
                             }
                         }
