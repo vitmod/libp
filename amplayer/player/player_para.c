@@ -1394,12 +1394,17 @@ int player_dec_init(play_para_t *p_para)
     ret = set_file_type(p_para->pFormatCtx->iformat->name, &file_type, &stream_type);
 
     if(memcmp(p_para->pFormatCtx->iformat->name,"mpegts",6)==0){
-	   if( p_para->pFormatCtx->pb && p_para->pFormatCtx->pb->is_slowmedia &&  //is network...
-	   	am_getconfig_bool("libplayer.netts.softdemux") ){
-	   	log_print("configned network tsstreaming used soft demux,used soft demux now.\n");
-	   	file_type=STREAM_FILE;
-		stream_type=STREAM_ES;
-		ret = PLAYER_SUCCESS;
+	   if(am_getconfig_bool("libplayer.ts.softdemux")){
+           log_print("configned all ts streaming used soft demux,used soft demux now.\n");
+           file_type=STREAM_FILE;
+           stream_type=STREAM_ES;
+           ret = PLAYER_SUCCESS;
+	   }else if( p_para->pFormatCtx->pb && p_para->pFormatCtx->pb->is_slowmedia &&  //is network...
+           am_getconfig_bool("libplayer.netts.softdemux") ){
+           log_print("configned network tsstreaming used soft demux,used soft demux now.\n");
+           file_type=STREAM_FILE;
+           stream_type=STREAM_ES;
+           ret = PLAYER_SUCCESS;
 	   }else if(am_getconfig_bool("libplayer.livets.softdemux")){
 	   		avio_getinfo(p_para->pFormatCtx->pb,AVCMD_HLS_STREAMTYPE,0,&streamtype);
 			log_print("livingstream [%d]\n",streamtype);
@@ -1410,11 +1415,6 @@ int player_dec_init(play_para_t *p_para)
 			   stream_type=STREAM_ES;
 			   ret = PLAYER_SUCCESS;
 			}
-	   }else if(am_getconfig_bool("libplayer.ts.softdemux")){
-	   	log_print("configned all ts streaming used soft demux,used soft demux now.\n");
-	   	file_type=STREAM_FILE;
-		stream_type=STREAM_ES;
-		ret = PLAYER_SUCCESS;
 	   }else if(p_para->start_param->is_ts_soft_demux){
             log_print("Player config used soft demux,used soft demux now.\n");
             file_type=STREAM_FILE;
