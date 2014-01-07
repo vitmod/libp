@@ -2306,7 +2306,7 @@ int set_header_info(play_para_t *para)
 
                     pkt->hdr->size = data_len + 22;
                     pkt->avpkt_newflag = 1;
-                } else if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WVC1&&!(para->p_pkt->avpkt->flags & AV_PKT_FLAG_ISDECRYPTINFO)/*TVP not need add header*/) {
+                } else if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WVC1&&!(para->p_pkt->avpkt->flags & AV_PKT_FLAG_ISDECRYPTINFO)&&(memcmp(para->pFormatCtx->iformat->name,"Demux_no_prot",13)!=0)/*SS and TVP not need add header*/) {
                     if ((pkt->hdr != NULL) && (pkt->hdr->data != NULL)) {
                         FREE(pkt->hdr->data);
                         pkt->hdr->data = NULL;
