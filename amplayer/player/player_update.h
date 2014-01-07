@@ -15,5 +15,6 @@ void set_drm_rental(play_para_t *p_para, unsigned int rental_value);
 int check_audio_ready_time(int *first_time);
 long player_get_systemtime_ms(void);
 void check_avdiff_status(play_para_t *p_para);
+int check_to_retry(play_para_t *p_para);
 #endif
 

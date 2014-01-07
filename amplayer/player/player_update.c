@@ -1676,5 +1676,36 @@ void check_avdiff_status(play_para_t *p_para)
 
     return;
 }
+int check_to_retry(play_para_t *p_para)
+{
+    	struct buf_status vbuf, abuf;
+    	struct vdec_status vdec;
+    	struct adec_status adec;
+    	player_status sta;
+	int ret;
+    	
+    	MEMSET(&vbuf, 0, sizeof(struct buf_status));
+    	MEMSET(&abuf, 0, sizeof(struct buf_status));
 
+    	sta = get_player_state(p_para);
+    	if (sta > PLAYER_INITOK) {
+        	if (sta != PLAYER_SEARCHING) {
+            		ret = update_codec_info(p_para, &vbuf, &abuf, &vdec, &adec);
+            		if (ret != 0) {
+            			log_error("[%s:%d]update_codec_info failed\n", -ret,__FUNCTION__,__LINE__);
+                		return -1;
+            		}
+        	}
+		
+        	if((p_para->pFormatCtx->pb&&p_para->pFormatCtx->pb->is_slowmedia)  &&
+       	     (abuf.size >0||vbuf.size>0) &&
+       	     !p_para->playctrl_info.read_end_flag){
+			p_para->pFormatCtx->pb->error=0;
+       		return 0;
+        	}
+    	}
+
+       
+	return -1;
+}
 

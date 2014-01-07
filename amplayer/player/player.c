@@ -1078,10 +1078,17 @@ void *player_thread(play_para_t *player)
             if (!pkt->avpkt_isvalid) {
                 ret = read_av_packet(player);
                 if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
-                    log_error("pid[%d]::read_av_packet failed!\n", player->player_id);
-                    set_player_state(player, PLAYER_ERROR);
-                    goto release;
+                    if(ret==PLAYER_RD_FAILED||ret==PLAYER_RD_TIMEOUT){
+                    		ret = (check_to_retry(player)== 0) ? PLAYER_RD_AGAIN : ret;
+                    }
+                    if(ret!=PLAYER_RD_AGAIN){ // needn't to retry
+                    		log_error("pid[%d]::read_av_packet failed!\n", player->player_id);
+                    		set_player_state(player, PLAYER_ERROR);
+                    		goto release;
+                    }
+                    // need to retry
                 }
+                
                 ret = set_header_info(player);
                 if (ret != PLAYER_SUCCESS) {
                     log_error("pid[%d]::set_header_info failed! ret=%x\n", player->player_id, -ret);
