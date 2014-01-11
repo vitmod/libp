@@ -688,7 +688,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     //    p_para->playctrl_info.audio_mute= codec_get_mutesta(NULL);
     p_para->playctrl_info.is_playlist   = c_para->is_playlist;
     p_para->update_state                = c_para->callback_fn;
-    p_para->playctrl_info.black_out     = get_black_policy();
+    p_para->playctrl_info.black_out     = !c_para->displast_frame;
     p_para->buffering_enable            = c_para->auto_buffing_enable;
     p_para->byteiobufsize = c_para->byteiobufsize;
     p_para->loopbufsize = c_para->loopbufsize;

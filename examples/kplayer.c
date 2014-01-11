@@ -255,7 +255,7 @@ int main(int argc,char *argv[])
 	pCtrl->audio_index = -1;// MUST
     pCtrl->sub_index = -1;/// MUST 
    // pCtrl->hassub = 1;  // enable subtitle
-
+    pCtrl->displast_frame = 1;/// MUST 
 	//just open a buffer,just for p2p,http,etc...
     //pCtrl->auto_buffing_enable = 1;
 //	pCtrl->buffing_min = 0.001;
