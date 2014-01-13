@@ -251,6 +251,86 @@ static int set_params(alsa_param_t *alsa_params)
     return 0;
 }
 
+
+static int alsa_get_aml_card()
+{
+	int card = -1, err = 0;
+	int fd = -1;
+	unsigned fileSize = 512;
+	char *read_buf = NULL, *pd = NULL;
+	static const char *const SOUND_CARDS_PATH = "/proc/asound/cards";
+	fd = open(SOUND_CARDS_PATH, O_RDONLY);
+      if (fd < 0) {
+        adec_print("ERROR: failed to open config file %s error: %d\n", SOUND_CARDS_PATH, errno);
+        close(fd);
+        return -EINVAL;
+      }
+
+	read_buf = (char *)malloc(fileSize);
+	if (!read_buf) {
+        adec_print("Failed to malloc read_buf");
+        close(fd);
+        return -ENOMEM;
+    }
+	memset(read_buf, 0x0, fileSize);
+	err = read(fd, read_buf, fileSize);
+	if (fd < 0) {
+        adec_print("ERROR: failed to read config file %s error: %d\n", SOUND_CARDS_PATH, errno);
+	 free(read_buf);	
+        close(fd);
+        return -EINVAL;
+      }
+	pd = strstr(read_buf, "AML");
+	card = *(pd - 3) - '0';
+
+OUT:
+	free(read_buf);
+	close(fd);
+	return card;
+}
+
+static int alsa_get_spdif_port()
+{
+	int port = -1, err = 0;
+	int fd = -1;
+	unsigned fileSize = 512;
+	char *read_buf = NULL, *pd = NULL;
+	static const char *const SOUND_PCM_PATH = "/proc/asound/pcm";
+	fd = open(SOUND_PCM_PATH, O_RDONLY);
+    	if (fd < 0) {
+        adec_print("ERROR: failed to open config file %s error: %d\n", SOUND_PCM_PATH, errno);
+        close(fd);
+        return -EINVAL;
+    }
+
+	read_buf = (char *)malloc(fileSize);
+	if (!read_buf) {
+        adec_print("Failed to malloc read_buf");
+        close(fd);
+        return -ENOMEM;
+    }
+	memset(read_buf, 0x0, fileSize);
+	err = read(fd, read_buf, fileSize);
+	if (fd < 0) {
+        adec_print("ERROR: failed to read config file %s error: %d\n", SOUND_PCM_PATH, errno);
+	 free(read_buf);	
+        close(fd);
+        return -EINVAL;
+    }
+	pd = strstr(read_buf, "SPDIF");
+	if(!pd)
+		goto OUT;
+	adec_print("%s  \n",pd );
+	
+	port = *(pd -3) - '0';
+	adec_print("%s  \n",(pd -3) );
+
+OUT:
+	free(read_buf);
+	close(fd);
+	return port;
+}
+
 static size_t pcm_write(alsa_param_t * alsa_param, u_char * data, size_t count)
 {
     snd_pcm_sframes_t r;
@@ -509,7 +589,9 @@ static void *alsa_playback_loop(void *args)
 int alsa_init(struct aml_audio_dec* audec)
 {
     adec_print("alsa out init");
-
+    char sound_card_dev[10] = {0};
+    int sound_card_id = 0;
+    int sound_dev_id = 2;
     int err;
     pthread_t tid;
     alsa_param_t *alsa_param;
@@ -595,7 +677,22 @@ int alsa_init(struct aml_audio_dec* audec)
     memset(pass2_history, 0, 64 * sizeof(int));
 #endif
 
-    err = snd_pcm_open(&alsa_param->handle, PCM_DEVICE_DEFAULT, SND_PCM_STREAM_PLAYBACK, 0);
+    sound_card_id = alsa_get_aml_card();
+    if(sound_card_id  < 0)
+    {
+    	sound_card_id = 0;
+	    adec_print("get aml card fail, use default \n");
+    }
+    sound_dev_id = alsa_get_spdif_port();
+    if(sound_dev_id < 0)
+    {
+    	sound_dev_id = 0;
+	    adec_print("get aml card device fail, use default \n");
+    }
+    
+    sprintf(sound_card_dev, "hw:%d,%d", sound_card_id, sound_dev_id);
+
+    err = snd_pcm_open(&alsa_param->handle, sound_card_dev, SND_PCM_STREAM_PLAYBACK, 0);
     if (err < 0) {
         adec_print("audio open error: %s", snd_strerror(err));
         return -1;
