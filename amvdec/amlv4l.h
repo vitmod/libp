@@ -4,13 +4,13 @@
 
 typedef struct amlv4l_dev {
     int v4l_fd;
-    unsigned int bufferNum;
+    unsigned int buffer_num;
     vframebuf_t *vframe;
     int type;
     int width;
     int height;
     int pixformat;
-    int memory_mode;	
+    int memory_mode;
 } amlv4l_dev_t;
 amvideo_dev_t *new_amlv4l(void);
 int amlv4l_release(amvideo_dev_t *dev);
