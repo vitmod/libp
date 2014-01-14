@@ -1088,6 +1088,8 @@ void *player_thread(play_para_t *player)
                     }
                     // need to retry
                 }
+                else
+                	player->retry_cnt=0;
                 
                 ret = set_header_info(player);
                 if (ret != PLAYER_SUCCESS) {

@@ -1672,34 +1672,30 @@ void check_avdiff_status(play_para_t *p_para)
 }
 int check_to_retry(play_para_t *p_para)
 {
-    	struct buf_status vbuf, abuf;
-    	struct vdec_status vdec;
-    	struct adec_status adec;
-    	player_status sta;
-	int ret;
-    	
-    	MEMSET(&vbuf, 0, sizeof(struct buf_status));
-    	MEMSET(&abuf, 0, sizeof(struct buf_status));
+	if(url_interrupt_cb()>0)			// interrupt  to retry
+		return -1;
 
-    	sta = get_player_state(p_para);
-    	if (sta > PLAYER_INITOK) {
-        	if (sta != PLAYER_SEARCHING) {
-            		ret = update_codec_info(p_para, &vbuf, &abuf, &vdec, &adec);
-            		if (ret != 0) {
-            			log_error("[%s:%d]update_codec_info failed\n", -ret,__FUNCTION__,__LINE__);
-                		return -1;
-            		}
-        	}
-		
-        	if((p_para->pFormatCtx->pb&&p_para->pFormatCtx->pb->is_slowmedia)  &&
-       	     (abuf.size >0||vbuf.size>0) &&
-       	     !p_para->playctrl_info.read_end_flag){
+	if((p_para->pFormatCtx->pb&&p_para->pFormatCtx->pb->is_slowmedia)&&!p_para->playctrl_info.read_end_flag){
+    		player_status sta;
+    		sta = get_player_state(p_para);
+    		if (sta == PLAYER_RUNNING || sta == PLAYER_PAUSE) {		
+			p_para->retry_cnt=0; 		// retry forever
+    		}
+    		else if(sta == PLAYER_BUFFERING || 
+    		    sta == PLAYER_SEARCHING || 
+    		    sta == PLAYER_SEARCHOK || 
+    		    sta == PLAYER_BUFFER_OK ||
+    		    sta == PLAYER_INITOK || 
+    		    sta == PLAYER_START){
+    			p_para->retry_cnt++;			// retry many times
+    		}
+    		else
+    			return -1;		
+       	if(p_para->retry_cnt<100){  
 			p_para->pFormatCtx->pb->error=0;
        		return 0;
         	}
-    	}
-
-       
+	}
 	return -1;
 }
 

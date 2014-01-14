@@ -206,6 +206,8 @@ typedef struct play_para {
 	void *player_mate;/*player's mate thread handle*/
 	vdec_profile_t vdec_profile;
 	char off_init;
+
+	int retry_cnt;	// -1: means retry forever; >0 mean the retry cnt
 } play_para_t;
 
 typedef struct media_type_t {
