@@ -95,7 +95,7 @@ static void find_thumbnail_frame(AVFormatContext *pFormatCtx, int video_index, i
     AVStream *st = pFormatCtx->streams[video_index];
     int duration = pFormatCtx->duration / AV_TIME_BASE;
  ///   int64_t init_seek_time = (duration > 0) ? MIN(10, duration >> 1) : 10;
-    int64_t init_seek_time = 10;	
+    int64_t init_seek_time = 1;
     int ret = 0;
     float starttime;
 	int maxframesize;
