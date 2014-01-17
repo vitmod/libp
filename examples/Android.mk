@@ -1,5 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 
+ifeq ($(BUILD_WITH_BOOT_PLAYER),true)
+
 include $(CLEAR_VARS)
 LOCAL_MODULE    := bootplayer
 LOCAL_MODULE_TAGS := samples
@@ -16,4 +18,6 @@ LOCAL_STATIC_LIBRARIES := libamplayer libamplayer libamcodec libavformat librtmp
 LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils libssl libcrypto libasound
 
 include $(BUILD_EXECUTABLE)
+
+endif
 

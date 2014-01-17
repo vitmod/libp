@@ -1,4 +1,6 @@
 LOCAL_PATH:= $(call my-dir)
+
+ifeq ($(BUILD_WITH_BOOT_PLAYER),true)
 include $(CLEAR_VARS)
  
 LOCAL_CFLAGS := \
@@ -32,6 +34,7 @@ LOCAL_ARM_MODE := arm
  
 include $(BUILD_STATIC_LIBRARY)
 
+endif
 
 include $(CLEAR_VARS)
 
