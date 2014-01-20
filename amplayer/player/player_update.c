@@ -1672,29 +1672,27 @@ void check_avdiff_status(play_para_t *p_para)
 }
 int check_to_retry(play_para_t *p_para)
 {
-	if(url_interrupt_cb()>0)			// interrupt  to retry
+	if(url_interrupt_cb()>0)					// interrupt  to retry
 		return -1;
 
 	if((p_para->pFormatCtx->pb&&p_para->pFormatCtx->pb->is_slowmedia)&&!p_para->playctrl_info.read_end_flag){
     		player_status sta;
     		sta = get_player_state(p_para);
-    		if (sta == PLAYER_RUNNING || sta == PLAYER_PAUSE) {		
-			p_para->retry_cnt=0; 		// retry forever
-    		}
-    		else if(sta == PLAYER_BUFFERING || 
-    		    sta == PLAYER_SEARCHING || 
-    		    sta == PLAYER_SEARCHOK || 
-    		    sta == PLAYER_BUFFER_OK ||
-    		    sta == PLAYER_INITOK || 
-    		    sta == PLAYER_START){
+    		if(sta==PLAYER_SEARCHING||sta==PLAYER_SEARCHOK||sta==PLAYER_FF_END||sta==PLAYER_FB_END){
     			p_para->retry_cnt++;			// retry many times
     		}
-    		else
-    			return -1;		
-       	if(p_para->retry_cnt<100){  
+    		else if(sta==PLAYER_ERROR||sta==PLAYER_PLAYEND||sta==PLAYER_STOPED||sta==PLAYER_EXIT){
+    			return -1;						// no retry
+    		}
+		else
+			p_para->retry_cnt=0;			// retry for ever
+    		
+       	if(p_para->retry_cnt<500){  
 			p_para->pFormatCtx->pb->error=0;
        		return 0;
         	}
+       	else
+       		log_print("[%s:%d]The player state is=%d,retry_cnt=%d\n", __FUNCTION__, __LINE__,sta,p_para->retry_cnt);	
 	}
 	return -1;
 }
