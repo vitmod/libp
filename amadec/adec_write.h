@@ -22,6 +22,8 @@ typedef struct buffer_stream_st{
     int channels;	
 	int samplerate;
 	int format;
+	pthread_mutex_t  nMutex1;
+	
 }buffer_stream_t;
 
 int init_buff(buffer_stream_t *bs,int length);
@@ -34,6 +36,7 @@ int is_buffer_full(buffer_stream_t *bs);
 int get_buffer_length(buffer_stream_t *bs);
 int read_pcm_buffer(char * out, buffer_stream_t *bs, int size);
 int write_pcm_buffer(char * in, buffer_stream_t *bs, int size);
+int get_pcmbuf_level();
 
 
 #endif

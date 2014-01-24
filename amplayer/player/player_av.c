@@ -844,7 +844,7 @@ static int non_raw_read(play_para_t *para)
                      if(tmp>0 && strstr(value,"vorbis")!=NULL){
                        //only insert head for vorbis_armdecoder,not for vorbis_dsp_decoder
                         int new_pkt_size=pkt->avpkt->size+8;
-                        char *pdat=malloc(new_pkt_size);
+                        char *pdat=av_malloc(new_pkt_size + FF_INPUT_BUFFER_PADDING_SIZE);
                         if(pdat==NULL){
                             log_print("[%s %d]malloc memory failed!\n",__FUNCTION__,__LINE__);
                         }else{

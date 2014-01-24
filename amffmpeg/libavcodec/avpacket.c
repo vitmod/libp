@@ -55,6 +55,8 @@ void av_init_packet(AVPacket *pkt)
     pkt->destruct= NULL;
     pkt->side_data       = NULL;
     pkt->side_data_elems = 0;
+    pkt->data = NULL;
+    pkt->size = 0;
 }
 
 int av_new_packet(AVPacket *pkt, int size)

@@ -17,6 +17,7 @@ int init_buff(buffer_stream_t *bs,int length)
 	bs->rd_ptr=bs->wr_ptr=bs->data;
 	bs->bInited=1;
 	bs->nMutex=1;
+	pthread_mutex_init(&bs->nMutex1, NULL);
 	return 1;
 }
 
@@ -119,13 +120,9 @@ static int read_data(char * out, buffer_stream_t *bs, int size)
 int read_pcm_buffer(char * out, buffer_stream_t *bs, int size)
 {
 	int ret=0;
-	if(bs->nMutex==1)
-	{
-		bs->nMutex=0;
-		ret=read_data(out,bs,size);
-		bs->nMutex=1;
-		
-	}
+    pthread_mutex_lock(&bs->nMutex1);
+    ret=read_data(out,bs,size);
+    pthread_mutex_unlock(&bs->nMutex1);
 	return ret;
 }
 static int write_data(char *in, buffer_stream_t *bs, int size)
@@ -180,13 +177,11 @@ static int write_data(char *in, buffer_stream_t *bs, int size)
 int write_pcm_buffer(char * in, buffer_stream_t *bs, int size)
 {
 	int ret=0;
-	if(bs->nMutex==1)
-	{
-		bs->nMutex=0;
-		ret=write_data(in,bs,size);
-		bs->nMutex=1;
-	}
+    pthread_mutex_lock(&bs->nMutex1);
+    ret=write_data(in,bs,size);
+    pthread_mutex_unlock(&bs->nMutex1);
 	return ret;
 }
+
 
 

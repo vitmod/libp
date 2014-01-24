@@ -989,8 +989,8 @@ int pre_header_feeding(play_para_t *para)
             pkt->hdr = MALLOC(sizeof(hdr_buf_t));
             extra_size = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata_size;
             if (extra_size > 0) {
-                pkt->hdr->data = (char *)MALLOC(extra_size);
-                if (!pkt->hdr->data) {
+                int r=av_new_packet(pkt->avpkt,extra_size);
+                if (r<0) {
                     log_print("[pre_header_feeding] NOMEM!");
                     return PLAYER_NOMEM;
                 }

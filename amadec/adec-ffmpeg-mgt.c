@@ -236,6 +236,13 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
     }
     channels=audec->g_bst->channels;
     samplerate=audec->g_bst->samplerate;
+    if(!channels || !samplerate){
+		adec_print("warning ::::zero  channels %d, sample rate %d \n",channels,samplerate);
+		if(!samplerate)
+			samplerate = 48000;
+		if(!channels)
+			channels = 2;
+    }
     offset=audec->decode_offset;
 
     if(dsp_ops->dsp_file_fd>=0){
@@ -449,6 +456,16 @@ static int OutBufferRelease_raw(aml_audio_dec_t *audec)
     return 0;
 }
 
+static int enable_raw_output(aml_audio_dec_t *audec)
+{
+	int enable = 0;
+	enable = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
+	if(enable){
+		if(audec->format== ACODEC_FMT_AC3 || audec->format==ACODEC_FMT_EAC3||audec->format==ACODEC_FMT_DTS)
+			return 1;
+	}
+	return 0;
+}
 static int audio_codec_init(aml_audio_dec_t *audec)
 {
       //reset static&global
@@ -528,14 +545,14 @@ static int audio_codec_init(aml_audio_dec_t *audec)
           adec_print("[%s %d]out buffer init err\n",__FUNCTION__,__LINE__);
           goto err2;
       }
-
-      ret=OutBufferInit_raw(audec);
-      if(ret==-1){
-          adec_print("[%s %d]out_raw buffer init err\n",__FUNCTION__,__LINE__);
-          OutBufferRelease_raw(audec);
-          goto err2;
+      if(enable_raw_output(audec)){
+	      ret=OutBufferInit_raw(audec);
+	      if(ret==-1){
+	          adec_print("[%s %d]out_raw buffer init err\n",__FUNCTION__,__LINE__);
+	          OutBufferRelease_raw(audec);
+	          goto err2;
+	      }
       }
-
       ret=InBufferInit(audec);//3-init uio
       if(ret==-1){
           adec_print("====in buffer  init err \n");
