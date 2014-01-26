@@ -80,6 +80,7 @@ static const media_type media_array[] = {
     {"amr", AMR_FILE, STREAM_AUDIO},
     {"rtp", STREAM_FILE, STREAM_ES},
     {"dash", MP4_FILE, STREAM_ES},
+    {"ogg", OGM_FILE, STREAM_ES},
 };
 
 aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
@@ -1334,6 +1335,7 @@ int time_search(play_para_t *am_p,int flags)
             am_p->file_type == P2P_FILE ||
             am_p->file_type == PMP_FILE ||
             am_p->file_type == ASF_FILE ||
+            am_p->file_type == OGM_FILE ||
             am_p->file_type == STREAM_FILE) {
             if (am_p->file_type == AVI_FILE && !s->seekable) {
                 time_point = am_p->state.current_time;
