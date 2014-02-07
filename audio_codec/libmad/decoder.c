@@ -922,7 +922,7 @@ int audio_dec_init(
 	mad_stream_options(stream, decoder.options);
     
 #ifndef _WIN32
-    adec_ops->nInBufSize = 10*1024;
+    adec_ops->nInBufSize = 5*1024;
     adec_ops->nOutBufSize = 500*1024;
 #endif
 	audio_codec_print("libmad init ok!\n");

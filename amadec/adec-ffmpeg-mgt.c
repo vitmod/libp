@@ -1133,7 +1133,9 @@ exit_decode_loop:
                       }
 
                       dlen = adec_ops->decode(audec->adec_ops, outbuf, &outlen, inbuf+declen, inlen);
-
+                       if(outlen > AVCODEC_MAX_AUDIO_FRAME_SIZE){
+                               adec_print("!!!!!fatal error,out buffer overwriten,out len %d,actual %d",outlen,AVCODEC_MAX_AUDIO_FRAME_SIZE);
+                      }
                       if (dlen <= 0)
                       {
 
