@@ -387,10 +387,10 @@ void amvideo_setscreenmode(){
 		&& (is_panel_mode() == 0)){
 			amvideo_utils_set_screen_mode(1);
 			ALOGD("set screen mode as 1");
-	}else{
+	}/*else{
 	        amvideo_utils_set_screen_mode(0);
 			ALOGD("set screen mode as 0");
-	}
+	}*/
 }
 
 
