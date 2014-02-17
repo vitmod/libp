@@ -894,6 +894,7 @@ static int audio_add_header(play_para_t *para)
             }
             if (pkt->hdr->data) {
                 FREE(pkt->hdr->data);
+                pkt->hdr->data = NULL;
             }
             flag =property_get("media.arm.audio.decoder",value,NULL);
             if(flag>0 && strstr(value,"vorbis")!=NULL){
@@ -987,6 +988,7 @@ int pre_header_feeding(play_para_t *para)
         para->astream_info.has_audio) {
         if (pkt->hdr == NULL) {
             pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+            memset(pkt->hdr, 0, sizeof(hdr_buf_t));
             extra_size = para->pFormatCtx->streams[para->astream_info.audio_index]->codec->extradata_size;
             if (extra_size > 0) {
                 int r=av_new_packet(pkt->avpkt,extra_size);
