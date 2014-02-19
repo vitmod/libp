@@ -243,6 +243,7 @@ typedef enum
 	PLAYER_EVENTS_HWBUF_DATA_SIZE_CHANGED,		///<(need use DRMExtractor),ext1=0, ext2=0
 	PLAYER_EVENTS_NOT_SUPPORT_SEEKABLE,     //not support seek;
 	PLAYER_EVENTS_VIDEO_SIZE_CHANGED,           ///<ext1 refers to video width,ext2 refers to video height
+	PLAYER_EVENTS_SUBTITLE_DATA,            // sub data ext1 refers to subtitledata struct
 }player_events;
 
 typedef struct
@@ -294,6 +295,9 @@ typedef struct
 		int mode;							//no use
 	};  
 	callback_t callback_fn;					//callback function
+	callback_t subdata_fn;                  // subtitle data notify function
+	void *subhd;                            // sub handle
+	int subdatasource;                      // sub data source
 	int byteiobufsize;						//byteio buffer size used in ffmpeg
 	int loopbufsize;						//loop buffer size used in ffmpeg
 	int enable_rw_on_pause;					//no use
