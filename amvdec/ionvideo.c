@@ -9,9 +9,7 @@ ionvideo_dev_t *new_ionvideo(int flags) {
     ionvideo_dev_t *dev = NULL;
     if (flags & FLAGS_V4L_MODE) {
         dev = new_ionv4l();
-        if (!dev) {
-            LOGE("alloc v4l devices failed.\n");
-        } else {
+        if (dev) {
             dev->mode = FLAGS_V4L_MODE;
         }
     }
@@ -20,11 +18,26 @@ ionvideo_dev_t *new_ionvideo(int flags) {
 int ionvideo_setparameters(ionvideo_dev_t *dev, int cmd, void * parameters) {
     return 0;
 }
+int ionvideo_getparameters(ionvideo_dev_t *dev, int *width, int *height, int *pixelformat) {
+    struct v4l2_format v4lfmt;
+    int ret = 0;
+
+    v4lfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (dev->ops.getparameters) {
+        ret = dev->ops.getparameters(dev, &v4lfmt);
+        if (ret) {
+            return ret;
+        }
+        *width = v4lfmt.fmt.pix.width;
+        *height = v4lfmt.fmt.pix.height;
+        *pixelformat = v4lfmt.fmt.pix.pixelformat;
+    }
+    return 0;
+}
 int ionvideo_init(ionvideo_dev_t *dev, int flags, int width, int height, int fmt, int buffernum) {
     int ret = -1;
     if (dev->ops.init) {
         ret = dev->ops.init(dev, O_RDWR | O_NONBLOCK, width, height, fmt, buffernum);
-        LOGE("ionvideo_init ret=%d\n", ret);
     }
     return ret;
 }

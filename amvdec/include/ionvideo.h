@@ -19,6 +19,7 @@ typedef struct vframebuf {
 
 struct ionvideo_dev_ops {
     int (*setparameters)(struct ionvideo_dev *dev, int cmd, void*para);
+    int (*getparameters)(struct ionvideo_dev *dev, struct v4l2_format *fmt);
     int (*init)(struct ionvideo_dev *dev, int flags, int width, int height, int fmt, int buffernum);
     int (*release)(struct ionvideo_dev *dev);
     int (*dequeuebuf)(struct ionvideo_dev *dev, vframebuf_t*vf);
@@ -40,6 +41,7 @@ typedef struct ionvideo {
 
 ionvideo_dev_t *new_ionvideo(int flags);
 int ionvideo_setparameters(ionvideo_dev_t *dev, int cmd, void * parameters);
+int ionvideo_getparameters(ionvideo_dev_t *dev, int *width, int *height, int *pixelformat);
 int ionvideo_init(ionvideo_dev_t *dev, int flags, int width, int height, int fmt, int buffernum);
 int ionvideo_start(ionvideo_dev_t *dev);
 int ionvideo_stop(ionvideo_dev_t *dev);
