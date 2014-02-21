@@ -12,7 +12,9 @@ LOCAL_CFLAGS += -DDOLBY_DAP_EN
 endif
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
-    LOCAL_CFLAGS +=   -DUSE_ARM_AUDIO_DEC 
+    ifneq ($(TARGET_BOARD_PLATFORM),meson6)
+        LOCAL_CFLAGS +=   -DUSE_ARM_AUDIO_DEC
+    endif 
 endif
 
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 												
@@ -58,7 +60,9 @@ LOCAL_CFLAGS += -DDOLBY_DAP_EN
 endif
 
 ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
-    LOCAL_CFLAGS +=   -DUSE_ARM_AUDIO_DEC 
+    ifneq ($(TARGET_BOARD_PLATFORM),meson6)
+        LOCAL_CFLAGS +=   -DUSE_ARM_AUDIO_DEC
+    endif 
 endif
 
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 									
