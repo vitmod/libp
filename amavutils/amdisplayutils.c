@@ -18,6 +18,15 @@
 #define OSD_ROTATION_ON "/sys/class/graphics/fb0/prot_on"
 #define SYSCMD_BUFSIZE 40
 
+
+//Temp solution, finally we will move out all the functions about display,
+//it should be not part of player.
+#ifdef ENABLE_FB_TRIPLE_BUFFERS
+#define FB_BUFFER_NUM (3)
+#else
+#define FB_BUFFER_NUM (2)
+#endif
+
 #ifndef LOGD
     #define LOGV ALOGV
     #define LOGD ALOGD
@@ -63,7 +72,7 @@ int amdisplay_utils_get_size(int *width, int *height)
     }
     if (sscanf(buf, "%d,%d", &disp_w, &disp_h) == 2) {
         LOGI("disp resolution %dx%d\n", disp_w, disp_h);
-        disp_h = disp_h / 2;
+        disp_h = disp_h / FB_BUFFER_NUM;
     } else {
         return -2;/*format unknow*/
     }
@@ -86,7 +95,7 @@ int amdisplay_utils_get_size_fb2(int *width, int *height)
     }
     if (sscanf(buf, "%d,%d", &disp_w, &disp_h) == 2) {
         LOGI("disp resolution %dx%d\n", disp_w, disp_h);
-        disp_h = disp_h / 2;
+        disp_h = disp_h / FB_BUFFER_NUM;
     } else {
         return -2;/*format unknow*/
     }
