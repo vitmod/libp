@@ -112,6 +112,11 @@ static int flv_set_video_codec(AVFormatContext *s, AVStream *vstream, int flv_co
         case FLV_CODECID_H264:
             vcodec->codec_id = CODEC_ID_H264;
             return 3; // not 4, reading packet type will consume one byte
+        case FLV_CODECID_HM91:
+        case FLV_CODECID_HM10:
+        case FLV_CODECID_HM12:
+            vcodec->codec_id = CODEC_ID_HEVC;
+            return 3;
         default:
             av_log(s, AV_LOG_INFO, "Unsupported video codec (%x)\n", flv_codecid);
             vcodec->codec_tag = flv_codecid;
@@ -615,10 +620,11 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
     }
 
     if (st->codec->codec_id == CODEC_ID_AAC ||
-        st->codec->codec_id == CODEC_ID_H264) {
+        st->codec->codec_id == CODEC_ID_H264 ||
+        st->codec->codec_id == CODEC_ID_HEVC) {
         int type = avio_r8(s->pb);
         size--;
-        if (st->codec->codec_id == CODEC_ID_H264) {
+        if (st->codec->codec_id == CODEC_ID_H264 || st->codec->codec_id == CODEC_ID_HEVC) {
             int32_t cts = (avio_rb24(s->pb)+0xff800000)^0xff800000; // sign extension
             pts = dts + cts;
             if (cts < 0) { // dts are wrong
