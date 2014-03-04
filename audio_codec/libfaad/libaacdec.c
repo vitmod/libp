@@ -469,6 +469,7 @@ retry:
 }
 
 static int error_count = 0;
+#define ERROR_RESET_COUNT  20
 int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *outlen, char *inbuf, int inlen)
 {
     int tagsize;
@@ -555,7 +556,7 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
         advance_buffer(&gFaadCxt.b, 1);
         fill_buffer(&(gFaadCxt.b), in_buf, &inbuf_size, &inbuf_consumed);
 	 error_count++;
-	 if(error_count  >= 20 ||frameInfo.error == 34){
+	 if(error_count  >= ERROR_RESET_COUNT ||frameInfo.error == 34){
 	 		if( gFaadCxt.hDecoder)
 	    			NeAACDecClose(gFaadCxt.hDecoder);
 			gFaadCxt.init_flag = 0;

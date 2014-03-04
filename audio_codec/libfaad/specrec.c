@@ -1116,6 +1116,13 @@ uint8_t reconstruct_channel_pair(NeAACDecStruct *hDecoder, ic_stream *ics1, ic_s
 
         hDecoder->element_alloced[hDecoder->fr_ch_ele] = 1;
     }
+    else {	
+	// 1ch --> 2ch aac stream, channel configuration mapping changed ,need reset decoder .mostly happened when channel num changed 
+    	if(hDecoder->fb_intermed[(uint8_t)cpe->paired_channel] == NULL){
+			audio_codec_print("channel configure changed,need re-alloc the buffer\n");
+			return  34;
+	}	
+    }		
 
     /* dequantisation and scaling */
     retval = quant_to_spec(hDecoder, ics1, spec_data1, spec_coef1, hDecoder->frameLength);
