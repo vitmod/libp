@@ -934,6 +934,9 @@ static int audio_add_header(play_para_t *para)
 }
 
 static int sub_add_header(play_para_t *para) {
+	if (para->sstream_info.sub_index == -1)
+		return 0;
+	
     unsigned ext_size = para->pFormatCtx->streams[para->sstream_info.sub_index]->codec->extradata_size;
     unsigned char *extradata = para->pFormatCtx->streams[para->sstream_info.sub_index]->codec->extradata;
     am_packet_t *pkt = para->p_pkt;
@@ -1013,31 +1016,33 @@ int pre_header_feeding(play_para_t *para)
     }
 
     if (IS_SUB_NEED_PREFEED_HEADER(para->sstream_info.sub_type) && para->sstream_info.has_sub) {
-	    subStream = para->pFormatCtx->streams[subindex];
-        scodec = subStream->codec;
-        if (pkt->avpkt->data == NULL) {
-            extra_size = scodec->extradata_size + 5;
-            if (extra_size > 0 && scodec->extradata) {
-                int r=av_new_packet(pkt->avpkt,extra_size);
-                if (r<0) {
-                    log_print("[pre_header_feeding] NOMEM!");
-                    return PLAYER_NOMEM;
-                }
-            }
+		if (para->sstream_info.sub_index != -1){
+		    subStream = para->pFormatCtx->streams[subindex];
+	        scodec = subStream->codec;
+	        if (pkt->avpkt->data == NULL) {
+	            extra_size = scodec->extradata_size + 5;
+	            if (extra_size > 0 && scodec->extradata) {
+	                int r=av_new_packet(pkt->avpkt,extra_size);
+	                if (r<0) {
+	                    log_print("[pre_header_feeding] NOMEM!");
+	                    return PLAYER_NOMEM;
+	                }
+	            }
 
-            ret = sub_add_header(para);
-			if (pkt->hdr) {
-				if (pkt->hdr->data) {
-					FREE(pkt->hdr->data);
-					pkt->hdr->data = NULL;
+	            ret = sub_add_header(para);
+				if (pkt->hdr) {
+					if (pkt->hdr->data) {
+						FREE(pkt->hdr->data);
+						pkt->hdr->data = NULL;
+					}
+					FREE(pkt->hdr);
+					pkt->hdr = NULL;
 				}
-				FREE(pkt->hdr);
-				pkt->hdr = NULL;
-			}
-			if (ret != PLAYER_SUCCESS) {
-				return ret;
-			}
-        }
+				if (ret != PLAYER_SUCCESS) {
+					return ret;
+				}
+	        }
+		}
     }
 
     if (para->stream_type == STREAM_ES && para->vstream_info.has_video) {
