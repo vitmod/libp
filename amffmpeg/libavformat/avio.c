@@ -121,9 +121,14 @@ int ffurl_register_protocol(URLProtocol *protocol, int size)
         protocol = temp;
     }
     p = &first_protocol;
+#if 0
     while (*p != NULL) p = &(*p)->next;
     *p = protocol;
     protocol->next = NULL;
+#else
+	protocol->next=first_protocol;
+	first_protocol=protocol;
+#endif
     return 0;
 }
 
