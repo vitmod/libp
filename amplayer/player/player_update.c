@@ -107,8 +107,13 @@ static int set_vstream_info(play_para_t *p_para)
                 vinfo->duartion    = (int)(pStream->duration * pStream->time_base.num / pStream->time_base.den);
                 vinfo->bit_rate    = pStream->codec->bit_rate;
                 vinfo->format      = p_para->vstream_info.video_format;
-                vinfo->aspect_ratio_num = pStream->sample_aspect_ratio.num;
-                vinfo->aspect_ratio_den = pStream->sample_aspect_ratio.den;
+                if(pStream->codec->sample_aspect_ratio.num){
+                    vinfo->aspect_ratio_num = pStream->codec->sample_aspect_ratio.num;
+                    vinfo->aspect_ratio_den = pStream->codec->sample_aspect_ratio.den;
+                }else{
+                    vinfo->aspect_ratio_num = pStream->sample_aspect_ratio.num;
+                    vinfo->aspect_ratio_den = pStream->sample_aspect_ratio.den;
+                }
                 vinfo->frame_rate_num   = pStream->r_frame_rate.num;
                 vinfo->frame_rate_den   = pStream->r_frame_rate.den;
                 vinfo->video_rotation_degree = pStream->rotation_degree;
