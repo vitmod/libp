@@ -510,7 +510,7 @@ static inline int codec_ts_init(codec_para_t *pcodec)
         if (r < 0) {
             goto error1;
         }
-        if ((pcodec->video_type == VFORMAT_H264) || (pcodec->video_type == VFORMAT_VC1)|| (pcodec->video_type == VFORMAT_AVS)) {
+        if ((pcodec->video_type == VFORMAT_H264) || (pcodec->video_type == VFORMAT_MPEG4)|| (pcodec->video_type == VFORMAT_VC1)|| (pcodec->video_type == VFORMAT_AVS)) {
             r = set_video_codec_info(pcodec);
             if (r < 0) {
                 codec_h_close(handle);
