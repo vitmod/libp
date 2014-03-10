@@ -58,7 +58,7 @@ static unsigned faad_log_enable = 0;
 #endif
 
 #ifdef PRINT_FAAD_DEBUG_INFO
-#define faad_log_info  printk//do{/*if(faad_log_enable)*/ printf;}while(0)
+#define faad_log_info  DEBUG
 #else
 #define faad_log_info(arg...) do{;}while(0)
 #endif
@@ -303,25 +303,12 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
     *channels = 0;
     int latm_audio = 0;	
     unsigned byte_cost = 0;
-#if 0    
-    if(latm_check_internal(buffer,buffer_size,&byte_cost)){
-    	internal_latm_aac_score = 3;
-    	buffer += byte_cost;
-    	buffer_size -= byte_cost;
-    }
-    else
-    	printk("not fetch latm header\n");
-#endif    		
+        
     if (buffer != NULL)
     {
-#if 1
         int is_latm;
         latm_header *l = &hDecoder->latm_config;
-#endif
-
         faad_initbits(&ld, buffer, buffer_size);
- 
-#if 1
         memset(l, 0, sizeof(latm_header));
         is_latm = latmCheck(l, &ld);
         l->inited = 0;
@@ -339,17 +326,10 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
     		*samplerate /= 2;               
 #endif		   
             return x;
-        } //else
-#endif
-	//if(1){//internal_latm_aac_score >= 3){ // we support that it is a latm aac audio
-	//    return -1;
-	//}
-        /* Check if an ADIF header is present */
-        else if ((buffer[0] == 'A') && (buffer[1] == 'D') &&
-			(buffer[2] == 'I') && (buffer[3] == 'F'))
-		{
+        }else if ((buffer[0] == 'A') && (buffer[1] == 'D') && (buffer[2] == 'I') && (buffer[3] == 'F')){    
+            /* Check if an ADIF header is present */
             hDecoder->adif_header_present = 1;
-			faad_log_info("ADIF aac file detected\r\n");
+            faad_log_info("[%s %d]ADIF aac file detected\n",__FUNCTION__,__LINE__);
             get_adif_header(&adif, &ld);
             faad_byte_align(&ld);
 
@@ -367,63 +347,71 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
         /* Check if an ADTS header is present */
         } else if (faad_showbits(&ld, 12) == 0xfff) {
             hDecoder->adts_header_present = 1;
-			faad_log_info("ADTS aac file detected\r\n");
+            faad_log_info("[%s %d]ADTS aac file detected\n",__FUNCTION__,__LINE__);
             adts.old_format = hDecoder->config.useOldADTSFormat;
-            adts_frame(&adts, &ld);
-
+            if(adts_frame(&adts, &ld))
+            {
+                return -1;
+            }
+			
+            if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
+                last_sf_index = hDecoder->sf_index;
+                last_ch_configure = adts.channel_configuration;
+            }else{
+                return -1;
+            }
             hDecoder->sf_index = adts.sf_index;
             hDecoder->object_type = adts.profile + 1;
-	     last_sf_index = hDecoder->sf_index;
-	     last_ch_configure = adts.channel_configuration;
+			
+
             *samplerate = get_sample_rate(hDecoder->sf_index);
-            *channels = (adts.channel_configuration > 6) ?
-                2 : adts.channel_configuration;
-		//	faad_log_info("adts info:FS:%d;object type%d;ch num:%d.\r\n",samplerate,hDecoder->object_type,channels);
+            *channels = (adts.channel_configuration > 6) ? 2 : adts.channel_configuration;
+            faad_log_info("[%s %d]adts info:FS/%d object_type/%d ChNum/%d\n",__FUNCTION__,__LINE__,*samplerate,hDecoder->object_type,*channels);
+       }else{
+            /*we guess it is a ADTS aac files and try to resync from the error*/
+            int ii;
+            int adts_err = 0;
+            faad_log_info("[%s %d]guess it is a ADTS aac files and try to resync\n",__FUNCTION__,__LINE__);
+            faad_initbits(&ld, buffer, buffer_size);
+            for ( ii = 0; ii < buffer_size; ii++)
+            {
+                 if ((faad_showbits(&ld, 16)&0xfff6) != 0xFFF0)
+                 {
+                      faad_getbits(&ld, 8
+                      DEBUGVAR(0,0,""));
+                 }else{
+                      bits = bit2byte(faad_get_processed_bits(&ld));    
+                      hDecoder->adts_header_present = 1;
+                      faad_log_info("[%s %d]resync and got ADTS header\n",__FUNCTION__,__LINE__);
+                      adts.old_format = hDecoder->config.useOldADTSFormat;
+                      adts_err = adts_frame(&adts, &ld);
+                      if(adts_err == 5){
+                          internal_latm_aac_score++;
+                          return -1;
+                      } 
+                      hDecoder->sf_index = adts.sf_index;
+                      hDecoder->object_type = adts.profile + 1;
+					  
+                      if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
+                          last_sf_index = hDecoder->sf_index;
+                          last_ch_configure = adts.channel_configuration;
+                      }
+                      *samplerate = get_sample_rate(hDecoder->sf_index);
+                      if(*samplerate > 48000 || adts.channel_configuration > 6){
+                           internal_latm_aac_score++;
+                           return -1;
+                      }
+                      *channels = (adts.channel_configuration > 6) ? 2 : adts.channel_configuration;
+                        faad_log_info("[%s %d]resync adts info:FS/%d object_type/%d chnum/%d\n",__FUNCTION__,__LINE__,*samplerate,hDecoder->object_type,channels);
+                      break;
+                }
+            }
+            if(ii == buffer_size){
+                 faad_log_info("[%s %d]sync for adts frame failed\n",__FUNCTION__,__LINE__);
+                 internal_latm_aac_score++;
+                 return -1;
+            }   
         }
-		/*** we guess it is a ADTS aac files and try to resync from the error***/
-		else{
-			    int ii;
-			    int adts_err = 0;
-			    faad_initbits(&ld, buffer, buffer_size);
-			    for ( ii = 0; ii < buffer_size; ii++)
-			    {
-			        if ((faad_showbits(&ld, 16)&0xfff6) != 0xFFF0)
-			        {
-			            	faad_getbits(&ld, 8
-			                	DEBUGVAR(0,0,""));
-			        } 
-					else {
-					    bits = bit2byte(faad_get_processed_bits(&ld));	
-				            hDecoder->adts_header_present = 1;
-					//		printk("resync and got ADTS header\r\n");
-				            adts.old_format = hDecoder->config.useOldADTSFormat;
-				            adts_err = adts_frame(&adts, &ld);
-					    if(adts_err == 5){
-					    	internal_latm_aac_score++;
-					    	return -1;
-					    }	
-				            hDecoder->sf_index = adts.sf_index;
-				            hDecoder->object_type = adts.profile + 1;
-	     					last_sf_index = hDecoder->sf_index;
-	     					last_ch_configure = adts.channel_configuration;
-					
-				            *samplerate = get_sample_rate(hDecoder->sf_index);
-				            if(*samplerate > 48000 || adts.channel_configuration > 6){
-				            	internal_latm_aac_score++;
-				            	return -1;
-				            }
-				            *channels = (adts.channel_configuration > 6) ?
-				                2 : adts.channel_configuration;
-					//		printk("resync adts info:FS:%d;object type%d;ch num:%d.\r\n",*samplerate,hDecoder->object_type,channels);
-							            break;
-			        }
-			    }
-			    if(ii == buffer_size){
-			    	//printk("sync for adts frame failed\n");
-			    	internal_latm_aac_score++;
-			    	return -1;
-			    }	
-		}
         if (ld.error)
         {
             faad_endbits(&ld);
@@ -468,10 +456,12 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
 #endif
 
     if (can_decode_ot(hDecoder->object_type) < 0)
+    {
+        faad_log_info("[%s %d]object_type/%d can not support\n",__FUNCTION__,__LINE__,hDecoder->object_type);
         return -1;
-	faad_log_info("aac init finished. cost bits%d\r\n",bits);
-
-    		
+    }
+    faad_log_info("[%s %d]aac init finished. cost bits%d\n",__FUNCTION__,__LINE__,bits);
+            
     return bits;
 }
 
@@ -942,7 +932,6 @@ static void conceal_output(NeAACDecStruct *hDecoder, uint16_t frame_len,
 }
 #endif
 
-#if 0
 static void* aac_frame_decode(NeAACDecStruct *hDecoder,
                               NeAACDecFrameInfo *hInfo,
                               unsigned char *buffer,
@@ -969,449 +958,7 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
         return NULL;
     }
 
-#if 0
-    printf("%d\n", buffer_size*8);
-#endif
-
     frame_len = hDecoder->frameLength;
-
-
-
-    memset(hDecoder->internal_channel, 0, MAX_CHANNELS*sizeof(hDecoder->internal_channel[0]));
-
-#ifdef USE_TIME_LIMIT
-    if ((TIME_LIMIT * get_sample_rate(hDecoder->sf_index)) > hDecoder->TL_count)
-    {
-        hDecoder->TL_count += 1024;
-    } else {
-        hInfo->error = (NUM_ERROR_MESSAGES-1);
-        goto error;
-    }
-#endif
-
-
-    /* check for some common metadata tag types in the bitstream
-     * No need to return an error
-     */
-    /* ID3 */
-    if (buffer_size >= 128)
-    {
-        if (memcmp(buffer, "TAG", 3) == 0)
-        {
-            /* found it */
-            hInfo->bytesconsumed = 128; /* 128 bytes fixed size */
-            /* no error, but no output either */
-            return NULL;
-        }
-    }
-
-
-    /* initialize the bitstream */
-    faad_initbits(&ld, buffer, buffer_size);
-
-#if 0
-    {
-        int i;
-        for (i = 0; i < ((buffer_size+3)>>2); i++)
-        {
-            uint8_t *buf;
-            uint32_t temp = 0;
-            buf = faad_getbitbuffer(&ld, 32);
-            //temp = getdword((void*)buf);
-            temp = *((uint32_t*)buf);
-            printf("0x%.8X\n", temp);
-            free(buf);
-        }
-        faad_endbits(&ld);
-        faad_initbits(&ld, buffer, buffer_size);
-    }
-#endif
-
-#if 1
-    if(hDecoder->latm_header_present)
-    {
-        payload_bits = faad_latm_frame(&hDecoder->latm_config, &ld);
-        startbit = faad_get_processed_bits(&ld);
-        if(payload_bits == -1U)
-        {
-            hInfo->error = 1;
-            goto error;
-        }
-    }
-#endif
-
-#ifdef DRM
-    if (hDecoder->object_type == DRM_ER_LC)
-    {
-        /* We do not support stereo right now */
-        if (0) //(hDecoder->channelConfiguration == 2)
-        {
-            hInfo->error = 28; // Throw CRC error
-            goto error;
-        }
-
-        faad_getbits(&ld, 8
-            DEBUGVAR(1,1,"NeAACDecDecode(): skip CRC"));
-    }
-#endif
-        
-    if (hDecoder->adts_header_present)
-    {
-        adts_header adts;
-		//faad_log_info("decoding got apts header\r\n");
-        adts.old_format = hDecoder->config.useOldADTSFormat;
-        if ((hInfo->error = adts_frame(&adts, &ld)) > 0)
-            goto error;
-
-      //  faad_byte_align(&ld);
-        /* MPEG2 does byte_alignment() here,
-         * but ADTS header is always multiple of 8 bits in MPEG2
-         * so not needed to actually do it.
-         */
-    }
-#if 0	
-    else if(!hDecoder->adts_header_present && !hDecoder->adif_header_present)
-    {
-    	if(hDecoder->israw){
-		    int sync0 = 0;
-		    int sync1 = 0;
-		    while(1)
-		    {
-		        sync0 = faad_getbits(&ld, 8);;
-		        if(sync0 != 0x67)
-		            continue;
-		        sync1 = faad_getbits(&ld, 8);
-		        if(sync1 != 0x89)
-		            continue;
-				break;
-		    }
-
-    	}
-   }
-#endif	
-
-#ifdef ANALYSIS
-    dbg_count = 0;
-#endif
-
-    /* decode the complete bitstream */
-#ifdef DRM
-    if (/*(hDecoder->object_type == 6) ||*/ (hDecoder->object_type == DRM_ER_LC))
-    {
-        DRM_aac_scalable_main_element(hDecoder, hInfo, &ld, &hDecoder->pce, hDecoder->drc);
-    } else {
-#endif
-        raw_data_block(hDecoder, hInfo, &ld, &hDecoder->pce, hDecoder->drc);
-#ifdef DRM
-    }
-#endif
-
-#if 1
-    if(hDecoder->latm_header_present)
-    {
-    	  if(payload_bits > 0 && payload_bits < 6144*8)	{
-	    	  latm_payload[0] = latm_payload[1];
-	    	  latm_payload[1] = latm_payload[2];
-	    	  latm_payload[2] = latm_payload[3];
-	    	  latm_payload[3] = latm_payload[4];
-	    	  latm_payload[4] =payload_bits;
-    	  }	  
-        endbit = faad_get_processed_bits(&ld);
-        if(endbit-startbit > payload_bits)
-            ;//printk( "\r\nERROR, too many payload bits read: %u > %d. Please. report with a link to a sample\n",
-                //endbit-startbit, payload_bits);
-        if(hDecoder->latm_config.otherDataLenBits > 0)
-            faad_getbits(&ld, hDecoder->latm_config.otherDataLenBits);
-        faad_byte_align(&ld);
-    }
-#endif
-
-    channels = hDecoder->fr_channels;
-
-    if (hInfo->error > 0)
-        goto error;
-
-    /* safety check */
-    if (channels == 0 || channels > MAX_CHANNELS)
-    {
-        /* invalid number of channels */
-        hInfo->error = 12;
-        goto error;
-    }
-
-    /* no more bit reading after this */
-    bitsconsumed = faad_get_processed_bits(&ld);
-    hInfo->bytesconsumed = bit2byte(bitsconsumed);
-    if (ld.error)
-    {
-        hInfo->error = 14;
-        goto error;
-    }
-    faad_endbits(&ld);
-
-
-    if (!hDecoder->adts_header_present && !hDecoder->adif_header_present
-#if 1
-        && !hDecoder->latm_header_present
-#endif
-        )
-    {
-        if (hDecoder->channelConfiguration == 0)
-            hDecoder->channelConfiguration = channels;
-
-        if (channels == 8) /* 7.1 */
-            hDecoder->channelConfiguration = 7;
-        if (channels == 7) /* not a standard channelConfiguration */
-            hDecoder->channelConfiguration = 0;
-    }
-
-    if ((channels == 5 || channels == 6) && hDecoder->config.downMatrix)
-    {
-        hDecoder->downMatrix = 1;
-        output_channels = 2;
-    } else {
-        output_channels = channels;
-    }
-    if(output_channels >2){
-        output_channels = 2;
-    }		
-#if 0//(defined(PS_DEC) || defined(DRM_PS))
-    hDecoder->upMatrix = 0;
-    /* check if we have a mono file */
-    if (output_channels == 1)
-    {
-        /* upMatrix to 2 channels for implicit signalling of PS */
-        hDecoder->upMatrix = 1;
-        output_channels = 2;
-    }
-#endif
-
-    /* Make a channel configuration based on either a PCE or a channelConfiguration */
-    create_channel_config(hDecoder, hInfo);
-
-    /* number of samples in this frame */
-    hInfo->samples = frame_len*output_channels;
-    /* number of channels in this frame */
-    hInfo->channels = output_channels;
-    /* samplerate */
-    hInfo->samplerate = get_sample_rate(hDecoder->sf_index);
-    /* object type */
-    hInfo->object_type = hDecoder->object_type;
-    /* sbr */
-    hInfo->sbr = NO_SBR;
-    /* header type */
-    hInfo->header_type = RAW;
-    if (hDecoder->adif_header_present)
-        hInfo->header_type = ADIF;
-    if (hDecoder->adts_header_present)
-        hInfo->header_type = ADTS;
-#if 1
-    if (hDecoder->latm_header_present)
-        hInfo->header_type = LATM;
-#endif
-#if (defined(PS_DEC) || defined(DRM_PS))
-    hInfo->ps = hDecoder->ps_used_global;
-#endif
-
-    /* check if frame has channel elements */
-    if (channels == 0)
-    {
-        hDecoder->frame++;
-        return NULL;
-    }
-
-    /* allocate the buffer for the final samples */
-    if ((hDecoder->sample_buffer == NULL) ||
-        (hDecoder->alloced_channels != output_channels))
-    {
-        static const uint8_t str[] = { sizeof(int16_t), sizeof(int32_t), sizeof(int32_t),
-            sizeof(float32_t), sizeof(double), sizeof(int16_t), sizeof(int16_t),
-            sizeof(int16_t), sizeof(int16_t), 0, 0, 0
-        };
-        uint8_t stride = str[hDecoder->config.outputFormat-1];
-#ifdef SBR_DEC
-        if (((hDecoder->sbr_present_flag == 1)&&(!hDecoder->downSampledSBR)) || (hDecoder->forceUpSampling == 1))
-        {
-            stride = 2 * stride;
-        }
-#endif
-        /* check if we want to use internal sample_buffer */
-        if (sample_buffer_size == 0)
-        {
-            if (hDecoder->sample_buffer)
-                faad_free(hDecoder->sample_buffer);
-            hDecoder->sample_buffer = NULL;
-            hDecoder->sample_buffer = faad_malloc(frame_len*output_channels*stride);
-        } else if (sample_buffer_size < frame_len*output_channels*stride) {
-            /* provided sample buffer is not big enough */
-            hInfo->error = 27;
-            return NULL;
-        }
-        hDecoder->alloced_channels = output_channels;
-    }
-
-    if (sample_buffer_size == 0)
-    {
-        sample_buffer = hDecoder->sample_buffer;
-    } else {
-        sample_buffer = *sample_buffer2;
-    }
-
-#ifdef SBR_DEC
-    hDecoder->sbr_present_flag = 0;// now disable this flag
-    if ((hDecoder->sbr_present_flag == 1) || (hDecoder->forceUpSampling == 1))
-    {
-        uint8_t ele;
-
-        /* this data is different when SBR is used or when the data is upsampled */
-        if (!hDecoder->downSampledSBR)
-        {
-            frame_len *= 2;
-            hInfo->samples *= 2;
-            hInfo->samplerate *= 2;
-        }
-
-        /* check if every element was provided with SBR data */
-        for (ele = 0; ele < hDecoder->fr_ch_ele; ele++)
-        {
-            if (hDecoder->sbr[ele] == NULL)
-            {
-                hInfo->error = 25;
-                goto error;
-            }
-        }
-
-        /* sbr */
-        if (hDecoder->sbr_present_flag == 1)
-        {
-            hInfo->object_type = HE_AAC;
-            hInfo->sbr = SBR_UPSAMPLED;
-        } else {
-            hInfo->sbr = NO_SBR_UPSAMPLED;
-        }
-        if (hDecoder->downSampledSBR)
-        {
-            hInfo->sbr = SBR_DOWNSAMPLED;
-        }
-    }
-#endif
-
-    sample_buffer = output_to_PCM(hDecoder, hDecoder->time_out, sample_buffer,
-        output_channels, frame_len, hDecoder->config.outputFormat);
-
-
-#ifdef DRM
-    //conceal_output(hDecoder, frame_len, output_channels, sample_buffer);
-#endif
-
-
-    hDecoder->postSeekResetFlag = 0;
-
-    hDecoder->frame++;
-#ifdef LD_DEC
-    if (hDecoder->object_type != LD)
-    {
-#endif
-#if 0
-        if (hDecoder->frame <= 1)
-            hInfo->samples = 0;
-#endif		
-#ifdef LD_DEC
-    } else {
-        /* LD encoders will give lower delay */
-        if (hDecoder->frame <= 0)
-            hInfo->samples = 0;
-    }
-#endif
-
-    /* cleanup */
-#ifdef ANALYSIS
-    fflush(stdout);
-#endif
-
-#ifdef PROFILE
-    count = faad_get_ts() - count;
-	faad_log_profile("decode one frame cost %8x\n",count);
-    hDecoder->cycles += count;
-#endif
-
-    return sample_buffer;
-
-error:
-    if (hInfo->error > 0) {
-        faad_log_info( "faac: frame decoding failed.err type %s; adts_header:%d\n",
-               NeAACDecGetErrorMessage(hInfo->error),hDecoder->adts_header_present);
-    }
-    bitsconsumed = faad_get_processed_bits(&ld);
-    hInfo->bytesconsumed = bit2byte(bitsconsumed);
-#ifdef DRM
-    hDecoder->error_state = ERROR_STATE_INIT;
-#endif
-
-    /* reset filterbank state */
-    for (i = 0; i < MAX_CHANNELS; i++)
-    {
-        if (hDecoder->fb_intermed[i] != NULL)
-        {
-            memset(hDecoder->fb_intermed[i], 0, hDecoder->frameLength*sizeof(real_t));
-        }
-    }
-#ifdef SBR_DEC
-    for (i = 0; i < MAX_SYNTAX_ELEMENTS; i++)
-    {
-        if (hDecoder->sbr[i] != NULL)
-        {
-            sbrReset(hDecoder->sbr[i]);
-        }
-    }
-#endif
-
-    
-    faad_endbits(&ld);
-
-    /* cleanup */
-#ifdef ANALYSIS
-    fflush(stdout);
-#endif
-
-    return NULL;
-}
-#endif
-static void* aac_frame_decode(NeAACDecStruct *hDecoder,
-                              NeAACDecFrameInfo *hInfo,
-                              unsigned char *buffer,
-                              unsigned long buffer_size,
-                              void **sample_buffer2,
-                              unsigned long sample_buffer_size)
-{
-    uint16_t i;
-    uint8_t channels = 0;
-    uint8_t output_channels = 0;
-    bitfile ld = {0};
-    uint32_t bitsconsumed;
-    uint16_t frame_len;
-    void *sample_buffer;
-    uint32_t startbit=0, endbit=0, payload_bits=0;
-
-#ifdef PROFILE
-    int64_t count = faad_get_ts();
-#endif
-
-    /* safety checks */
-    if ((hDecoder == NULL) || (hInfo == NULL) || (buffer == NULL))
-    {
-        return NULL;
-    }
-
-#if 0
-    printf("%d\n", buffer_size*8);
-#endif
-
-//	printf("lujian_enter into aac_frame_decode-----------------------------\n");
-
-    frame_len = hDecoder->frameLength;
-
-
     memset(hInfo, 0, sizeof(NeAACDecFrameInfo));
     memset(hDecoder->internal_channel, 0, MAX_CHANNELS*sizeof(hDecoder->internal_channel[0]));
 
@@ -1441,29 +988,8 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
         }
     }
 
-
     /* initialize the bitstream */
     faad_initbits(&ld, buffer, buffer_size);
-
-#if 0
-    {
-        int i;
-        for (i = 0; i < ((buffer_size+3)>>2); i++)
-        {
-            uint8_t *buf;
-            uint32_t temp = 0;
-            buf = faad_getbitbuffer(&ld, 32);
-            //temp = getdword((void*)buf);
-            temp = *((uint32_t*)buf);
-            printf("0x%.8X\n", temp);
-            free(buf);
-        }
-        faad_endbits(&ld);
-        faad_initbits(&ld, buffer, buffer_size);
-    }
-#endif
-
-#if 1
     if(hDecoder->latm_header_present)
     {
         payload_bits = faad_latm_frame(&hDecoder->latm_config, &ld);
@@ -1474,8 +1000,6 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
             goto error;
         }
     }
-#endif
-
 #ifdef DRM
     if (hDecoder->object_type == DRM_ER_LC)
     {
@@ -1494,23 +1018,19 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
     if (hDecoder->adts_header_present)
     {
         adts_header adts;
-
         adts.old_format = hDecoder->config.useOldADTSFormat;
         if ((hInfo->error = adts_frame(&adts, &ld)) > 0)
             goto error;
-	hDecoder->sf_index = adts.sf_index;	
-	if(adts.sf_index != last_sf_index && adts.channel_configuration != last_ch_configure){
-		hInfo->error = 34;
-     	 	audio_codec_print("	last sf_index %d,ch %d,now %d %d\n",last_sf_index,last_ch_configure,adts.sf_index,adts.channel_configuration);		
-		last_sf_index = hDecoder->sf_index;
-		last_ch_configure = adts.channel_configuration;	
-		goto error;
-	}	
-					
-        /* MPEG2 does byte_alignment() here,
-         * but ADTS header is always multiple of 8 bits in MPEG2
-         * so not needed to actually do it.
-         */
+	    hDecoder->sf_index = adts.sf_index;	
+	    if(adts.sf_index != last_sf_index && adts.channel_configuration != last_ch_configure){
+	        if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
+		         hInfo->error = 34;
+		         audio_codec_print("[%s %d]last_sf_index/%d,Ch/%d,Now %d/%d\n",__FUNCTION__,__LINE__,last_sf_index,last_ch_configure,adts.sf_index,adts.channel_configuration);      
+		         last_sf_index = hDecoder->sf_index;
+		         last_ch_configure = adts.channel_configuration;	
+		        goto error;
+	        }
+	    }	
     }
 
 #ifdef ANALYSIS
@@ -1534,8 +1054,8 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
     {
         endbit = faad_get_processed_bits(&ld);
         if(endbit-startbit > payload_bits)
-            fprintf(stderr, "\r\nERROR, too many payload bits read: %u > %d. Please. report with a link to a sample\n",
-                endbit-startbit, payload_bits);
+            DEBUG("[%s %d]ERROR, too many payload bits read: %u > %d. Please. report with a link to a sample\n",
+                   __FUNCTION__,__LINE__,endbit-startbit, payload_bits);
         if(hDecoder->latm_config.otherDataLenBits > 0)
             faad_getbits(&ld, hDecoder->latm_config.otherDataLenBits);
         faad_byte_align(&ld);
@@ -1550,7 +1070,7 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
     /* safety check */
     if (channels == 0 || channels > MAX_CHANNELS)
     {
-        /* invalid number of channels */
+        DEBUG("[%s %d]invalid Channels/%d\n",__FUNCTION__,__LINE__,channels);
         hInfo->error = 12;
         goto error;
     }

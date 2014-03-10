@@ -1075,13 +1075,14 @@ exit_decode_loop:
           if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
           {
                if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
-               {   
-                    while(audec->format_changed_flag && !audec->exit_decode_thread ){
+               {    //experienc value:0.2 Secs
+                    int BufLevelAllowDoFmtChg=g_bst->samplerate*g_bst->channels*(audec->adec_ops->bps>>3)/5;
+                    while((audec->format_changed_flag|| g_bst->buf_level>BufLevelAllowDoFmtChg) && !audec->exit_decode_thread ){
                        usleep(20000);
                     }
                     if(!audec->exit_decode_thread){
-                        adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",
-                                  __FUNCTION__,g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
+                        adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",
+                                  __FUNCTION__,g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels,g_bst->buf_level);
                         g_bst->channels=audec->channels=g_AudioInfo.channels;
                         g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
                         aout_ops->pause(audec);
@@ -1107,12 +1108,15 @@ exit_decode_loop:
                memcpy(inbuf+inlen,p_Package->data,p_Package->size);
                free(pRestData);
                free(p_Package->data);
+               pRestData=NULL;
+               p_Package->data=NULL;
           }else{
                rlen=p_Package->size;
                inbuf=p_Package->data;
                p_Package->data=NULL;
           }
           free(p_Package);
+          p_Package=NULL;
 
           nCurrentReadCount=rlen;
           inlen=rlen;

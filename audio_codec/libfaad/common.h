@@ -44,7 +44,7 @@ extern "C" {
 
 #define  LOG_TAG    "FaadDecoder"
 #define audio_codec_print(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-#define printk audio_codec_print
+#define DEBUG  audio_codec_print
 #if 1
 #define INLINE __inline
 #else
