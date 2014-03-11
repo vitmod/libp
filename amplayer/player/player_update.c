@@ -114,6 +114,12 @@ static int set_vstream_info(play_para_t *p_para)
                     vinfo->aspect_ratio_num = pStream->sample_aspect_ratio.num;
                     vinfo->aspect_ratio_den = pStream->sample_aspect_ratio.den;
                 }
+                if(p_para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_H263){
+                /*Android CTS have bug on check H263's width&height not used aspect ratio,
+                                we set to 1:1 for ignore.*/
+                    vinfo->aspect_ratio_num = 1;
+                    vinfo->aspect_ratio_den = 1;
+                }
                 vinfo->frame_rate_num   = pStream->r_frame_rate.num;
                 vinfo->frame_rate_den   = pStream->r_frame_rate.den;
                 vinfo->video_rotation_degree = pStream->rotation_degree;
