@@ -4,6 +4,8 @@
 #include <libavformat/avformat.h>
 #include <stream_format.h>
 #define ASTREAM_MAX_NUM 20
+#define SSTREAM_MAX_NUM 32
+
 struct play_para;
 
 //#define DEBUG_VARIABLE_DUR
@@ -71,7 +73,7 @@ typedef struct {
     int             cur_subindex; //for change subtitle
     int             sub_has_found;
     int             sub_stream;
-    char            *sub_buf[9];
+    char            *sub_buf[SSTREAM_MAX_NUM];
 } s_stream_info_t;
 
 typedef  struct {
