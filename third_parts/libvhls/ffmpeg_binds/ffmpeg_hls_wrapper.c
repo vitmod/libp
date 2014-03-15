@@ -254,6 +254,14 @@ static int64_t ffmpeg_hls_exseek(URLContext *h, int64_t pos, int whence){
             return (seekToUs/1000000);
         }
 
+    }else if(whence == AVSEEK_LOOPBUFFER_OFFSET){
+        if(ctx->durationUs>0&&pos>=0&&(pos*1000000)<ctx->durationUs){
+        	RLOG("loopbuffer offset Seek to time :%lld\n",pos);
+        	int64_t seekToUs=m3u_session_seekUs_offset(hSession,pos*1000000,&(h->priv_info));
+        	if(seekToUs>=0)
+			return seekToUs/1000000;
+        	return -1;
+        }
     }else if(whence == AVSEEK_ITEM_TIME){//just for get will-download item time,for xiaomi,by zc
         if(ctx->durationUs>0){
             int64_t item_st = m3u_session_get_next_segment_st(hSession);

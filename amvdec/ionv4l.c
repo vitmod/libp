@@ -12,16 +12,11 @@
 static int ionv4l_unmapbufs(ionvideo_dev_t *dev);
 static int ionv4l_mapbufs(ionvideo_dev_t *dev);
 int ionv4l_setfmt(ionvideo_dev_t *dev, struct v4l2_format *fmt);
+int ionv4l_stop(ionvideo_dev_t *dev);
 int ionv4l_init(ionvideo_dev_t *dev, int type, int width, int height, int fmt, int buffernum) {
     int ret;
     ionv4l_dev_t *v4l = dev->devpriv;
     struct v4l2_format v4lfmt;
-    ret = open(V4LDEVICE_NAME, O_RDWR | O_NONBLOCK);
-    if (ret < 0) {
-        LOGE("v4l device opend failed!,ret=%d,%s(%d)\n", ret, strerror(errno), errno);
-        return errno;
-    }
-    v4l->v4l_fd = ret;
     v4l->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     v4l->width = width;
     v4l->height = height;
@@ -45,7 +40,6 @@ static int ionv4l_ioctl(ionvideo_dev_t *dev, int request, void *arg) {
     ionv4l_dev_t *v4l = dev->devpriv;
     ret = ioctl(v4l->v4l_fd, request, arg);
     if (ret == -1 && errno) {
-        ("ionv4l_ioctlfailed!,request=%x,ret=%d,%s(%d)\n", request, ret, strerror(errno), errno);
         ret = -errno;
     }
     return ret;
@@ -119,11 +113,10 @@ int ionv4l_stop(ionvideo_dev_t *dev) {
 }
 
 int ionv4l_setfmt(ionvideo_dev_t *dev, struct v4l2_format *fmt) {
-    int ret = ionv4l_ioctl(dev, VIDIOC_S_FMT, fmt);
-    if (ret != 0) {
-        LOGE("VIDIOC_G_FMT failed,ret=%d\n", ret);
-        return ret;
-    }
+    return ionv4l_ioctl(dev, VIDIOC_S_FMT, fmt);
+}
+
+int ionv4l_getfmt(ionvideo_dev_t *dev, struct v4l2_format *fmt) {
     return ionv4l_ioctl(dev, VIDIOC_G_FMT, fmt);
 }
 
@@ -139,11 +132,7 @@ static int ionv4l_mapbufs(ionvideo_dev_t *dev) {
     rb.count = v4l->buffer_num;
     rb.type = v4l->type;
     rb.memory = v4l->memory_mode;
-    ret = ionv4l_ioctl(dev, VIDIOC_REQBUFS, &rb);
-    if (ret != 0) {
-        LOGE("VIDIOC_REQBUFS failed,ret=%d\n", ret);
-    }
-    return ret;
+    return ionv4l_ioctl(dev, VIDIOC_REQBUFS, &rb);
 }
 
 ionvideo_dev_t *new_ionv4l(void) {
@@ -160,7 +149,13 @@ ionvideo_dev_t *new_ionv4l(void) {
     dev->ops.queuebuf = ionv4l_queue_buf;
     dev->ops.start = ionv4l_start;
     dev->ops.stop = ionv4l_stop;
-
+    dev->ops.getparameters = ionv4l_getfmt;
+    v4l->v4l_fd = open(V4LDEVICE_NAME, O_RDWR | O_NONBLOCK);
+    if (v4l->v4l_fd < 0) {
+        free(dev);
+        LOGE("v4l device opend failed!,%s(%d)\n", strerror(errno), errno);
+        return NULL;
+    }
     return dev;
 }
 

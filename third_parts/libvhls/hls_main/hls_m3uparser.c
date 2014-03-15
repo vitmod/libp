@@ -859,7 +859,34 @@ M3uBaseNode* m3u_get_node_by_time(void* hParse,int64_t timeUs){
     return node;
 
 }
+int64_t m3u_get_node_span_size(void* hParse,int start_index,int end_index){
+    if(NULL ==hParse||start_index<0||end_index<0||end_index<start_index){
+        return -1;
+    }
 
+    if(end_index==start_index)
+    	return 0;
+
+    M3UParser* var = (M3UParser*)hParse;
+    M3uBaseNode* pos = NULL;
+    M3uBaseNode* tmp = NULL;
+    int64_t spanfilesize=0;
+    	
+    pthread_mutex_lock(&var->parser_lock);
+    if(start_index>var->base_node_num-1 || end_index>var->base_node_num-1){
+        pthread_mutex_unlock(&var->parser_lock);
+        return -1;
+    }
+    list_for_each_entry_safe_reverse(pos, tmp, &var->head,list){
+        if(start_index<=pos->index&& pos->index<end_index){
+        	LOGI("[%s:%d]index=%d, range_length=%lld\n",__FUNCTION__,__LINE__,pos->index,pos->range_length);
+		spanfilesize+=pos->range_length;
+        }
+    }	
+    pthread_mutex_unlock(&var->parser_lock);	
+
+    return spanfilesize;
+}
 int m3u_get_target_duration(void* hParse){
     if(NULL ==hParse){
         return -2;

@@ -137,10 +137,10 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 	4)32k,44k eac3 when spdif pasthrough 
 	*/
 	adec_print("format %d,sr %d \n",audec->format ,audec->samplerate );
-	if( ((audec->format == ADEC_AUDIO_FORMAT_DTS||audec->format == ADEC_AUDIO_FORMAT_AC3) && \
+	if( ((audec->format == ACODEC_FMT_DTS||audec->format == ACODEC_FMT_AC3) && \
 		(audec->samplerate == 32000 || audec->samplerate == 44100)) ||  \
-		(audec->format == ADEC_AUDIO_FORMAT_EAC3 && digital_raw == 2 && audec->samplerate == 44100) || \
-		(audec->format == ADEC_AUDIO_FORMAT_EAC3 && digital_raw == 1 &&  \
+		(audec->format == ACODEC_FMT_EAC3 && digital_raw == 2 && audec->samplerate == 44100) || \
+		(audec->format == ACODEC_FMT_EAC3 && digital_raw == 1 &&  \
 		(audec->samplerate == 32000 || audec->samplerate == 44100)))
 		
 	{
@@ -597,9 +597,9 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     reset_system_samplerate(audec);
 #ifdef USE_ARM_AUDIO_DEC
 	int user_raw_enable = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
-	out_ops->audio_out_raw_enable = user_raw_enable && (audec->format == ADEC_AUDIO_FORMAT_DTS || 
-														audec->format == ADEC_AUDIO_FORMAT_AC3 ||
-														audec->format == ADEC_AUDIO_FORMAT_EAC3 );
+	out_ops->audio_out_raw_enable = user_raw_enable && (audec->format == ACODEC_FMT_DTS || 
+														audec->format == ACODEC_FMT_AC3 ||
+														audec->format == ACODEC_FMT_EAC3 );
     if(out_ops->audio_out_raw_enable)
        android_init_raw(audec);
 #endif	

@@ -720,10 +720,23 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                     if (st->codec->stream_codec_tag == AV_RL32("Axan")){
                         st->codec->codec_id  = CODEC_ID_XAN_DPCM;
                         st->codec->codec_tag = 0;
+                        ast->dshow_block_align = 0;
                     }
                     if (amv_file_format){
                         st->codec->codec_id  = CODEC_ID_ADPCM_IMA_AMV;
                         ast->dshow_block_align = 0;
+                    }
+                    /* overloading invalid dshow_block_align for AAC */
+                    if (st->codec->codec_id == CODEC_ID_AAC && ast->dshow_block_align <= 4 && ast->dshow_block_align) {
+                        av_log(s, AV_LOG_DEBUG, "overriding invalid dshow_block_align of %d\n", ast->dshow_block_align);
+                        ast->dshow_block_align = 0;
+                    }
+                    /* overloading invalid sample sizes */
+                    if (st->codec->codec_id == CODEC_ID_AAC && ast->dshow_block_align == 1024 && ast->sample_size == 1024 ||
+                       st->codec->codec_id == CODEC_ID_AAC && ast->dshow_block_align == 4096 && ast->sample_size == 4096 ||
+                       st->codec->codec_id == CODEC_ID_MP3 && ast->dshow_block_align == 1152 && ast->sample_size == 1152) {
+                        av_log(s, AV_LOG_DEBUG, "overriding sample_size\n");
+                        ast->sample_size = 0;
                     }
                     break;
                 case AVMEDIA_TYPE_SUBTITLE:

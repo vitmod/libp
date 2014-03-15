@@ -75,7 +75,8 @@ struct mad_stream *stream;
 struct mad_frame *frame;
 struct mad_synth *synth;
 int result = 0;
-
+static int last_sr = -1;
+static int last_ch_num = -1;
 /*
 * This is a private message structure. A generic pointer to this structure
 * is passed to each of the callback functions. Put here any data you need
@@ -775,6 +776,11 @@ struct mad_pcm *pcm)
 	left_ch   = pcm->samples[0];
 	right_ch  = pcm->samples[1];
 	//*pcm_out_len += 4608;
+/*store the last channel num and sr info */
+	if(last_ch_num != nchannels)
+		last_ch_num = nchannels;
+	if(last_sr != pcm->samplerate)
+		last_sr = pcm->samplerate;
 	*pcm_out_len += pcm->length*2*(header->mode>0?2:1);;
 	while (nsamples--) {
 		signed int sample_l;
@@ -933,6 +939,10 @@ int audio_dec_init(
 #ifndef _WIN32
 int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *pAudioInfo)
 {   
+    if(last_ch_num <= 0 ||last_sr <= 0)
+		return 0;
+    ((AudioInfo *)pAudioInfo)->channels = last_ch_num;
+    ((AudioInfo *)pAudioInfo)->samplerate = last_sr;
     return 0;
 }
 #endif

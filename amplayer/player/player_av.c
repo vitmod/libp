@@ -1312,7 +1312,7 @@ int time_search(play_para_t *am_p,int flags)
     }
     /* if seeking requested, we execute it */
     if (url_support_time_seek(s->pb) && time_point >= 0) {
-        log_info("[time_search:%d] direct seek to time_point =%f\n", __LINE__, time_point);
+        log_info("[time_search:%d] direct seek to time_point =%f,seek_flags=%d\n", __LINE__, time_point,seek_flags);
         ret = url_fseektotime(s->pb, time_point, seek_flags);
         if (ret >= 0) {
             av_read_frame_flush(s);

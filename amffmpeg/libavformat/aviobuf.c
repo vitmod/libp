@@ -780,7 +780,7 @@ int avio_r8(AVIOContext *s)
 	if (s->buf_ptr < s->buf_end)
 		return *s->buf_ptr++;
 
-    av_log(NULL, AV_LOG_ERROR, "[%s:%d]retry timeout, fill buffer failed\n", __FUNCTION__, __LINE__);
+    av_log(NULL, AV_LOG_WARNING, "[%s:%d]retry timeout, fill buffer failed\n", __FUNCTION__, __LINE__);
 	return 0;
 
 }

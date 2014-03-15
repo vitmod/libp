@@ -1906,6 +1906,8 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
     if(ts_max == AV_NOPTS_VALUE){
         int64_t step= 1024;
         filesize = avio_size(s->pb);
+        if(filesize > (s->valid_offset+0x1600000)) 
+            filesize = s->valid_offset;
         pos_max = filesize - 1;
         do{
 			//if(url_interrupt_cb())
@@ -1945,7 +1947,7 @@ int64_t av_gen_search(AVFormatContext *s, int stream_index, int64_t target_ts, i
     }
 
     no_change=0;
-    while (pos_min < pos_limit) {
+    while (pos_min < pos_limit && pos_limit <= pos_max) {
         av_dlog(s, "pos_min=0x%"PRIx64" pos_max=0x%"PRIx64" dts_min=%"PRId64" dts_max=%"PRId64"\n",
                 pos_min, pos_max, ts_min, ts_max);
         assert(pos_limit <= pos_max);

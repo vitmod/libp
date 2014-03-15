@@ -107,8 +107,13 @@ static int set_vstream_info(play_para_t *p_para)
                 vinfo->duartion    = (int)(pStream->duration * pStream->time_base.num / pStream->time_base.den);
                 vinfo->bit_rate    = pStream->codec->bit_rate;
                 vinfo->format      = p_para->vstream_info.video_format;
-                vinfo->aspect_ratio_num = pStream->sample_aspect_ratio.num;
-                vinfo->aspect_ratio_den = pStream->sample_aspect_ratio.den;
+                if(pStream->codec->sample_aspect_ratio.num){
+                    vinfo->aspect_ratio_num = pStream->codec->sample_aspect_ratio.num;
+                    vinfo->aspect_ratio_den = pStream->codec->sample_aspect_ratio.den;
+                }else{
+                    vinfo->aspect_ratio_num = pStream->sample_aspect_ratio.num;
+                    vinfo->aspect_ratio_den = pStream->sample_aspect_ratio.den;
+                }
                 vinfo->frame_rate_num   = pStream->r_frame_rate.num;
                 vinfo->frame_rate_den   = pStream->r_frame_rate.den;
                 vinfo->video_rotation_degree = pStream->rotation_degree;
@@ -954,6 +959,8 @@ static void update_dec_info(play_para_t *p_para,
             //p_para->vstream_info.video_height = vdec->height;
             if (!(p_para->playctrl_info.write_end_header_flag && (vdec->width == 16) && (vdec->height == 16))) {
                 /* end header is 16x16, skip it */
+                p_para->vstream_info.video_width = vdec->width;
+                p_para->vstream_info.video_height = vdec->height;
                 send_event(p_para, PLAYER_EVENTS_VIDEO_SIZE_CHANGED,vdec->width,vdec->height);
             }
         } 
@@ -1670,34 +1677,28 @@ void check_avdiff_status(play_para_t *p_para)
 }
 int check_to_retry(play_para_t *p_para)
 {
-    	struct buf_status vbuf, abuf;
-    	struct vdec_status vdec;
-    	struct adec_status adec;
-    	player_status sta;
-	int ret;
-    	
-    	MEMSET(&vbuf, 0, sizeof(struct buf_status));
-    	MEMSET(&abuf, 0, sizeof(struct buf_status));
+	if(url_interrupt_cb()>0)					// interrupt  to retry
+		return -1;
 
-    	sta = get_player_state(p_para);
-    	if (sta > PLAYER_INITOK) {
-        	if (sta != PLAYER_SEARCHING) {
-            		ret = update_codec_info(p_para, &vbuf, &abuf, &vdec, &adec);
-            		if (ret != 0) {
-            			log_error("[%s:%d]update_codec_info failed\n", -ret,__FUNCTION__,__LINE__);
-                		return -1;
-            		}
-        	}
-		
-        	if((p_para->pFormatCtx->pb&&p_para->pFormatCtx->pb->is_slowmedia)  &&
-       	     (abuf.size >0||vbuf.size>0) &&
-       	     !p_para->playctrl_info.read_end_flag){
+	if((p_para->pFormatCtx->pb&&p_para->pFormatCtx->pb->is_slowmedia)&&!p_para->playctrl_info.read_end_flag){
+    		player_status sta;
+    		sta = get_player_state(p_para);
+    		if(sta==PLAYER_SEARCHING||sta==PLAYER_SEARCHOK||sta==PLAYER_FF_END||sta==PLAYER_FB_END){
+    			p_para->retry_cnt++;			// retry many times
+    		}
+    		else if(sta==PLAYER_ERROR||sta==PLAYER_PLAYEND||sta==PLAYER_STOPED||sta==PLAYER_EXIT){
+    			return -1;						// no retry
+    		}
+		else
+			p_para->retry_cnt=0;			// retry for ever
+    		
+       	if(p_para->retry_cnt<500){  
 			p_para->pFormatCtx->pb->error=0;
        		return 0;
         	}
-    	}
-
-       
+       	else
+       		log_print("[%s:%d]The player state is=%d,retry_cnt=%d\n", __FUNCTION__, __LINE__,sta,p_para->retry_cnt);	
+	}
 	return -1;
 }
 
