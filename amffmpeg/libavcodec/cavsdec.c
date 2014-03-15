@@ -234,6 +234,11 @@ static int decode_mb_i(AVSContext *h, int cbp_code) {
     for(block=0;block<4;block++) {
         d = h->cy + h->luma_scan[block];
         ff_cavs_load_intra_pred_luma(h, top, &left, block);
+        if ((h->pred_mode_Y[ff_cavs_scan3x3[block]] < 0) || (h->pred_mode_Y[ff_cavs_scan3x3[block]] > (sizeof(h->pred_mode_Y)/sizeof(int)))) {
+            av_log(NULL, AV_LOG_ERROR, "## 2222 decode_mb_i: [%s::%d] %d, %x,%x,%x, %d,%d,%d, \n",__FUNCTION__,__LINE__, 
+            (sizeof(h->pred_mode_Y)/sizeof(int)), d, top, left, h->l_stride, ff_cavs_scan3x3[block], h->pred_mode_Y[ff_cavs_scan3x3[block]]);
+            h->pred_mode_Y[ff_cavs_scan3x3[block]] = 0;
+        }
         h->intra_pred_l[h->pred_mode_Y[ff_cavs_scan3x3[block]]]
             (d, top, left, h->l_stride);
         if(h->cbp & (1<<block))
@@ -666,6 +671,10 @@ static int cavs_decode_frame(AVCodecContext * avctx,void *data, int *data_size,
         case CAVS_START_CODE:
             init_get_bits(&s->gb, buf_ptr, input_size);
             decode_seq_header(h);
+            if (!s->width || !s->height) {
+                av_log(NULL, AV_LOG_ERROR, "[%s::%d] cavs_decode_frame error: width=%d,height=%d, \n",__FUNCTION__,__LINE__,s->width,s->height);
+                break;
+            }
             break;
         case PIC_I_START_CODE:
             if(!h->got_keyframe) {
@@ -678,7 +687,11 @@ static int cavs_decode_frame(AVCodecContext * avctx,void *data, int *data_size,
         case PIC_PB_START_CODE:
             *data_size = 0;
             if(!h->got_keyframe)
+                break;			
+            if (!s->width || !s->height) {
+                av_log(NULL, AV_LOG_ERROR, "[%s::%d] cavs_decode_frame error: width=%d,height=%d, \n",__FUNCTION__,__LINE__,s->width,s->height);
                 break;
+            }
             init_get_bits(&s->gb, buf_ptr, input_size);
             h->stc = stc;
             if(decode_pic(h))

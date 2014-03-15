@@ -243,9 +243,17 @@ extern const cavs_vector ff_cavs_dir_mv;
 
 static inline void modify_pred(const int8_t *mod_table, int *mode)
 {
-    *mode = mod_table[*mode];
-    if(*mode < 0) {
-        av_log(NULL, AV_LOG_ERROR, "Illegal intra prediction mode\n");
+    int maxindex = FFMAX(FFMAX(sizeof(ff_left_modifier_l),sizeof(ff_top_modifier_l)), 
+		                    FFMAX(sizeof(ff_left_modifier_c), sizeof(ff_top_modifier_c)));
+	
+    if ((mod_table != NULL) && (mode != NULL) && (*mode >= 0) && (*mode < maxindex)) {
+        *mode = mod_table[*mode];
+        if(*mode < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Illegal intra prediction mode\n");
+            *mode = 0;
+        }
+    } else {
+        av_log(NULL, AV_LOG_ERROR, "[%s::%d] modify_pred error: %d,%d,%d, \n",__FUNCTION__,__LINE__, mod_table[0],*mode, maxindex);
         *mode = 0;
     }
 }

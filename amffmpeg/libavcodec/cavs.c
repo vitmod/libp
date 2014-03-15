@@ -537,6 +537,12 @@ void ff_cavs_mv(AVSContext *h, enum cavs_mv_loc nP, enum cavs_mv_loc nC,
 void ff_cavs_init_mb(AVSContext *h) {
     int i;
 
+    if ((h->top_mv[0]==NULL) || (h->top_mv[1]==NULL) || (h->mbx > h->mb_width)) {
+        av_log(NULL, AV_LOG_ERROR, "[%s::%d] ff_cavs_init_mb error! (%d,%d).%d, %x,%x,   \n",__FUNCTION__,__LINE__, 
+            h->mb_width,h->mb_height,h->mbx,h->top_mv[0],h->top_mv[1]);
+        return;
+    }
+	
     /* copy predictors from top line (MB B and C) into cache */
     for(i=0;i<3;i++) {
         h->mv[MV_FWD_B2+i] = h->top_mv[0][h->mbx*2+i];
