@@ -176,17 +176,28 @@ include $(CLEAR_VARS)
 LOCAL_CFLAGS := \
         -fPIC -D_POSIX_SOURCE  -DDOLBY_DDPDEC51_MULTICHANNEL_ENDPOINT
 
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \>= 4.3))
+    LOCAL_CFLAGS += -DANDROID_VERSION_JBMR2_UP=1	
+endif
+ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.1.0))
+    LOCAL_CFLAGS += -D_VERSION_JB
+else
+    ifneq (0, $(shell expr $(PLATFORM_VERSION) \> 4.0.0))
+        LOCAL_CFLAGS += -D_VERSION_ICS
+    endif
+endif		
+		
 LOCAL_C_INCLUDES:= \
     external/tinyalsa/include
 
 LOCAL_SRC_FILES := \
-	adec-wfd-out.c
+	adec-wfd-out.cpp
 
 LOCAL_MODULE := libamadec_wfd_out
 LOCAL_MODULE_TAGS := optional
 LOCAL_ARM_MODE := arm
 
-LOCAL_SHARED_LIBRARIES += libutils libtinyalsa  liblog
+LOCAL_SHARED_LIBRARIES += libutils libtinyalsa  liblog libmedia
                           
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_TAGS := optional
