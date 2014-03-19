@@ -251,6 +251,40 @@ static int set_params(alsa_param_t *alsa_params)
     return 0;
 }
 
+static int alsa_get_hdmi_state()
+{	
+    int fd = -1, err = 0, state = 0;
+    unsigned fileSize = 32;
+    char *read_buf = NULL;
+    static const char *const HDMI_STATE_PATH = "/sys/class/switch/hdmi/state";
+
+    fd = open(HDMI_STATE_PATH, O_RDONLY);
+    if (fd < 0) {
+        adec_print("ERROR: failed to open config file %s error: %d\n", HDMI_STATE_PATH, errno);
+        close(fd);
+        return -EINVAL;
+    }
+
+    read_buf = (char *)malloc(fileSize);
+    if (!read_buf) {
+        adec_print("Failed to malloc read_buf");
+        goto OUT;
+    }
+    memset(read_buf, 0x0, fileSize);
+    err = read(fd, read_buf, fileSize);
+    if (fd < 0) {
+        adec_print("ERROR: failed to read config file %s error: %d\n", HDMI_STATE_PATH, errno);
+		goto OUT;
+    }
+
+    if (*read_buf == '1')
+        state = 1;
+	
+OUT:
+    free(read_buf);
+    close(fd);
+    return state;
+}
 
 static int alsa_get_aml_card()
 {
@@ -591,7 +625,7 @@ int alsa_init(struct aml_audio_dec* audec)
     adec_print("alsa out init");
     char sound_card_dev[10] = {0};
     int sound_card_id = 0;
-    int sound_dev_id = 2;
+    int sound_dev_id = 0;
     int err;
     pthread_t tid;
     alsa_param_t *alsa_param;
@@ -683,7 +717,13 @@ int alsa_init(struct aml_audio_dec* audec)
     	sound_card_id = 0;
 	    adec_print("get aml card fail, use default \n");
     }
-    sound_dev_id = alsa_get_spdif_port();
+    
+    if(alsa_get_hdmi_state())
+    {
+        sound_dev_id = alsa_get_spdif_port();
+        adec_print("get hdmi device, use hdmi device \n");
+    }
+    
     if(sound_dev_id < 0)
     {
     	sound_dev_id = 0;
