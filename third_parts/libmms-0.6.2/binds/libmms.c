@@ -52,6 +52,7 @@ static int ff_mmsx_open(URLContext *h, const char *uri, int flags)
         MLOG("Invalid mmsx url path\n");
         return -1;
     }
+    MLOG("[%s:%d]open uri=%s\n",__FUNCTION__,__LINE__,uri);
     int ret = -1;
     MMSXContext*  handle = NULL;
     handle = av_mallocz(sizeof(MMSXContext));
@@ -110,6 +111,7 @@ static int ff_mmsx_open(URLContext *h, const char *uri, int flags)
         handle->seekable =1;
     }
     h->priv_data = handle;   
+    MLOG("[%s:%d]Successful to return\n",__FUNCTION__,__LINE__);
     return 0;   
 }
 

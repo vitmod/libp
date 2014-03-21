@@ -68,15 +68,11 @@
 #ifdef OS_ANDROID
 
 #define ANDROID_LOG_MODULE "libmms[mms]"
-#include "android-log.h"
+//#include "android-log.h"
 
-#ifdef AACD_LOGLEVEL_DEBUG
 #include <android/log.h>
 #define lprintf(...) \
     __android_log_print(ANDROID_LOG_DEBUG, "libmms", __VA_ARGS__)
-#else
-#define lprintf(...)
-#endif
 
 #else
 #define lprintf(...) \

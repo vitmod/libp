@@ -758,10 +758,12 @@ static char *transfer_mms_protocol(AVFormatContext *s, const char *filename,cons
     char * file = (char *)av_malloc(strlen(filename) + 1);
     snprintf(file, strlen(filename) + 5, "mmsh%s", filename + 3);
     ret = avio_open_h(&s->pb, file, AVIO_FLAG_READ, headers);
-    if(ret < 0) {
-        snprintf(file, strlen(filename) + 5, "mmst%s", filename + 3);
-        ret = avio_open_h(&s->pb, file, AVIO_FLAG_READ, headers);
-    }
+    if(ret >= 0)
+    	return file;
+
+   snprintf(file, strlen(filename) + 5, "mmst%s", filename + 3);
+   ret = avio_open_h(&s->pb, file, AVIO_FLAG_READ, headers);
+
     if(ret >= 0) {
         return file;
     } else {
@@ -819,6 +821,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
         char * mms_prot = transfer_mms_protocol(s, filename, headers);
         if(mms_prot) {
             s->pb->filename = mms_prot;
+            av_log(NULL, AV_LOG_INFO, "[%s:%d]Tranfer mms mms_prot=%s\n",__FUNCTION__,__LINE__,mms_prot);
         }
     } else {
         if(strstr(filename,"shttp") !=NULL && strstr(filename,"mpd") !=NULL){	// dash protocol
@@ -863,6 +866,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
                     }
 			url_fclose(s->pb);
 			s->pb=NULL;
+			av_log(NULL, AV_LOG_INFO, "[%s:%d]Use new url=%s to open\n",__FUNCTION__,__LINE__);
 			if ((err=avio_open_h(&s->pb,listfile, AVIO_FLAG_READ, headers)) < 0) {
 				av_log(NULL, AV_LOG_ERROR, "init_input:%s failed,line=%d err=0x%x\n",listfile,__LINE__,err);
 				av_free(listfile);

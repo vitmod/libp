@@ -17,7 +17,7 @@ LOCAL_SRC_FILES := src/mms.c \
 LOCAL_CFLAGS	:= -DHAVE_CONFIG_H $(cflags_loglevels) 
 LOCAL_CFLAGS	+= -DDEBUG
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include/\
-	 $(LOCAL_PATH)/../libiconv-1.14/include
+	 $(LOCAL_PATH)/../libiconv-1.12/include
 LOCAL_SHARED_LIBRARIES := libiconv libutils liblog
 include $(BUILD_SHARED_LIBRARY)
 
@@ -39,7 +39,7 @@ LOCAL_SRC_FILES := src/mms.c \
 LOCAL_CFLAGS	:= -DHAVE_CONFIG_H $(cflags_loglevels) 
 LOCAL_CFLAGS	+= -DDEBUG
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include/\
-	 $(LOCAL_PATH)/../libiconv-1.14/include
+	 $(LOCAL_PATH)/../libiconv-1.12/include
 LOCAL_SHARED_LIBRARIES := libutils liblog
 LOCAL_STATIC_LIBRARIES := libiconv 
 include $(BUILD_STATIC_LIBRARY)
