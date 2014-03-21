@@ -405,8 +405,10 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
         int mode=msg->param;
         log_print("set freerun_mode 0x%x\n",mode);
         if(mode || am_getconfig_bool("media.libplayer.wfd")){/*mode=1,2,is low buffer mode also*/
-            if(para->pFormatCtx&& para->pFormatCtx->pb)
+            if(para->pFormatCtx&& para->pFormatCtx->pb){
                 ffio_set_buf_size(para->pFormatCtx->pb,1024*4);//reset aviobuf to small.
+                url_set_seek_flags(para->pFormatCtx->pb,LESS_BUFF_DATA | NO_READ_RETRY);
+            }
             para->playctrl_info.lowbuffermode_flag=1;
         }else{
             para->playctrl_info.lowbuffermode_flag=0;

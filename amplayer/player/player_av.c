@@ -585,7 +585,7 @@ static int raw_read(play_para_t *para)
     if (!para->playctrl_info.read_end_flag && (0 == pkt->data_size)) {
         int tryread_size;
         if (para->playctrl_info.lowbuffermode_flag) {
-            tryread_size = 1024;    /*keep in low buffer level for less latency ....*/
+            tryread_size = 188*100;    /*keep in low buffer level for less latency ....*/
         } else {
             tryread_size = para->max_raw_size;
         }
