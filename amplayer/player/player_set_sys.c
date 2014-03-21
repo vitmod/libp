@@ -82,6 +82,11 @@ int set_black_policy(int blackout)
     return set_sysfs_int("/sys/class/video/blackout_policy", blackout);
 }
 
+int clear_video_buf()
+{
+	  return set_sysfs_int("/sys/class/video/clear_video_buf", 1);
+}
+
 int get_black_policy()
 {
     return get_sysfs_int("/sys/class/video/blackout_policy") & 1;
@@ -1072,6 +1077,30 @@ int wait_play_end()
         ret = amsysfs_get_sysfs_str("/sys/class/amstream/videobufused", buf, 32);     	
     } 
     return 0;
+}
+
+int wait_video_unreg()
+{
+    int ret = 0;
+    int waitcount = 0;
+    char buf[32]={0};
+	ret = amsysfs_get_sysfs_str("/sys/module/amvideo/parameters/new_frame_count", buf, 32);
+	log_print("[wait_di_bypass] ret %d buf %s\n",ret,buf);
+	while((ret>=0)&&(!strstr(buf, "0")))
+    {
+        log_print("[wait_di_bypass] wait count %d\n",waitcount);
+		if(waitcount > 500)
+		{             
+			return -1; 
+	    }
+
+		waitcount++;
+        usleep(500);
+        memset(buf,0,sizeof(buf));
+	    ret = amsysfs_get_sysfs_str("/sys/module/amvideo/parameters/new_frame_count", buf, 32);       
+	}
+	return 0;
+
 }
 
 int disable_2X_2XYscale()

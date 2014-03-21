@@ -13,7 +13,7 @@ typedef int CODEC_TYPE;
 #define CODEC_SUBTITLE        (4)
 
 #define RW_WAIT_TIME        (20 * 1000) //20ms
-#define SUBTITLE_SIZE		(1024*1024*4)
+#define SUBTITLE_SIZE		(256*1024)
 #define AUDIO_WRITE_SIZE_PER_TIME 1024*10  //used for ape
 
 typedef struct hdr_buf {

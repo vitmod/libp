@@ -17,7 +17,7 @@
 #include "system/systemsetting.h"
 #include <cutils/properties.h>
 
-extern es_sub_t es_sub_buf[9];
+extern es_sub_t es_sub_buf[SSTREAM_MAX_NUM];
 
 DECLARE_ALIGNED(16, uint8_t, dec_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
 
@@ -1331,8 +1331,9 @@ static void subtitle_para_init(play_para_t *player)
 static void init_es_sub(play_para_t *p_para)
 {
     int i;
+    int subnum = p_para->sstream_num;
 
-    for (i = 0; i < 9; i++) {
+    for (i = 0; i <= subnum; i++) {
         es_sub_buf[i].subid = i;
         es_sub_buf[i].rdp = 0;
         es_sub_buf[i].wrp = 0;
@@ -1468,8 +1469,10 @@ int player_dec_init(play_para_t *p_para)
     }
 
     if (p_para->sstream_info.has_sub) {
-        init_es_sub(p_para);
-        set_es_sub(p_para);
+        if (!am_getconfig_bool("media.amplayer.sublowmem")){
+            init_es_sub(p_para);
+            set_es_sub(p_para);
+        }
     }
 #ifdef DUMP_INDEX
     int i, j;
