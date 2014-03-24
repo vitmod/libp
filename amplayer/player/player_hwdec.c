@@ -1015,7 +1015,7 @@ int pre_header_feeding(play_para_t *para)
         }
     }
 
-    if (IS_SUB_NEED_PREFEED_HEADER(para->sstream_info.sub_type) && para->sstream_info.has_sub) {
+    if (IS_SUB_NEED_PREFEED_HEADER(para->sstream_info.sub_type) && para->sstream_info.has_sub && para->stream_type == STREAM_ES) {
 		if (para->sstream_info.sub_index != -1){
 		    subStream = para->pFormatCtx->streams[subindex];
 	        scodec = subStream->codec;
