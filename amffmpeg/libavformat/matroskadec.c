@@ -1966,15 +1966,16 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
     matroska_add_index_entries(matroska);
 
-    if (index_list->nb_elem < 2){		
+    if (matroska->index.nb_elem < 2){		
         s->support_seek = 0;	
-        av_log(matroska->ctx, AV_LOG_INFO, "index nb_elem less than 2, set unsupport seek! nb_elem:%d seekable:%d\n", index_list->nb_elem, matroska->ctx->pb->seekable);
+        av_log(matroska->ctx, AV_LOG_INFO, "index nb_elem less than 2, set unsupport seek! nb_elem:%d seekable:%d\n", matroska->index.nb_elem, matroska->ctx->pb->seekable);
     }
     else		
         s->support_seek = 1;
 
-    if(matroska->ctx->pb->seekable == 1 && index_list->nb_elem == 0)
-        s->support_seek = 1;
+    if (matroska!=NULL && matroska->ctx->pb!=NULL)
+        if(matroska->ctx->pb->seekable == 1 && matroska->index.nb_elem == 0)
+            s->support_seek = 1;
 
     matroska_convert_tags(s);
 
