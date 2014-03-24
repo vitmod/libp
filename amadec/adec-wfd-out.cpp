@@ -33,13 +33,7 @@ namespace android
 // audio PCM output configuration 
 #define WFD_PERIOD_SIZE  1024
 #define WFD_PERIOD_NUM   4
-static struct pcm_config wfd_config_out = {
-    .channels = 2,
-    .rate = 48000,
-    .period_size = WFD_PERIOD_SIZE,
-    .period_count = WFD_PERIOD_NUM,
-    .format = PCM_FORMAT_S16_LE,
-};
+static struct pcm_config wfd_config_out;
 static struct pcm *wfd_pcm;
 static char cache_buffer_bytes[64];
 static int  cached_len=0;
@@ -186,6 +180,11 @@ EXTERN_TAG int  pcm_output_init(int sr,int ch)
     int card = 0;
     int device = 2;
     cached_len = 0;
+    wfd_config_out.channels = 2;
+    wfd_config_out.rate = 48000;
+    wfd_config_out.period_size = WFD_PERIOD_SIZE;
+    wfd_config_out.period_count = WFD_PERIOD_NUM;
+    wfd_config_out.format = PCM_FORMAT_S16_LE;
     wfd_config_out.start_threshold = WFD_PERIOD_SIZE;
     wfd_config_out.avail_min = 0;//SHORT_PERIOD_SIZE;
     card = get_aml_card();
