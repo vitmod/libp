@@ -2361,6 +2361,7 @@ int set_header_info(play_para_t *para)
             }
         } else if (pkt->type == CODEC_AUDIO) {
             if ((!para->playctrl_info.raw_mode) &&
+		 ( ! (memcmp(para->pFormatCtx->iformat->name,"mpegts",6)==0))	&&	/*if mpeg file used softdemux,have adts header before*/
 		   para->file_type != MPEG_FILE/*&&para->file_type != PMP_FILE*/	    &&/*if mpeg file used softdemux,have adts header before*/
                 (para->astream_info.audio_format == AFORMAT_AAC || para->astream_info.audio_format == AFORMAT_AAC_LATM)) {
                 if (pkt->hdr == NULL) {
