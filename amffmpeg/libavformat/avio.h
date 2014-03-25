@@ -55,6 +55,9 @@ try less read seek,for fast seek..
 */
 #define LESS_READ_SEEK	(0x1000)
 #define MORE_READ_SEEK	(0x2000) 
+#define LESS_BUFF_DATA	(0x4000) //do not buffering more data for fast read.
+#define NO_READ_RETRY	(0x8000) //do not buffering more data for fast read.
+
 
 typedef struct {
     unsigned char *buffer;  /**< Start of the buffer. */
@@ -790,6 +793,9 @@ int ffio_fdopen_resetlpbuf(AVIOContext *s,int lpsize);
 
 int url_lp_set_seekflags(URLContext *s,int seekflagmask);
 int url_lp_clear_seekflags(URLContext *s,int seekflagmask);
+
+int url_set_seek_flags(AVIOContext *s,unsigned int flags);
+int url_clear_seek_flags(AVIOContext *s,unsigned int flags);
 
 int url_start_user_seek(AVIOContext *s);
 int url_finished_user_seek(AVIOContext *s);

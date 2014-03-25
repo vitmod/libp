@@ -253,9 +253,9 @@ static int _is_add_fake_leader_block(M3ULiveSession* ss){
         ERROR_MSG();
         return -1;
     }
-    if(ss->durationUs>0){//just for live
-        return 0;
-    }
+    //if(ss->durationUs>0){//just for live
+    //    return 0;
+    //}
     if(ss->is_ts_media>0&&in_get_sys_prop_float("libplayer.netts.recalcpts")>0){
         LOGV("Live streaming,soft demux,open add fake ts leader\n");
         return 1;

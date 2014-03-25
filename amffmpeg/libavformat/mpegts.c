@@ -53,7 +53,7 @@
 #define MAX_SEG_DURATION 0x7530 //30s 
 
 
-#define DIFF_PTS_MIN  (int)4000//ms
+#define DIFF_PTS_MIN  (int)1000//ms
 #define JUMP_PTS  (int64_t)(200*90*1000)
 #define BASE_PTS_MAX (int64_t)(0xfffffffffffffff-0x1B7740)//20s
 #define RECALC_DISPTS_TAG ("amlogictsdiscontinue")

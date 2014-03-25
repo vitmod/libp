@@ -9,33 +9,102 @@
 #include <stdarg.h>
 #include <string.h>
 #include <android/log.h>
-
+//get android  media stream volume
+#define CODE_CALC_VOLUME
+#ifdef CODE_CALC_VOLUME
+#include <media/AudioSystem.h>
+#define EXTERN_TAG  extern "C" 
+namespace android
+{
+#else
+#define EXTERN_TAG
+#endif
 #define  LOG_TAG    "wfd-output"
 #define adec_print(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 
 // default using tinyalsa
 #include <tinyalsa/asoundlib.h>
 
+
+
+//"/sys/class/switch/hdmi/state"
+#define  HDMI_SWITCH_STATE_PATH  "/sys/class/amhdmitx/amhdmitx0/hpd_state"
+
 // audio PCM output configuration 
 #define WFD_PERIOD_SIZE  1024
 #define WFD_PERIOD_NUM   4
-static struct pcm_config wfd_config_out = {
-    .channels = 2,
-    .rate = 48000,
-    .period_size = WFD_PERIOD_SIZE,
-    .period_count = WFD_PERIOD_NUM,
-    .format = PCM_FORMAT_S16_LE,
-};
+static struct pcm_config wfd_config_out;
 static struct pcm *wfd_pcm;
 static char cache_buffer_bytes[64];
 static int  cached_len=0;
+static const char *const SOUND_CARDS_PATH = "/proc/asound/cards";
 
+static int get_hdmi_switch_state()
+{
+	int state = 0;
+    int fd = -1;
+    char  bcmd[16] = {0};
+    fd = open(HDMI_SWITCH_STATE_PATH, O_RDONLY);
+    if (fd >= 0) {
+        read(fd, bcmd, sizeof(bcmd));
+        state = strtol(bcmd, NULL, 10);
+        close(fd);
+    }else {
+        adec_print("unable to open file %s,err: %s", HDMI_SWITCH_STATE_PATH, strerror(errno));
+    }
+	return state;
+}
+#ifdef CODE_CALC_VOLUME
+// save the last volume  in case get vol failure, which cause the volume value large gap
+static float last_vol = 1.0;
+static float get_android_stream_volume()
+{
+	float vol = last_vol;
+#if defined(ANDROID_VERSION_JBMR2_UP)
+    unsigned int sr = 0;
+#else
+    int sr = 0;
+#endif 
+	AudioSystem::getOutputSamplingRate(&sr,AUDIO_STREAM_MUSIC);
+	if(sr > 0){
+		audio_io_handle_t handle = -1;		
+		handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+									48000,
+									AUDIO_FORMAT_PCM_16_BIT,
+									AUDIO_CHANNEL_OUT_STEREO,
+#if defined(_VERSION_ICS) 
+							AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+#else	//JB...			
+							AUDIO_OUTPUT_FLAG_PRIMARY
+#endif	                            
+		);
+		if(handle > 0){
+			if(AudioSystem::getStreamVolume(AUDIO_STREAM_MUSIC,&vol,handle) == 	NO_ERROR){
+				last_vol = vol;
+			//	adec_print("stream volume %f \n",vol);
+			}
+			else
+				adec_print("get stream volume failed\n");			
+		}
+		else
+			adec_print("get output handle failed\n");
+	}
+	return vol;
+
+}
+static void apply_stream_volume(float vol,char *buf,int size)
+{
+	int i;
+	short *sample = (short*)buf;
+	for(i = 0;i < size/sizeof(short);i++)
+		sample[i] = vol*sample[i];
+}
+#endif
 static int  get_aml_card(){
 	int card = -1, err = 0;
 	int fd = -1;
 	unsigned fileSize = 512;
 	char *read_buf = NULL, *pd = NULL;
-	static const char *const SOUND_CARDS_PATH = "/proc/asound/cards";
 	fd = open(SOUND_CARDS_PATH, O_RDONLY);
       if (fd < 0) {
         adec_print("ERROR: failed to open config file %s error: %d\n", SOUND_CARDS_PATH, errno);
@@ -106,11 +175,16 @@ OUT:
 	return port;
 }
 
-int  pcm_output_init(int sr,int ch)
+EXTERN_TAG int  pcm_output_init(int sr,int ch)
 {
     int card = 0;
     int device = 2;
     cached_len = 0;
+    wfd_config_out.channels = 2;
+    wfd_config_out.rate = 48000;
+    wfd_config_out.period_size = WFD_PERIOD_SIZE;
+    wfd_config_out.period_count = WFD_PERIOD_NUM;
+    wfd_config_out.format = PCM_FORMAT_S16_LE;
     wfd_config_out.start_threshold = WFD_PERIOD_SIZE;
     wfd_config_out.avail_min = 0;//SHORT_PERIOD_SIZE;
     card = get_aml_card();
@@ -119,7 +193,11 @@ int  pcm_output_init(int sr,int ch)
     	card = 0;
 	adec_print("get aml card fail, use default \n");
     }
-    device = get_spdif_port();
+	// if hdmi state on 
+	if(get_hdmi_switch_state())
+		device = get_spdif_port();
+	else
+		device = 0; //i2s output for analog output
     if(device < 0)
     {
     	device = 0;
@@ -143,7 +221,7 @@ int  pcm_output_init(int sr,int ch)
    
 }
 
-int  pcm_output_write(char *buf,unsigned size)
+EXTERN_TAG int  pcm_output_write(char *buf,unsigned size)
 {
 
 	int ret = 0;	
@@ -151,6 +229,10 @@ int  pcm_output_write(char *buf,unsigned size)
 	char *data_src;	
 	char outbuf[8192];
 	int total_len,ouput_len;
+#ifdef CODE_CALC_VOLUME
+	float vol = get_android_stream_volume();
+	apply_stream_volume(vol,buf,size);
+#endif	
 	if(size < 64)
 		return 0;	
 	if(size > sizeof(outbuf)){
@@ -189,7 +271,7 @@ int  pcm_output_write(char *buf,unsigned size)
 	//adec_print("write size %d ,ret %d \n",size,ret);
 	return ret;
 }
-int  pcm_output_uninit()
+EXTERN_TAG int  pcm_output_uninit()
 {
 	if(wfd_pcm)
 		pcm_close(wfd_pcm);
@@ -197,7 +279,7 @@ int  pcm_output_uninit()
 	adec_print("pcm_output_uninit done \n");
 	return 0;
 }
-int  pcm_output_latency()
+EXTERN_TAG int  pcm_output_latency()
 {
 #if 1
 	struct timespec tstamp;
@@ -213,3 +295,6 @@ int  pcm_output_latency()
 	return pcm_hw_lantency(wfd_pcm);
 #endif
 }
+#ifdef CODE_CALC_VOLUME
+}
+#endif

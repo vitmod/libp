@@ -37,21 +37,7 @@ static Mutex mLock_raw;
 extern "C" int get_audio_decoder(void);
 static int get_digitalraw_mode(void)
 {
-    int fd;
-    int val = 0;
-    char  bcmd[28];
-    fd = open("/sys/class/audiodsp/digital_raw", O_RDONLY);
-    if (fd >= 0) {
-        read(fd, &bcmd, 28);
-        close(fd);
-    }
-	else{
-		adec_print("open DIGITAL_RAW_PATH failed\n");
-		return 0;
-	}
-    val=bcmd[21]&0xf;
-    return val;
-    
+	return amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
 }
 void restore_system_samplerate()
 {
