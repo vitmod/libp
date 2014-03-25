@@ -860,7 +860,7 @@ static int non_raw_read(play_para_t *para)
                      }
                 }
             } 
-            else if (has_sub && (sub_idx == pkt->avpkt->stream_index) && (((1<<(pkt->avpkt->stream_index))&sub_stream) || (am_getconfig_bool("media.amplayer.sublowmem")))) {
+            else if (has_sub && ((am_getconfig_bool("media.amplayer.sublowmem"))?(sub_idx == pkt->avpkt->stream_index):((1<<(pkt->avpkt->stream_index))&sub_stream))) {
             //} else if (has_sub && ((1<<(para->pFormatCtx->streams[pkt->avpkt->stream_index]->id))&sub_stream)/*&& sub_idx == pkt->avpkt->stream_index*/) {
 #if 0
                 /* here we get the subtitle data, something should to be done */
@@ -3083,7 +3083,7 @@ void player_switch_sub(play_para_t *para)
     int64_t cur_pts = para->state.current_pts;
     char **sub_buf = para->sstream_info.sub_buf;
     int subnum = para->sstream_num;
-	
+    int index;
     /* check if it has audio */
     if (para->sstream_info.has_sub == 0) {
         return;
@@ -3181,15 +3181,14 @@ void player_switch_sub(play_para_t *para)
 	            total_size += write_size;
 	        }
 	        log_print("[%s:%d]write finished! total_size = %d, write_size = %d\n", __FUNCTION__, __LINE__, total_size, write_size);
-	        //set curr for cts
-	        int index;
-	        for (index = 0; index < subnum; index++) {
-	          if (pstream->id == es_sub_buf[index].subid) {
-	              break;
-	          }
-	        }
+
 		}
-		
+        //set curr for cts
+        for (index = 0; index < subnum; index++) {
+            if (pstream->id == es_sub_buf[index].subid) {
+                break;
+            }
+        }
         if(-1==set_subtitle_index(index))
         {
           log_print("set cur subtitle index = %d failed ! \n",index);
