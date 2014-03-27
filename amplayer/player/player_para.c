@@ -1395,7 +1395,12 @@ int player_dec_init(play_para_t *p_para)
     ret = set_file_type(p_para->pFormatCtx->iformat->name, &file_type, &stream_type);
 
     if(memcmp(p_para->pFormatCtx->iformat->name,"mpegts",6)==0){
-	   if(am_getconfig_bool("libplayer.ts.softdemux")){
+	   if(p_para->start_param->is_ts_soft_demux){
+            log_print("Player config used soft demux,used soft demux now.\n");
+            file_type=STREAM_FILE;
+            stream_type=STREAM_ES;
+            ret = PLAYER_SUCCESS;
+	   }else if(am_getconfig_bool("libplayer.ts.softdemux")){
            log_print("configned all ts streaming used soft demux,used soft demux now.\n");
            file_type=STREAM_FILE;
            stream_type=STREAM_ES;
@@ -1416,11 +1421,14 @@ int player_dec_init(play_para_t *p_para)
 			   stream_type=STREAM_ES;
 			   ret = PLAYER_SUCCESS;
 			}
-	   }else if(p_para->start_param->is_ts_soft_demux){
-            log_print("Player config used soft demux,used soft demux now.\n");
-            file_type=STREAM_FILE;
-            stream_type=STREAM_ES;
-            ret = PLAYER_SUCCESS;
+	   }
+	   if(p_para->playctrl_info.lowbuffermode_flag || am_getconfig_bool("media.libplayer.wfd")){
+	       if(!p_para->start_param->is_ts_soft_demux && stream_type!=STREAM_TS){
+              log_print("Player reconfig use hwdemux for wfd now\n");
+              file_type=MPEG_FILE;
+              stream_type=STREAM_TS;
+              ret = PLAYER_SUCCESS;
+	       }
 	   }
     }
    
