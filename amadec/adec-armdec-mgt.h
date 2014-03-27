@@ -34,6 +34,7 @@ struct audio_decoder_operations
 	    int (*getinfo)(audio_decoder_operations_t *,AudioInfo *pAudioInfo);
 	    void * priv_data;//point to audec
 	    void * priv_dec_data;//decoder private data
+	    void *pdecoder; // decoder instance
 	    int channels;
             unsigned long pts;
            int samplerate;

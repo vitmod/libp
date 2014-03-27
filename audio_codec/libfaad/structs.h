@@ -329,6 +329,84 @@ typedef struct {
     uint32_t ASCbits;
 } latm_header;
 
+#define NEW_CODE_CHECK_LATM
+#ifdef NEW_CODE_CHECK_LATM
+ #define LOAS_HEADER_SIZE 3
+/****************************************************************************
+ * LOAS helpers
+ ****************************************************************************/
+#define LATM_MAX_EXTRA_SIZE 64
+typedef struct
+{
+    int i_object_type;
+    int i_samplerate;
+    int i_channel;
+    int i_sbr;          // 0: no sbr, 1: sbr, -1: unknown
+    int i_ps;           // 0: no ps,  1: ps,  -1: unknown
+
+    struct
+    {
+        int i_object_type;
+        int i_samplerate;
+    } extension;
+
+    /* GASpecific */
+    int i_frame_length;   // 1024 or 960
+
+} mpeg4_cfg_t;
+typedef struct
+{
+    int i_program;
+    int i_layer;
+
+    int i_frame_length_type;
+    int i_frame_length;         // type 1
+    int i_frame_length_index;   // type 3 4 5 6 7
+
+    mpeg4_cfg_t cfg;
+
+    /* Raw configuration */
+    int     i_extra;
+    uint8_t extra[LATM_MAX_EXTRA_SIZE];
+
+} latm_stream_t;
+
+#define LATM_MAX_LAYER (8)
+#define LATM_MAX_PROGRAM (16)
+typedef struct
+{
+    int b_same_time_framing;
+    int i_sub_frames;
+    int i_programs;
+
+    int pi_layers[LATM_MAX_PROGRAM];
+
+    int pi_stream[LATM_MAX_PROGRAM][LATM_MAX_LAYER];
+
+    int i_streams;
+    latm_stream_t stream[LATM_MAX_PROGRAM*LATM_MAX_LAYER];
+
+    int i_other_data;
+    int i_crc;  /* -1 if not set */
+} latm_mux_t;
+
+typedef struct 
+{
+    /*
+     * Input properties
+     */
+    int i_state;
+    int i_type;
+    int i_frame_size;
+    unsigned int i_channels;
+    unsigned int i_rate, i_frame_length, i_header_size;
+    int i_input_rate;
+    /* LOAS */
+    unsigned char b_latm_cfg;
+    latm_mux_t latm;
+}decoder_sys_t;
+
+#endif
 typedef struct
 {
     uint8_t adts_header_present;
@@ -435,6 +513,11 @@ typedef struct
 #endif
 	latm_header latm_config;
 	const unsigned char *cmes;
+#ifdef NEW_CODE_CHECK_LATM
+	decoder_sys_t dec_sys;
+#endif
+	int last_sf_index;
+	int last_ch_configure;
 } NeAACDecStruct;
 
 

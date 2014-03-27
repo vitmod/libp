@@ -52,19 +52,500 @@
 #ifdef ANALYSIS
 uint16_t dbg_count;
 #endif
-#ifndef __ROM_
-//#define PRINT_FAAD_DEBUG_INFO
-static unsigned faad_log_enable = 0;
+
+#define faad_log_info audio_codec_print
+
+#ifdef NEW_CODE_CHECK_LATM
+#define LATM_LOG  audio_codec_print
+static const int pi_sample_rates[16] =
+{
+    96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050,
+    16000, 12000, 11025, 8000,  7350,  0,     0,     0
+};
+ static int LOASSyncInfo(uint8_t p_header[LOAS_HEADER_SIZE], unsigned int *pi_header_size)
+{
+    *pi_header_size = 3;
+    return ((p_header[1] & 0x1f) << 8) + p_header[2];
+}
+
+static int Mpeg4GAProgramConfigElement(bitfile *ld)
+{
+    /* TODO compute channels count ? */
+    int i_tag = faad_getbits(ld, 4);
+    if (i_tag != 0x05)
+        return -1;
+    faad_getbits(ld, 2 + 4); // object type + sampling index
+    int i_num_front = faad_getbits(ld, 4);
+    int i_num_side = faad_getbits(ld, 4);
+    int i_num_back = faad_getbits(ld, 4);
+    int i_num_lfe = faad_getbits(ld, 2);
+    int i_num_assoc_data = faad_getbits(ld, 3);
+    int i_num_valid_cc = faad_getbits(ld, 4);
+
+    if (faad_getbits(ld,1))
+        faad_getbits(ld, 4); // mono downmix
+    if (faad_getbits(ld,1))
+        faad_getbits(ld, 4); // stereo downmix
+    if (faad_getbits(ld,1))
+        faad_getbits(ld, 2+1); // matrix downmix + pseudo_surround
+
+    faad_getbits(ld, i_num_front * (1+4));
+    faad_getbits(ld, i_num_side * (1+4));
+    faad_getbits(ld, i_num_back * (1+4));
+    faad_getbits(ld, i_num_lfe * (4));
+    faad_getbits(ld, i_num_assoc_data * (4));
+    faad_getbits(ld, i_num_valid_cc * (5));
+    faad_byte_align(ld);
+    int i_comment = faad_getbits(ld, 8);
+    faad_getbits(ld, i_comment * 8);
+    return 0;
+}
+
+static int Mpeg4GASpecificConfig(mpeg4_cfg_t *p_cfg, bitfile *ld)
+{
+    p_cfg->i_frame_length = faad_getbits(ld,1) ? 960 : 1024;
+
+    if (faad_getbits(ld,1))     // depend on core coder
+        faad_getbits(ld, 14);   // core coder delay
+
+    int i_extension_flag = faad_getbits(ld,1);
+    if (p_cfg->i_channel == 0)
+        Mpeg4GAProgramConfigElement(ld);
+    if (p_cfg->i_object_type == 6 || p_cfg->i_object_type == 20)
+        faad_getbits(ld, 3);    // layer
+
+    if (i_extension_flag) {
+        if (p_cfg->i_object_type == 22)
+            faad_getbits(ld, 5 + 11);   // numOfSubFrame + layer length
+        if (p_cfg->i_object_type == 17 || p_cfg->i_object_type == 19 ||
+            p_cfg->i_object_type == 20 || p_cfg->i_object_type == 23)
+            faad_getbits(ld, 1+1+1);    // ER data : section scale spectral */
+        if (faad_getbits(ld,1))     // extension 3
+            LATM_LOG( "Mpeg4GASpecificConfig: error 1\n");
+    }
+    return 0;
+}
+
+static int Mpeg4ReadAudioObjectType(bitfile *ld)
+{
+    int i_type = faad_getbits(ld, 5);
+    if (i_type == 31)
+        i_type = 32 + faad_getbits(ld, 6);
+    return i_type;
+}
+
+static int Mpeg4ReadAudioSamplerate(bitfile *ld)
+{
+    int i_index = faad_getbits(ld, 4);
+    if (i_index != 0x0f)
+        return pi_sample_rates[i_index];
+    return faad_getbits(ld, 24);
+}
+
+static int Mpeg4ReadAudioSpecificInfo(mpeg4_cfg_t *p_cfg, int *pi_extra, uint8_t *p_extra, bitfile *ld, int i_max_size)
+{
+#if 0
+    static const char *ppsz_otype[] = {
+        "NULL",
+        "AAC Main", "AAC LC", "AAC SSR", "AAC LTP", "SBR", "AAC Scalable",
+        "TwinVQ",
+        "CELP", "HVXC",
+        "Reserved", "Reserved",
+        "TTSI",
+        "Main Synthetic", "Wavetables Synthesis", "General MIDI",
+        "Algorithmic Synthesis and Audio FX",
+        "ER AAC LC",
+        "Reserved",
+        "ER AAC LTP", "ER AAC Scalable", "ER TwinVQ", "ER BSAC", "ER AAC LD",
+        "ER CELP", "ER HVXC", "ER HILN", "ER Parametric",
+        "SSC",
+        "PS", "Reserved", "Escape",
+        "Layer 1", "Layer 2", "Layer 3",
+        "DST",
+    };
+#endif
+    const int i_pos_start = faad_get_processed_bits(ld);
+    bitfile s_sav = *ld;
+    int i_bits;
+    int i;
+
+    memset(p_cfg, 0, sizeof(*p_cfg));
+    *pi_extra = 0;
+
+    p_cfg->i_object_type = Mpeg4ReadAudioObjectType(ld);
+    p_cfg->i_samplerate = Mpeg4ReadAudioSamplerate(ld);
+
+    p_cfg->i_channel = faad_getbits(ld, 4);
+    if (p_cfg->i_channel == 7)
+        p_cfg->i_channel = 8; // 7.1
+    else if (p_cfg->i_channel >= 8)
+        p_cfg->i_channel = -1;
+
+    p_cfg->i_sbr = -1;
+    p_cfg->i_ps  = -1;
+    p_cfg->extension.i_object_type = 0;
+    p_cfg->extension.i_samplerate = 0;
+    if (p_cfg->i_object_type == 5 || p_cfg->i_object_type == 29) {
+        p_cfg->i_sbr = 1;
+        if (p_cfg->i_object_type == 29)
+           p_cfg->i_ps = 1;
+        p_cfg->extension.i_object_type = 5;
+        p_cfg->extension.i_samplerate = Mpeg4ReadAudioSamplerate(ld);
+
+        p_cfg->i_object_type = Mpeg4ReadAudioObjectType(ld);
+    }
+
+    switch(p_cfg->i_object_type)
+    {
+    case 1: case 2: case 3: case 4:
+    case 6: case 7:
+    case 17: case 19: case 20: case 21: case 22: case 23:
+        Mpeg4GASpecificConfig(p_cfg, ld);
+        break;
+    case 8:
+        // CelpSpecificConfig();
+        break;
+    case 9:
+        // HvxcSpecificConfig();
+        break;
+    case 12:
+        // TTSSSpecificConfig();
+        break;
+    case 13: case 14: case 15: case 16:
+        // StructuredAudioSpecificConfig();
+        break;
+    case 24:
+        // ERCelpSpecificConfig();
+        break;
+    case 25:
+        // ERHvxcSpecificConfig();
+        break;
+    case 26: case 27:
+        // ParametricSpecificConfig();
+        break;
+    case 28:
+        // SSCSpecificConfig();
+        break;
+    case 32: case 33: case 34:
+        // MPEG_1_2_SpecificConfig();
+        break;
+    case 35:
+        // DSTSpecificConfig();
+        break;
+    case 36:
+        // ALSSpecificConfig();
+        break;
+    default:
+        // error
+        break;
+    }
+    switch(p_cfg->i_object_type)
+    {
+    case 17: case 19: case 20: case 21: case 22: case 23:
+    case 24: case 25: case 26: case 27:
+    {
+        int epConfig = faad_getbits(ld, 2);
+        if (epConfig == 2 || epConfig == 3)
+            //ErrorProtectionSpecificConfig();
+        if (epConfig == 3)
+            if (faad_getbits(ld,1)) {
+                // TODO : directMapping
+            }
+        break;
+    }
+    default:
+        break;
+    }
+
+    if (p_cfg->extension.i_object_type != 5 && i_max_size > 0 && i_max_size - (faad_get_processed_bits(ld) - i_pos_start) >= 16 &&
+        faad_getbits(ld, 11) == 0x2b7) {
+        p_cfg->extension.i_object_type = Mpeg4ReadAudioObjectType(ld);
+        if (p_cfg->extension.i_object_type == 5) {
+            p_cfg->i_sbr  = faad_getbits(ld,1);
+            if (p_cfg->i_sbr == 1) {
+                p_cfg->extension.i_samplerate = Mpeg4ReadAudioSamplerate(ld);
+                if (i_max_size > 0 && i_max_size - (faad_get_processed_bits(ld) - i_pos_start) >= 12 && faad_getbits(ld, 11) == 0x548)
+                   p_cfg->i_ps = faad_getbits(ld,1);
+            }
+        }
+    }
+
+    //fprintf(stderr, "Mpeg4ReadAudioSpecificInfo: t=%s(%d)f=%d c=%d sbr=%d\n",
+    //         ppsz_otype[p_cfg->i_object_type], p_cfg->i_object_type, p_cfg->i_samplerate, p_cfg->i_channel, p_cfg->i_sbr);
+
+    i_bits = faad_get_processed_bits(ld) - i_pos_start;
+
+    *pi_extra = min((i_bits + 7) / 8, LATM_MAX_EXTRA_SIZE);
+    for (i = 0; i < *pi_extra; i++) {
+        const int i_read = min(8, i_bits - 8*i);
+        p_extra[i] = faad_getbits(&s_sav, i_read) << (8-i_read);
+    }
+    return i_bits;
+}
+
+static int LatmGetValue(bitfile *ld)
+{
+    int i_bytes = faad_getbits(ld, 2);
+    int v = 0;
+    int i;
+    for (i = 0; i < i_bytes; i++)
+        v = (v << 8) + faad_getbits(ld, 8);
+
+    return v;
+}
+
+static int LatmReadStreamMuxConfiguration(latm_mux_t *m, bitfile *ld)
+{
+    int i_mux_version;
+    int i_mux_versionA;
+
+    i_mux_version = faad_getbits(ld, 1);
+    i_mux_versionA = 0;
+    if (i_mux_version)
+        i_mux_versionA = faad_getbits(ld, 1);
+
+    if (i_mux_versionA != 0) /* support only A=0 */
+        return -1;
+
+    memset(m, 0, sizeof(*m));
+
+    if (i_mux_versionA == 0)
+        if (i_mux_version == 1)
+            LatmGetValue(ld); /* taraBufferFullness */
+
+    m->b_same_time_framing = faad_getbits(ld,1);
+    m->i_sub_frames = 1 + faad_getbits(ld, 6);
+    m->i_programs = 1 + faad_getbits(ld, 4);
+	int i_program;
+    for (i_program = 0; i_program < m->i_programs; i_program++) {
+        m->pi_layers[i_program] = 1+faad_getbits(ld, 3);
+int i_layer;
+        for (i_layer = 0; i_layer < m->pi_layers[i_program]; i_layer++) {
+            latm_stream_t *st = &m->stream[m->i_streams];
+            unsigned char b_previous_cfg;
+
+            m->pi_stream[i_program][i_layer] = m->i_streams;
+            st->i_program = i_program;
+            st->i_layer = i_layer;
+
+            b_previous_cfg = 0;
+            if (i_program != 0 || i_layer != 0)
+                b_previous_cfg =faad_getbits(ld,1);
+
+            if (b_previous_cfg) {
+				if(m->i_streams <= 0){
+					LATM_LOG("assert failed \n");
+					while(1);
+				}
+                st->cfg = m->stream[m->i_streams-1].cfg;
+            } else {
+                int i_cfg_size = 0;
+                if (i_mux_version == 1)
+                    i_cfg_size = LatmGetValue(ld);
+                i_cfg_size -= Mpeg4ReadAudioSpecificInfo(&st->cfg, &st->i_extra, st->extra, ld, i_cfg_size);
+                if (i_cfg_size > 0)
+                    faad_flushbits(ld, i_cfg_size);
+            }
+
+            st->i_frame_length_type = faad_getbits(ld, 3);
+            switch(st->i_frame_length_type)
+            {
+            case 0:
+            {
+                faad_flushbits(ld, 8); /* latmBufferFullnes */
+                if (!m->b_same_time_framing)
+                    if (st->cfg.i_object_type == 6 || st->cfg.i_object_type == 20 ||
+                        st->cfg.i_object_type == 8 || st->cfg.i_object_type == 24)
+                        faad_flushbits(ld, 6); /* eFrameOffset */
+                break;
+            }
+            case 1:
+                st->i_frame_length = faad_getbits(ld, 9);
+                break;
+            case 3: case 4: case 5:
+                st->i_frame_length_index = faad_getbits(ld, 6); // celp
+                break;
+            case 6: case 7:
+                st->i_frame_length_index = faad_getbits(ld, 1); // hvxc
+            default:
+                break;
+            }
+            /* Next stream */
+            m->i_streams++;
+        }
+    }
+
+    /* other data */
+    if (faad_getbits(ld,1)) {
+        if (i_mux_version == 1)
+            m->i_other_data = LatmGetValue(ld);
+        else {
+            int b_continue;
+            do {
+                b_continue = faad_getbits(ld,1);
+                m->i_other_data = (m->i_other_data << 8) + faad_getbits(ld, 8);
+            } while (b_continue);
+        }
+    }
+
+    /* crc */
+    m->i_crc = -1;
+    if (faad_getbits(ld,1))
+        m->i_crc = faad_getbits(ld, 8);
+
+    return 0;
+}
+static int LOASParse( uint8_t *p_buffer, int i_buffer,decoder_sys_t *p_sys )
+{
+    bitfile ld = {0};	
+    int i_accumulated = 0;
+    const latm_stream_t *st;
+    faad_initbits(&ld, p_buffer, i_buffer);
+
+    //bs_init(&s, p_buffer, i_buffer);
+
+    /* Read the stream mux configuration if present */
+    if (!faad_getbits(&ld,1) && !LatmReadStreamMuxConfiguration(&p_sys->latm, &ld) &&
+            p_sys->latm.i_streams > 0) {
+        st = &p_sys->latm.stream[0];
+	
+        p_sys->i_channels = st->cfg.i_channel;
+        p_sys->i_rate = st->cfg.i_samplerate;
+        p_sys->i_frame_length = st->cfg.i_frame_length;
+	//  LATM_LOG("ch %d, rate %d,frame len %d \n",p_sys->i_channels,p_sys->i_rate,p_sys->i_frame_length);
+        /* FIXME And if it changes ? */
+        if (p_sys->i_channels && p_sys->i_rate && p_sys->i_frame_length > 0) {
+#if 0			
+            if (!p_dec->fmt_out.i_extra && st->i_extra > 0) {
+                p_dec->fmt_out.i_extra = st->i_extra;
+                p_dec->fmt_out.p_extra = malloc(st->i_extra);
+                if (!p_dec->fmt_out.p_extra) {
+                    p_dec->fmt_out.i_extra = 0;
+                    return 0;
+                }
+                memcpy(p_dec->fmt_out.p_extra, st->extra, st->i_extra);
+            }
+#endif			
+            p_sys->b_latm_cfg = 1;
+        }
+    }
+
+    /* Wait for the configuration */
+    if (!p_sys->b_latm_cfg)
+        return 0;
+
+    /* FIXME do we need to split the subframe into independent packet ? */
+    if (p_sys->latm.i_sub_frames > 1)
+	{
+   //     printf("latm sub frames not yet supported, please send a sample");
+	}
+int i_sub;
+    for ( i_sub = 0; i_sub < p_sys->latm.i_sub_frames; i_sub++) {
+        int pi_payload[LATM_MAX_PROGRAM][LATM_MAX_LAYER];
+        if (p_sys->latm.b_same_time_framing) {
+            /* Payload length */
+			int i_program,i_layer;
+            for ( i_program = 0; i_program < p_sys->latm.i_programs; i_program++) {
+                for ( i_layer = 0; i_layer < p_sys->latm.pi_layers[i_program]; i_layer++) {
+                    latm_stream_t *st = &p_sys->latm.stream[p_sys->latm.pi_stream[i_program][i_layer]];
+                    if (st->i_frame_length_type == 0) {
+                        int i_payload = 0;
+                        for (;;) {
+                            int i_tmp = faad_getbits(&ld, 8);
+                            i_payload += i_tmp;
+                            if (i_tmp != 255)
+                                break;
+                        }
+                        pi_payload[i_program][i_layer] = i_payload;
+                    } else if (st->i_frame_length_type == 1) {
+                        pi_payload[i_program][i_layer] = st->i_frame_length / 8; /* XXX not correct */
+                    } else if ((st->i_frame_length_type == 3) ||
+                             (st->i_frame_length_type == 5) ||
+                             (st->i_frame_length_type == 7)) {
+                        faad_getbits(&ld, 2); // muxSlotLengthCoded
+                        pi_payload[i_program][i_layer] = 0; /* TODO */
+                    } else {
+                        pi_payload[i_program][i_layer] = 0; /* TODO */
+                    }
+                }
+            }
+
+            /* Payload Data */
+	//		int i_program,i_layer;
+            for ( i_program = 0; i_program < p_sys->latm.i_programs; i_program++) {
+                for (i_layer = 0; i_layer < p_sys->latm.pi_layers[i_program]; i_layer++) {
+                    /* XXX we only extract 1 stream */
+                    if (i_program != 0 || i_layer != 0)
+                        break;
+
+                    if (pi_payload[i_program][i_layer] <= 0)
+                        continue;
+
+                    /* FIXME that's slow (and a bit ugly to write in place) */
+					int i;
+                    for ( i = 0; i < pi_payload[i_program][i_layer]; i++) {
+                        if (i_accumulated >= i_buffer)
+                            return 0;
+                        p_buffer[i_accumulated++] = faad_getbits(&ld, 8);
+                    }
+                }
+            }
+        } else {
+            const int i_chunks = faad_getbits(&ld, 4);
+            int pi_program[16];
+            int pi_layer[16];
+
+       //     printf( "latm without same time frameing not yet supported, please send a sample");
+		int i_chunk;
+            for ( i_chunk = 0; i_chunk < i_chunks; i_chunk++) {
+                const int streamIndex = faad_getbits(&ld, 4);
+                latm_stream_t *st = &p_sys->latm.stream[streamIndex];
+                const int i_program = st->i_program;
+                const int i_layer = st->i_layer;
+
+                pi_program[i_chunk] = i_program;
+                pi_layer[i_chunk] = i_layer;
+
+                if (st->i_frame_length_type == 0) {
+                    int i_payload = 0;
+                    for (;;) {
+                        int i_tmp = faad_getbits(&ld, 8);
+                        i_payload += i_tmp;
+                        if (i_tmp != 255)
+                            break;
+                    }
+                    pi_payload[i_program][i_layer] = i_payload;
+                    faad_getbits(&ld, 1); // auEndFlag
+                } else if (st->i_frame_length_type == 1) {
+                    pi_payload[i_program][i_layer] = st->i_frame_length / 8; /* XXX not correct */
+                } else if ((st->i_frame_length_type == 3) ||
+                         (st->i_frame_length_type == 5) ||
+                         (st->i_frame_length_type == 7)) {
+                    faad_getbits(&ld, 2); // muxSlotLengthCoded
+                }
+            }
+	//	int	i_chunk;
+            for ( i_chunk = 0; i_chunk < i_chunks; i_chunk++) {
+                //const int i_program = pi_program[i_chunk];
+                //const int i_layer = pi_layer[i_chunk];
+
+                /* TODO ? Payload */
+            }
+        }
+    }
+
+#if 0
+    if (p_sys->latm.i_other_data > 0)
+        ; // TODO
+#endif
+    faad_byte_align(&ld);
+
+    return i_accumulated;
+}
+
+
 #endif
 
-#ifdef PRINT_FAAD_DEBUG_INFO
-#define faad_log_info  DEBUG
-#else
-#define faad_log_info(arg...) do{;}while(0)
-#endif
-static int latm_payload[5]; //use for latm frame size count
-static int  last_sf_index = -1;
-static int last_ch_configure = -1;
 /* static function declarations */
 static void* aac_frame_decode(NeAACDecStruct *hDecoder,
                               NeAACDecFrameInfo *hInfo,
@@ -167,7 +648,8 @@ NeAACDecHandle NEAACDECAPI NeAACDecOpen(void)
 #endif
 
     hDecoder->drc = drc_init(REAL_CONST(1.0), REAL_CONST(1.0));
-
+    hDecoder->last_ch_configure = -1;
+    hDecoder->last_sf_index= -1;
     return hDecoder;
 }
 
@@ -246,7 +728,6 @@ static int latmCheck(latm_header *latm, bitfile *ld)
     return (good>0);
 }
 
-static int internal_latm_aac_score;
 #define SKIP_LATM_BYTE  16*4*2
 static int  latm_check_internal(unsigned char *buffer,unsigned buffer_size,unsigned *byte_cost)
 {
@@ -274,11 +755,7 @@ exit:
 	*byte_cost = 	byte_consumed;	
     	return	is_latm;			
 }
-int set_latm_frame_score(int score)
-{
-	internal_latm_aac_score = score;
-	return 0;
-}
+
 long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
                               unsigned char *buffer,
                               unsigned long buffer_size,
@@ -290,11 +767,19 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
     adif_header adif;
     adts_header adts;
     NeAACDecStruct* hDecoder = (NeAACDecStruct*)hpDecoder;
-	faad_log_info("enter NeAACDecInit \r\n");
+    faad_log_info("enter NeAACDecInit \r\n");
+#ifdef NEW_CODE_CHECK_LATM	
+    int i_frame_size;
+    unsigned char *pbuffer =buffer;
+    int  pbuffer_size= buffer_size;	
+    decoder_sys_t *p_sys =  &hDecoder->dec_sys;
+    latm_mux_t *m = &p_sys->latm;
+    latm_stream_t *st = NULL;	
+#endif
 
     if ((hDecoder == NULL) || (samplerate == NULL) || (channels == NULL))
         return -1;
-    memset(latm_payload,0,sizeof(latm_payload));
+    //memset(latm_payload,0,sizeof(latm_payload));
     hDecoder->sf_index = get_sr_index(hDecoder->config.defSampleRate);
     hDecoder->object_type = hDecoder->config.defObjectType;
     *samplerate = get_sample_rate(hDecoder->sf_index);
@@ -303,12 +788,73 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
     *channels = 0;
     int latm_audio = 0;	
     unsigned byte_cost = 0;
-        
     if (buffer != NULL)
     {
         int is_latm;
         latm_header *l = &hDecoder->latm_config;
         faad_initbits(&ld, buffer, buffer_size);
+#ifdef NEW_CODE_CHECK_LATM
+	memset(&hDecoder->dec_sys,0,sizeof(decoder_sys_t));
+NEXT_CHECK:
+	while(pbuffer_size >= 2){
+		if(pbuffer[0] == 0x56 && (pbuffer[1] & 0xe0) == 0xe0){ //LOAS sync word detected
+			LATM_LOG("find LOAS sync word pos %d\n",buffer_size-pbuffer_size);
+			break;
+		}
+		pbuffer++;
+		pbuffer_size--;
+	}
+	if(pbuffer_size < LOAS_HEADER_SIZE){
+		LATM_LOG("check the loas frame failed\n");
+		goto   exit_check;
+	}
+       /* Check if frame is valid and get frame info */	
+	i_frame_size = ((pbuffer[1] & 0x1f) << 8) + pbuffer[2];
+	LATM_LOG("i_frame_size  %d \n",i_frame_size);	   
+	if(i_frame_size <= 0){
+		LATM_LOG("i_frame_size  error\n");
+		pbuffer++;
+		pbuffer_size--;		
+		goto NEXT_CHECK;
+	}
+	if(pbuffer_size < ( LOAS_HEADER_SIZE+i_frame_size)){
+		LATM_LOG("buffer size  %d small then frame size %d,\n",pbuffer_size,i_frame_size);
+		goto  exit_check;
+	}
+#if 1	
+	if(pbuffer[LOAS_HEADER_SIZE+i_frame_size] != 0x56 || (pbuffer[LOAS_HEADER_SIZE+i_frame_size+1] & 0xe0) != 0xe0){ // next frame LOAS sync header detected
+        	LATM_LOG( "emulated sync word " "(no sync on following frame) \n");		
+		pbuffer++;
+		pbuffer_size--;		
+		goto NEXT_CHECK;
+	}
+#endif	
+	pbuffer += LOAS_HEADER_SIZE; //skip header
+	pbuffer_size = pbuffer_size - LOAS_HEADER_SIZE;	
+	//parse the playload of one real LOAS aac frame
+	i_frame_size = LOASParse(pbuffer, i_frame_size,p_sys);
+	if(i_frame_size <= 0){
+		goto NEXT_CHECK;
+	}
+	else {
+		LATM_LOG("latm detected\n");
+		hDecoder->latm_header_present = 1;
+	}
+	//assue latm detected. start init code	
+exit_check:	
+	if(m->i_streams > 0)
+		st = &m->stream[m->i_streams-1];
+	memset(l, 0, sizeof(latm_header));
+	if(st && st->i_extra){
+		    int32_t x;
+
+		hDecoder->latm_header_present = 1;
+		x = NeAACDecInit2(hDecoder, st->extra, st->i_extra, samplerate, channels);
+            if(x!=0)
+                hDecoder->latm_header_present = 0;
+            return x;		
+	}else
+#else
         memset(l, 0, sizeof(latm_header));
         is_latm = latmCheck(l, &ld);
         l->inited = 0;
@@ -321,13 +867,13 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
             x = NeAACDecInit2(hDecoder, l->ASC, (l->ASCbits+7)/8, samplerate, channels);
             if(x!=0)
                 hDecoder->latm_header_present = 0;
-#ifdef SBR_DEC			
-    	   if(hDecoder->sbr_present_flag == 1 && *samplerate > 24000)
-    		*samplerate /= 2;               
-#endif		   
             return x;
-        }else if ((buffer[0] == 'A') && (buffer[1] == 'D') && (buffer[2] == 'I') && (buffer[3] == 'F')){    
-            /* Check if an ADIF header is present */
+        } else
+#endif
+        /* Check if an ADIF header is present */
+        if ((buffer[0] == 'A') && (buffer[1] == 'D') &&
+			(buffer[2] == 'I') && (buffer[3] == 'F'))
+		{
             hDecoder->adif_header_present = 1;
             faad_log_info("[%s %d]ADIF aac file detected\n",__FUNCTION__,__LINE__);
             get_adif_header(&adif, &ld);
@@ -347,31 +893,23 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
         /* Check if an ADTS header is present */
         } else if (faad_showbits(&ld, 12) == 0xfff) {
             hDecoder->adts_header_present = 1;
-            faad_log_info("[%s %d]ADTS aac file detected\n",__FUNCTION__,__LINE__);
+
             adts.old_format = hDecoder->config.useOldADTSFormat;
-            if(adts_frame(&adts, &ld))
-            {
-                return -1;
-            }
-			
-            if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
-                last_sf_index = hDecoder->sf_index;
-                last_ch_configure = adts.channel_configuration;
-            }else{
-                return -1;
-            }
+            adts_frame(&adts, &ld);
+
             hDecoder->sf_index = adts.sf_index;
             hDecoder->object_type = adts.profile + 1;
-			
 
             *samplerate = get_sample_rate(hDecoder->sf_index);
-            *channels = (adts.channel_configuration > 6) ? 2 : adts.channel_configuration;
-            faad_log_info("[%s %d]adts info:FS/%d object_type/%d ChNum/%d\n",__FUNCTION__,__LINE__,*samplerate,hDecoder->object_type,*channels);
-       }else{
+            *channels = (adts.channel_configuration > 6) ?
+                2 : adts.channel_configuration;
+        } 
+	  else		
+	{
             /*we guess it is a ADTS aac files and try to resync from the error*/
             int ii;
             int adts_err = 0;
-            faad_log_info("[%s %d]guess it is a ADTS aac files and try to resync\n",__FUNCTION__,__LINE__);
+       //     faad_log_info("[%s %d]guess it is a ADTS aac files and try to resync\n",__FUNCTION__,__LINE__);
             faad_initbits(&ld, buffer, buffer_size);
             for ( ii = 0; ii < buffer_size; ii++)
             {
@@ -386,19 +924,17 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
                       adts.old_format = hDecoder->config.useOldADTSFormat;
                       adts_err = adts_frame(&adts, &ld);
                       if(adts_err == 5){
-                          internal_latm_aac_score++;
                           return -1;
                       } 
                       hDecoder->sf_index = adts.sf_index;
                       hDecoder->object_type = adts.profile + 1;
 					  
                       if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
-                          last_sf_index = hDecoder->sf_index;
-                          last_ch_configure = adts.channel_configuration;
+                          hDecoder->last_sf_index = hDecoder->sf_index;
+                          hDecoder->last_ch_configure = adts.channel_configuration;
                       }
                       *samplerate = get_sample_rate(hDecoder->sf_index);
                       if(*samplerate > 48000 || adts.channel_configuration > 6){
-                           internal_latm_aac_score++;
                            return -1;
                       }
                       *channels = (adts.channel_configuration > 6) ? 2 : adts.channel_configuration;
@@ -407,10 +943,10 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
                 }
             }
             if(ii == buffer_size){
-                 faad_log_info("[%s %d]sync for adts frame failed\n",__FUNCTION__,__LINE__);
-                 internal_latm_aac_score++;
+          //       faad_log_info("[%s %d]sync for adts frame failed\n",__FUNCTION__,__LINE__);
                  return -1;
             }   
+        }		
         }
         if (ld.error)
         {
@@ -418,7 +954,6 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
             return -1;
         }
         faad_endbits(&ld);
-    }
 
 #if (defined(PS_DEC) || defined(DRM_PS))
     /* check if we have a mono file */
@@ -476,13 +1011,7 @@ char NEAACDECAPI NeAACDecInit2(NeAACDecHandle hpDecoder,
     int8_t rc;
     mp4AudioSpecificConfig mp4ASC;
 	faad_log_info("enter NeAACDecInit2 \r\n");
-	faad_log_info("extra data size%d.extra data:\r\n");
-#ifndef __ROM_	
-	int ii;
-	for( ii = 0;ii<SizeOfDecoderSpecificInfo;ii++){
-		faad_log_info("0x%x ",pBuffer[ii]);
-	}
-#endif	
+	faad_log_info("extra data size  %d\r\n",SizeOfDecoderSpecificInfo);
     if((hDecoder == NULL)
         || (pBuffer == NULL)
         || (SizeOfDecoderSpecificInfo < 2)
@@ -947,7 +1476,10 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
     uint16_t frame_len;
     void *sample_buffer;
     uint32_t startbit=0, endbit=0, payload_bits=0;
-
+#ifdef NEW_CODE_CHECK_LATM	
+    int i_frame_size;
+    decoder_sys_t *p_sys =  &hDecoder->dec_sys;
+#endif
 #ifdef PROFILE
     int64_t count = faad_get_ts();
 #endif
@@ -987,9 +1519,59 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
             return NULL;
         }
     }
+#ifdef NEW_CODE_CHECK_LATM
+NEXT_CHECK:
+	if(hDecoder->latm_header_present){
+		while(buffer_size >= 2){
+			if(buffer[0] == 0x56 && (buffer[1] & 0xe0) == 0xe0){
+
+				break;
+			}
+			buffer++;
+			buffer_size--;
+		}
+		if(buffer_size <= 2){
+			LATM_LOG("check the loas frame failed\n");
+			return  NULL;
+		}
+	       /* Check if frame is valid and get frame info */	
+		i_frame_size = ((buffer[1] & 0x1f) << 8) + buffer[2];
+		//LATM_LOG("i_frame_size  %d \n",i_frame_size);	   
+		if(i_frame_size <= 0){
+			LATM_LOG("i_frame_size  error\n");
+			return NULL;
+		}
+		if(buffer_size < ( LOAS_HEADER_SIZE+i_frame_size)){
+			LATM_LOG("buffer size small then frame size,need more data\n");
+			return NULL;
+		}
+#if 1		
+		if(buffer[3+i_frame_size] != 0x56 || (buffer[3+i_frame_size+1] & 0xe0) != 0xe0){
+
+	        	LATM_LOG( "emulated sync word "                  "(no sync on following frame) \n");		
+			buffer++;
+			buffer_size--;		 
+			goto NEXT_CHECK;
+		}
+#endif		
+		buffer += LOAS_HEADER_SIZE; //skip header
+		buffer_size = buffer_size -LOAS_HEADER_SIZE;		
+		i_frame_size = LOASParse(buffer, i_frame_size,p_sys);
+		if(i_frame_size <= 0){
+			goto NEXT_CHECK;
+			return NULL;
+		}
+		else {
+		//	LATM_LOG("latm detected\n");
+		}
+		
+	}	
+#endif
 
     /* initialize the bitstream */
     faad_initbits(&ld, buffer, buffer_size);
+
+#ifndef NEW_CODE_CHECK_LATM
     if(hDecoder->latm_header_present)
     {
         payload_bits = faad_latm_frame(&hDecoder->latm_config, &ld);
@@ -1000,6 +1582,7 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
             goto error;
         }
     }
+#endif
 #ifdef DRM
     if (hDecoder->object_type == DRM_ER_LC)
     {
@@ -1018,16 +1601,17 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
     if (hDecoder->adts_header_present)
     {
         adts_header adts;
+
         adts.old_format = hDecoder->config.useOldADTSFormat;
         if ((hInfo->error = adts_frame(&adts, &ld)) > 0)
             goto error;
 	    hDecoder->sf_index = adts.sf_index;	
-	    if(adts.sf_index != last_sf_index && adts.channel_configuration != last_ch_configure){
+	    if(adts.sf_index != hDecoder->last_sf_index && adts.channel_configuration != hDecoder->last_ch_configure){
 	        if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
 		         hInfo->error = 34;
-		         audio_codec_print("[%s %d]last_sf_index/%d,Ch/%d,Now %d/%d\n",__FUNCTION__,__LINE__,last_sf_index,last_ch_configure,adts.sf_index,adts.channel_configuration);      
-		         last_sf_index = hDecoder->sf_index;
-		         last_ch_configure = adts.channel_configuration;	
+		         audio_codec_print("[%s %d]last_sf_index/%d,Ch/%d,Now %d/%d\n",__FUNCTION__,__LINE__,hDecoder->last_sf_index,hDecoder->last_ch_configure,adts.sf_index,adts.channel_configuration);      
+		         hDecoder->last_sf_index = hDecoder->sf_index;
+		         hDecoder->last_ch_configure = adts.channel_configuration;	
 		        goto error;
 	        }
 	    }	
@@ -1049,7 +1633,7 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
     }
 #endif
 
-#if 1
+#ifndef  NEW_CODE_CHECK_LATM
     if(hDecoder->latm_header_present)
     {
         endbit = faad_get_processed_bits(&ld);
@@ -1319,18 +1903,4 @@ int is_latm_aac(NeAACDecHandle hpDecoder)
 	return  hDecoder->latm_header_present;   
 
 }
-int  latm_frame_length()
-{
-	int i = 0;
-	int sum = 0;
-	int count = 0;
-	for(i = 0;i < 5;i++){
-		if(latm_payload[i] != 0){
-			sum += latm_payload[i];
-			count++;
-		}
-	}
-	sum = sum/count;
-	sum /= 8;
-	return sum;
-}
+

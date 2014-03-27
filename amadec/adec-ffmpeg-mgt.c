@@ -927,7 +927,33 @@ static int get_frame_size(aml_audio_dec_t *audec)
     }
     return -1;
 }
-
+// check if audio format info changed,if changed, apply new parameters to audio track
+static void check_audio_info_changed(aml_audio_dec_t *audec)
+{
+	buffer_stream_t *g_bst = audec->g_bst;
+	AudioInfo 	g_AudioInfo = {0};
+	int BufLevelAllowDoFmtChg = 0;
+	audio_decoder_operations_t *adec_ops  = audec->adec_ops;
+	adec_ops->getinfo(audec->adec_ops, &g_AudioInfo);
+	if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
+	{
+		if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
+		{    //experienc value:0.2 Secs      
+			BufLevelAllowDoFmtChg=g_bst->samplerate*g_bst->channels*(audec->adec_ops->bps>>3)/5;
+			while((audec->format_changed_flag|| g_bst->buf_level>BufLevelAllowDoFmtChg) && !audec->exit_decode_thread ){
+				usleep(20000);
+			}				
+			if(!audec->exit_decode_thread){
+				adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",
+				__FUNCTION__,g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels,g_bst->buf_level);
+				g_bst->channels=audec->channels=g_AudioInfo.channels;
+				g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+				audec->aout_ops.pause(audec);
+				audec->format_changed_flag = 1;
+			}
+		}
+	}	
+}
 void *audio_getpackage_loop(void *args)
 {
      int ret;
@@ -1068,28 +1094,6 @@ exit_decode_loop:
                audec->exit_decode_thread_success=1;
                break;
           }
-
-          //detect audio info changed
-          memset(&g_AudioInfo,0,sizeof(AudioInfo));
-          adec_ops->getinfo(audec->adec_ops, &g_AudioInfo);
-          if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
-          {
-               if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
-               {    //experienc value:0.2 Secs
-                    int BufLevelAllowDoFmtChg=g_bst->samplerate*g_bst->channels*(audec->adec_ops->bps>>3)/5;
-                    while((audec->format_changed_flag|| g_bst->buf_level>BufLevelAllowDoFmtChg) && !audec->exit_decode_thread ){
-                       usleep(20000);
-                    }
-                    if(!audec->exit_decode_thread){
-                        adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",
-                                  __FUNCTION__,g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels,g_bst->buf_level);
-                        g_bst->channels=audec->channels=g_AudioInfo.channels;
-                        g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
-                        aout_ops->pause(audec);
-                        audec->format_changed_flag = 1;
-                    }
-               }
-          }
           //step 2  get read buffer size
           p_Package=package_get(audec);
           if(!p_Package){
@@ -1136,7 +1140,9 @@ exit_decode_loop:
                           }
                       }
 
-                      dlen = adec_ops->decode(audec->adec_ops, outbuf, &outlen, inbuf+declen, inlen);
+                      dlen = adec_ops->decode(audec->adec_ops, outbuf, &outlen, inbuf+declen, inlen);	
+			  if(outlen > 0 )		  
+			  	check_audio_info_changed(audec);		  
                        if(outlen > AVCODEC_MAX_AUDIO_FRAME_SIZE){
                                adec_print("!!!!!fatal error,out buffer overwriten,out len %d,actual %d",outlen,AVCODEC_MAX_AUDIO_FRAME_SIZE);
                       }
@@ -1158,12 +1164,22 @@ exit_decode_loop:
                       declen += dlen;
                       inlen -= dlen;
 
+			/* decoder input buffer not enough,need new data burst */
                       if(nAudioFormat == ACODEC_FMT_COOK || nAudioFormat == ACODEC_FMT_RAAC || nAudioFormat == ACODEC_FMT_AMR){
-                           if(inlen <= declen){
-                             needdata ++;
-                           }
+                           		if(inlen <= declen){
+                             		needdata ++;
+                           		}
                       }
-
+			 // for aac decoder, if decoder cost es data but no pcm output,may need more data ,which is needed by frame resync		  
+			  else if(nAudioFormat == ACODEC_FMT_AAC_LATM || nAudioFormat == ACODEC_FMT_AAC){
+			  	if(outlen == 0 && inlen){
+					pRestData=malloc(inlen);
+					if(pRestData)
+						memcpy(pRestData, (uint8_t *)(inbuf+declen), inlen);
+                           		audec->decode_offset+=dlen; //update es offset for apts look up
+					break;						
+			  	}
+			  }	
                       //write to the pcm buffer
                       if(nAudioFormat == ACODEC_FMT_RAAC ||nAudioFormat == ACODEC_FMT_COOK){
                            audec->decode_offset = audec->adec_ops->pts;
