@@ -31,6 +31,7 @@ static int try_decode_picture(play_para_t *p_para, int video_index)
     int read_packets = 0;
     int64_t cur_pos;
     AVPacket avpkt;
+    int try_readframe_count = 0;
 
     ic = p_para->pFormatCtx->streams[video_index]->codec;
 
@@ -72,7 +73,14 @@ static int try_decode_picture(play_para_t *p_para, int video_index)
                     continue;
                 }
             }
-        } while (avpkt.stream_index != video_index);
+        } while ((avpkt.stream_index != video_index) && (++try_readframe_count <= 100));
+
+        if (try_readframe_count > 100) {
+            url_fseek(p_para->pFormatCtx->pb, cur_pos, SEEK_SET);
+            av_free_packet(&avpkt);
+            log_error("[%s:%d]av_read_frame index %d more than 100 times, return\n", __FUNCTION__, __LINE__, video_index);
+            return -1;
+        }
 
         avcodec_decode_video2(ic, picture, &got_picture, &avpkt);
         av_free_packet(&avpkt);
@@ -560,7 +568,7 @@ static void get_stream_info(play_para_t *p_para)
                     if ((pCodec->codec_id == CODEC_ID_RV30)
                         || (pCodec->codec_id == CODEC_ID_RV40)) {
                         ret = try_decode_picture(p_para, i);
-                        if (ret == 0) {
+                        if (ret <= 0) {
                             bitrate = pCodec->bit_rate;
                             temp_vidx = i;
                         } else if (ret > read_packets) {
@@ -1517,7 +1525,7 @@ int player_dec_init(play_para_t *p_para)
                 full_time_ms = (int)(((p_para->file_size << 3) * 1000) / p_para->pFormatCtx->bit_rate);
                 log_print("[player_dec_init:%d]bit_rate=%d file_size=%lld full_time=%d\n", __LINE__, p_para->pFormatCtx->bit_rate, p_para->file_size, full_time);
 
-                if (p_para->state.full_time - full_time > 600) {
+                if (p_para->state.full_time - full_time > 1200) {
                     p_para->state.full_time = full_time;
                     p_para->state.full_time_ms = full_time_ms;
                 }
