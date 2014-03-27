@@ -757,7 +757,7 @@ static int non_raw_read(play_para_t *para)
                                 //pkt->avpkt->data = av_mallocz(2048);
                                 //strncpy(pkt->avpkt->data,"FREND",5);
                                 pkt->avpkt->size = 2048;
-                                //pkt->avpkt->stream_index = st->index;
+                                pkt->avpkt->stream_index = st->index;
                                 ret = 0;
                             }
                         }
