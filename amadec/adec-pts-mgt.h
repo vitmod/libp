@@ -14,6 +14,10 @@
 #include <audio-dec.h>
 
 ADEC_BEGIN_DECLS
+typedef enum {
+    TSYNC_MODE_VMASTER,
+    TSYNC_MODE_AMASTER,
+} tsync_mode_t;
 
 #define TSYNC_PCRSCR    "/sys/class/tsync/pts_pcrscr"
 #define TSYNC_EVENT     "/sys/class/tsync/event"
@@ -21,10 +25,14 @@ ADEC_BEGIN_DECLS
 #define TSYNC_VPTS      "/sys/class/tsync/pts_video"
 #define TSYNC_ENABLE  "/sys/class/tsync/enable"
 #define TSYNC_LAST_CHECKIN_APTS "/sys/class/tsync/last_checkin_apts"
+#define TSYNC_AVDECSTATE   "/sys/class/tsync/decstate"
+#define TSYNC_MODE   "/sys/class/tsync/mode"
 
 #define SYSTIME_CORRECTION_THRESHOLD        (90000*15/100)
 #define APTS_DISCONTINUE_THRESHOLD          (90000*3)
 #define REFRESH_PTS_TIME_MS                 (1000/10)
+#define TSYNC_VDEC_STARTED 1 // 1<<(TSYNC_STAT_PCRSCR_SETUP_VIDEO-1)
+#define TSYNC_ADEC_STARTED 2 // 1<<(TSYNC_STAT_PCRSCR_SETUP_AUDIO-1)
 
 #define abs(x) ({                               \
                 long __x = (x);                 \

@@ -1710,6 +1710,34 @@ int codec_get_pcrscr(codec_para_t *pcodec)
 
     return pcrscr;
 }
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_avdecstate  get audio video codec state
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @param[in]  valid sys start time.
+*
+* @return     2 TSYNC_STAT_PCRSCR_SETUP_AUDIO; 1 TSYNC_STAT_PCRSCR_SETUP_VIDEO
+*                 0 TSYNC_STAT_PCRSCR_SETUP_NONE
+*/
+/* --------------------------------------------------------------------------*/
+unsigned int codec_get_avdecstate(codec_para_t *pcodec, unsigned long *time)
+{
+    int ret;
+
+    if (pcodec->cntl_handle < 0) {
+        return -1;
+    }
+	
+    ret = ioctl(pcodec->cntl_handle, AMSTREAM_IOC_GET_AVDEC_STATE, time);
+    if (ret < 0) {
+        CODEC_PRINT("[%s] ioctl failed %d\n", __FUNCTION__, ret);
+        return ret;
+    }	
+	
+    return ret;
+}
 
 /* --------------------------------------------------------------------------*/
 /**
