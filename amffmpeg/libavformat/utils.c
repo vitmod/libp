@@ -836,7 +836,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
     	 }
     }
 
-    s->pb->is_segment_media = 0;	
+    s->pb->is_segment_media = 0;
     newp=try_get_mached_new_prot(s->pb,filename);
     if(newp!=NULL){
 			char *listfile;
@@ -850,7 +850,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
                         strcpy(listfile+strlen("mmsx:"),filename);
                         
                     }else{
-                        if(av_strstart(newp->prefix,"list:",&ptr)&&(!strstr(filename,"AmlogicPlayerDataSouceProtocol"))&&(is_use_external_module("vhls_mod")>0)){
+                        if(s->pb->is_slowmedia && av_strstart(newp->prefix,"list:",&ptr)&&(!strstr(filename,"AmlogicPlayerDataSouceProtocol"))&&(is_use_external_module("vhls_mod")>0)){
                             strcpy(listfile,"vhls:");
                         }else{
                         strcpy(listfile,newp->prefix);
