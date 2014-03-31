@@ -404,7 +404,7 @@ void audioCallback_raw(int event, void* user, void *info)
          while(bytes_cnt<buffer->size && !audec->need_stop){
                  len=audec->adsp_ops.dsp_read_raw(&audec->adsp_ops, (char*)(buffer->i16)+bytes_cnt,buffer->size-bytes_cnt); 
                  bytes_cnt+=len;
-                 if (len=0) 
+                 if (len == 0) 
                     break;
          }
          buffer->size=bytes_cnt;
