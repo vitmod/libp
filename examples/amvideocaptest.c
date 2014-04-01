@@ -18,7 +18,9 @@
 #include <Amvideocaptools.h>
 
 #define VIDEOCAPDEV "/dev/amvideocap0"   
-int simmap_map_cap(char *buf,int size)
+#define CAP_WIDTH_MAX      1920
+#define CAP_HEIGHT_MAX     1080
+int simmap_map_cap(char *buf,int size,int w,int h)
 {
 	int fd=open(VIDEOCAPDEV,O_RDWR);
 	int ret;
@@ -27,6 +29,8 @@ int simmap_map_cap(char *buf,int size)
 		printf("open failed\n");
 		return -1;
 	}
+    ioctl(fd,AMVIDEOCAP_IOW_SET_WANTFRAME_WIDTH, w);
+    ioctl(fd,AMVIDEOCAP_IOW_SET_WANTFRAME_HEIGHT, h);
 	ret=ioctl(fd,AMVIDEOCAP_IOW_SET_START_CAPTURE,10000);//10000 max wait.
 	printf("capture ok? %d\n",ret);
 	mbuf = mmap(NULL,size,PROT_READ, MAP_SHARED,fd,0);
@@ -58,12 +62,16 @@ int main(int argc,char **argv)
 	w=h=needend=0;
 	filename=argv[1];
 	if(argc>=4){
-		scanf(argv[2],"%d",&w);
-		scanf(argv[3],"%d",&h);
+		sscanf(argv[2],"%d",&w);
+		sscanf(argv[3],"%d",&h);
 	}
 	if(argc>=5){
-		needend=1;
+		sscanf(argv[4],"%d",&needend);
 	}
+    if(w > CAP_WIDTH_MAX || h > CAP_HEIGHT_MAX) {
+        printf("\nERROR (The width must smaller then %d, and the height must smaller then %d\n", CAP_WIDTH_MAX, CAP_HEIGHT_MAX);
+        return -2;
+    }
 	if(w*h==0){
 		bufsize=1920*1088*3;
 		buf=malloc(1920*1088*3);
@@ -78,10 +86,12 @@ int main(int argc,char **argv)
 		return -2;
 	}
 	printf("start capture %d w=%d h=%d capendfram=%d\n",bufsize,w,h,needend);
-	ret=amvideocap_capframe(buf,bufsize,&w,&h,0,needend);
-	printf("finished capture %d,w=%d,h=%d\n",ret,w,h);
-	if(ret<0)
+	ret=amvideocap_capframe(buf,bufsize,&w,&h,0,needend,&ret_size);
+	printf("finished capture %d,w=%d,h=%d\n",ret_size,w,h);
+	if(ret<0 || ret_size < 0) {
+        printf("[ERROR] captrue failed\n");
 		return -3;
+    }
 #if 1	
 	fd=open(filename,O_WRONLY | O_CREAT,0644);
 	
@@ -89,10 +99,11 @@ int main(int argc,char **argv)
 		printf("create %s failed\n",filename);
 		return -2;
 	}
-	write(fd,buf,ret);
+	write(fd,buf,ret_size);
 	close(fd);
 #endif	
 
+#if 0 
     w = 800;
     h = 600;
 	printf("1==start rect capture %d w=%d h=%d capendfram=%d\n",bufsize,w,h,needend);
@@ -100,7 +111,7 @@ int main(int argc,char **argv)
 	printf("finished rect capture %d,w=%d,h=%d\n",ret_size,w,h);
 	if(ret<0)
 		return -3;
-#if 1	
+	
 	char *rectname=malloc(strlen(filename)+10);
 	rectname[0]=0;
 	strcat(rectname,filename);
@@ -114,8 +125,8 @@ int main(int argc,char **argv)
 	write(fd,buf,ret_size);
 	close(fd);
 #endif	
-	
-	ret=simmap_map_cap(buf,bufsize);
+#if 1	
+	ret=simmap_map_cap(buf,bufsize,w,h);
 	printf("finished mam map capture %d\n",ret);
 	char *mapname=malloc(strlen(filename)+10);
 	mapname[0]=0;
@@ -128,7 +139,8 @@ int main(int argc,char **argv)
 	}
 	write(fd,buf,ret);
 	close(fd);
-	free(buf);
 	free(mapname);
+#endif
+	free(buf);
 	return 0;
 }

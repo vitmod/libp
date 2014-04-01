@@ -56,7 +56,7 @@ LOCAL_SHARED_LIBRARIES += libbinder  \
                           libsystemwriteservice
 include $(BUILD_EXECUTABLE)
 
-
+ifeq ($(BUILD_AMVIDEO_CAPTURE_TEST),true)
 include $(CLEAR_VARS)
 LOCAL_MODULE    := amvideocaptest
 LOCAL_MODULE_TAGS := samples
@@ -72,3 +72,4 @@ LOCAL_SHARED_LIBRARIES += libutils libmedia libbinder libz libdl libcutils libss
 LOCAL_SHARED_LIBRARIES += libbinder  \
                           libsystemwriteservice
 include $(BUILD_EXECUTABLE)
+endif
