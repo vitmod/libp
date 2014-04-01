@@ -815,7 +815,6 @@ static void player_para_init(play_para_t *para)
     para->discontinue_flag = 0;
     para->first_index = -1;
     para->karaok_flag = get_karaok_flag();
-    para->playctrl_info.pcrscr_state = 0;
 }
 
 ///////////////////*main function *//////////////////////////////////////

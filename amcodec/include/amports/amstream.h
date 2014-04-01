@@ -136,7 +136,6 @@
 #define AMAUDIO_IOC_SET_RESAMPLE_DELTA      _IOW(AMAUDIO_IOC_MAGIC, 0x1d, unsigned long)
 
 #define AMSTREAM_IOC_SET_DRMMODE _IOW(AMSTREAM_IOC_MAGIC, 0x91, unsigned long)
-#define AMSTREAM_IOC_GET_AVDEC_STATE _IOR(AMSTREAM_IOC_MAGIC, 0x92, unsigned long)
 
 struct buf_status {
     int size;

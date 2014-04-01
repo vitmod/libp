@@ -14,8 +14,6 @@
 #include "player_av.h"
 #include "thread_mgt.h"
 #define CHAPTER_DISCONTINUE_THRESHOLD          (90000*30)
-#define TSYNC_VDEC_STARTED 1 // 1<<(TSYNC_STAT_PCRSCR_SETUP_VIDEO-1)
-#define TSYNC_ADEC_STARTED 2 // 1<<(TSYNC_STAT_PCRSCR_SETUP_AUDIO-1)
 
 void media_info_init(media_info_t *info)
 {
@@ -614,27 +612,6 @@ unsigned int get_pts_video(play_para_t *p_para)
 
     value = codec_get_vpts(pcodec);
 #endif
-    return value;
-}
-unsigned int get_avdec_state(play_para_t *p_para, unsigned long *time)
-{
-    int handle;
-    int size;
-    char s[16];
-    unsigned int value = 0;
-    codec_para_t *pcodec;
-
-    if (p_para->codec) {
-        pcodec = p_para->codec;
-    } else if (p_para->vcodec) {
-        pcodec = p_para->vcodec;
-    } else {
-        log_print("[%s]No codec handler\n", __FUNCTION__);
-        return -1;
-    }
-
-    value = codec_get_avdecstate(pcodec, time);
-
     return value;
 }
 
@@ -1482,7 +1459,6 @@ int update_playing_info(play_para_t *p_para)
     player_status sta;
     unsigned long delay_ms;
     int ret;
-    unsigned long systime = 0;
 
     MEMSET(&vbuf, 0, sizeof(struct buf_status));
     MEMSET(&abuf, 0, sizeof(struct buf_status));
@@ -1591,21 +1567,10 @@ int update_playing_info(play_para_t *p_para)
                 }
             }
         }
-        if (!p_para->playctrl_info.pcrscr_state &&
-            (p_para->vstream_info.has_video && p_para->astream_info.has_audio)) {
-            if ((get_avdec_state(p_para, &systime) & TSYNC_ADEC_STARTED)) {
-                p_para->playctrl_info.pcrscr_state = 1;
-                log_print("[%s] systime=%x,\n", __FUNCTION__, systime);
-            }
-        } else {
-            p_para->playctrl_info.pcrscr_state = 1;
-        }
-		
-        if (p_para->playctrl_info.pcrscr_state &&
-            (p_para->playctrl_info.audio_ready == 1 ||
+        if (p_para->playctrl_info.audio_ready == 1 ||
             p_para->playctrl_info.search_flag ||
             p_para->playctrl_info.fast_backward ||
-            p_para->playctrl_info.fast_forward)) {
+            p_para->playctrl_info.fast_forward) {
             update_current_time(p_para);
         }
         p_para->state.pts_video = get_pts_video(p_para);
