@@ -155,10 +155,14 @@ static int get_axis(const char *para, int para_num, int *result)
 }
 static int set_display_axis(int recovery)
 {
-    int fd, fd1;
-    int fd_video_axis, fd_video_disable, fd_video_screenmode;
+    int fd, fd1, fd2;
+    int fd_video_axis, fd_video_disable, fd_video_screenmode, fd_freescale_fb1, fd_freescale_fb0;
     char *path = "/sys/class/display/axis";
 	  char *path1 = "/sys/class/graphics/fb0/blank";
+    char *path2 = "/sys/class/graphics/fb1/blank";
+    char *freescale_fb1 = "/sys/class/graphics/fb1/free_scale";
+    char *freescale_fb0 = "/sys/class/graphics/fb0/free_scale";
+    
 	  char *videoaxis_patch = "/sys/class/video/axis";
 	  char *videodisable_patch = "/sys/class/video/disable_video";
 	  char *videoscreenmode_patch = "/sys/class/video/screen_mode";
@@ -166,6 +170,9 @@ static int set_display_axis(int recovery)
     int count, i;
     fd = open(path, O_CREAT|O_RDWR | O_TRUNC, 0664);
 	  fd1 = open(path1, O_CREAT|O_RDWR | O_TRUNC, 0664);
+    fd2 = open(path2, O_CREAT|O_RDWR | O_TRUNC, 0664);
+    fd_freescale_fb0 = open(freescale_fb0, O_CREAT|O_RDWR | O_TRUNC, 0664);
+    fd_freescale_fb1 = open(freescale_fb1, O_CREAT|O_RDWR | O_TRUNC, 0664);
 	  fd_video_axis = open(videoaxis_patch, O_CREAT|O_RDWR | O_TRUNC, 0664);
 	  fd_video_disable = open(videodisable_patch, O_CREAT|O_RDWR | O_TRUNC, 0664);
 	  fd_video_screenmode = open(videoscreenmode_patch, O_CREAT|O_RDWR | O_TRUNC, 0664);
@@ -182,6 +189,9 @@ static int set_display_axis(int recovery)
             sprintf(str, "2048 %d %d %d %d %d %d %d", 
             axis[1], axis[2], axis[3], axis[4], axis[5], axis[6], axis[7]);
 			      write(fd1, "1", strlen("1"));
+            write(fd2, "1", strlen("1"));
+            write(fd_freescale_fb0, "0x10001", strlen("0x10001"));
+            write(fd_freescale_fb1, "0", strlen("0"));
 			      write(fd, str, strlen(str));
         }
         
@@ -203,7 +213,10 @@ static int set_display_axis(int recovery)
         } 
         
         close(fd);
-		    close(fd1);
+		close(fd1);
+        close(fd2);
+        close(fd_freescale_fb0);
+        close(fd_freescale_fb1);
         return 0;
     }
 
