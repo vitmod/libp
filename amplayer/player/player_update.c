@@ -1026,7 +1026,7 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         (!p_para->playctrl_info.end_flag)) {
         //p_para->state.vdec_buf_rp = vbuf->read_pointer;
         //p_para->state.adec_buf_rp = abuf->read_pointer;
-        if (p_para->playctrl_info.avsync_enable) {
+        if (p_para->playctrl_info.avsync_enable && p_para->state.current_time >= 3) {
             set_tsync_enable(0);
             p_para->playctrl_info.avsync_enable = 0;
             log_print("[%s:%d]audio or video low buffer ,close av sync!\n", __FUNCTION__, __LINE__);
