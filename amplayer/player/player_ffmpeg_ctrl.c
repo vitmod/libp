@@ -10,11 +10,13 @@
 #include "player_priv.h"
 #include  <libavformat/avio.h>
 #include <itemlist.h>
+#include <amconfigutils.h>
 
 static struct itemlist kill_item_list;
 static char format_string[128] = {0};
 static char vpx_string[8] = {0};
 static int ffmpeg_load_external_module();
+static int max_lock_time_s=30;
 int ffmpeg_lock(void **pmutex, enum AVLockOp op)
 {
     int r = 0;
@@ -55,6 +57,9 @@ int ffmpeg_interrupt_callback(unsigned long npid)
     int pid = npid;
     int interrupted;
     static int dealock_detected_cnt = 0;
+    static long last_lock_ms=0;
+	static int lastprinttime=-1;
+	long curtimems;
     if (pid == 0) {
         pid = pthread_self();
     }
@@ -63,13 +68,24 @@ int ffmpeg_interrupt_callback(unsigned long npid)
         dealock_detected_cnt = 0;
         return 0;
     }
-    if (dealock_detected_cnt++ < 100000) {
-        if(dealock_detected_cnt%100==1)
-            log_info("...ffmpeg callback interrupted... %d\n",dealock_detected_cnt);
+	curtimems=player_get_systemtime_ms();
+    if (dealock_detected_cnt < 100 || curtimems < last_lock_ms + max_lock_time_s*1000) {
+        if(dealock_detected_cnt == 0){
+            last_lock_ms = curtimems;
+            lastprinttime = -1;
+        }
+        if(((curtimems - last_lock_ms))/1000 != lastprinttime){
+            log_info("...ffmpeg callback interrupted..locked. %d mS\n",(curtimems - last_lock_ms));
+            lastprinttime=(curtimems - last_lock_ms)/1000;
+        }
+        dealock_detected_cnt++;
+        if(curtimems < last_lock_ms)
+            last_lock_ms=curtimems;
         return 1;
     }
+	
     /*player maybe locked,kill my self now*/
-    log_error("DETECTED AMPLAYER DEADLOCK,kill it\n");
+    log_error("DETECTED AMPLAYER DEADLOCK,kill it,locked time=%dms\n",player_get_systemtime_ms() - last_lock_ms);
     abort();
     return 1;
 }
@@ -96,7 +112,7 @@ int ffmpeg_init(void)
     kill_item_list.muti_threads_access = 1;
     kill_item_list.reject_same_item_data = 1;
     itemlist_init(&kill_item_list);
-    
+    max_lock_time_s = (int)am_getconfig_float_def("media.amplayer.maxlocktime.s",30.0);
     return 0;
 }
 int ffmpeg_buffering_data(play_para_t *para)
