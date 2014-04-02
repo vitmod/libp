@@ -165,7 +165,7 @@ static int set_display_axis(int recovery)
             count = get_axis(str, 8, axis);
         }
         if (recovery) {
-            sprintf(str, "0 %d %d %d %d %d %d %d", 
+            sprintf(str, "%d %d %d %d %d %d %d", 
                 axis[0],axis[1], axis[2], axis[3], axis[4], axis[5], axis[6], axis[7]);
         } else {
             sprintf(str, "2048 %d %d %d %d %d %d %d", 
