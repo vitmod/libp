@@ -3003,7 +3003,7 @@ audio_init:
         log_print("[%s:%d]finish bakup packet,do seek\n", __FUNCTION__, __LINE__);
 
         /* time search based on audio */
-        para->playctrl_info.time_point = para->state.current_time;
+        para->playctrl_info.time_point = (float)((float)para->state.current_ms/1000);
         ret = time_search(para,-1);
         if (ret != PLAYER_SUCCESS) {
             log_error("[%s:%d]time_search to pos:%ds failed!", __FUNCTION__, __LINE__, para->playctrl_info.time_point);
