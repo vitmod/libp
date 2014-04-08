@@ -1378,6 +1378,10 @@ int time_search(play_para_t *am_p,int flags)
                 }
             } else {
 		log_info("[%s:%d] stream_index=%d, timestamp=%llx, seek_flags=%d,\n",__FUNCTION__, __LINE__,stream_index, timestamp, seek_flags);
+
+                if((am_p->pFormatCtx->file_size > (am_p->pFormatCtx->valid_offset +0x16000000)) && am_p->file_type == MKV_FILE)
+                 seek_flags|=AVSEEK_FLAG_BYTE;
+
                 ret = (int64_t)av_seek_frame(s, stream_index, timestamp, seek_flags);
                 if (ret < 0) {
                     if (!(seek_flags & AVSEEK_FLAG_BACKWARD)) {
