@@ -369,6 +369,7 @@ vdec_type_t video_codec_type_convert(unsigned int id)
     case CODEC_TAG_WVC1:
     case CODEC_ID_VC1:
     case CODEC_TAG_WMVA:
+    case CODEC_TAG_VC_1:
         log_print("[video_codec_type_convert]VIDEO_DEC_FORMAT_WVC1(0x%x)\n", id);
         dec_type = VIDEO_DEC_FORMAT_WVC1;
         break;
@@ -2192,7 +2193,7 @@ int set_header_info(play_para_t *para)
 	                pkt->avpkt_newflag = 1;
                     }
                 }
-            } else if (para->vstream_info.video_format == VFORMAT_VC1) {
+            } else if ((para->vstream_info.video_format == VFORMAT_VC1) && (para->file_type != STREAM_FILE) /* softdemux file */) {
                 if (para->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WMV3) {
                     unsigned i, check_sum = 0, data_len = 0;
 

@@ -1411,7 +1411,7 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
         /* select current input stream component */
         st = s->cur_st;
         if (st) {
-            if (!st->need_parsing || !st->parser) {
+            if (!st->need_parsing || !st->parser || (strcmp(s->iformat->name, "mpegts") == 0)) {
                 /* no parsing needed: we just output the packet as is */
                 /* raw data support */
                 *pkt = st->cur_pkt; st->cur_pkt.data= NULL;

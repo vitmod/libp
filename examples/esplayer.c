@@ -145,7 +145,7 @@ int main(int argc,char *argv[])
     struct buf_status vbuf;
 
     if (argc < 6) {
-        printf("Corret command: esplayer <filename> <width> <height> <fps> <format(1:mpeg4 2:h264)> [subformat for mpeg4]\n");
+        printf("Corret command: esplayer <filename> <width> <height> <fps> <format(1:mpeg4 2:h264 6:vc1)> [subformat for mpeg4/vc1]\n");
         return -1;
     }
     osd_blank("/sys/class/graphics/fb0/blank",1);
@@ -164,6 +164,15 @@ int main(int argc,char *argv[])
     if (vpcodec->video_type == VFORMAT_H264) {
         vpcodec->am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
         vpcodec->am_sysinfo.param = (void *)(EXTERNAL_PTS | SYNC_OUTSIDE);
+    }
+    else if (vpcodec->video_type == VFORMAT_VC1) {
+        if (argc < 7) {
+            printf("No subformat for vc1, take the default VIDEO_DEC_FORMAT_WVC1\n");
+            vpcodec->am_sysinfo.format = VIDEO_DEC_FORMAT_WVC1;
+        }
+        else {
+            vpcodec->am_sysinfo.format = atoi(argv[6]);
+        }
     }
     else if (vpcodec->video_type == VFORMAT_MPEG4) {
         if (argc < 7) {
