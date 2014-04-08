@@ -194,13 +194,15 @@ static void decode_parameters(SiprParameters* parms, GetBitContext *pgb,
 {
     int i, j;
 
-    parms->ma_pred_switch           = get_bits(pgb, p->ma_predictor_bits);
+    if (p->ma_predictor_bits)
+        parms->ma_pred_switch       = get_bits(pgb, p->ma_predictor_bits);
 
     for (i = 0; i < 5; i++)
         parms->vq_indexes[i]        = get_bits(pgb, p->vq_indexes_bits[i]);
 
     for (i = 0; i < p->subframe_count; i++) {
         parms->pitch_delay[i]       = get_bits(pgb, p->pitch_delay_bits[i]);
+        if (p->gp_index_bits)
         parms->gp_index[i]          = get_bits(pgb, p->gp_index_bits);
 
         for (j = 0; j < p->number_of_fc_indexes; j++)
@@ -478,12 +480,22 @@ static av_cold int sipr_decoder_init(AVCodecContext * avctx)
     SiprContext *ctx = avctx->priv_data;
     int i;
 
+    switch (avctx->block_align) {
+    case 20: ctx->mode = MODE_16k; break;
+    case 19: ctx->mode = MODE_8k5; break;
+    case 29: ctx->mode = MODE_6k5; break;
+    case 37: ctx->mode = MODE_5k0; break;
+    default:
     if      (avctx->bit_rate > 12200) ctx->mode = MODE_16k;
     else if (avctx->bit_rate > 7500 ) ctx->mode = MODE_8k5;
     else if (avctx->bit_rate > 5750 ) ctx->mode = MODE_6k5;
     else                              ctx->mode = MODE_5k0;
+        av_log(avctx, AV_LOG_WARNING,
+               "Invalid block_align: %d. Mode %s guessed based on bitrate: %d\n",
+               avctx->block_align, modes[ctx->mode].mode_name, avctx->bit_rate);
+    }
 
-    av_log(avctx, AV_LOG_DEBUG, "Mode: %s\n", modes[ctx->mode].mode_name);
+    av_log(avctx, AV_LOG_INFO, "Mode: %s\n", modes[ctx->mode].mode_name);
 
     if (ctx->mode == MODE_16k)
         ff_sipr_init_16k(ctx);
@@ -497,6 +509,23 @@ static av_cold int sipr_decoder_init(AVCodecContext * avctx)
     avctx->sample_fmt = AV_SAMPLE_FMT_FLT;
 
     return 0;
+}
+static int clip_float_to_short16(float *buf,int sampls)
+{
+    int i;
+    float *pf=buf,ftmp;
+    short *p16=(short *)buf;
+    for(i=0;i<sampls;i++)
+    {
+        ftmp=pf[i]*32767.0;
+        if(ftmp>32767.0)
+            p16[i]=32767;
+        else if(ftmp<-32768.0)
+            p16[i]=-32768;
+        else
+            p16[i]=(short)ftmp;
+    }
+    return i*sizeof(short);
 }
 
 static int sipr_decode_frame(AVCodecContext *avctx, void *datap,
@@ -513,16 +542,14 @@ static int sipr_decode_frame(AVCodecContext *avctx, void *datap,
 
     ctx->avctx = avctx;
     if (avpkt->size < (mode_par->bits_per_frame >> 3)) {
-        av_log(avctx, AV_LOG_ERROR,
-               "Error processing packet: packet size (%d) too small\n",
+        av_log(avctx, AV_LOG_ERROR,"Error processing packet: packet size (%d) too small\n",
                avpkt->size);
 
         *data_size = 0;
         return -1;
     }
     if (*data_size < subframe_size * mode_par->subframe_count * sizeof(float)) {
-        av_log(avctx, AV_LOG_ERROR,
-               "Error processing packet: output buffer (%d) too small\n",
+        av_log(avctx, AV_LOG_ERROR,"Error processing packet: output buffer (%d) too small\n",
                *data_size);
 
         *data_size = 0;
@@ -541,10 +568,8 @@ static int sipr_decode_frame(AVCodecContext *avctx, void *datap,
 
         data += subframe_size * mode_par->subframe_count;
     }
-
-    *data_size = mode_par->frames_per_packet * subframe_size *
-        mode_par->subframe_count * sizeof(float);
-
+    int numsamps=mode_par->frames_per_packet * subframe_size * mode_par->subframe_count;
+    *data_size=clip_float_to_short16(datap,numsamps);
     return mode_par->bits_per_frame >> 3;
 }
 

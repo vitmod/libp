@@ -3718,6 +3718,23 @@ void av_close_input_stream(AVFormatContext *s)
     }
     avformat_free_context(s);
 }
+void av_free_stream(AVFormatContext *s,AVStream *st)
+{
+     if (st->parser) {
+            av_parser_close(st->parser);
+            av_free_packet(&st->cur_pkt);
+      }
+      av_dict_free(&st->metadata);
+      av_free(st->index_entries);
+      av_free(st->codec->extradata);
+      av_free(st->codec->extradata1);
+      av_free(st->codec->subtitle_header);
+      av_free(st->codec);
+      av_free(st->priv_data);
+      av_free(st->info);
+      av_free(st);
+      s->nb_streams-=1;
+}
 
 void avformat_free_context(AVFormatContext *s)
 {

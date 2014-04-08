@@ -334,8 +334,18 @@ static void get_av_codec_type(play_para_t *p_para)
 		log_print(" ape audio only support 16 bit  bps \n");
 		p_para->astream_info.has_audio = 0;
 	}		
-		//---------------------------------
-		
+        //---------------------------------
+        if(p_para->astream_info.has_audio==1 && 
+           p_para->vstream_info.has_video==0 && 
+           (p_para->astream_info.audio_format ==AFORMAT_COOK||
+            p_para->astream_info.audio_format ==AFORMAT_SIPR)
+          )
+        {
+           log_print("[%s %d]RM Pure Audio Stream,COVERT p_para->stream_type to STREAM_ES\n",__FUNCTION__,__LINE__);
+           p_para->stream_type=STREAM_ES;
+           p_para->playctrl_info.raw_mode=0;
+           //p_para->file_type=STREAM_FILE;
+        }
         if (p_para->astream_info.audio_format == AFORMAT_AAC || p_para->astream_info.audio_format == AFORMAT_AAC_LATM) {
 			pCodecCtx->profile = FF_PROFILE_UNKNOWN;
             AVCodecContext  *pCodecCtx = p_para->pFormatCtx->streams[audio_index]->codec;
@@ -611,13 +621,7 @@ static void get_stream_info(play_para_t *p_para)
 	      }  
 	    } 
 				           
-
-            if (p_para->file_type == RM_FILE) {
-                if ((temp_aidx == -1)
-                    && (CODEC_ID_SIPR != pCodec->codec_id)) { // SIPR not supported now
-                    temp_aidx = i;
-                }
-            } else if (temp_aidx == -1 && audio_format != AFORMAT_UNSUPPORT) {
+            if (temp_aidx == -1 && audio_format != AFORMAT_UNSUPPORT) {
                 if (strcmp(pFormat->iformat->name, "mpegts") == 0 && pStream->encrypt) {
                     //mpegts encrypt
                     log_print("pid=%d crytion\n", pStream->id);
@@ -849,8 +853,8 @@ static int set_decode_para(play_para_t*am_p)
         update_player_states(am_p, 1);
     } else if (!am_p->vstream_info.has_video) {
         if (am_p->file_type == RM_FILE) {
-            log_error("Can't support rm file without video!\n");
-            return PLAYER_UNSUPPORT;
+            log_print("[%s %d]SUPPORT RM FILE WITHOUT VIDEO USING FFMPEG SOFTDEMUX AND DECODER...\n",__FUNCTION__,__LINE__);
+            //return PLAYER_UNSUPPORT;
         } else if (am_p->astream_info.has_audio) {
             if (IS_VFMT_VALID(am_p->vstream_info.video_format)) {
                 set_player_error_no(am_p, PLAYER_UNSUPPORT_VIDEO);

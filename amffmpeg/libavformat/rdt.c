@@ -176,7 +176,7 @@ rdt_load_mdpr (PayloadContext *rdt, AVStream *st, int rule_nr)
         size = rdt->mlti_data_size;
         avio_seek(&pb, 0, SEEK_SET);
     }
-    if (ff_rm_read_mdpr_codecdata(rdt->rmctx, &pb, st, rdt->rmst[st->index], size) < 0)
+    if (ff_rm_read_mdpr_codecdata(rdt->rmctx, &pb, st, rdt->rmst[st->index], size, NULL) < 0)
         return -1;
 
     return 0;
@@ -433,8 +433,6 @@ rdt_parse_sdp_line (AVFormatContext *s, int st_index,
                 rdt->rmst[s->streams[n]->index] = ff_rm_alloc_rmstream();
                 rdt_load_mdpr(rdt, s->streams[n], (n - first) * 2);
 
-                if (s->streams[n]->codec->codec_id == CODEC_ID_AAC)
-                    s->streams[n]->codec->frame_size = 1; // FIXME
            }
     }
 
@@ -459,8 +457,9 @@ add_dstream(AVFormatContext *s, AVStream *orig_st)
 {
     AVStream *st;
 
-    if (!(st = av_new_stream(s, orig_st->id)))
+    if (!(st = av_new_stream(s, NULL)))
         return NULL;
+    st->id = orig_st->id;
     st->codec->codec_type = orig_st->codec->codec_type;
     st->first_dts         = orig_st->first_dts;
 
@@ -523,7 +522,11 @@ rdt_new_context (void)
 {
     PayloadContext *rdt = av_mallocz(sizeof(PayloadContext));
 
-    avformat_open_input(&rdt->rmctx, "", &ff_rdt_demuxer, NULL);
+    int ret = avformat_open_input(&rdt->rmctx, "", &ff_rdt_demuxer, NULL);
+    if (ret < 0) {
+        av_free(rdt);
+        return NULL;
+    }
 
     return rdt;
 }

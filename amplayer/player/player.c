@@ -838,6 +838,9 @@ void *player_thread(play_para_t *player)
     AVCodec *codec = NULL;
     AVFrame *picture = NULL;
     int got_picture = 0;
+    int AFORMAT_SW_Flag=0;
+    char *audio_out_buf=NULL;
+    int  audio_out_size=0;
     log_print("\npid[%d]::enter into player_thread\n", player->player_id);
 
     update_player_start_paras(player, player->start_param);
@@ -1004,7 +1007,13 @@ void *player_thread(play_para_t *player)
     update_player_states(player, 1);
     player_mate_init(player, 1000 * 10);
     ffmpeg_seturl_buffered_level(player,0);	
-    if (player->vstream_info.video_format == VFORMAT_SW) {
+    if(player->astream_info.has_audio==1 && 
+       player->vstream_info.has_video==0 && 
+       (player->astream_info.audio_format ==AFORMAT_COOK|| player->astream_info.audio_format ==AFORMAT_SIPR)
+      ){
+         AFORMAT_SW_Flag=1;
+     }
+    if (player->vstream_info.video_format == VFORMAT_SW || AFORMAT_SW_Flag==1) {
         log_print("Use SW video decoder\n");
 
 #ifdef SAVE_YUV_FILE
@@ -1023,10 +1032,35 @@ void *player_thread(play_para_t *player)
             goto release;
         }
 
-        ic->codec_id = player->pFormatCtx->streams[player->vstream_info.video_index]->codec->codec_id;
-        ic->codec_type = CODEC_TYPE_VIDEO;
-        ic->pix_fmt = PIX_FMT_YUV420P;
-
+        if(player->vstream_info.video_format == VFORMAT_SW ){
+            ic->codec_id =player->pFormatCtx->streams[player->vstream_info.video_index]->codec->codec_id;
+            ic->codec_type = CODEC_TYPE_VIDEO;
+            ic->pix_fmt = PIX_FMT_YUV420P;
+            picture = avcodec_alloc_frame();
+            if (!picture) {
+                log_print("Could not allocate picture\n");
+                goto release;
+            }
+        }else if(AFORMAT_SW_Flag==1){
+            AVCodecContext  *pCodecCtx=player->pFormatCtx->streams[player->astream_info.audio_index]->codec;
+            ic->bit_rate       = pCodecCtx->bit_rate;
+            ic->sample_rate    = pCodecCtx->sample_rate;
+            ic->channels       = pCodecCtx->channels;
+            ic->block_align    = pCodecCtx->block_align;
+            ic->extradata_size = pCodecCtx->extradata_size;
+            ic->codec_id       = pCodecCtx->codec_id;
+            ic->codec_type     = CODEC_TYPE_AUDIO;
+            if(pCodecCtx->extradata_size>0)
+            {   log_print("[%s %d]pCodecCtx->extradata_size/%d\n",__FUNCTION__,__LINE__,pCodecCtx->extradata_size);
+                ic->extradata=malloc(pCodecCtx->extradata_size);
+                if(ic->extradata!=NULL){
+                    memcpy(ic->extradata,pCodecCtx->extradata,pCodecCtx->extradata_size);
+                }else{
+                    log_print("[%s %d]malloc failed!\n",__FUNCTION__,__LINE__);
+                    goto release;
+                }
+            }
+        }
         codec = avcodec_find_decoder(ic->codec_id);
         if (!codec) {
             log_print("Codec not found\n");
@@ -1035,12 +1069,6 @@ void *player_thread(play_para_t *player)
 
         if (avcodec_open(ic, codec) < 0) {
             log_print("Could not open codec\n");
-            goto release;
-        }
-
-        picture = avcodec_alloc_frame();
-        if (!picture) {
-            log_print("Could not allocate picture\n");
             goto release;
         }
     }
@@ -1142,6 +1170,33 @@ write_packet:
                     }
 #endif
                 }
+            }else if(AFORMAT_SW_Flag==1){
+                 int bytes_used=0;
+                 audio_out_size=MAX(AVCODEC_MAX_AUDIO_FRAME_SIZE,ic->channels * ic->frame_size * sizeof(int16_t));
+                 audio_out_buf=malloc(audio_out_size);
+                 if(audio_out_buf!=NULL && pkt->avpkt_isvalid && pkt->avpkt->size>0 && get_player_state(player)==PLAYER_RUNNING )
+                 {    
+                      memset(audio_out_buf,0,audio_out_size);
+                      bytes_used=ic->codec->decode(ic,audio_out_buf,&audio_out_size,pkt->avpkt);
+                      if(audio_out_size>0)
+                      {
+                          av_free_packet(pkt->avpkt);
+                          pkt->data=audio_out_buf;//it will be free in write_av_packet()
+                          pkt->data_size=audio_out_size;
+                          write_av_packet(player);
+                      }
+                 }
+                 if (pkt->avpkt) {
+                      av_free_packet(pkt->avpkt);
+                      pkt->avpkt_isvalid = 0;
+                 }
+                 if(audio_out_buf!=NULL){
+                    free(audio_out_buf);
+                    audio_out_buf=NULL;
+                    audio_out_size=0;
+                 }
+                 pkt->data=NULL;
+                 pkt->data_size=0;
             } else {
                 ret = write_av_packet(player);
                 if (ret == PLAYER_WR_FINISH) {
@@ -1286,7 +1341,7 @@ write_packet:
         }
     } while (1);
 release:
-    if (player->vstream_info.video_format == VFORMAT_SW) {
+    if (player->vstream_info.video_format == VFORMAT_SW ||AFORMAT_SW_Flag==1) {
 #ifdef SAVE_YUV_FILE
         printf("Output file closing\n");
         if (out_fp >= 0) {

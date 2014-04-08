@@ -60,6 +60,7 @@ typedef enum {
 	AFORMAT_EAC3   = 21,   
     AFORMAT_PCM_WIFIDISPLAY = 22,
     AFORMAT_DRA    = 23,
+    AFORMAT_SIPR   =24,
     AFORMAT_UNSUPPORT ,
     AFORMAT_MAX    
 
