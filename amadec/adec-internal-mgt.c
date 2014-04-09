@@ -21,6 +21,8 @@
 #include <dts_enc.h>
 #include <Amsysfsutils.h>
 
+#define MULTICH_SUPPORT_PROPERTY "media.multich.support.info"
+
 static int set_tsync_enable(int enable)
 {
 
@@ -487,6 +489,60 @@ int match_types(const char *filetypestr,const char *typesetting)
 	return 0;
 }
 
+static void set_multichs_prop()
+{
+    char * infobuf;
+    int channel = 0;
+    int dgraw = 0;
+    dgraw = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
+    infobuf = (char *)malloc(1024 * sizeof(char));
+    if(infobuf == NULL){
+        adec_print("%s: malloc infobuf failed.\n",__FUNCTION__);
+    }else{
+        int fd = open("/sys/class/amhdmitx/amhdmitx0/aud_cap", O_RDONLY);
+        if(fd != -1){
+             int nread = read(fd, infobuf, 1024);
+             int i;
+             nread = nread - 5;
+             for(i = 0; i < nread; i++)
+             {
+                 if((infobuf[i] == 'P') && (infobuf[i+1] == 'C') && (infobuf[i+2] == 'M')){
+                     if(dgraw == 0){
+                         if(infobuf[i+5] == '8'){
+                             property_set(MULTICH_SUPPORT_PROPERTY,"hdmi8");
+                             channel = channel < 8 ? 8 : channel;
+                         }
+                         if(infobuf[i+5] == '6'){
+                             property_set(MULTICH_SUPPORT_PROPERTY,"hdmi6");
+                             channel = channel < 6 ? 6 : channel;
+                         }
+                         if(infobuf[i+5] == '2'){
+                             property_set(MULTICH_SUPPORT_PROPERTY,"hdmi2");
+                             channel = channel < 2 ? 2 : channel;
+                         }
+                    }
+                    else{
+                        property_set(MULTICH_SUPPORT_PROPERTY,"hdmi2");
+                        channel = channel < 2 ? 2 : channel;
+                    }
+                }
+            }
+            if(channel == 0)
+                property_set(MULTICH_SUPPORT_PROPERTY,"speaker");
+             adec_print("%s: aud_cap support channel number: %d ch\n", __FUNCTION__, channel);
+             close(fd);
+             free(infobuf);
+             infobuf = NULL;
+        }
+        else{
+            adec_print("%s: open hdmi driver aud_cap node failed \n", __FUNCTION__);
+            free(infobuf);
+            infobuf = NULL;
+        }
+    }
+                
+}
+
 static int set_audio_decoder(aml_audio_dec_t *audec)
 {
 	int audio_id;
@@ -522,6 +578,7 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 		{   
             #ifdef DOLBY_USE_ARMDEC
 			adec_print("DOLBY_USE_ARMDEC=%d",DOLBY_USE_ARMDEC);
+			set_multichs_prop();
 			audio_decoder = AUDIO_ARM_DECODER;					  
             #else
 			audio_decoder = AUDIO_ARC_DECODER;

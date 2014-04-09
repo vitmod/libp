@@ -38,7 +38,11 @@ static char cChanMapProp[]="media.tegra.out.channel.map";
 
 #elif defined DOLBY_DDPDEC_51_MULTICHANNEL_ENDPOINT
 
+#ifndef DOLBY_DS1_UDC
+static char cEndpointProp[]="media.multich.support.info";
+#else
 static char cEndpointProp[]="dolby.audio.sink.info";
+#endif
 static char cInfoFrameByte[]="dolby.audio.sink.channel.allocation";
 
 const char* endpoints[] = { "hdmi2",
