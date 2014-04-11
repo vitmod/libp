@@ -412,6 +412,9 @@ void audioCallback_raw(int event, void* user, void *info)
     } else {
           adec_print("[%s %d]audioCallback: dsp not work!\n",__FUNCTION__,__LINE__);
     }
+// memset raw data when start playback to walkround HDMI audio format changed noise for some kind of TV set
+    if(audec->raw_bytes_readed < 16*4*1024)
+	memset((char *)(buffer->i16),0,buffer->size);
     return;
 }
 
