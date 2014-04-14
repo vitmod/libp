@@ -360,20 +360,28 @@ ff_rm_read_mdpr_codecdata (AVFormatContext *s, AVIOContext *pb,
             goto fail1;
         st->codec->width = avio_rb16(pb);
         st->codec->height = avio_rb16(pb);
-        avio_skip(pb, 2); // looks like bits per sample
-        avio_skip(pb, 4); // always zero?
+        st->codec->time_base.num= 1;
+        fps= avio_rb16(pb);
         st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-        st->need_parsing = AVSTREAM_PARSE_TIMESTAMPS;
-        fps = avio_rb32(pb);
+        avio_rb32(pb);
+        avio_skip(pb, 2);
+        avio_rb16(pb);
 
         if ((ret = rm_read_extradata(pb, st->codec, codec_data_size - (avio_tell(pb) - codec_pos))) < 0)
             return ret;
 
-        av_reduce(&st->avg_frame_rate.den, &st->avg_frame_rate.num,
-                  0x10000, fps, (1 << 30) - 1);
-#if FF_API_R_FRAME_RATE
-        st->r_frame_rate = st->avg_frame_rate;
-#endif
+//        av_log(s, AV_LOG_DEBUG, "fps= %d fps2= %d\n", fps, fps2);
+        st->codec->time_base.den = fps * st->codec->time_base.num;
+        //XXX: do we really need that?
+        switch(st->codec->extradata[4]>>4){
+        case 1: st->codec->codec_id = CODEC_ID_RV10; break;
+        case 2: st->codec->codec_id = CODEC_ID_RV20; break;
+        case 3: st->codec->codec_id = CODEC_ID_RV30; break;
+        case 4: st->codec->codec_id = CODEC_ID_RV40; break;
+        default:
+            av_log(st->codec, AV_LOG_ERROR, "extra:%02X %02X %02X %02X %02X\n", st->codec->extradata[0], st->codec->extradata[1], st->codec->extradata[2], st->codec->extradata[3], st->codec->extradata[4]);
+            goto fail1;
+        }
     }
 
 skip:
