@@ -420,7 +420,7 @@ static int ffmpeg_hls_getopt(URLContext *h, uint32_t  cmd, uint32_t flag, int64_
             
             int bps = 0;
             m3u_session_get_estimate_bandwidth(ctx->hls_ctx,&bps);
-            *info = bps;
+            *info = bps/1000;
            
             if(ctx->debug_level>3){
                 RLOG("Get measured bandwidth: %0.3f kbps\n",(float)*info/1000.000);
