@@ -1082,19 +1082,16 @@ int ffio_fdopen(AVIOContext **s, URLContext *h)
 {
     uint8_t *buffer;
     int buffer_size, max_packet_size;
-    int lpbuffer_size=(h->flags & URL_MINI_BUFFER)?IO_LP_BUFFER_MINI_SIZE:IO_LP_BUFFER_SIZE;
+    int lpbuffer_size=0;/*0 for default.*/
     int ret;
     float value;
     if((h->flags & URL_MINI_BUFFER)){
 		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemin",&value);
 		if(ret==0 && value>=1024){
 			lpbuffer_size=(int)value;
-		}	
-    }else{
-    		ret=am_getconfig_float("libplayer.ffmpeg.lpbufsizemax",&value);
-		if(ret==0 && value>=1024*10){
-			lpbuffer_size=(int)value;
-		}	
+		} else{
+		    lpbuffer_size =IO_LP_BUFFER_MINI_SIZE;
+		}
     }
    av_log(NULL, AV_LOG_INFO, "getloopbuf size=%x\n",lpbuffer_size);
     max_packet_size = h->max_packet_size;
