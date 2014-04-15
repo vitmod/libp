@@ -568,7 +568,8 @@ static void get_stream_info(play_para_t *p_para)
                 }
             } else {
                 if (temp_vidx == -1) {
-                    if (strcmp(pFormat->iformat->name, "mpegts") == 0 && pStream->encrypt) {
+                    //why disable video with encrypt,it will affect DTS certification ,so disable it ????,someone can do further check 	
+                    if(0){// (strcmp(pFormat->iformat->name, "mpegts") == 0 && pStream->encrypt) {
                         //mpegts encrypt
                         log_print("pid=%d crytion\n", pStream->id);
                     } else { 
