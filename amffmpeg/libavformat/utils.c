@@ -1397,6 +1397,10 @@ static void compute_pkt_fields(AVFormatContext *s, AVStream *st,
     }
     if (pc)
         pkt->convergence_duration = pc->convergence_duration;
+
+    if(pc == NULL && pkt->pts == AV_NOPTS_VALUE && pkt->dts != AV_NOPTS_VALUE && delay==0){
+    	pkt->pts = pkt->dts;
+    }   
 }
 
 
