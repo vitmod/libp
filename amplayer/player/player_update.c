@@ -955,7 +955,7 @@ static void update_dec_info(play_para_t *p_para,
                             struct buf_status *vbuf,
                             struct buf_status *abuf)
 {
-    if (p_para->vstream_info.has_video) {
+    if (p_para->vstream_info.has_video&&(vdec->status== 0x3F)) { //video dec is ready
         if (p_para->vstream_info.video_width == 0) {
             p_para->vstream_info.video_width = vdec->width;
             p_para->vstream_info.video_height = vdec->height;
