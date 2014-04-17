@@ -534,8 +534,8 @@ static int rm_read_header(AVFormatContext *s)
             duration = avio_rb32(pb); /* duration */
             st->start_time = start_time;
             st->duration = duration;
-            if(duration>0)
-                s->duration = AV_NOPTS_VALUE;
+            //if(duration>0)
+                //s->duration = AV_NOPTS_VALUE;
             get_str8(pb, buf, sizeof(buf)); /* desc */
             get_str8(pb, mime, sizeof(mime)); /* mimetype */
             st->codec->codec_type = AVMEDIA_TYPE_DATA;
