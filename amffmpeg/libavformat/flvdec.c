@@ -216,6 +216,34 @@ finish:
     return ret;
 }
 
+static int get_sstrtoi(char *datastr)
+{
+    char *p, *q;
+    int i;
+    int value = 0;
+
+    p = strstr(datastr, ":");
+    p = strstr(p, "\"");
+    p++;
+    if (p == NULL)
+        return 0;
+    q = strstr(p, "\"");
+    if (q == NULL)
+        return 0;
+
+    i = (int)(q - p);
+    if (i <= 0)
+        return 0;
+
+    while (i > 0) {
+        value = value * 10 + *p - '0';
+        p++;
+        i--;
+    }
+
+    return value;
+}
+
 static int amf_parse_object(AVFormatContext *s, AVStream *astream, AVStream *vstream, const char *key, int64_t max_pos, int depth) {
     AVCodecContext *acodec, *vcodec;
     AVIOContext *ioc;
@@ -314,9 +342,23 @@ static int amf_parse_object(AVFormatContext *s, AVStream *astream, AVStream *vst
 	     else if(!strcmp(key, "width")) 
                 vcodec->width= (float)num_val;	
 	     else if(!strcmp(key, "height")) 
-                vcodec->height= (float)num_val;		 
-        } else if (amf_type == AMF_DATA_TYPE_STRING)
+                vcodec->height= (float)num_val;
+        } else if (amf_type == AMF_DATA_TYPE_STRING) {
             av_dict_set(&s->metadata, key, str_val, 0);
+            if (!strcmp(key, "creator")) {  // this is special for #90533
+                char *data_tmp;
+                av_log(NULL, AV_LOG_INFO, "[%s:%d]special creator\n", __FUNCTION__, __LINE__);
+                data_tmp = strstr(str_val, "width");
+                if (data_tmp != NULL) {
+                    vcodec->width = get_sstrtoi(data_tmp);
+                }
+
+                data_tmp = strstr(str_val, "height");
+                if (data_tmp != NULL) {
+                    vcodec->height = get_sstrtoi(data_tmp);
+                }
+            }
+        }
     }
 
     return 0;
