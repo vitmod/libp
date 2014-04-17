@@ -274,6 +274,13 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
 			      log_print("NOTE: change type->fmt_string=%s to alac\n", type->fmt_string);
 			      type->fmt_string = format_string;
 		  	  }
+		 	  if((strstr(type->fmt_string,"ogg")!=NULL) && (sttmp->codec->codec_id==CODEC_ID_FLAC))
+		 	  {
+			      memset(format_string, 0, sizeof(format_string));
+			      sprintf(format_string, "%s","flac");
+			      log_print("NOTE: change type->fmt_string=%s to flac\n", type->fmt_string);
+			      type->fmt_string = format_string;
+		  	  }
 			  if((strstr(type->fmt_string,"aac")!=NULL) && (sttmp->codec->codec_id==CODEC_ID_AAC))
 			  {
 			  	unsigned char* buf=pFCtx->pb->buffer;

@@ -558,7 +558,7 @@ static int ogg_read_packet(AVFormatContext *s, AVPacket *pkt)
 retry:
     do{
         if (ogg_packet (s, &idx, &pstart, &psize, &fpos) < 0)
-            return AVERROR(EIO);
+            return AVERROR_EOF;//AVERROR(EIO);
     }while (idx < 0 || !s->streams[idx]);
 
     ogg = s->priv_data;
