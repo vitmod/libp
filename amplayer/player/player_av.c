@@ -2017,7 +2017,15 @@ int check_in_pts(play_para_t *para)
            ///log_print("[check_in_pts:%d]type=%d pkt->pts=%llx pts=%llx start_time=%llx \n",__LINE__,pkt->type,pkt->avpkt->pts,pts, start_time);
 
         } else if ((int64_t)INT64_0 != pkt->avpkt->dts) {
-            pts = pkt->avpkt->dts * time_base_ratio * last_duration;
+            /*
+            bug 90139 mkv file no pts,set dts to pts.
+            some avi file dts not timestamp,just increase like 0 1 2 3 .... keep this *duration.
+            */
+            if(para->file_type == AVI_FILE )
+                pts = pkt->avpkt->dts * time_base_ratio * last_duration;
+            else 
+                pts = pkt->avpkt->dts * time_base_ratio;
+
             //log_print("[check_in_pts:%d]type=%d pkt->dts=%llx pts=%llx time_base_ratio=%.2f last_duration=%d\n",__LINE__,pkt->type,pkt->avpkt->dts,pts,time_base_ratio,last_duration);
 			if (pkt->type == CODEC_AUDIO){
 				pts += pts_offset;				
