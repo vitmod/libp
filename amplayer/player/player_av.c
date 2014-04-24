@@ -2556,6 +2556,7 @@ int write_sub_data(am_packet_t *pkt, char *buf, unsigned int length)
     return PLAYER_SUCCESS;
 }
 
+#define str2ms(s) (((s[1]-0x30)*3600*10+(s[2]-0x30)*3600+(s[4]-0x30)*60*10+(s[5]-0x30)*60+(s[7]-0x30)*10+(s[8]-0x30))*1000+(s[10]-0x30)*100+(s[11]-0x30)*10+(s[12]-0x30))     
 int process_es_subtitle(play_para_t *para)
 {
     AVStream *pstream;
@@ -2609,6 +2610,12 @@ int process_es_subtitle(play_para_t *para)
     }
     if (sub_type == 0x17002) {
         last_duration = (unsigned)pkt->avpkt->convergence_duration * 90;
+    }
+    if (sub_type == 0x17003) {
+        unsigned char *buf = pkt->avpkt->data;
+        sub_pts = str2ms(buf)*90;
+        //log_print("[%s:%d] sub_pts:%llx, %c %c %c %c %c %c %c %c %c %c %c %c %c, %c,%c, \n", __FUNCTION__, __LINE__, sub_pts,
+		//	buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7],buf[8],buf[9],buf[10],buf[11],buf[12],pkt->avpkt->data[0],pkt->avpkt->data[1]);
     }
     sub_header[5] = (sub_type >> 16) & 0xff;
     sub_header[6] = (sub_type >> 8) & 0xff;
@@ -3173,8 +3180,6 @@ void player_switch_sub(play_para_t *para)
         }
 		
         //xsub avpkt->pts is not the valid timestamp, if sub format is xsub, don't drop packet.
-        if (pstream->codec->codec_id == CODEC_ID_XSUB)
-            cur_pts = 0;
 		
 		if (!am_getconfig_bool("media.amplayer.sublowmem"))
 		{

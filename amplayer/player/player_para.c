@@ -710,7 +710,7 @@ static void get_stream_info(play_para_t *p_para)
     p_para->vstream_info.video_index = video_index;
     p_para->astream_info.audio_index = audio_index;
     p_para->sstream_info.sub_index = sub_index;
-    log_print("Video index %d and Audio index %d to be played (index -1 means no stream)\n", video_index, audio_index);
+    log_print("Video index %d and Audio index %d sub index %d to be played (index -1 means no stream)\n", video_index, audio_index, sub_index);
     if (p_para->sstream_info.has_sub) {
         log_print("Subtitle index %d detected\n", sub_index);
     }
