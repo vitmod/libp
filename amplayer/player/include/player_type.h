@@ -7,7 +7,7 @@
 #define MSG_SIZE                    64
 #define MAX_VIDEO_STREAMS           10
 #define MAX_AUDIO_STREAMS           8
-#define MAX_SUB_INTERNAL            8
+#define MAX_SUB_INTERNAL            64
 #define MAX_SUB_EXTERNAL            24
 #define MAX_SUB_STREAMS             (MAX_SUB_INTERNAL + MAX_SUB_EXTERNAL)
 #define MAX_PLAYER_THREADS          32
