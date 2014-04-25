@@ -527,6 +527,55 @@ static int flv_get_extradata(AVFormatContext *s, AVStream *st, int size)
     return 0;
 }
 
+/***************** defined for lentoid hevc ************************/
+static const uint8_t nal_start_code[] = {0x00, 0x00, 0x00, 0x01};
+static void flv_extradata_process(AVStream *st)
+{
+    int len = 1024, offset = 6;
+    uint8_t * buf = av_malloc(len);
+    uint8_t * buf_t = buf;
+    uint8_t * ptr = st->codec->extradata;
+    int size_0, size_1, size;
+    len = 0;
+    int count=0;
+    while(st->codec->extradata_size - offset > 0) {
+        count++;
+        size_0 = (*(ptr+offset)&0xFF)*0x100;
+        size_1 = *(ptr+offset+1)&0xFF;
+        size = size_0+size_1;
+        if(count==2)
+            size += 1;    // very ugly
+        memcpy(buf_t, nal_start_code, 4);
+        buf_t += 4;
+        memcpy(buf_t, ptr+offset+2, size);
+        buf_t += size;
+        offset = offset+size+2;
+        len = len+size+4;
+    }
+    st->codec->extradata = av_realloc(st->codec->extradata, len);
+    memcpy(st->codec->extradata, buf, len);
+    st->codec->extradata_size = len;
+    av_free(buf);
+}
+
+
+static int flv_get_hevc_packet(AVFormatContext *s, AVPacket *pkt, int size)
+{
+    int len =0;
+    int ret = av_new_packet(pkt, size);
+    if(ret < 0)
+        return ret;
+    int offset = 0;
+    while(size-offset > 0) {
+        len = avio_rb32(s->pb);
+        memcpy(pkt->data+offset, nal_start_code, 4);
+        len = avio_read(s->pb, pkt->data+offset+4, len);
+        offset = offset+len+4;
+    }
+    return 0;
+}
+/***************** defined for lentoid hevc ************************/
+
 static void clear_index_entries(AVFormatContext *s, int64_t pos)
 {
     int i, j, out;
@@ -679,6 +728,11 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
         if (type == 0) {
             if ((ret = flv_get_extradata(s, st, size)) < 0)
                 return ret;
+
+            if(st->codec->codec_id == CODEC_ID_HEVC) {
+                flv_extradata_process(st);
+            }
+
             if (st->codec->codec_id == CODEC_ID_AAC) {
                 MPEG4AudioConfig cfg;
                 ff_mpeg4audio_get_config(&cfg, st->codec->extradata,
@@ -703,7 +757,12 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
         goto leave;
     }
 
-    ret= av_get_packet(s->pb, pkt, size);
+    if(st->codec->codec_id == CODEC_ID_HEVC) {
+        flv_get_hevc_packet(s, pkt, size);
+        ret = size;
+    } else {
+        ret= av_get_packet(s->pb, pkt, size);
+    }
     if (ret < 0) {
         return AVERROR(EIO);
     }

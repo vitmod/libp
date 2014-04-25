@@ -41,7 +41,8 @@ typedef enum
     AVS_FILE		= 21, 
     PMP_FILE		= 22, 
     OGM_FILE            = 23,
-    FILE_MAX		= 24,        
+    HEVC_FILE       = 24,
+    FILE_MAX,        
 }pfile_type;
 
 #endif

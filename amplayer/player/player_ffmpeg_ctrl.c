@@ -250,9 +250,12 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
                     }
                 }
                 if(st->codec->codec_id == CODEC_ID_HEVC) {
-                    if(hevc_flag == 0) {
-                        sprintf(vpx_string, "%s", "hevc");
-                        hevc_flag = 1;
+                    if(!am_p->vdec_profile.hevc_para.exist) {
+                        if(hevc_flag == 0) {
+                            sprintf(vpx_string, "%s", "hevc");
+                            hevc_flag = 1;
+                        }
+                        log_print("Find no HW h265 decoder, need to use SW h265 decoder!\n");
                     }
                 }
                 type->video_tracks++;
