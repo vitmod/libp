@@ -136,6 +136,7 @@ typedef  struct {
     int no_dec_ref_buf;
     int vsync_upint;
     int no_error_recovery;
+    int hls_force_exit;       // player need to exit when hls download thread exited already
 
     int write_end_header_flag;
     int seek_keyframe;

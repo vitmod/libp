@@ -784,6 +784,9 @@ static int non_raw_read(play_para_t *para)
                     //read timeout ,if playing current time reached end time,we think it is eof
                     ret = AVERROR_EOF;
                 }
+                if(url_is_segment_media(para->pFormatCtx->pb) && ret == -(0x1fffffff)) {
+                    para->playctrl_info.hls_force_exit = 1;
+                }
                 if (AVERROR_EOF != ret) {
                     return PLAYER_RD_FAILED;
                 } else {

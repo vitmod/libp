@@ -47,6 +47,7 @@
 #define PLAYBACK_SESSION_ID_MAX 128
 #define USE_SIMPLE_CACHE 1
 #define BW_MEASURE_ITEM_DEFAULT 100
+#define DOWNLOAD_EXIT_CODE 0x1fffffff
 
 #ifdef USE_SIMPLE_CACHE
 #include "hls_simple_cache.h"
@@ -1471,10 +1472,7 @@ static void* _download_worker(void* ctx){
 
     }while(s->is_closed<1);
     if(s->err_code!=0){
-        if(s->err_code>0){
-            s->err_code = -(s->err_code);
-        }
-            
+        s->err_code = -(DOWNLOAD_EXIT_CODE);
     }
     LOGV("Session download worker end,error code:%d\n",s->err_code);
     return (void*)NULL;

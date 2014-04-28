@@ -1110,10 +1110,10 @@ void *player_thread(play_para_t *player)
             if (!pkt->avpkt_isvalid) {
                 ret = read_av_packet(player);
                 if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
-                    if(ret==PLAYER_RD_FAILED||ret==PLAYER_RD_TIMEOUT){
+                    if(player->playctrl_info.hls_force_exit != 1 && (ret==PLAYER_RD_FAILED||ret==PLAYER_RD_TIMEOUT)){
                     		ret = (check_to_retry(player)== 0) ? PLAYER_RD_AGAIN : ret;
                     }
-                    if(ret!=PLAYER_RD_AGAIN){ // needn't to retry
+                    if(ret!=PLAYER_RD_AGAIN || player->playctrl_info.hls_force_exit == 1){ // needn't to retry
                     		log_error("pid[%d]::read_av_packet failed!\n", player->player_id);
                     		set_player_state(player, PLAYER_ERROR);
                     		goto release;
