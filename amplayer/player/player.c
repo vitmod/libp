@@ -648,7 +648,13 @@ int check_flag(play_para_t *p_para)
             } else {
                 player_switch_sub(p_para);
             }
-        }	
+        }
+        else if(subtitle_curr >= p_para->sstream_num) {
+            p_para->playctrl_info.switch_sub_id = 0xffff;
+            p_para->sstream_info.sub_index = 0xffff;
+            p_para->sstream_info.cur_subindex = subtitle_curr;
+            player_switch_sub(p_para);
+        }
     }
 	
     return NONO_FLAG;
