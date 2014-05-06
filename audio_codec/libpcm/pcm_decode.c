@@ -80,6 +80,7 @@ typedef struct
     int pcm_bluray_size;
     unsigned char *pcm_buffer;
     int lpcm_header_parsed;
+    int BlurayHeaderCheckDisable;
 }pcm_priv_data_t;
 
 static int pcm_read_init( pcm_read_ctl_t *pcm_read_ctx,unsigned char* inbuf,int size)
@@ -366,7 +367,7 @@ static int pcm_init(aml_audio_dec_t *audec)
               return -1; 
           }
           memcpy(&pPcm_priv_data->pcm_bluray_header, audec->extradata, 4);
-          PRINTF("[]blueray  frame 4 byte header[0x%x],[0x%x],[0x%x],[0x%x]\n", audec->extradata[0],audec->extradata[1],\
+          PRINTF("blueray  frame 4 byte header[0x%x],[0x%x],[0x%x],[0x%x]\n", audec->extradata[0],audec->extradata[1],\
           audec->extradata[2],audec->extradata[3]);
           #endif
 
@@ -431,6 +432,17 @@ static int check_frame_size(pcm_read_ctl_t *pcm_read_ctl,aml_audio_dec_t *audec 
     first_head_pos=pcm_read_ctl->UsedDataLen-4;
     PRINTF("[%s %d]First BluRay Header offset=%d\n",__FUNCTION__,__LINE__,first_head_pos);
     //---------------------------------------------
+    frame_size = pcm_bluray_pheader(pcm_read_ctl,audec, pPcm_priv_data->pcm_buffer, bps);
+    if(frame_size>0)
+    {
+        PRINTF("[%s %d]frame_size from parser:%d\n",__FUNCTION__,__LINE__,frame_size);
+        CHECK_DATA_ENOUGH(pcm_read_ctl,frame_size,4);
+        
+    }else{
+        PRINTF("[%s %d]ERR: invalid frame_size from parser:%d\n",__FUNCTION__,__LINE__,frame_size);
+        pPcm_priv_data->frame_size_check_flag=1;
+        return -1;
+    }
 
     index=1;
     if(!pcm_read(pcm_read_ctl,&pPcm_priv_data->pcm_buffer[4], 1)){
@@ -441,6 +453,16 @@ static int check_frame_size(pcm_read_ctl_t *pcm_read_ctl,aml_audio_dec_t *audec 
 
     while(1)
     {
+         if(index+3==bluray_pcm_size)
+         {
+            PRINTF("[%s %d]ExtraData(First Bluray FrmHeader)May be Broken,used Unchecked Mode..\n",__FUNCTION__,__LINE__);
+            pcm_read_ctl->UsedDataLen=first_head_pos;
+            pPcm_priv_data->frame_size_check_flag=1;
+            pPcm_priv_data->jump_read_head_flag=0;
+            pPcm_priv_data->frame_size_check=frame_size;
+            pPcm_priv_data->BlurayHeaderCheckDisable=1;
+            return -1;
+         }
          header=(pPcm_priv_data->pcm_buffer[index]<<24) | (pPcm_priv_data->pcm_buffer[index+1]<<16) | \
                 (pPcm_priv_data->pcm_buffer[index+2]<<8)| (pPcm_priv_data->pcm_buffer[index+3]);
          if(header == pPcm_priv_data->pcm_bluray_header){
@@ -459,7 +481,7 @@ static int check_frame_size(pcm_read_ctl_t *pcm_read_ctl,aml_audio_dec_t *audec 
          index++;
     }
     
-    frame_size = pcm_bluray_pheader(pcm_read_ctl,audec, pPcm_priv_data->pcm_buffer, bps);
+    
     memmove(pPcm_priv_data->pcm_buffer,&pPcm_priv_data->pcm_buffer[4],pPcm_priv_data->frame_size_check);
     if(frame_size!=pPcm_priv_data->frame_size_check){
         PRINTF("[%s %d]WARNING-->STREAM_ERR:frame_size!=frame_size_check %d/%d\n ",
@@ -506,7 +528,7 @@ static int pcm_decode_frame(pcm_read_ctl_t *pcm_read_ctl,unsigned char *buf, int
                 #ifdef CHECK_BLUERAY_PCM_HEADER 
                 if(pcm_read(pcm_read_ctl,pPcm_priv_data->pcm_buffer, 4)==0)
                     return 0;
-                while(1){
+                while(!pPcm_priv_data->BlurayHeaderCheckDisable){
                     header = (pPcm_priv_data->pcm_buffer[0]<<24) | (pPcm_priv_data->pcm_buffer[1]<<16) | \
                              (pPcm_priv_data->pcm_buffer[2]<<8)  | (pPcm_priv_data->pcm_buffer[3]);
                     if(header == pPcm_priv_data->pcm_bluray_header){
@@ -533,7 +555,7 @@ static int pcm_decode_frame(pcm_read_ctl_t *pcm_read_ctl,unsigned char *buf, int
                 }
 
                 #ifdef CHECK_BLUERAY_PCM_HEADER 
-                if(frame_size!=pPcm_priv_data->frame_size_check){
+                if(frame_size!=pPcm_priv_data->frame_size_check && !pPcm_priv_data->BlurayHeaderCheckDisable){
                     frame_size=pPcm_priv_data->frame_size_check;
                 } 
                 #endif
