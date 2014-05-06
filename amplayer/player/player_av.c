@@ -532,6 +532,7 @@ static int raw_read(play_para_t *para)
 {
     int rev_byte = -1;
     ByteIOContext *pb = para->pFormatCtx->pb;
+    signed short video_idx = para->vstream_info.video_index;
     am_packet_t *pkt = para->p_pkt;
     unsigned char *pbuf ;
     static int try_count = 0;
@@ -593,6 +594,48 @@ static int raw_read(play_para_t *para)
         } else {
             tryread_size = para->max_raw_size;
         }
+		
+        if (am_getconfig_bool("media.amplayer.seekkeyframe")) {
+            if (para->playctrl_info.seek_keyframe) {
+                para->playctrl_info.seek_keyframe = 0;
+        
+                int64_t old_offset = avio_tell(pb);
+                int64_t cur_offset = 0;
+                int fd_keyframe = -1;
+                if ((fd_keyframe == -1) && (am_getconfig_bool("media.amplayer.keyframedump"))) {
+                    fd_keyframe = open("/data/temp/keyframe.dat", O_CREAT | O_RDWR, 0666);
+                    if (fd_keyframe < 0) {
+                        log_error("creat %s failed!fd=%d\n", "/data/temp/keyframe.dat", fd_keyframe);
+                    }
+                } 
+                do {
+                    if(url_interrupt_cb()){
+                        log_print("[%s:%d] interrupted\n",  __FUNCTION__, __LINE__);
+                        break;
+                    }
+                    cur_offset = avio_tell(pb);
+                    if (cur_offset - old_offset >= 1024*1024*8) {
+                        log_error("[%s:%d] seek key frame reached %lld bytes! \n", __FUNCTION__, __LINE__, cur_offset-old_offset);
+                        break;
+                    }
+    
+                    av_read_frame(para->pFormatCtx, pkt->avpkt);
+                    if (fd_keyframe >= 0)
+                        write(fd_keyframe, pkt->avpkt->data, pkt->avpkt->size);
+                    //log_print("find key frame: stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
+                } while ((pkt->avpkt->stream_index != video_idx) || ((pkt->avpkt->stream_index == video_idx) && !(pkt->avpkt->flags & AV_PKT_FLAG_KEY)) );
+                log_print("find key frame: stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
+
+                avio_seek(pb, cur_offset, SEEK_SET);
+                if (pkt->avpkt) {
+                    av_free_packet(pkt->avpkt);
+                }
+                if (fd_keyframe >= 0) {
+                    close(fd_keyframe);
+                }
+            }
+        }
+		
         rev_byte = get_buffer(pb, pbuf, tryread_size);
         log_debug1("get_buffer,%d,cur_offset=%lld,para->pFormatCtx->valid_offset==%lld\n", rev_byte , cur_offset, para->pFormatCtx->valid_offset);
         if (AVERROR(ETIMEDOUT) == rev_byte && para->state.current_time >= para->state.full_time) {

@@ -1419,7 +1419,7 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
         /* select current input stream component */
         st = s->cur_st;
         if (st) {
-            if (!st->need_parsing || !st->parser || (strcmp(s->iformat->name, "mpegts") == 0)) {
+            if (!st->need_parsing || !st->parser || (!strcmp(s->iformat->name, "mpegts") && !(am_getconfig_bool("media.amplayer.seekkeyframe")))) {
                 /* no parsing needed: we just output the packet as is */
                 /* raw data support */
                 *pkt = st->cur_pkt; st->cur_pkt.data= NULL;
@@ -3296,11 +3296,11 @@ int av_find_stream_info(AVFormatContext *ic)
         av_log(NULL, AV_LOG_INFO, "[av_find_stream_info]DRMdemux&Demux_no_prot, do not check stream info ,return directly\n");
         return 0;
     }
-    av_log(NULL, AV_LOG_INFO, "[%s:%d]fast_switch=%d\n", __FUNCTION__, __LINE__, fast_switch);
-    if(fast_switch){	
+    av_log(NULL, AV_LOG_INFO, "[%s:%d]fast_switch=%d, seekkeyframe=%x,\n", __FUNCTION__, __LINE__, fast_switch,(am_getconfig_bool("media.amplayer.seekkeyframe")));
+    if(fast_switch && !(am_getconfig_bool("media.amplayer.seekkeyframe"))){	
 	    for (i=0; i<ic->nb_streams; i++) {
-		ic->streams[i]->need_parsing = AVSTREAM_PARSE_NONE;
-	    }	
+            ic->streams[i]->need_parsing = AVSTREAM_PARSE_NONE;
+	    }
     }
     for(i=0;i<ic->nb_streams;i++) {	
         AVCodec *codec;

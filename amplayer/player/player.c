@@ -300,6 +300,7 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
             para->playctrl_info.time_point = msg->f_param;
             para->playctrl_info.end_flag = 1;
             para->playctrl_info.reset_drop_buffered_data=0;
+            para->playctrl_info.seek_keyframe = 1;
         } else if(msg->f_param < 0){
             log_print("pid[%d]::seek reset\n", para->player_id);
 	     para->playctrl_info.reset_flag= 1;

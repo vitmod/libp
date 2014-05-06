@@ -138,6 +138,7 @@ typedef  struct {
     int no_error_recovery;
 
     int write_end_header_flag;
+    int seek_keyframe;
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);
