@@ -844,7 +844,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
         	    return ret;
         	} 
 
-        	if(!strncmp(filename, "vhls:", strlen("vhls:"))||!strncmp(filename, "rtp:", strlen("rtp:"))){  //no need to try in new protocol matching
+        	if(!strncmp(filename, "vhls:", strlen("vhls:"))||!strncmp(filename, "rtp:", strlen("rtp:"))||!strncmp(filename, "rtsp:", strlen("rtsp:"))){  //no need to try in new protocol matching
             	    goto PASS_THROUGH;
             	}
     	 }
