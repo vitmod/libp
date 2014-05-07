@@ -614,12 +614,13 @@ static int raw_read(play_para_t *para)
                         break;
                     }
                     cur_offset = avio_tell(pb);
-                    if (cur_offset - old_offset >= 1024*1024*8) {
+                    if (cur_offset - old_offset >= SEEK_KEYFRAME_MAXSIZE) {
                         log_error("[%s:%d] seek key frame reached %lld bytes! \n", __FUNCTION__, __LINE__, cur_offset-old_offset);
                         break;
                     }
     
                     av_read_frame(para->pFormatCtx, pkt->avpkt);
+                    usleep(10000); // 10ms
                     if (fd_keyframe >= 0)
                         write(fd_keyframe, pkt->avpkt->data, pkt->avpkt->size);
                     //log_print("find key frame: stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
