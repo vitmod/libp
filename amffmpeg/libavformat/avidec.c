@@ -788,9 +788,9 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             break;
         case MKTAG('i', 'n', 'd', 'x'):
             i= avio_tell(pb);
-            if(pb->seekable && !(s->flags & AVFMT_FLAG_IGNIDX) && avi->use_odml &&
-               read_braindead_odml_indx(s, 0) < 0)
-                goto fail;
+            if(pb->seekable && !(s->flags & AVFMT_FLAG_IGNIDX) && avi->use_odml){
+                read_braindead_odml_indx(s, 0);
+            }
             avio_seek(pb, i+size, SEEK_SET);
             break;
         case MKTAG('v', 'p', 'r', 'p'):
