@@ -107,6 +107,20 @@ static int player_para_release(play_para_t *para)
     return PLAYER_SUCCESS;
 }
 
+static void setsysfs(char * path, char * value)
+{
+    int fd = -1;
+    fd = open(path, O_RDWR);
+    if(fd >= 0){
+        write(fd, value, 2);
+        close(fd);
+        fd = -1;
+    }else{
+        log_print("setsysfs: open file failed.\n");
+    }
+}
+
+
 /******************************
  * check decoder status
  * if rm decoder error,
@@ -174,6 +188,12 @@ static int check_decoder_worksta(play_para_t *para)
             para->playctrl_info.time_point = para->state.current_time + 1;
             para->playctrl_info.reset_flag = 1;
             para->playctrl_info.end_flag = 1;
+            if(para->astream_info.audio_format == AFORMAT_COOK){
+                para->astream_info.has_audio = 0;
+                para->playctrl_info.no_audio_flag = 1;
+                para->start_param->nosound = 1;
+                setsysfs("/sys/class/audiodsp/codec_fatal_err", "0");
+            }
             set_black_policy(0);
             log_print("adec err::[%s:%d]time=%d ret=%d, need reset\n", __FUNCTION__, __LINE__, para->playctrl_info.time_point, ret);
         }

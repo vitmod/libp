@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+//#include <cutils/properties.h>
 
 #include "cook_codec.h"
 #include <asm/cache.h>
@@ -69,12 +72,26 @@ static rm_info_t ra_info ;
 static char file_header[AUDIO_EXTRA_DATA_SIZE];
 #pragma align_to(64,file_header)
 static char *cur_read_ptr = file_header;
-
+static int reset = 0;
+static void setsysfs(char * path, char * value)
+{
+    int fd = -1;
+    fd = open(path, O_RDWR);
+    if(fd >= 0){
+        write(fd, value, 2);
+        close(fd);
+        fd = -1;
+    }else{
+        libcook_print("setsysfs: open file failed.\n");
+    }
+}
 
 static void rm_error(void* pError, HX_RESULT result, const char* pszMsg)
 {
     //dsp_mailbox_send(1,M1B_IRQ7_DECODE_FATAL_ERR, 1, NULL, 0);
     //trans_err_code(DECODE_FATAL_ERR);
+    //property_set("media.amplayer.noaudio", "1");
+    setsysfs("/sys/class/audiodsp/codec_fatal_err", "2"); //Fatal error
     libcook_print("rm_error pError=0x%08x result=0x%08x msg=%s\n", pError, result, pszMsg);
     //while(1);
 }
@@ -140,19 +157,27 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
 }
 static UINT32 rm_io_read(void* pUserRead, BYTE* pBuf, UINT32 ulBytesToRead)
 {
-    memcpy(pBuf,cur_read_ptr,ulBytesToRead);
+    //memcpy(pBuf,cur_read_ptr,ulBytesToRead);
     cur_read_ptr = cur_read_ptr + ulBytesToRead;
     if((unsigned)(cur_read_ptr - file_header) > AUDIO_EXTRA_DATA_SIZE){
-		//trans_err_code(DECODE_INIT_ERR);	
+		//trans_err_code(DECODE_INIT_ERR);
+		//property_set("media.amplayer.noaudio", "1");
+		setsysfs("/sys/class/audiodsp/codec_fatal_err", "2"); //init err
 		libcook_print("warning :: cook.read byte exceed the the buffer then sent,%d \n",(unsigned)(cur_read_ptr - file_header) );
-		while(1);
+		//while(1);
+		cur_read_ptr -= ulBytesToRead;
+		return 0;
 		
-    }		
+    }
+    cur_read_ptr -= ulBytesToRead;
+    memcpy(pBuf,cur_read_ptr,ulBytesToRead);
+    cur_read_ptr = cur_read_ptr + ulBytesToRead;
     return ulBytesToRead;
  	
 }
 static void rm_io_seek(void* pUserRead, UINT32 ulOffset, UINT32 ulOrigin)
 {
+        char * tptr = cur_read_ptr;
         if (ulOrigin == HX_SEEK_ORIGIN_CUR)
             cur_read_ptr += ulOffset;
         else if (ulOrigin == HX_SEEK_ORIGIN_SET)
@@ -160,9 +185,12 @@ static void rm_io_seek(void* pUserRead, UINT32 ulOffset, UINT32 ulOrigin)
         else if (ulOrigin == HX_SEEK_ORIGIN_END)
                 cur_read_ptr = sizeof(file_header)+(char *)pUserRead-ulOffset;
     	if((unsigned)(cur_read_ptr - file_header) > AUDIO_EXTRA_DATA_SIZE){
-		//trans_err_code(DECODE_INIT_ERR);	
-		libcook_print("warning :: cook.seek buffer pos exceed the the buffer then sent,%d \n",(unsigned)(cur_read_ptr - file_header) );
-		while(1);
+            //trans_err_code(DECODE_INIT_ERR);
+            //property_set("media.amplayer.noaudio", "1");
+            setsysfs("/sys/class/audiodsp/codec_fatal_err", "2"); //init err
+            libcook_print("warning :: cook.seek buffer pos exceed the the buffer then sent,%d \n",(unsigned)(cur_read_ptr - file_header) );
+            cur_read_ptr = tptr;
+            //while(1);
     	}	
 
 }
@@ -333,7 +361,7 @@ int audio_dec_init(audio_decoder_operations_t *adec_ops)
 	adec_ops->nOutBufSize = DefaultOutBufSize;
 	
 	memset(real_data.extradata, 0, AUDIO_EXTRA_DATA_SIZE);
-	//libcook_print("%d,%d\n",real_data.extradata_size,adec_ops->extradata_size);
+	libcook_print("%d,%d\n",real_data.extradata_size,adec_ops->extradata_size);
 	for(i = 0; i < real_data.extradata_size; i++){
 		real_data.extradata[i] = adec_ops->extradata[i];
 	}
