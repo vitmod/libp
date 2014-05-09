@@ -33,23 +33,26 @@ namespace android
 
 static Mutex mLock;
 static Mutex mLock_raw;
-
+//get default output  sample rate which maybe changed by raw output
+static  int default_sr = 48000;
 extern "C" int get_audio_decoder(void);
 static int get_digitalraw_mode(void)
 {
 	return amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
 }
-void restore_system_samplerate()
+void restore_system_samplerate(struct aml_audio_dec* audec)
 {
 #if defined(ANDROID_VERSION_JBMR2_UP)
     unsigned int sr = 0;
 #else
     int sr = 0;
 #endif 
-	//TODO ,other output deivce routed ??
-	AudioSystem::getOutputSamplingRate(&sr,AUDIO_STREAM_MUSIC);
-	if(sr != 48000){
-	audio_io_handle_t handle = -1;		
+	if(audec->samplerate == 48000 || (audec->format != ACODEC_FMT_DTS && \
+		audec->format != ACODEC_FMT_AC3 && audec->format != ACODEC_FMT_EAC3))
+		return ;
+	audio_io_handle_t handle = -1;	
+//for mx, raw/pcm use the same audio hal
+#ifndef USE_ARM_AUDIO_DEC
 	handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
 	                            48000,
 	                            AUDIO_FORMAT_PCM_16_BIT,
@@ -63,10 +66,30 @@ void restore_system_samplerate()
 		if(handle > 0){
 			char str[64];
 			memset(str,0,sizeof(str));
-			sprintf(str,"sampling_rate=%d",48000);
+			sprintf(str,"sampling_rate=%d",default_sr);
 			AudioSystem::setParameters(handle, String8(str));			
 		}		
-	}
+#else
+//for  M8, raw/pcm  output use different HAL, so only check the raw output device
+	handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+	                            48000,
+	                            AUDIO_FORMAT_AC3, //use AC3 as the format tag for all raw output
+	                            AUDIO_CHANNEL_OUT_STEREO,
+#if defined(_VERSION_ICS) 
+					AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+#else	//JB...			
+	                            AUDIO_OUTPUT_FLAG_DIRECT
+#endif	                            
+	                            );
+		
+		if(handle > 0){
+			char str[64];
+			memset(str,0,sizeof(str));
+			sprintf(str,"sampling_rate=%d",default_sr);
+			AudioSystem::setParameters(handle, String8(str));
+			AudioSystem::releaseOutput(handle);			
+		}
+#endif
 }
 
 #if defined(ANDROID_VERSION_JBMR2_UP)
@@ -113,6 +136,7 @@ void restore_system_framesize()
 void reset_system_samplerate(struct aml_audio_dec* audec)
 {
 	unsigned digital_raw = 0;
+	audio_io_handle_t handle = -1;	
 	digital_raw = get_digitalraw_mode();	
 	if(!audec ||!digital_raw)
 		return;
@@ -130,28 +154,49 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 		(audec->samplerate == 32000 || audec->samplerate == 44100)))
 		
 	{
-		audio_io_handle_t handle = -1;
 		int sr = 0;
-		//AudioSystem::getOutputSamplingRate(&sr,AUDIO_STREAM_MUSIC);
 		if(/*sr*/48000 != audec->samplerate){
-			adec_print("change android system audio sr from %d to %d \n",sr,audec->samplerate);
+#ifndef USE_ARM_AUDIO_DEC
 			handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
-	                                    48000,
-	                                    AUDIO_FORMAT_PCM_16_BIT,
-	                                    AUDIO_CHANNEL_OUT_STEREO,
+			                            48000,
+			                            AUDIO_FORMAT_PCM_16_BIT,
+			                            AUDIO_CHANNEL_OUT_STEREO,
 #if defined(_VERSION_ICS) 
-					AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+							AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
 #else	//JB...			
-	                            AUDIO_OUTPUT_FLAG_PRIMARY
+			                            AUDIO_OUTPUT_FLAG_PRIMARY
 #endif	                            
-	                                    );
-			if(handle > 0){
-				char str[64];
-				memset(str,0,sizeof(str));
-				sprintf(str,"sampling_rate=%d",audec->samplerate);
-				AudioSystem::setParameters(handle, String8(str));			
-			}
+			                            );
+				if(handle > 0){
+					char str[64];
+					memset(str,0,sizeof(str));
+					sprintf(str,"sampling_rate=%d",audec->samplerate);
+					AudioSystem::setParameters(handle, String8(str));			
+				}		
+#else
+		//for  M8, raw/pcm  output use different HAL, so only check the raw output device
+			handle = 	AudioSystem::getOutput(AUDIO_STREAM_MUSIC,
+			                            48000,
+			                            AUDIO_FORMAT_AC3, //use AC3 as the format tag for all raw output
+			                            AUDIO_CHANNEL_OUT_STEREO,
+#if defined(_VERSION_ICS) 
+							AUDIO_POLICY_OUTPUT_FLAG_INDIRECT
+#else	//JB...			
+			                            AUDIO_OUTPUT_FLAG_DIRECT
+#endif	                            
+			                            );
+				
+				if(handle > 0){
+					char str[64];
+					memset(str,0,sizeof(str));
+					sprintf(str,"sampling_rate=%d",audec->samplerate);
+					AudioSystem::setParameters(handle, String8(str));
+					AudioSystem::releaseOutput(handle);			
+				}
+#endif
+
 		}
+		
 		
        }
 }
@@ -513,8 +558,8 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
        //1/10=0.1s=100ms
        audec->raw_frame_size=audec->channels*(audec->adec_ops->bps>>3);
        audec->max_bytes_readded_diff=audec->samplerate*audec->raw_frame_size*audec->codec_type/10;
-       audec->i2s_iec958_sync_gate=audec->samplerate*audec->raw_frame_size*audec->codec_type*0.4;//400ms
-       return 0;
+       audec->i2s_iec958_sync_gate=audec->samplerate*audec->raw_frame_size*audec->codec_type*0.4;//400ms	 
+	return 0;
 }
 #endif
 //-------------------------------------------------------------------------
@@ -582,7 +627,6 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     }
 
     adec_print("wfd_enable = %d", wfd_enable);
-
     reset_system_samplerate(audec);
 #ifdef USE_ARM_AUDIO_DEC
 	int user_raw_enable = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
@@ -609,6 +653,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
     adec_print("[%s %d]SessionID = %d",__FUNCTION__,__LINE__,SessionID);
 #if defined(_VERSION_JB)
 	if(audec->channels == 8){
+		adec_print("create multi-channel track\n");
 		status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
                         AUDIO_FORMAT_PCM_16_BIT,
@@ -904,8 +949,9 @@ extern "C" int android_stop_raw(struct aml_audio_dec* audec)
 #endif
     if((audec->format==ACODEC_FMT_DTS) ||
        (audec->format == ACODEC_FMT_AC3) ||
-       (audec->format == ACODEC_FMT_EAC3))
-         amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);
+       (audec->format == ACODEC_FMT_EAC3)){
+         amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);	 
+    }	 
     out_ops->private_data_raw= NULL;
     return 0;
 }
@@ -943,10 +989,10 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
     mpAudioTrack.clear();
 #endif
     out_ops->private_data = NULL;
-	restore_system_samplerate();
-	if(wfd_enable){
-    	restore_system_framesize();
-	}
+    restore_system_samplerate(audec);
+    if(wfd_enable){
+        restore_system_framesize();
+    }	
     return 0;
 }
 
@@ -1109,3 +1155,4 @@ extern "C" void get_output_func(struct aml_audio_dec* audec)
 }
 
 }
+
