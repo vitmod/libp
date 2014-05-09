@@ -679,7 +679,6 @@ static void start_adec(aml_audio_dec_t *audec)
     audec->no_first_apts = 0;
        
     if (audec->state == INITTED) {
-         audec->state = ACTIVE;
          //get info from the audiodsp == can get from amstreamer
          while ((!get_first_apts_flag(dsp_ops)) && (!audec->need_stop) && (!audec->no_first_apts)) 
          {
@@ -714,6 +713,7 @@ static void start_adec(aml_audio_dec_t *audec)
              audec->auto_mute = 0;
          }
          aout_ops->start(audec);
+         audec->state = ACTIVE;
     }
 }
 
