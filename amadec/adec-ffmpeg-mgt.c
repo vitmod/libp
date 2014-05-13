@@ -360,8 +360,9 @@ static int InBufferInit(aml_audio_dec_t *audec)
 }
 static int InBufferRelease(aml_audio_dec_t *audec)
 {
-    close(audec->fd_uio);
-    audec->fd_uio=-1;
+//    close(audec->fd_uio);
+//    audec->fd_uio=-1;
+    uio_deinit(audec);
     return 0;
 }
 
