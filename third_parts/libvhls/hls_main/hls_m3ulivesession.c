@@ -1599,7 +1599,7 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     }
 #ifdef USE_SIMPLE_CACHE
     int cache_size_max = 1024*1024*10; //10M
-    if(am_getconfig_bool_def("ro.config.low_ram",0)){
+    if(am_getconfig_bool_def("media.amplayer.low_ram",0)){
 		cache_size_max=cache_size_max/4;
     }
     ret = hls_simple_cache_alloc(cache_size_max,&session->cache);
