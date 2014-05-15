@@ -835,8 +835,11 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
 		s->pb->filename=listfile;
     	 }
     	 else{
-        	if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0)
-            		return ret;
+        	if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0){
+        	    return ret;
+        	} else if(!strncmp(filename, "vhls:", strlen("vhls:"))){  //no need to try in new protocol matching
+            	    goto PASS_THROUGH;
+            	}
     	 }
     }
 
@@ -867,7 +870,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
                     }
 			url_fclose(s->pb);
 			s->pb=NULL;
-			av_log(NULL, AV_LOG_INFO, "[%s:%d]Use new url=%s to open\n",__FUNCTION__,__LINE__);
+			av_log(NULL, AV_LOG_INFO, "[%s:%d]Use new url=%s to open\n",__FUNCTION__,__LINE__,listfile);
 			if ((err=avio_open_h(&s->pb,listfile, AVIO_FLAG_READ, headers)) < 0) {
 				av_log(NULL, AV_LOG_ERROR, "init_input:%s failed,line=%d err=0x%x\n",listfile,__LINE__,err);
 				av_free(listfile);
@@ -877,6 +880,7 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
     }
     if (s->iformat)
         return 0;
+PASS_THROUGH:
     return av_probe_input_buffer(s->pb, &s->iformat, filename, s, 0, 0);
 }
 
