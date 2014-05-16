@@ -336,21 +336,6 @@ const AVCodecGuid ff_codec_wav_guids[] = {
     {CODEC_ID_MP2,        {0x2B,0x80,0x6D,0xE0,0x46,0xDB,0xCF,0x11,0xB4,0xD1,0x00,0x80,0x5F,0x6C,0xBB,0xEA}},
     {CODEC_ID_NONE}
 };
-const AVMetadataConv ff_riff_info_conv[] = {
-    { "IART", "artist"     },
-    { "ICMT", "comment"    },
-    { "ICOP", "copyright"  },
-    { "ICRD", "date"       },
-    { "IGNR", "genre"      },
-    { "ILNG", "language"   },
-    { "INAM", "title"      },
-    { "IPRD", "album"      },
-    { "IPRT", "track"      },
-    { "ISFT", "encoder"    },
-    { "ISMP", "timecode"   },
-    { "ITCH", "encoded_by" },
-    { 0 },
-};
 
 #if CONFIG_MUXERS
 int64_t ff_start_tag(AVIOContext *pb, const char *tag)
@@ -649,71 +634,4 @@ enum CodecID ff_codec_guid_get_id(const AVCodecGuid *guids, ff_asf_guid guid)
             return guids[i].id;
     }
     return CODEC_ID_NONE;
-}
-int ff_read_riff_info(AVFormatContext *s, int64_t size)
-{
-    int64_t start, end, cur;
-    AVIOContext *pb = s->pb;
-
-    start = avio_tell(pb);
-    end   = start + size;
-
-    while ((cur = avio_tell(pb)) >= 0 &&
-           cur <= end - 8 /* = tag + size */) {
-        uint32_t chunk_code;
-        int64_t chunk_size;
-        char key[5] = { 0 };
-        char *value;
-
-        chunk_code = avio_rl32(pb);
-        chunk_size = avio_rl32(pb);
-        if (url_feof(pb)) {
-            if (chunk_code || chunk_size) {
-                av_log(s, AV_LOG_WARNING, "INFO subchunk truncated\n");
-                return AVERROR_INVALIDDATA;
-            }
-            return AVERROR_EOF;
-        }
-        if (chunk_size > end ||
-            end - chunk_size < cur ||
-            chunk_size == UINT_MAX) {
-            avio_seek(pb, -9, SEEK_CUR);
-            chunk_code = avio_rl32(pb);
-            chunk_size = avio_rl32(pb);
-            if (chunk_size > end || end - chunk_size < cur || chunk_size == UINT_MAX) {
-                av_log(s, AV_LOG_WARNING, "too big INFO subchunk\n");
-                return AVERROR_INVALIDDATA;
-            }
-        }
-
-        chunk_size += (chunk_size & 1);
-
-        if (!chunk_code) {
-            if (chunk_size)
-                avio_skip(pb, chunk_size);
-            else if (pb->eof_reached) {
-                av_log(s, AV_LOG_WARNING, "truncated file\n");
-                return AVERROR_EOF;
-            }
-            continue;
-        }
-
-        value = av_mallocz(chunk_size + 1);
-        if (!value) {
-            av_log(s, AV_LOG_ERROR,
-                   "out of memory, unable to read INFO tag\n");
-            return AVERROR(ENOMEM);
-        }
-
-        AV_WL32(key, chunk_code);
-
-        if (avio_read(pb, value, chunk_size) != chunk_size) {
-            av_log(s, AV_LOG_WARNING,
-                   "premature end of file while reading INFO tag\n");
-        }
-
-        av_dict_set(&s->metadata, key, value, AV_DICT_DONT_STRDUP_VAL);
-    }
-
-    return 0;
 }
