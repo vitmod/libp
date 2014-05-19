@@ -77,7 +77,7 @@ static int read_data(char * out, buffer_stream_t *bs, int size)
 	int ret=is_buffer_empty(bs);
 	if(ret==1)
 	{
-		printf("=====buffer empty \n");
+		//printf("=====buffer empty \n");
 		return 0;//buffer empty
 	}
 	int len= MIN(bs->buf_level,size);
@@ -88,7 +88,7 @@ static int read_data(char * out, buffer_stream_t *bs, int size)
 		bs->buf_level-=len;
 		if(bs->rd_ptr==(bs->data+bs->buf_length))
 		     bs->rd_ptr=bs->data;
-		printf("=====read ok: condition 1 read :%d byte \n",len);
+		//printf("=====read ok: condition 1 read :%d byte \n",len);
 		return len;
 	}
 	else if(len<(bs->data+bs->buf_length-bs->rd_ptr))
@@ -98,7 +98,7 @@ static int read_data(char * out, buffer_stream_t *bs, int size)
 		bs->buf_level-=len;
 		if(bs->rd_ptr==(bs->data+bs->buf_length))
 		     bs->rd_ptr=bs->data;
-		printf("=====read ok: condition 2 read :%d byte \n",len);
+		//printf("=====read ok: condition 2 read :%d byte \n",len);
 		return len;
 
 	}
@@ -111,7 +111,7 @@ static int read_data(char * out, buffer_stream_t *bs, int size)
 		bs->buf_level-=len;
 		if(bs->rd_ptr==(bs->data+bs->buf_length))
 		     bs->rd_ptr=bs->data;
-		printf("=====read ok: condition 3 read :%d byte \n",len);
+		//printf("=====read ok: condition 3 read :%d byte \n",len);
 		return len;
 	}
 
@@ -133,7 +133,7 @@ static int write_data(char *in, buffer_stream_t *bs, int size)
 	if(ret==1)
 	{
 
-		printf("=====buffer full \n");
+		//printf("=====buffer full \n");
 		return 0;//buffer full
 	}
 	//start write data
@@ -145,7 +145,7 @@ static int write_data(char *in, buffer_stream_t *bs, int size)
 		bs->buf_level+=len;
 		if(bs->wr_ptr==(bs->data+bs->buf_length))
 		     bs->wr_ptr=bs->data;
-		printf("=====write ok: condition 1 write :%d byte \n",len);
+		//printf("=====write ok: condition 1 write :%d byte \n",len);
 		return len;
 	}
 	else if(len<(bs->data+bs->buf_length-bs->wr_ptr))
@@ -155,7 +155,7 @@ static int write_data(char *in, buffer_stream_t *bs, int size)
 		bs->buf_level+=len;
 		if(bs->wr_ptr==(bs->data+bs->buf_length))
 		    bs->wr_ptr=bs->data;
-		printf("=====write ok: condition 2 write :%d byte \n",len);
+		//printf("=====write ok: condition 2 write :%d byte \n",len);
 		return len;
 
 	}
@@ -168,7 +168,7 @@ static int write_data(char *in, buffer_stream_t *bs, int size)
 		bs->buf_level+=len;
 		if(bs->wr_ptr==(bs->data+bs->buf_length))
 		    bs->wr_ptr=bs->data;
-		printf("=====write ok: condition 3 write :%d byte \n",len);
+		//printf("=====write ok: condition 3 write :%d byte \n",len);
 		return len;
 	}
 

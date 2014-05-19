@@ -35,6 +35,8 @@ static int fragcount = 16;
 static snd_pcm_uframes_t chunk_size = 1024;
 static char output_buffer[64 * 1024];
 static unsigned char decode_buffer[OUTPUT_BUFFER_SIZE + 64];
+#define   PERIOD_SIZE  1024
+#define   PERIOD_NUM    4
 
 #ifdef USE_INTERPOLATION
 static int pass1_history[8][8];
@@ -179,7 +181,12 @@ static int set_params(alsa_param_t *alsa_params)
     alsa_params->bits_per_sample = snd_pcm_format_physical_width(alsa_params->format);
     //bits_per_frame = bits_per_sample * hwparams.realchanl;
     alsa_params->bits_per_frame = alsa_params->bits_per_sample * alsa_params->channelcount;
-
+    bufsize =	PERIOD_NUM*PERIOD_SIZE; 
+    err = snd_pcm_hw_params_set_buffer_size_near(alsa_params->handle, hwparams,&bufsize);   
+    if (err < 0) {
+		adec_print("Unable to set	buffer	size \n");		
+		return err;    
+    }
     err = snd_pcm_hw_params_set_period_size_near(alsa_params->handle, hwparams, &chunk_size, NULL);
     if (err < 0) {
         adec_print("Unable to set period size \n");
@@ -597,7 +604,9 @@ static void *alsa_playback_loop(void *args)
         while (alsa_params->pause_flag) {
             usleep(10000);
         }
-
+	  if(alsa_params->stop_flag){
+	  	goto exit;
+	  }
         adec_refresh_pts(audec);
 
         len2 = alsa_play(alsa_params, (buffer + offset), len);
@@ -609,7 +618,7 @@ static void *alsa_playback_loop(void *args)
             offset = 0;
         }
     }
-
+exit:
     adec_print("Exit alsa playback loop !\n");
     pthread_exit(NULL);
     return NULL;
@@ -757,6 +766,8 @@ int alsa_init(struct aml_audio_dec* audec)
         snd_pcm_close(alsa_param->handle);
         return -1;
     }
+    pthread_setname_np(tid,"ALSAOUTLOOP");
+	
     adec_print("Create alsa playback loop thread success ! tid = %d\n", tid);
 
     alsa_param->playback_tid = tid;
@@ -783,6 +794,7 @@ int alsa_start(struct aml_audio_dec* audec)
     alsa_param->wait_flag=1;//yvonneadded
     pthread_cond_signal(&alsa_param->playback_cond);
     pthread_mutex_unlock(&alsa_param->playback_mutex);
+    adec_print("exit alsa out start!\n");
 
     return 0;
 }
@@ -800,11 +812,14 @@ int alsa_pause(struct aml_audio_dec* audec)
     alsa_param_t *alsa_params;
 
     alsa_params = (alsa_param_t *)audec->aout_ops.private_data;
+    pthread_mutex_lock(&alsa_params->playback_mutex);
 
-    alsa_params->pause_flag = 1;
+    alsa_params->pause_flag = 1;	
     while ((res = snd_pcm_pause(alsa_params->handle, 1)) == -EAGAIN) {
         sleep(1);
     }
+    pthread_mutex_unlock(&alsa_params->playback_mutex);
+    adec_print("exit alsa out pause\n");
 
     return res;
 }
@@ -822,11 +837,13 @@ int alsa_resume(struct aml_audio_dec* audec)
     alsa_param_t *alsa_params;
 
     alsa_params = (alsa_param_t *)audec->aout_ops.private_data;
+    pthread_mutex_lock(&alsa_params->playback_mutex);
 
     alsa_params->pause_flag = 0;
     while ((res = snd_pcm_pause(alsa_params->handle, 0)) == -EAGAIN) {
         sleep(1);
     }
+    pthread_mutex_unlock(&alsa_params->playback_mutex);
 
     return res;
 }
@@ -843,17 +860,19 @@ int alsa_stop(struct aml_audio_dec* audec)
     alsa_param_t *alsa_params;
 
     alsa_params = (alsa_param_t *)audec->aout_ops.private_data;
-
+    pthread_mutex_lock(&alsa_params->playback_mutex);
+    alsa_params->pause_flag = 0;
     alsa_params->stop_flag = 1;
     alsa_params->wait_flag = 0;
     pthread_cond_signal(&alsa_params->playback_cond);
     pthread_join(alsa_params->playback_tid, NULL);
-    pthread_mutex_destroy(&alsa_params->playback_mutex);
     pthread_cond_destroy(&alsa_params->playback_cond);
 
 
     snd_pcm_drop(alsa_params->handle);
     snd_pcm_close(alsa_params->handle);
+    pthread_mutex_unlock(&alsa_params->playback_mutex);
+    pthread_mutex_destroy(&alsa_params->playback_mutex);
 
     free(alsa_params);
     audec->aout_ops.private_data = NULL;
@@ -895,6 +914,10 @@ unsigned long alsa_latency(struct aml_audio_dec* audec)
     return ((sample_num * 1000) / alsa_param->rate);
 }
 
+static int alsa_mute(struct aml_audio_dec* audec, adec_bool_t en)
+{
+ 	return 0;
+}
 /**
  * \brief get output handle
  * \param audec pointer to audec
@@ -907,6 +930,7 @@ void get_output_func(struct aml_audio_dec* audec)
     out_ops->start = alsa_start;
     out_ops->pause = alsa_pause;
     out_ops->resume = alsa_resume;
+    out_ops->mute = alsa_mute;	
     out_ops->stop = alsa_stop;
     out_ops->latency = alsa_latency;
 }
