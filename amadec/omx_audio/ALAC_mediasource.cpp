@@ -45,10 +45,8 @@ int ALAC_MediaSource::MediaSourceRead_buffer(unsigned char *buffer,int size)
 		  readsum+=readcnt; 
 		  if(sleep_time > 200){ //wait for max 2s to get audio data
 		  	ALOGE("[%s] Can't get data from audiobuffer,wait for %d ms\n ", __FUNCTION__,sleep_time*10);
-			return 0;
 		  }
    	   }
-	   bytes_readed_sum +=readsum;
 	   if(*pStop_ReadBuf_Flag==1)
 	   {
             ALOGI("[%s] End of Stream: *pStop_ReadBuf_Flag==1\n ", __FUNCTION__);
@@ -74,7 +72,8 @@ ALAC_MediaSource::ALAC_MediaSource(void *read_buffer, aml_audio_dec_t *audec)
 	sample_rate=0;
 	ChNum=0;
 	frame_size=0;
-
+	bytes_readed_sum=0;
+	bytes_readed_sum_pre=0;
 	set_ALAC_MetaData(audec);
 	
 }
@@ -144,7 +143,6 @@ status_t ALAC_MediaSource::stop()
 status_t ALAC_MediaSource::read(MediaBuffer **out, const ReadOptions *options)
 {
 	*out = NULL;
-	int readedbytes = 0;
 	unsigned char header_buffer[5];
 	frame_size = 0;
 
@@ -153,7 +151,7 @@ status_t ALAC_MediaSource::read(MediaBuffer **out, const ReadOptions *options)
          return ERROR_END_OF_STREAM;
 	}
 	
-	readedbytes = MediaSourceRead_buffer(header_buffer,4);
+	MediaSourceRead_buffer(header_buffer,4);
 	while(1){
 		if((header_buffer[0] == 0x11)&&(header_buffer[1] == 0x22)&&(header_buffer[2] == 0x33)&&(header_buffer[3] == 0x44)){
 			break;
@@ -163,14 +161,14 @@ status_t ALAC_MediaSource::read(MediaBuffer **out, const ReadOptions *options)
 		header_buffer[1] = header_buffer[2];
 		header_buffer[2] = header_buffer[3];
 		header_buffer[3] = header_buffer[4];
-		readedbytes++;
+		
 		if (*pStop_ReadBuf_Flag==1){
 		 ALOGI("Stop_ReadBuf_Flag==1 stop read_buf [%s %d]",__FUNCTION__,__LINE__);
          return ERROR_END_OF_STREAM;
 		}
 	}
 	
-	readedbytes += MediaSourceRead_buffer(header_buffer,2);
+	MediaSourceRead_buffer(header_buffer,2);
 	frame_size = header_buffer[0]<<8 | header_buffer[1];
 	//ALOGI("frame_size = %d \n",frame_size);
 	
@@ -192,7 +190,7 @@ status_t ALAC_MediaSource::read(MediaBuffer **out, const ReadOptions *options)
 		buffer = NULL;
 		return ERROR_END_OF_STREAM;
 	}
-	
+	bytes_readed_sum+=frame_size;
 	buffer->set_range(0, frame_size);
 	buffer->meta_data()->setInt64(kKeyTime, mCurrentTimeUs);
 	
