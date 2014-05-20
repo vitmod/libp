@@ -646,6 +646,8 @@ int codec_init(codec_para_t *pcodec)
     pcodec->cntl_handle = -1;
     pcodec->sub_handle = -1;
     pcodec->audio_utils_handle = -1;
+    if(pcodec->audio_type==AFORMAT_MPEG1 || pcodec->audio_type==AFORMAT_MPEG2)
+        pcodec->audio_type=AFORMAT_MPEG;
     switch (pcodec->stream_type) {
     case STREAM_TYPE_ES_VIDEO:
         ret = codec_video_es_init(pcodec);

@@ -48,7 +48,9 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_VORBIS, "vorbis"},
     {ACODEC_FMT_AAC_LATM, "aac_latm"},
     {ACODEC_FMT_APE, "ape"},
-    {ACODEC_FMT_MPEG, "mp3"},
+    {ACODEC_FMT_MPEG, "mp3"},//mp3
+    {ACODEC_FMT_MPEG2, "mp3"},//mp2
+    {ACODEC_FMT_MPEG1, "mp3"},//mp1
     {ACODEC_FMT_EAC3,"eac3"},
 
     {ACODEC_FMT_PCM_S16BE,"pcm"},

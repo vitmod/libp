@@ -39,6 +39,8 @@ audio_lib_t audio_lib_list[] =
     {ACODEC_FMT_AAC_LATM, "libfaad.so"},
     {ACODEC_FMT_APE, "libape.so"},
     {ACODEC_FMT_MPEG, "libmad.so"},
+    {ACODEC_FMT_MPEG2, "libmad.so"},
+    {ACODEC_FMT_MPEG1, "libmad.so"},
     {ACODEC_FMT_FLAC, "libflac.so"},  
     {ACODEC_FMT_COOK, "libcook.so"},
     {ACODEC_FMT_RAAC, "libraac.so"},

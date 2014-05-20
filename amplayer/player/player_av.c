@@ -101,7 +101,11 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
 
 
     case CODEC_ID_MP1:
+        format =AFORMAT_MPEG1;
+        break;
     case CODEC_ID_MP2:
+        format =AFORMAT_MPEG2;
+        break;
     case CODEC_ID_MP3:
         format = AFORMAT_MPEG;
         break;
@@ -2955,11 +2959,13 @@ audio_init:
     /* reinit audio info */
     pcodec->has_audio = 1;
     pcodec->audio_type = para->astream_info.audio_format;
+    if(pcodec->audio_type==AFORMAT_MPEG1 || pcodec->audio_type==AFORMAT_MPEG2)
+        pcodec->audio_type=AFORMAT_MPEG;
     pcodec->audio_pid = pstream->id;
     pcodec->audio_channels = para->astream_info.audio_channel;
     pcodec->audio_samplerate = para->astream_info.audio_samplerate;
 	pcodec->switch_audio_flag = 1;
-
+    
     /*if ((pcodec->audio_type == AFORMAT_ADPCM) || (pcodec->audio_type == AFORMAT_WMA)
      || (pcodec->audio_type == AFORMAT_WMAPRO) || (pcodec->audio_type == AFORMAT_PCM_S16BE)
      || (pcodec->audio_type == AFORMAT_PCM_S16LE) || (pcodec->audio_type == AFORMAT_PCM_U8)

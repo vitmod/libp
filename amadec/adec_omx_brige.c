@@ -33,7 +33,7 @@ int find_omx_lib(aml_audio_dec_t *audec)
         audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_EAC3;
     }else if(audec->format==ACODEC_FMT_ALAC){
         audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_ALAC;
-    }else if(audec->format==ACODEC_FMT_MPEG){
+    }else if(audec->format==ACODEC_FMT_MPEG||audec->format==ACODEC_FMT_MPEG1||audec->format==ACODEC_FMT_MPEG2){
         if(0/*!am_getconfig_bool("media.libplayer.usemad")*/)
            audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_MPEG_LAYER_II; //mpeg1-3, new omx libmpg123
     }else if(audec->format==ACODEC_FMT_WMA){
