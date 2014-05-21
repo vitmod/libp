@@ -664,6 +664,7 @@ static int raw_read(play_para_t *para)
             //read timeout ,if playing current time reached end time,we think it is eof
             rev_byte = AVERROR_EOF;
         }
+
         if ((rev_byte > 0) && (cur_offset <= para->pFormatCtx->valid_offset)) {
             try_count = 0;
             pkt->data_size = rev_byte;
@@ -796,6 +797,7 @@ static int non_raw_read(play_para_t *para)
 
     while (!para->playctrl_info.read_end_flag && (0 == pkt->data_size)) {
         int ret;
+        static int reach_end = 0;
         ret = av_read_frame(para->pFormatCtx, pkt->avpkt);
         if (ret < 0) {
             if (AVERROR(EAGAIN) != ret) {
@@ -812,7 +814,6 @@ static int non_raw_read(play_para_t *para)
                     return PLAYER_RD_FAILED;
                 } else {
                     /*reach end add 6k audio data*/
-                    static int reach_end = 0;
                     AVStream *st;
                     if (reach_end < 3) {
                         reach_end++;
@@ -857,7 +858,8 @@ static int non_raw_read(play_para_t *para)
                 }
             }
         } else { //read success
-            try_count = 0;
+            reach_end = 0;
+	     try_count = 0;
             if (dump_data_mode == DUMP_READ_ES_VIDEO) {
                 if (fdr_video == -1) {
                     sprintf(dump_path, "%s/pid%d_dump_vread.dat",dump_dir,para->player_id);
