@@ -557,23 +557,6 @@ static void flv_extradata_process(AVStream *st)
     st->codec->extradata_size = len;
     av_free(buf);
 }
-
-
-static int flv_get_hevc_packet(AVFormatContext *s, AVPacket *pkt, int size)
-{
-    int len =0;
-    int ret = av_new_packet(pkt, size);
-    if(ret < 0)
-        return ret;
-    int offset = 0;
-    while(size-offset > 0) {
-        len = avio_rb32(s->pb);
-        memcpy(pkt->data+offset, nal_start_code, 4);
-        len = avio_read(s->pb, pkt->data+offset+4, len);
-        offset = offset+len+4;
-    }
-    return 0;
-}
 /***************** defined for lentoid hevc ************************/
 
 static void clear_index_entries(AVFormatContext *s, int64_t pos)
@@ -757,12 +740,7 @@ static int flv_read_packet(AVFormatContext *s, AVPacket *pkt)
         goto leave;
     }
 
-    if(st->codec->codec_id == CODEC_ID_HEVC) {
-        flv_get_hevc_packet(s, pkt, size);
-        ret = size;
-    } else {
-        ret= av_get_packet(s->pb, pkt, size);
-    }
+    ret= av_get_packet(s->pb, pkt, size);
     if (ret < 0) {
         return AVERROR(EIO);
     }
