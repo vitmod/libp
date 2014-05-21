@@ -313,7 +313,8 @@ int init_vlc_sparse(VLC *vlc, int nb_bits, int nb_codes,
 
     av_free(buf);
     if (ret < 0) {
-        av_freep(&vlc->table);
+        if(vlc->table)
+            av_freep(&vlc->table);
         return -1;
     }
     if((flags & INIT_VLC_USE_NEW_STATIC) && vlc->table_size != vlc->table_allocated)
