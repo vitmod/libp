@@ -93,6 +93,8 @@ typedef struct FaadContext {
 	int gChannels;
 	int error_count;
 	int frame_length_his[FRAME_RECORD_NUM];
+	unsigned int muted_samples;
+	unsigned int muted_count;
 }FaadContext;
 
 static const int adts_sample_rates[] = {96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350,0,0,0};
@@ -395,6 +397,15 @@ int audio_dec_decode(
 		store_frame_size(gFaadCxt,frameInfo.bytesconsumed);
 		gFaadCxt->gSampleRate=frameInfo.samplerate;
 		gFaadCxt->gChannels=frameInfo.channels;
+		//code to mute first 1 s  ???
+		#define  MUTE_S  0
+		if(gFaadCxt->muted_samples == 0){
+			gFaadCxt->muted_samples  = gFaadCxt->gSampleRate*gFaadCxt->gChannels*MUTE_S;
+		}
+		if(gFaadCxt->muted_count  < gFaadCxt->muted_samples){
+			memset(sample_buffer,0,2*frameInfo.samples);
+			gFaadCxt->muted_count += frameInfo.samples;
+		}
 		if( (outmaxlen-(*outlen)) >= (2*frameInfo.samples)){
 			memcpy(outbuf+(*outlen), sample_buffer, 2*frameInfo.samples);
 			*outlen+=2*frameInfo.samples;

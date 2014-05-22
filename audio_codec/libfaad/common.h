@@ -122,7 +122,7 @@ extern "C" {
   #undef ALLOW_SMALL_FRAMELENGTH
   #undef ERROR_RESILIENCE
 #endif
-
+//#define DISABLE_SBR
 #define SBR_DEC
 //#define SBR_LOW_POWER
 #define PS_DEC

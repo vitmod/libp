@@ -49,13 +49,87 @@
 #include "ssr_fb.h"
 #endif
 
+#ifdef USE_HELIX_AAC_DECODER
+#include "aaccommon.h"
+#include "aacdec.h"
+int AACDataSource = 1;
+static HAACDecoder hAACDecoder;
+static  short  dec_buffer[1024*6*2];
+static short output_buffer[1024*2*2];
+static int adts_sample_rates[] = {96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350,0,0,0};
+
+static int FindAdtsSRIndex(int sr)
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
+    {
+        if (sr == adts_sample_rates[i])
+            return i;
+    }
+    return 16 - 1;
+}
+static void MakeAdtsHeader(NeAACDecFrameInfo *hInfo,unsigned char *adts_header,int channel)
+{
+    unsigned char *data;
+    int old_format = 0;
+    int profile =hInfo->object_type; 
+    if(profile == 5) //sbr	
+    	profile = 2;
+    profile = (profile - 1) & 0x3;
+    int sr_index = ((hInfo->sbr == SBR_UPSAMPLED) || (hInfo->sbr == NO_SBR_UPSAMPLED)) ?
+        FindAdtsSRIndex(hInfo->samplerate / 2) : FindAdtsSRIndex(hInfo->samplerate);
+    int skip = (old_format) ? 8 : 7;
+    int framesize = skip + hInfo->bytesconsumed;
+
+    if (hInfo->header_type == ADTS)
+        framesize -= skip;
+
+ //	audio_codec_print("MakeAdtsHeader  profile %d ,ch %d,sr_index %d\n",profile,channel,sr_index);
+
+    data = adts_header;
+    memset(data, 0, 7 * sizeof(unsigned char));
+
+    data[0] += 0xFF; /* 8b: syncword */
+
+    data[1] += 0xF0; /* 4b: syncword */
+    /* 1b: mpeg id = 0 */
+    /* 2b: layer = 0 */
+    data[1] += 1; /* 1b: protection absent */
+
+    data[2] += ((profile << 6) & 0xC0); /* 2b: profile */
+    data[2] += ((sr_index << 2) & 0x3C); /* 4b: sampling_frequency_index */
+    /* 1b: private = 0 */
+    data[2] += ((channel >> 2) & 0x1); /* 1b: channel_configuration */
+
+    data[3] += ((channel << 6) & 0xC0); /* 2b: channel_configuration */
+    /* 1b: original */
+    /* 1b: home */
+    /* 1b: copyright_id */
+    /* 1b: copyright_id_start */
+    data[3] += ((framesize >> 11) & 0x3); /* 2b: aac_frame_length */
+
+    data[4] += ((framesize >> 3) & 0xFF); /* 8b: aac_frame_length */
+
+    data[5] += ((framesize << 5) & 0xE0); /* 3b: aac_frame_length */
+    data[5] += ((0x7FF >> 6) & 0x1F); /* 5b: adts_buffer_fullness */
+
+    data[6] += ((0x7FF << 2) & 0x3F); /* 6b: adts_buffer_fullness */
+    /* 2b: num_raw_data_blocks */
+
+  }
+#endif
+
 #ifdef ANALYSIS
 uint16_t dbg_count;
 #endif
 
 #define faad_log_info audio_codec_print
 
+
 #ifdef NEW_CODE_CHECK_LATM
+static unsigned char temp_bufer[200*1024];
+static int temp_size = 0;
 #define LATM_LOG  audio_codec_print
 static const int pi_sample_rates[16] =
 {
@@ -185,7 +259,7 @@ static int Mpeg4ReadAudioSpecificInfo(mpeg4_cfg_t *p_cfg, int *pi_extra, uint8_t
     p_cfg->i_ps  = -1;
     p_cfg->extension.i_object_type = 0;
     p_cfg->extension.i_samplerate = 0;
-    if (p_cfg->i_object_type == 5 || p_cfg->i_object_type == 29) {
+    if (p_cfg->i_object_type == 5 || (p_cfg->i_object_type == 29&&(faad_showbits(ld, 3) & 0x03 && !(faad_showbits(ld, 9) & 0x3F)))) {
         p_cfg->i_sbr = 1;
         if (p_cfg->i_object_type == 29)
            p_cfg->i_ps = 1;
@@ -316,9 +390,13 @@ static int LatmReadStreamMuxConfiguration(latm_mux_t *m, bitfile *ld)
     m->b_same_time_framing = faad_getbits(ld,1);
     m->i_sub_frames = 1 + faad_getbits(ld, 6);
     m->i_programs = 1 + faad_getbits(ld, 4);
+	if(m->i_programs > 1)
+		return -1;
 	int i_program;
     for (i_program = 0; i_program < m->i_programs; i_program++) {
         m->pi_layers[i_program] = 1+faad_getbits(ld, 3);
+		if(m->pi_layers[0] > 1)
+			return -1;
 int i_layer;
         for (i_layer = 0; i_layer < m->pi_layers[i_program]; i_layer++) {
             latm_stream_t *st = &m->stream[m->i_streams];
@@ -401,11 +479,11 @@ static int LOASParse( uint8_t *p_buffer, int i_buffer,decoder_sys_t *p_sys )
     int i_accumulated = 0;
     const latm_stream_t *st;
     faad_initbits(&ld, p_buffer, i_buffer);
-
+	int ret = 0;
     //bs_init(&s, p_buffer, i_buffer);
 
     /* Read the stream mux configuration if present */
-    if (!faad_getbits(&ld,1) && !LatmReadStreamMuxConfiguration(&p_sys->latm, &ld) &&
+    if (!faad_getbits(&ld,1) && !(ret = LatmReadStreamMuxConfiguration(&p_sys->latm, &ld)) &&
             p_sys->latm.i_streams > 0) {
         st = &p_sys->latm.stream[0];
 	
@@ -431,7 +509,7 @@ static int LOASParse( uint8_t *p_buffer, int i_buffer,decoder_sys_t *p_sys )
     }
 
     /* Wait for the configuration */
-    if (!p_sys->b_latm_cfg)
+    if (!p_sys->b_latm_cfg || ret < 0)
         return 0;
 
     /* FIXME do we need to split the subframe into independent packet ? */
@@ -770,6 +848,15 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
     faad_log_info("enter NeAACDecInit \r\n");
 #ifdef NEW_CODE_CHECK_LATM	
     int i_frame_size;
+	if(buffer_size > sizeof(temp_bufer)){
+		LATM_LOG("init input buffer size tooo big %d, buffer size %d \n",buffer_size,sizeof(temp_bufer));
+		buffer_size = sizeof(temp_bufer);
+	}
+   if(buffer_size > 0){
+	memcpy(temp_bufer,buffer,buffer_size);
+	temp_size = buffer_size;
+	buffer  = temp_bufer;
+   }	
     unsigned char *pbuffer =buffer;
     int  pbuffer_size= buffer_size;	
     decoder_sys_t *p_sys =  &hDecoder->dec_sys;
@@ -852,6 +939,28 @@ exit_check:
 		x = NeAACDecInit2(hDecoder, st->extra, st->i_extra, samplerate, channels);
             if(x!=0)
                 hDecoder->latm_header_present = 0;
+ #ifdef USE_HELIX_AAC_DECODER
+		else{
+		hAACDecoder = AACInitDecoder();
+		if(!hAACDecoder) 
+		{
+		faad_log_info("fatal error,helix aac decoder init failed\n");
+		return -1;
+		}
+		else{
+	AACDecInfo *aacDecInfo = (AACDecInfo *)hAACDecoder;
+	if(aacDecInfo){
+		aacDecInfo->format = AAC_FF_ADTS;
+		aacDecInfo->nChans = *channels;
+		}
+	else{
+		LATM_LOG("aacDecInfo NULL\n");
+		return NULL;
+		}			
+			}
+		}
+ #endif
+			
             return x;		
 	}else
 #else
@@ -996,7 +1105,6 @@ exit_check:
         return -1;
     }
     faad_log_info("[%s %d]aac init finished. cost bits%d\n",__FUNCTION__,__LINE__,bits);
-            
     return bits;
 }
 
@@ -1143,7 +1251,12 @@ void NEAACDECAPI NeAACDecClose(NeAACDecHandle hpDecoder)
 {
     uint8_t i;
     NeAACDecStruct* hDecoder = (NeAACDecStruct*)hpDecoder;
-
+#ifdef USE_HELIX_AAC_DECODER   
+    if(hAACDecoder){	
+        AACFreeDecoder(hAACDecoder);
+	hAACDecoder = NULL;
+    }
+#endif
     if (hDecoder == NULL)
         return;
 
@@ -1476,6 +1589,7 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
     uint16_t frame_len;
     void *sample_buffer;
     uint32_t startbit=0, endbit=0, payload_bits=0;
+	int mux_length = 0;
 #ifdef NEW_CODE_CHECK_LATM	
     int i_frame_size;
     decoder_sys_t *p_sys =  &hDecoder->dec_sys;
@@ -1520,9 +1634,18 @@ static void* aac_frame_decode(NeAACDecStruct *hDecoder,
         }
     }
 #ifdef NEW_CODE_CHECK_LATM
+	if(buffer_size > sizeof(temp_bufer)){
+		LATM_LOG("input buffer size tooo big %d, buffer size %d \n",buffer_size,sizeof(temp_bufer));
+		buffer_size = sizeof(temp_bufer);
+	}
+   if(buffer_size > 0){
+	memcpy(temp_bufer,buffer,buffer_size);
+	temp_size = buffer_size;
+	buffer  = temp_bufer;
+   }	
 NEXT_CHECK:
 	if(hDecoder->latm_header_present){
-		while(buffer_size >= 2){
+		while(buffer_size >= 7){
 			if(buffer[0] == 0x56 && (buffer[1] & 0xe0) == 0xe0){
 
 				break;
@@ -1537,6 +1660,7 @@ NEXT_CHECK:
 	       /* Check if frame is valid and get frame info */	
 		i_frame_size = ((buffer[1] & 0x1f) << 8) + buffer[2];
 		//LATM_LOG("i_frame_size  %d \n",i_frame_size);	   
+		mux_length = i_frame_size+3;
 		if(i_frame_size <= 0){
 			LATM_LOG("i_frame_size  error\n");
 			return NULL;
@@ -1632,7 +1756,6 @@ NEXT_CHECK:
 #ifdef DRM
     }
 #endif
-
 #ifndef  NEW_CODE_CHECK_LATM
     if(hDecoder->latm_header_present)
     {
@@ -1662,6 +1785,8 @@ NEXT_CHECK:
     /* no more bit reading after this */
     bitsconsumed = faad_get_processed_bits(&ld);
     hInfo->bytesconsumed = bit2byte(bitsconsumed);
+	if(mux_length && hDecoder->latm_header_present && !ld.error)
+		hInfo->bytesconsumed = mux_length;
     if (ld.error)
     {
         hInfo->error = 14;
@@ -1859,6 +1984,104 @@ NEXT_CHECK:
     hDecoder->cycles += count;
 #endif
 
+#ifdef USE_HELIX_AAC_DECODER
+/* Channel definitions */
+#define FRONT_CENTER (0)
+#define FRONT_LEFT   (1)
+#define FRONT_RIGHT  (2)
+#define SIDE_LEFT    (3)
+#define SIDE_RIGHT   (4)
+#define BACK_LEFT    (5)
+#define LFE_CHANNEL  (6)
+
+	if(hDecoder->latm_header_present && !hInfo->error){
+		unsigned char *dec_buf = buffer;
+		int dec_size = hInfo->bytesconsumed ;
+		int err;
+		int ch_num;
+		int sample_out;
+		int sum;
+		unsigned ch_map_scale[6] = {2,4,4,2,2,0}; //full scale == 8
+		short *ouput = dec_buffer;
+		unsigned char adts_header[7];
+		unsigned char *pbuf = NULL;
+		unsigned char *inbuf = NULL;
+#ifdef PS_DEC
+		if(hDecoder->ps_used_global){
+		//	LATM_LOG("decoder ps channel %d \n",channels);
+			if(channels == 2)
+				channels = 1;
+		}
+#endif		
+		MakeAdtsHeader(hInfo,adts_header,channels);
+		pbuf = malloc(7+dec_size);
+		if(!pbuf){
+			LATM_LOG("malloc decoder buffer failed %d \n",dec_size);
+			return NULL;
+		}
+		dec_size  += 7;
+		memcpy(pbuf,adts_header,7);
+		memcpy(pbuf+7,buffer,hInfo->bytesconsumed);
+                inbuf = pbuf;   
+		err = AACDecode(hAACDecoder, &inbuf,&dec_size,dec_buffer);
+		if(pbuf){
+		    free(pbuf);
+		    pbuf = NULL;		
+		}
+		if(err == 0){
+    			AACFrameInfo aacFrameInfo = {0};
+        		AACGetLastFrameInfo(hAACDecoder, &aacFrameInfo);
+			hInfo->error = 0;
+			hInfo->bytesconsumed = mux_length;
+			hInfo->channels = aacFrameInfo.nChans > 2 ?2:aacFrameInfo.nChans;
+			hInfo->samplerate =  aacFrameInfo.sampRateOut;; 
+        if(aacFrameInfo.nChans > 2) //should do downmix to 2ch output.
+	{
+		ch_num = 	aacFrameInfo.nChans;
+		sample_out = aacFrameInfo.outputSamps/ch_num*2*2;//ch_num*sample_num*16bit
+		if(ch_num == 3 || ch_num == 4){
+			ch_map_scale[0] = 4; //50%
+			ch_map_scale[1] = 4;//50%	
+			ch_map_scale[2]	= 4;//50%
+			ch_map_scale[3] = 0;
+			ch_map_scale[4] = 0;
+			ch_map_scale[5] = 0;
+		}
+		for(i = 0;i <aacFrameInfo.outputSamps/ch_num;i++)
+		{
+		if(ch_num == 5 || ch_num == 6){
+		output_buffer[i*2] = ((int)(ouput[ch_num*i+FRONT_LEFT]) +
+		((int)((((int)ouput[ch_num*i+FRONT_CENTER]) - 
+		((int)ouput[ch_num*i+SIDE_LEFT]) - 
+		((int)ouput[ch_num*i+SIDE_RIGHT])) * 707 / 1000 )));
+		output_buffer[2*i+1] = ((int)(ouput[ch_num*i+FRONT_RIGHT]) +
+		((int)((((int)ouput[ch_num*i+FRONT_CENTER]) + 
+		((int)ouput[ch_num*i+SIDE_LEFT]) + 
+		((int)ouput[ch_num*i+SIDE_RIGHT])) * 707 / 1000 )));
+		}else{
+		sum = ((int)ouput[ch_num*i+FRONT_LEFT]*ch_map_scale[FRONT_LEFT]+(int)ouput[ch_num*i+FRONT_CENTER]*ch_map_scale[FRONT_CENTER]+(int)ouput[ch_num*i+BACK_LEFT]*ch_map_scale[BACK_LEFT]);
+		output_buffer[i*2] = sum >>3;
+		sum = ((int)ouput[ch_num*i+FRONT_RIGHT]*ch_map_scale[FRONT_RIGHT]+(int)ouput[ch_num*i+FRONT_CENTER]*ch_map_scale[FRONT_CENTER]+(int)ouput[ch_num*i+BACK_LEFT]*ch_map_scale[BACK_LEFT]);
+		output_buffer[2*i+1] = sum>>3; 
+		}
+		}	
+		}
+        else{
+            sample_out = aacFrameInfo.outputSamps*2;//ch_num*sample_num*16bit
+	     memcpy(output_buffer,dec_buffer,sample_out);	
+            
+        }	
+		hInfo->samples = sample_out/2;
+			return 	output_buffer;
+			
+		}
+		else{
+			LATM_LOG("decoder error id %d \n",err);
+			hInfo->error  = err>0? err:-err;
+			return NULL;
+		}
+	}
+#endif
     return sample_buffer;
 
 error:

@@ -1078,7 +1078,19 @@ static uint8_t fill_element(NeAACDecStruct *hDecoder, bitfile *ld, drc_info *drc
 #endif
                     );
             }
-
+#ifdef DISABLE_SBR
+	     if(hDecoder->latm_header_present){
+            unsigned cnt_1 = count<<3;
+            while (cnt_1 > 7)
+            {
+                faad_getbits(ld, 8
+                    DEBUGVAR(1,999,"sbr_bitstream(): num_align_bits"));
+                cnt_1 -= 8;
+            }
+            faad_getbits(ld, cnt_1);
+            return 0;//
+        }
+#endif
             hDecoder->sbr_present_flag = 1;
 
             /* parse the SBR data */
