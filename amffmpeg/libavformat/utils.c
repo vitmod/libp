@@ -26,6 +26,7 @@
 #include "internal.h"
 #include "libavcodec/internal.h"
 #include "libavcodec/raw.h"
+#include "libavcodec/hevc.h"
 #include "libavutil/opt.h"
 #include "libavutil/dict.h"
 #include "libavutil/pixdesc.h"
@@ -3115,6 +3116,19 @@ static int try_decode_frame(AVStream *st, AVPacket *avpkt)
     AVCodec *codec;
     int got_picture, data_size, ret=0;
     AVFrame picture;
+
+    // no hevc SW decoder, just parser now
+    if(st->codec->codec_id == CODEC_ID_HEVC && st->codec->width <= 0) {
+        struct hevc_info info;
+        const uint8_t* data = avpkt->data;
+        int tsize = avpkt->size;
+        int ret = HEVC_decode_SPS(data, tsize, &info);
+        if(!ret) {
+            st->codec->width = info.mwidth;
+            st->codec->height = info.mheight;
+        }
+        return 0;
+    }
 
     if(!st->codec->codec){
         codec = avcodec_find_decoder(st->codec->codec_id);

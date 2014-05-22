@@ -1260,6 +1260,11 @@ int pre_header_feeding(play_para_t *para)
 
 int hevc_update_frame_header(am_packet_t * pkt)
 {
+    unsigned char *p = pkt->data;
+    // NAL has been formatted already, no need to update
+    if (p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) {
+        return PLAYER_SUCCESS;
+    }
     // process like h264 for now.
     return h264_update_frame_header(pkt);
 }
