@@ -113,12 +113,7 @@ static int player_para_release(play_para_t *para)
  ******************************/
 static int check_decoder_worksta(play_para_t *para)
 {
-#define PARSER_ERROR_WRONG_PACKAGE_SIZE 0x80
-#define PARSER_ERROR_WRONG_HEAD_VER     0x40
-#define DECODER_ERROR_VLC_DECODE_TBL    0x20
-#define PARSER_FATAL_ERROR   0x10
 
-#define DECODER_ERROR (PARSER_ERROR_WRONG_PACKAGE_SIZE | PARSER_ERROR_WRONG_HEAD_VER | PARSER_FATAL_ERROR)
 
     codec_para_t *codec;
     struct vdec_status vdec;
@@ -142,11 +137,9 @@ static int check_decoder_worksta(play_para_t *para)
                 log_error("pid:[%d]::codec_get_vdec_state error: %x\n", para->player_id, -ret);
                 return PLAYER_CHECK_CODEC_ERROR;
             } else {
-                if ((vdec.status & 0x20) &&
-                    ((vdec.status >> 16) & DECODER_ERROR)) {
-                    //log_print("pid[%d]::[%s:%d]find vdec error! ctime=%d ltime=%d cnt=%d\n", \
-                    //para->player_id, __FUNCTION__, __LINE__, para->state.current_time, para->state.last_time, para->vbuffer.check_rp_change_cnt);
-
+                if (vdec.status & DECODER_ERROR_MASK) {
+                    log_error("pid:[%d]:: decoder error vdec.status: %x\n", para->player_id, vdec.status);
+                    int is_decoder_fatal_error=vdec.status & (DECODER_FATAL_ERROR_SIZE_OVERFLOW | DECODER_FATAL_ERROR_UNKNOW);
                     if (!para->vbuffer.rp_is_changed) {
                         if (check_time_interrupt(&para->playctrl_info.vbuf_rpchanged_Old_time, 20)) {
                             para->vbuffer.check_rp_change_cnt --;
@@ -155,19 +148,20 @@ static int check_decoder_worksta(play_para_t *para)
                         para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
                     }
                     if ((para->vbuffer.check_rp_change_cnt <= 0 && para->playctrl_info.video_low_buffer) || 
-		        ((vdec.status >> 16) & PARSER_FATAL_ERROR && para->playctrl_info.video_low_buffer) ||/* parser error,do reset on low buffer level.*/
-                        para->vbuffer.check_rp_change_cnt < - CHECK_VIDEO_HALT_CNT*2 ) {/*too long time no changes.*/
-                        para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
-                        if(para->stream_type == STREAM_RM){
-			     para->playctrl_info.time_point =-1;/*do reset  only & find next key frame only,*/
-                        }else if( para->state.full_time > 0&& (para->state.current_time < para->state.full_time - 5))
-                            para->playctrl_info.time_point = para->state.current_time + 1;
-			else
-			    para->playctrl_info.time_point =-1;/*do reset only.*/
-                        para->playctrl_info.reset_flag = 1;
-                        set_black_policy(0);
-                        para->playctrl_info.end_flag = 1;
-                        log_print("[%s]time=%d cnt=%d vlevel=%.03f vdec err, need reset\n", __FUNCTION__, para->playctrl_info.time_point, para->vbuffer.check_rp_change_cnt, para->state.video_bufferlevel);
+                       (is_decoder_fatal_error) ||
+                        para->vbuffer.check_rp_change_cnt < - CHECK_VIDEO_HALT_CNT*2 ) 
+                    {/*too long time no changes.*/
+                           para->vbuffer.check_rp_change_cnt = CHECK_VIDEO_HALT_CNT;
+                          if(para->stream_type == STREAM_RM){
+                              para->playctrl_info.time_point =-1;/*do reset  only & find next key frame only,*/
+                          }else if( para->state.full_time > 0&& (para->state.current_time < para->state.full_time - 5))
+                              para->playctrl_info.time_point = para->state.current_time + 1;
+                          else
+                              para->playctrl_info.time_point =-1;/*do reset only.*/
+                          para->playctrl_info.reset_flag = 1;
+                          set_black_policy(0);
+                          para->playctrl_info.end_flag = 1;
+                          log_print("[%s]time=%d cnt=%d vlevel=%.03f vdec err, need reset\n", __FUNCTION__, para->playctrl_info.time_point, para->vbuffer.check_rp_change_cnt, para->state.video_bufferlevel);
                     }
                 }
             }
