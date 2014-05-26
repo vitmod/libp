@@ -118,20 +118,18 @@ static inline int parse_nal_units(AVCodecParserContext *s,
         if (s->flags & PARSER_FLAG_COMPLETE_FRAMES) {
             if (check_size_in_buffer(buf, buf_size)) {
                 buf += 4;
-                src_length = buf_end - buf -4;
                 goto PASS;
             } else if (check_size_in_buffer3(buf, buf_size)) {
                 buf += 3;
-                src_length = buf_end - buf -3;
                 goto PASS;
             }
         }
         buf = avpriv_find_start_code(buf, buf_end, &state);
         if (--buf + 2 >= buf_end)
             break;
-
-        src_length = buf_end - buf;
 PASS:
+        src_length = buf_end - buf;
+
         h->nal_unit_type = (*buf >> 1) & 0x3f;
         h->temporal_id   = (*(buf + 1) & 0x07) - 1;
         if (h->nal_unit_type <= NAL_CRA_NUT) {

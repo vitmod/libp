@@ -33,6 +33,7 @@
 #include "riff.h"
 #include "isom.h"
 #include "libavcodec/get_bits.h"
+#include "seek.h"
 
 #if CONFIG_ZLIB
 #include <zlib.h>
@@ -1348,6 +1349,9 @@ int ff_mov_read_stsd_entries(MOVContext *c, AVIOContext *pb, int entries)
             st->codec->channels   = AV_RB8 (st->codec->extradata+21);
             st->codec->sample_rate = AV_RB32(st->codec->extradata+32);
         }
+        break;
+    case CODEC_ID_HEVC:
+        st->need_parsing = AVSTREAM_PARSE_HEADERS;
         break;
     default:
         break;
@@ -2763,6 +2767,92 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     return 0;
 }
 
+static int64_t mov_read_seek_sync(AVFormatContext *s,
+                      int stream_index,
+                      int64_t min_ts,
+                      int64_t target_ts,
+                      int64_t max_ts,
+                      int flags)
+{
+    int64_t pos, t_pos;
+
+    int64_t ts_ret, ts_adj;
+    int stream_index_gen_search = stream_index;
+    int sample, i;
+    AVStream *st;
+    AVParserState *backup;
+
+    backup = ff_store_parser_state(s);
+
+    // detect direction of seeking for search purposes
+    flags |= (target_ts - min_ts > (uint64_t)(max_ts - target_ts)) ?
+             AVSEEK_FLAG_BACKWARD : 0;
+
+    st = s->streams[stream_index_gen_search];
+    sample = av_index_search_timestamp(st, target_ts, AVSEEK_FLAG_ANY);
+    pos = st->index_entries[sample].pos;
+    target_ts = st->index_entries[sample].timestamp;
+    for (i = 0; i < s->nb_streams; i++) {
+        MOVStreamContext *sc = s->streams[i]->priv_data;
+        sc->current_sample = (sample - 500) > 0 ? (sample - 500) : 0;  // hard code for mov, repos the sample.
+    }
+
+    // search for actual matching keyframe/starting position for all streams
+    if ((t_pos = ff_gen_syncpoint_search(s, stream_index, pos,
+                                min_ts, target_ts, max_ts,
+                                flags)) < 0) {
+        ff_restore_parser_state(s, backup);
+        return -1;
+    }
+
+    ff_free_parser_state(s, backup);
+    return t_pos;
+}
+
+static int64_t mpegts_read_seek2(AVFormatContext *s, int stream_index, int64_t target_ts, int flags){
+    int ret;
+    if (flags & AVSEEK_FLAG_BACKWARD) {
+        flags &= ~AVSEEK_FLAG_BACKWARD;
+        ret = mov_read_seek_sync(s, stream_index, INT64_MIN, target_ts, target_ts, flags);
+        if (ret < 0) {
+            // for compatibility reasons, seek to the best-fitting timestamp
+            ret = mov_read_seek_sync(s, stream_index, INT64_MIN, target_ts, INT64_MAX, flags);
+        }
+    } else {
+        ret = mov_read_seek_sync(s, stream_index, target_ts, target_ts, INT64_MAX, flags);
+        if (ret < 0)
+            // for compatibility reasons, seek to the best-fitting timestamp
+            ret = mov_read_seek_sync(s, stream_index, INT64_MIN, target_ts, INT64_MAX, flags);
+    }
+    return ret;
+}
+
+static int mov_index_search_pos(const AVIndexEntry *entries, int nb_entries,
+                              int64_t pos, int flags)
+{
+    int a, b, m;
+    int64_t ppos;
+
+    a = - 1;
+    b = nb_entries;
+
+    //optimize appending index entries at the end
+    if(b && entries[b-1].pos < pos)
+        a= b-1;
+
+    while (b - a > 1) {
+        m = (a + b) >> 1;
+        ppos = entries[m].pos;
+        if(ppos >= pos)
+            b = m;
+        if(ppos <= pos)
+            a = m;
+    }
+
+    m= (flags & AVSEEK_FLAG_BACKWARD) ? a : b;
+    return  m;
+}
+
 static int mov_seek_stream(AVFormatContext *s, AVStream *st, int64_t timestamp, int flags)
 {
     MOVStreamContext *sc = st->priv_data;
@@ -2770,6 +2860,14 @@ static int mov_seek_stream(AVFormatContext *s, AVStream *st, int64_t timestamp, 
     int i;
 
     sample = av_index_search_timestamp(st, timestamp, flags);
+
+    // mov's stss is wrong sometimes, need to read seek
+    // added by senbai.tao
+    if(st->codec->codec_type == AVMEDIA_TYPE_VIDEO && sample <=0 && st->nb_index_entries && sc->keyframe_count <= 1) {
+        int64_t sync_point = mpegts_read_seek2(s, st->index, timestamp, flags);
+        sample = mov_index_search_pos(st->index_entries, st->nb_index_entries, sync_point, AVSEEK_FLAG_ANY);
+    }
+
     av_dlog(s, "stream %d, timestamp %"PRId64", sample %d\n", st->index, timestamp, sample);
     if (sample < 0 && st->nb_index_entries && timestamp < st->index_entries[0].timestamp)
         sample = 0;
