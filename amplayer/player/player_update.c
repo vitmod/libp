@@ -1226,16 +1226,22 @@ static int  update_buffering_states(play_para_t *p_para,
         if (bitrate > 0 && (vbuf->size > 0 || abuf->size > 0)) {
             /*===time * bitrate/8/bufsize=buflevel =====*/
             p_para->buffering_threshhold_middle = ((float)buftime * bitrate / 8) / (vbuf->size + abuf->size); //for tmp start.we will reset after playing
-            if (p_para->buffering_threshhold_middle <= p_para->buffering_threshhold_min * 2) {
-                p_para->buffering_threshhold_middle = p_para->buffering_threshhold_min * 2;
+            p_para->buffering_threshhold_min = p_para->buffering_threshhold_middle/20;
+            p_para->buffering_threshhold_max = 0.8;
+            if(p_para->buffering_threshhold_min<0.00001)
+                p_para->buffering_threshhold_min=0.00001;
+            if (p_para->buffering_threshhold_middle >= p_para->buffering_threshhold_min * 5) {
+                p_para->buffering_threshhold_middle = p_para->buffering_threshhold_min * 5;
             }
             if (p_para->buffering_threshhold_middle >= p_para->buffering_threshhold_max * 9 / 10) {
                 p_para->buffering_threshhold_middle = p_para->buffering_threshhold_max * 9 / 10;
             }
             p_para->buffering_bitrate_finished=1;
         } else {
-            p_para->buffering_threshhold_middle = 0.05; /*used default value*/
-			p_para->buffering_bitrate_finished=0;
+            p_para->buffering_threshhold_min = 0.0001;
+            p_para->buffering_threshhold_middle = 0.02; /*used default value*/
+            p_para->buffering_threshhold_max = 0.8;
+            p_para->buffering_bitrate_finished=0;
         }
         log_print("buffering threadhold  changed by bufering time(must min=%f<middle=%f<max=%f),buftime=%dS,bitrate=%d\n",
                   p_para->buffering_threshhold_min,
@@ -1291,13 +1297,13 @@ static int  update_buffering_states(play_para_t *p_para,
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&
-            (minlevel < p_para->buffering_threshhold_min)  &&
+            (avdelayms>0 && avdelayms < p_para->buffering_start_time_s*100)  &&
             (maxlevel < p_para->buffering_threshhold_max * 3 / 4) &&
             !p_para->playctrl_info.read_end_flag) {
             codec_pause(p_para->codec);
             set_player_state(p_para, PLAYER_BUFFERING);
             update_player_states(p_para, 1);
-            log_print("enter buffering!!!\n");
+            log_print("enter buffering!!!,avdelayms=%d mS\n",avdelayms);
         } else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
                    ((avdelayms > p_para->buffering_start_time_s*1000)  ||
                     (avdelayms<=0 && minlevel > p_para->buffering_threshhold_middle)  ||
@@ -1306,7 +1312,7 @@ static int  update_buffering_states(play_para_t *p_para,
             codec_resume(p_para->codec);
             set_player_state(p_para, PLAYER_BUFFER_OK);
             update_player_states(p_para, 1);
-            log_print("leave buffering!!!\n");
+            log_print("leave buffering!!!,avdelayms=%d mS\n",avdelayms);
             set_player_state(p_para, PLAYER_RUNNING);
             update_player_states(p_para, 1);
         }

@@ -725,7 +725,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
                       c_para->buffing_middle,
                       c_para->buffing_max
                      );
-            p_para->buffering_threshhold_min = 0.01;
+            p_para->buffering_threshhold_min = 0.001;
             p_para->buffering_threshhold_middle = 0.02;
             p_para->buffering_threshhold_max = 0.8;
             p_para->buffering_start_time_s =  10;  //10 seonds
