@@ -31,6 +31,7 @@ extern "C" {
 namespace android
 {
 
+#define DOLBY_SYSTEM_CHANNEL "ds1.audio.multichannel.support"
 static Mutex mLock;
 static Mutex mLock_raw;
 //get default output  sample rate which maybe changed by raw output
@@ -138,7 +139,7 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 	unsigned digital_raw = 0;
 	audio_io_handle_t handle = -1;	
 	digital_raw = get_digitalraw_mode();	
-	if(!audec ||!digital_raw)
+	if(!audec || (!digital_raw&&audec->channels!=8))
 		return;
 	/*
 	1)32k,44k dts
@@ -654,6 +655,16 @@ extern "C" int android_init(struct aml_audio_dec* audec)
 #if defined(_VERSION_JB)
 	if(audec->channels == 8){
 		adec_print("create multi-channel track\n");
+	    char tmp[128]={0};
+	    property_set(DOLBY_SYSTEM_CHANNEL,"true");
+	    property_get(DOLBY_SYSTEM_CHANNEL, tmp, "0");
+	    if(!strcmp(tmp, "true"))
+	    {
+	        adec_print("[%s %d]ds1.audio.multichannel.support set success!\n",__FUNCTION__,__LINE__);
+	    }else{
+            adec_print("[%s %d]ds1.audio.multichannel.support set fail!\n",__FUNCTION__,__LINE__);
+	    }
+	    amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",6);
 		status = track->set(AUDIO_STREAM_MUSIC,
                         audec->samplerate,
                         AUDIO_FORMAT_PCM_16_BIT,
@@ -719,6 +730,10 @@ extern "C" int android_init(struct aml_audio_dec* audec)
           track = NULL;
           mpAudioTrack.clear();
 #endif
+          if(audec->channels == 8){
+             property_set(DOLBY_SYSTEM_CHANNEL,"false");
+             amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);
+          }
           return -1;
 
     }
@@ -975,7 +990,10 @@ extern "C" int android_stop(struct aml_audio_dec* audec)
     	android_stop_raw(audec);
 #endif 
     adec_print("android out stop");
-
+    if(audec->channels == 8){
+        property_set(DOLBY_SYSTEM_CHANNEL,"false");
+        amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);
+    }
     if (track == 0){
         adec_print("No track instance!\n");
         return -1;
