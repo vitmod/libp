@@ -226,6 +226,13 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
         if (!strcmp(type->fmt_string, "flv")) {
             flv_flag = 1;
         }
+        if (!strcmp(type->fmt_string, "hevc")) { // need to process h265 raw file
+            if(am_p->vdec_profile.hevc_para.exist) {
+                memset(format_string, 0, sizeof(format_string));
+                sprintf(format_string, "%s","hevcHW");
+                type->fmt_string = format_string;
+            }
+        }
 
         for (i = 0; i < pFCtx->nb_streams; i++) {
             AVStream *st = pFCtx->streams[i];
