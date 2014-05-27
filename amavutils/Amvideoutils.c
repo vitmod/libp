@@ -31,7 +31,7 @@
 #define WINDOW_AXIS_PATH       "/sys/class/graphics/fb0/window_axis"
 #define DISPLAY_AXIS_PATH       "/sys/class/display/axis"
 #define FREE_SCALE_AXIS_PATH   "/sys/class/graphics/fb0/free_scale_axis"
-#define REQUEST_2XSCALE_PATH   "/sys/class/graphics/fb0/request2XScale"
+#define PPSCALER_RECT  "/sys/class/ppmgr/ppscaler_rect"
 
 
 static int rotation = 0;
@@ -666,22 +666,15 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
             int req_2xscale = 0;
 
             memset(val, 0, sizeof(val));
-            if (amsysfs_get_sysfs_str(REQUEST_2XSCALE_PATH, val, sizeof(val)) == 0) {
+            if (amsysfs_get_sysfs_str(PPSCALER_RECT, val, sizeof(val)) == 0) {
                 /* the returned string should be "a b c" */
-                if (sscanf(val, "%d", &req_2xscale) == 1) {
-                    if (req_2xscale == 7 || req_2xscale == 16) {
-                        if (sscanf(val, "%d %d %d", &req_2xscale, &w, &h) == 3) {
-                            if (req_2xscale == 7)
-                                w *= 2;
-                            get_axis(DISPLAY_AXIS_PATH, &x, &y, &fb_w, &fb_h);
-                            if (fb_w == 0 || fb_h == 0) {
-                                fb_w = 1280;
-                                fb_h = 720;
-                            }
-                            set_scale(x, y, w, h, &dst_x, &dst_y, &dst_w, &dst_h, fb_w, fb_h);
-                            LOGI("after scaled, screen position2: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
-                        }
+                if (sscanf(val, "ppscaler rect:\nx:%d,y:%d,w:%d,h:%d", &x, &y, &w, &h) == 4) {
+                    if (fb_w == 0 || fb_h == 0) {
+                        fb_w = 1280;
+                        fb_h = 720;
                     }
+                    set_scale(x, y, w-1, h-1, &dst_x, &dst_y, &dst_w, &dst_h, fb_w, fb_h);
+                    LOGI("after scaled, screen position2: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
                 }
             }
         }
