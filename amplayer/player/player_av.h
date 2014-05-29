@@ -16,6 +16,7 @@ typedef int CODEC_TYPE;
 #define SUBTITLE_SIZE		(256*1024)
 #define AUDIO_WRITE_SIZE_PER_TIME 1024*10  //used for ape
 #define SEEK_KEYFRAME_MAXSIZE (1024*1024*8) // 8M
+#define SEEK_KEYFRAME_MAXTIME (2*1000000) // 2s
 typedef struct hdr_buf {
     char *data;
     int size;

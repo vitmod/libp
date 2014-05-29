@@ -549,6 +549,13 @@ static int backup_packet(play_para_t *para, AVPacket *src, AVPacket *dst)
     return 0;
 }
 
+static int64_t gettime(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
 static int raw_read(play_para_t *para)
 {
     int rev_byte = -1;
@@ -617,12 +624,15 @@ static int raw_read(play_para_t *para)
         }
 		
         if (am_getconfig_bool("media.amplayer.seekkeyframe")) {
-            if (para->playctrl_info.seek_keyframe) {
+            if (para->vstream_info.has_video && para->playctrl_info.seek_keyframe && !url_is_segment_media(para->pFormatCtx->pb)) {
                 para->playctrl_info.seek_keyframe = 0;
         
                 int64_t old_offset = avio_tell(pb);
                 int64_t cur_offset = 0;
+                int64_t start_time = gettime();
+                int64_t cur_time = 0;
                 int fd_keyframe = -1;
+                log_print("[%s:%d] old_offset=%lld, \n",__FUNCTION__, __LINE__, old_offset);
                 if ((fd_keyframe == -1) && (am_getconfig_bool("media.amplayer.keyframedump"))) {
                     fd_keyframe = open("/data/temp/keyframe.dat", O_CREAT | O_RDWR, 0666);
                     if (fd_keyframe < 0) {
@@ -635,20 +645,30 @@ static int raw_read(play_para_t *para)
                         break;
                     }
                     cur_offset = avio_tell(pb);
-                    if (cur_offset - old_offset >= SEEK_KEYFRAME_MAXSIZE) {
-                        log_error("[%s:%d] seek key frame reached %lld bytes! \n", __FUNCTION__, __LINE__, cur_offset-old_offset);
+                    cur_time   = gettime();
+                    if (cur_offset - old_offset >= SEEK_KEYFRAME_MAXSIZE || (cur_time - start_time) >= SEEK_KEYFRAME_MAXTIME) {
+                        log_error("[%s:%d] seek key frame reached %lld bytes, use %lld us! \n", __FUNCTION__, __LINE__, cur_offset-old_offset, cur_time-start_time);
                         break;
                     }
     
-                    av_read_frame(para->pFormatCtx, pkt->avpkt);
+                    rev_byte = av_read_frame(para->pFormatCtx, pkt->avpkt);
+                    if (rev_byte < 0) {
+                        log_error("[%s:%d] read data failed! ret=%d! \n", __FUNCTION__, __LINE__, rev_byte);
+                        break;
+                    }
                     usleep(10000); // 10ms
                     if (fd_keyframe >= 0)
                         write(fd_keyframe, pkt->avpkt->data, pkt->avpkt->size);
-                    //log_print("find key frame: stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
-                } while ((pkt->avpkt->stream_index != video_idx) || ((pkt->avpkt->stream_index == video_idx) && !(pkt->avpkt->flags & AV_PKT_FLAG_KEY)) );
-                log_print("find key frame: stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
+                    //log_print("find key frame: rev_byte:%d, stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", rev_byte, pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
+                } while (!url_feof(pb) && ((pkt->avpkt->stream_index != video_idx) || ((pkt->avpkt->stream_index == video_idx) && !(pkt->avpkt->flags & AV_PKT_FLAG_KEY))));
+                log_print("find key frame: cur_offset:%lld, stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", cur_offset, pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
+                if ((pkt->avpkt->flags & AV_PKT_FLAG_KEY) && (pkt->avpkt->pos >= 0) && (pkt->avpkt->pos < cur_offset+SEEK_KEYFRAME_MAXSIZE)) {
+                    cur_offset = pkt->avpkt->pos;
+                    log_print("[%s:%d] cur_offset=%lld \n", __FUNCTION__, __LINE__, cur_offset);
+                }
 
                 avio_seek(pb, cur_offset, SEEK_SET);
+                log_print("[%s:%d] offset:%lld, skip %lld bytes, use %lld us! \n", __FUNCTION__, __LINE__, avio_tell(pb), avio_tell(pb)-old_offset, cur_time-start_time);
                 if (pkt->avpkt) {
                     av_free_packet(pkt->avpkt);
                 }
