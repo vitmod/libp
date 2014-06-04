@@ -701,6 +701,11 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
 	p_para->playctrl_info.buf_limited_time_ms=c_para->lowbuffermode_limited_ms;
     if (p_para->buffering_enable) {
         /*check threshhold is valid*/
+        if(p_para->buffering_start_time_s <= 0){
+            p_para->buffering_start_time_s = 10;  //10 seonds			
+        }else{
+            p_para->buffering_start_time_s = c_para->buffing_starttime_s;
+        }
         if (c_para->buffing_starttime_s > 0 && c_para->buffing_middle <= 0) {
             c_para->buffing_middle = 0.02;    //for tmp start.we will reset after start.
         }
@@ -712,7 +717,6 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
             p_para->buffering_threshhold_min = c_para->buffing_min;
             p_para->buffering_threshhold_middle = c_para->buffing_middle;
             p_para->buffering_threshhold_max = c_para->buffing_max;
-            p_para->buffering_start_time_s =  c_para->buffing_starttime_s;
             if (c_para->buffing_force_delay_s > 0) {
                 p_para->buffering_force_delay_s = c_para->buffing_force_delay_s;
                 log_print("delay %d s to do buffering\n", c_para->buffing_force_delay_s);
@@ -728,7 +732,6 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
             p_para->buffering_threshhold_min = 0.001;
             p_para->buffering_threshhold_middle = 0.02;
             p_para->buffering_threshhold_max = 0.8;
-            p_para->buffering_start_time_s =  10;  //10 seonds
             log_print("Auto changed  threadhold settings  for default buffering(must min=%f<middle=%f<max=%f)\n",
                       p_para->buffering_threshhold_min,
                       p_para->buffering_threshhold_middle,
