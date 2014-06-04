@@ -1871,7 +1871,7 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
                       st->codec->height * track->video.display_width,
                       st->codec-> width * track->video.display_height,
                       255);
-            if (st->codec->codec_id != CODEC_ID_HEVC)
+            if (st->codec->codec_id == CODEC_ID_HEVC) // need parser
                 st->need_parsing = AVSTREAM_PARSE_HEADERS;
             if (track->default_duration) {
                 av_reduce(&st->avg_frame_rate.num, &st->avg_frame_rate.den,
@@ -2459,8 +2459,8 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
         if (track->type == MATROSKA_TRACK_TYPE_SUBTITLE
             && timecode < track->end_timecode)
             is_keyframe = 0;  /* overlapping subtitles are not key frame */
-        if (is_keyframe)
-            av_add_index_entry(st, cluster_pos, timecode, 0,0,AVINDEX_KEYFRAME);
+        if (is_keyframe || track->type == MATROSKA_TRACK_TYPE_VIDEO) // no keyframe index in video track sometimes.
+            av_add_index_entry(st, cluster_pos, timecode, 0,0,is_keyframe);
     }
 
     if (matroska->skip_to_keyframe && track->type != MATROSKA_TRACK_TYPE_SUBTITLE) {
