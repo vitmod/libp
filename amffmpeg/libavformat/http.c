@@ -298,6 +298,9 @@ static int http_open(URLContext *h, const char *uri, int flags)
     	ret = http_open_cnx(h);
     }
 	s->is_seek=0;
+    if(ret < 0){
+        bandwidth_measure_free(s->bandwidth_measure);
+    }  
     return ret;
 }
 static int shttp_open(URLContext *h, const char *uri, int flags)
@@ -333,7 +336,10 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     }
 
 	s->is_seek = 0;
-	h->is_slowmedia=1;	
+	h->is_slowmedia=1;
+    if(ret < 0){
+        bandwidth_measure_free(s->bandwidth_measure);
+    }
 	return ret;
 }
 
