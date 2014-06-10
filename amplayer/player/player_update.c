@@ -1038,7 +1038,7 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
             if ((p_para->state.full_time - p_para->state.current_time) < 20) {
                 p_para->state.current_time = p_para->state.full_time;
             }
-            if (!p_para->playctrl_info.loop_flag) {
+            if (!p_para->playctrl_info.loop_flag && ( get_player_state(p_para)!= PLAYER_SEARCHING ) ) {
                 set_player_state(p_para, PLAYER_PLAYEND);
                 update_playing_info(p_para);
                 update_player_states(p_para, 1);
