@@ -669,12 +669,15 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
             if (amsysfs_get_sysfs_str(PPSCALER_RECT, val, sizeof(val)) == 0) {
                 /* the returned string should be "a b c" */
                 if (sscanf(val, "ppscaler rect:\nx:%d,y:%d,w:%d,h:%d", &x, &y, &w, &h) == 4) {
-                    if (fb_w == 0 || fb_h == 0) {
-                        fb_w = 1280;
-                        fb_h = 720;
+                    if((w > 1)&&(h > 1))
+                    {
+                        if (fb_w == 0  || fb_h == 0) {
+                            fb_w = 1280;
+                            fb_h = 720;
+                        }
+                        set_scale(x, y, w-1, h-1, &dst_x, &dst_y, &dst_w, &dst_h, fb_w, fb_h);
+                        LOGI("after scaled, screen position2: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
                     }
-                    set_scale(x, y, w-1, h-1, &dst_x, &dst_y, &dst_w, &dst_h, fb_w, fb_h);
-                    LOGI("after scaled, screen position2: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
                 }
             }
         }
