@@ -349,6 +349,19 @@ int audio_dec_decode(
 		audio_codec_print("decoder parameter error,check \n");
 		goto exit;
 	}
+//TODO .fix to LATM aac decoder when ffmpeg parser return LATM aac  type		
+#if  0
+	if(adec_ops->nAudioDecoderType == 19 && !gFaadCxt->init_flag){
+		int nSeekNum = AACFindLATMSyncWord(dec_buf,dec_bufsize);
+		if(nSeekNum == (dec_bufsize-2)){
+			audio_codec_print("%d bytes data not found adts sync header \n",nSeekNum);	
+		}
+		dec_bufsize = dec_bufsize - nSeekNum;
+		if(dec_bufsize < (get_frame_size(gFaadCxt)+FRAME_SIZE_MARGIN)/*AAC_INPUTBUF_SIZE/2*/){
+			goto exit; 
+		}		
+	}
+#endif
 	if (!gFaadCxt->init_flag)
 	{
 		gFaadCxt->error_count= 0;
@@ -365,6 +378,11 @@ int audio_dec_decode(
 			dec_bufsize = 0;
 	}
 	NeAACDecStruct* hDecoder = (NeAACDecStruct*)(gFaadCxt->hDecoder);
+//TODO .fix to LATM aac decoder when ffmpeg parser return LATM aac  type	
+#if 0	
+	if(adec_ops->nAudioDecoderType == 19)
+		hDecoder->latm_header_present = 1;
+#endif	
 	if(hDecoder->adts_header_present)
 	{
 		int nSeekNum = AACFindADTSSyncWord(dec_buf,dec_bufsize);

@@ -107,7 +107,7 @@ static uint8_t ObjectTypesTable[32] = {
     0, /* 27 ER Parametric */
 #endif
     0, /* 28 (Reserved) */
-    0, /* 29 (Reserved) */
+    1, /* 29  PS*/
     0, /* 30 (Reserved) */
     0  /* 31 (Reserved) */
 };
@@ -120,7 +120,7 @@ char NEAACDECAPI NeAACDecAudioSpecificConfig(unsigned char *pBuffer,
     return AudioSpecificConfig2(pBuffer, buffer_size, mp4ASC, NULL, 0);
 }
 
-int8_t AudioSpecificConfigFromBitfile(bitfile *ld,
+int  AudioSpecificConfigFromBitfile(bitfile *ld,
                             mp4AudioSpecificConfig *mp4ASC,
                             program_config *pce, uint32_t buffer_size, uint8_t short_form)
 {
@@ -137,7 +137,9 @@ int8_t AudioSpecificConfigFromBitfile(bitfile *ld,
 
     mp4ASC->objectTypeIndex = (uint8_t)faad_getbits(ld, 5
         DEBUGVAR(1,1,"parse_audio_decoder_specific_info(): ObjectTypeIndex"));
-
+    if (mp4ASC->objectTypeIndex == /*AOT_ESCAPE*/31)
+        mp4ASC->objectTypeIndex = 32 + faad_getbits(ld, 6);	
+    audio_codec_print("object type %x \n",mp4ASC->objectTypeIndex);
     mp4ASC->samplingFrequencyIndex = (uint8_t)faad_getbits(ld, 4
         DEBUGVAR(1,2,"parse_audio_decoder_specific_info(): SamplingFrequencyIndex"));
 	if(mp4ASC->samplingFrequencyIndex==0x0f)
@@ -174,7 +176,7 @@ int8_t AudioSpecificConfigFromBitfile(bitfile *ld,
 
 #ifdef SBR_DEC
     mp4ASC->sbr_present_flag = -1;
-    if (mp4ASC->objectTypeIndex == 5)
+    if( (mp4ASC->objectTypeIndex == 5) ||(mp4ASC->objectTypeIndex == 29 && !(faad_showbits(ld, 3) & 0x03 && !(faad_showbits(ld, 9) & 0x3F)) ))		
     {
         uint8_t tmp;
 
@@ -292,7 +294,7 @@ int8_t AudioSpecificConfigFromBitfile(bitfile *ld,
     return result;
 }
 
-int8_t AudioSpecificConfig2(uint8_t *pBuffer,
+int AudioSpecificConfig2(uint8_t *pBuffer,
                             uint32_t buffer_size,
                             mp4AudioSpecificConfig *mp4ASC,
                             program_config *pce,

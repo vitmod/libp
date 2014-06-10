@@ -259,7 +259,7 @@ static int Mpeg4ReadAudioSpecificInfo(mpeg4_cfg_t *p_cfg, int *pi_extra, uint8_t
     p_cfg->i_ps  = -1;
     p_cfg->extension.i_object_type = 0;
     p_cfg->extension.i_samplerate = 0;
-    if (p_cfg->i_object_type == 5 || (p_cfg->i_object_type == 29&&(faad_showbits(ld, 3) & 0x03 && !(faad_showbits(ld, 9) & 0x3F)))) {
+    if (p_cfg->i_object_type == 5 || (p_cfg->i_object_type == 29/*&&(faad_showbits(ld, 3) & 0x03 && !(faad_showbits(ld, 9) & 0x3F))*/)) {
         p_cfg->i_sbr = 1;
         if (p_cfg->i_object_type == 29)
            p_cfg->i_ps = 1;
@@ -960,7 +960,7 @@ exit_check:
 			}
 		}
  #endif
-			
+	     LATM_LOG("latm init ret %d \n",x);		
             return x;		
 	}else
 #else
@@ -1109,7 +1109,7 @@ exit_check:
 }
 
 /* Init the library using a DecoderSpecificInfo */
-char NEAACDECAPI NeAACDecInit2(NeAACDecHandle hpDecoder,
+int NEAACDECAPI NeAACDecInit2(NeAACDecHandle hpDecoder,
                                unsigned char *pBuffer,
                                unsigned long SizeOfDecoderSpecificInfo,
                                unsigned long *samplerate,
