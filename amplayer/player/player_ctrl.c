@@ -1175,7 +1175,18 @@ int audio_get_volume(int pid, float *vol)
 /* --------------------------------------------------------------------------*/
 int audio_set_lrvolume(int pid, float lvol, float rvol)
 {
-    return codec_set_lrvolume(NULL, lvol, rvol);
+    play_para_t *player_para;
+    log_print("[audio_set_lrvolume:enter]pid=%d\n", pid);
+    player_para = player_open_pid_data(pid);
+    if(player_para == NULL){
+        log_print("player ID is NULL!\n");
+        return -1;
+    }
+    if(player_para->acodec == NULL){
+        log_print("codec is not ready!\n");
+        return -1;
+    }
+    return codec_set_lrvolume(player_para->acodec, lvol, rvol);
 }
 
 /* --------------------------------------------------------------------------*/
