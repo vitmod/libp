@@ -239,6 +239,8 @@ void audioCallback(int event, void* user, void *info)
     aml_audio_dec_t *audec = static_cast<aml_audio_dec_t *>(user);
     audio_out_operations_t *out_ops = &audec->aout_ops;
     dsp_operations_t *dsp_ops = &audec->adsp_ops;
+    unsigned long apts, pcrscr;
+    int tsync_mode;
 
     if (event != AudioTrack::EVENT_MORE_DATA) {
         adec_print(" ****************** audioCallback: event = %d \n", event);
@@ -260,6 +262,10 @@ void audioCallback(int event, void* user, void *info)
         }
 
         //ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_GET_LAST_CHECKOUT_APTS, (int)&last_checkout);
+    }
+    if (adec_get_tsync_info(&tsync_mode) == TSYNC_MODE_PCRMASTER) {
+        apts = dsp_ops->get_cur_pts(dsp_ops);
+        pcrscr = dsp_ops->get_cur_pcrscr(dsp_ops);
     }
     
     if(1){//!wfd_enable){
@@ -306,6 +312,22 @@ void audioCallback(int event, void* user, void *info)
       }
     }
 
+    if (tsync_mode == TSYNC_MODE_PCRMASTER) {
+        int64_t apts64 = (int64_t)apts;
+        int64_t pcrscr64 = (int64_t)pcrscr;
+        if ((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)) {
+            af_set_resample_type(RESAMPLE_TYPE_DOWN);
+            //adec_print("down: pcrmaster apts=%x,,  pcr=%x, %d, %lld, %lld, %lld,  --------\n", apts, pcrscr, (int)(pcrscr-apts), apts64,pcrscr64,apts64-pcrscr64);
+       	} else if ((apts64 - pcrscr64) > (int64_t)(100*TIME_UNIT90K/1000)) {
+            af_set_resample_type(RESAMPLE_TYPE_UP);		
+            //adec_print("up: pcrmaster apts=%x,,  pcr=%x, %d,%lld, %lld, %lld, --------\n", apts, pcrscr,(int)(apts-pcrscr),apts64,pcrscr64,apts64-pcrscr64);
+        } else {
+            //adec_print("none: pcrmaster apts=%x,,  pcr=%x, %d,%lld, %lld, %lld, %d,%d,--------\n", 
+            //    apts, pcrscr, (int)(apts-pcrscr),apts64,pcrscr64,apts64-pcrscr64,(100*TIME_UNIT90K/1000),((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)));
+            af_set_resample_type(RESAMPLE_TYPE_NONE);
+        }
+    }
+	
     if (audec->adsp_ops.dsp_on) {
         int channels;
         #if ANDROID_PLATFORM_SDK_VERSION >= 19

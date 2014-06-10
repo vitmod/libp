@@ -57,6 +57,8 @@ void af_resample_api_normal(char *buffer, unsigned int *size,int Chnum, aml_audi
 
 void af_resample_api(char* buffer, unsigned int * size, int Chnum, aml_audio_dec_t* audec, int enable, int delta);
 
+int af_set_resample_type(int val);
+
 #endif
 
 

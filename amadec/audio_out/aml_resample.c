@@ -57,6 +57,10 @@ int af_get_resample_type()
     return get_sysfs_int("sys/class/amaudio/resample_type");
 }
 
+int af_set_resample_type(int val)
+{
+    return amsysfs_set_sysfs_int("sys/class/amaudio/resample_type", val);
+}
 
 
 af_resampe_ctl_t* af_resampler_ctx_get()
@@ -118,8 +122,11 @@ static int audiodsp_set_pcm_resample_delta(int resample_num_delta)
 }
 void af_resample_set_SampsNumRatio(af_resampe_ctl_t *paf_resampe_ctl)
 {  
+    char value[1028]={0};
     int resample_type=af_get_resample_type();
 	int default_DELTA_NUMSAMPS=RESAMPLE_DELTA_NUMSAMPS;
+    if(property_get("media.libplayer.resampledelta",value,NULL) > 0)
+        default_DELTA_NUMSAMPS = atoi(value);
 	if (am_getconfig_bool("media.libplayer.wfd"))
 	{
        default_DELTA_NUMSAMPS=2;
