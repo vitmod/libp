@@ -25,6 +25,7 @@
 #define VIDEO_GLOBAL_OFFSET_PATH "/sys/class/video/global_offset"
 #define FREE_SCALE_PATH  "/sys/class/graphics/fb0/free_scale"
 #define FREE_SCALE_PATH_FB2  "/sys/class/graphics/fb2/free_scale"
+#define FREE_SCALE_PATH_FB1  "/sys/class/graphics/fb1/free_scale"
 #define PPSCALER_PATH  "/sys/class/ppmgr/ppscaler"
 #define HDMI_AUTHENTICATE_PATH "/sys/module/hdmitx/parameters/hdmi_authenticated"
 #define FREE_SCALE_MODE_PATH   "/sys/class/graphics/fb0/freescale_mode"
@@ -32,6 +33,9 @@
 #define DISPLAY_AXIS_PATH       "/sys/class/display/axis"
 #define FREE_SCALE_AXIS_PATH   "/sys/class/graphics/fb0/free_scale_axis"
 #define PPSCALER_RECT  "/sys/class/ppmgr/ppscaler_rect"
+#define WINDOW_AXIS_PATH_FB1      "/sys/class/graphics/fb1/window_axis"
+#define FREE_SCALE_AXIS_PATH_FB1   "/sys/class/graphics/fb1/free_scale_axis"
+
 
 
 static int rotation = 0;
@@ -129,7 +133,7 @@ int is_screen_portrait(void)
     return ret;
 }
 
-int is_video_on_vpp2_new(void)
+int is_osd_on_vpp2_new(void)
 {
     int ret = 0;
     
@@ -140,6 +144,24 @@ int is_video_on_vpp2_new(void)
     }
     return ret;
 }
+
+int is_hdmi_on_vpp1_new(void)
+{
+    int ret1 = 0;
+	int ret2 = 0;
+	int ret = 0;
+    
+    char val[PROPERTY_VALUE_MAX];
+    memset(val, 0, sizeof(val));   
+    if (amsysfs_get_sysfs_str("/sys/class/graphics/fb1/ver_clone", val, sizeof(val)) == 0) {
+		ret1 = (val[11] == 'O') ? 1 : 0;
+		ret2 = (val[12] == 'N') ? 1 : 0;
+		if((ret1 == 1) && (ret2 == 1))
+			ret = 1;
+    }
+    return ret;
+}
+
 int is_vertical_panel_reverse(void)
 {
     int ret = 0;
@@ -430,11 +452,12 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     int ret = -1;
     int axis[4];
     char enable_p2p_play[8] = {0};
-	int video_on_vpp2_new = is_video_on_vpp2_new();
+	int video_on_vpp2_new = is_osd_on_vpp2_new();
 	int screen_portrait = is_screen_portrait();
     int video_on_vpp2 = is_video_on_vpp2();
     int vertical_panel = is_vertical_panel();
     int vertical_panel_reverse = is_vertical_panel_reverse();
+    int hdmi_swith_on_vpp1 = is_hdmi_on_vpp1_new();
     
     if (video_on_vpp2) {
         int fb0_w, fb0_h, fb2_w, fb2_h;
@@ -473,7 +496,16 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
             }
         }        
     }
-    LOGI("amvideo_utils_set_virtual_position:: x=%d y=%d w=%d h=%d\n", x, y, w, h);
+	if(screen_portrait && hdmi_swith_on_vpp1){
+		int val = 0 ;
+		val = x ;
+		x = y;
+		y = val;
+		val = w;
+		w = h;
+		h = val;
+	}
+    LOGI("amvideo_utils_set_virtual_position :: x=%d y=%d w=%d h=%d\n", x, y, w, h);
 
     bzero(buf, SYSCMD_BUFSIZE);
 
@@ -517,7 +549,12 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
                 /* the returned string should be "free_scale_enable:[0x%x]" */
                 free_scale_enable = (val[21] == '0') ? 0 : 1;
             }
-        } else {
+        }else if(hdmi_swith_on_vpp1){
+            if (amsysfs_get_sysfs_str(FREE_SCALE_PATH_FB1, val, sizeof(val)) == 0) {
+                /* the returned string should be "free_scale_enable:[0x%x]" */
+                free_scale_enable = (val[21] == '0') ? 0 : 1;
+            }
+        }else {
             if (amsysfs_get_sysfs_str(FREE_SCALE_PATH, val, sizeof(val)) == 0) {
                 /* the returned string should be "free_scale_enable:[0x%x]" */
                 free_scale_enable = (val[21] == '0') ? 0 : 1;
@@ -537,7 +574,8 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         }
     }
 
-    if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new ))
+    if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new )
+		||(screen_portrait && hdmi_swith_on_vpp1))
         amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, 0);
     else
         amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, (rotation/90) & 3);
@@ -687,7 +725,13 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         int x = 0, y = 0, w = 0, h = 0;
         int freescale_x = 0, freescale_y = 0, freescale_w = 0, freescale_h = 0;
 
-        if (amsysfs_get_sysfs_str(WINDOW_AXIS_PATH, val, sizeof(val)) == 0) {
+		int mGetWinAxis = 0;
+		if(hdmi_swith_on_vpp1)
+			mGetWinAxis = amsysfs_get_sysfs_str(WINDOW_AXIS_PATH_FB1, val, sizeof(val));
+		else
+			mGetWinAxis = amsysfs_get_sysfs_str(WINDOW_AXIS_PATH, val, sizeof(val));
+		
+        if (mGetWinAxis == 0) {
             /* the returned string should be "window axis is [a b c d]" */
             if (sscanf(val + 15, "[%d %d %d %d]", &left, &top, &right, &bottom) == 4) {
                 x = left;
@@ -695,7 +739,19 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
                 w = right - left + 1;
                 h = bottom - top + 1;
 
-                get_axis(FREE_SCALE_AXIS_PATH, &freescale_x, &freescale_y, &freescale_w, &freescale_h);
+				if(hdmi_swith_on_vpp1){
+					freescale_x = 0;
+					freescale_y = 0;
+					if(screen_portrait){
+						freescale_w = disp_h;
+						freescale_h = disp_w;
+					}else{
+						freescale_w = disp_w;
+						freescale_h = disp_h;
+					}
+				}	
+				else
+					get_axis(FREE_SCALE_AXIS_PATH, &freescale_x, &freescale_y, &freescale_w, &freescale_h);
                 freescale_w = (freescale_w + 1) & (~1);
                 freescale_h = (freescale_h + 1) & (~1);
 
