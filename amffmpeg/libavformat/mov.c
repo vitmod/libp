@@ -2811,6 +2811,10 @@ static int64_t mov_read_seek_sync(AVFormatContext *s,
 
 static int64_t mpegts_read_seek2(AVFormatContext *s, int stream_index, int64_t target_ts, int flags){
     int ret;
+    if(!flags) {
+        flags = AVSEEK_FLAG_BACKWARD;
+    }
+
     if (flags & AVSEEK_FLAG_BACKWARD) {
         flags &= ~AVSEEK_FLAG_BACKWARD;
         ret = mov_read_seek_sync(s, stream_index, INT64_MIN, target_ts, target_ts, flags);

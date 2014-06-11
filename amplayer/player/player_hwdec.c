@@ -859,6 +859,33 @@ int mpeg_check_sequence(play_para_t *para)
     avio_seek(s->pb, cur_offset, SEEK_SET);
     return 0;
 }
+
+static int mpegts_add_header(play_para_t *para)
+{
+    am_packet_t *pkt = para->p_pkt;
+    AVFormatContext *s = para->pFormatCtx;
+    int ret = PLAYER_FAILED;
+    if(s->ts_hevc_csd_valid == 1) {
+        MEMCPY(pkt->hdr->data, s->ts_hevc_csd_packet, 188);
+        pkt->hdr->size = 188;
+        pkt->type = CODEC_COMPLEX;
+        ret = PLAYER_SUCCESS;
+    }
+    if (ret == PLAYER_SUCCESS) {
+        if (para->codec) {
+            pkt->codec = para->codec;
+        } else {
+            log_print("[mpegts_add_header]invalid video codec!\n");
+            return PLAYER_EMPTY_P;
+        }
+
+        pkt->avpkt_newflag = 1;
+        ret = write_av_packet(para);
+        log_print("[mpegts_add_header]write ts header for hevc!\n");
+    }
+    return ret;
+}
+
 static int mpeg_add_header(play_para_t *para)
 {
 #define STUFF_BYTES_LENGTH     (256)
@@ -1166,7 +1193,7 @@ int pre_header_feeding(play_para_t *para)
                 return ret;
             }
         }
-        if ((STREAM_FILE == para->file_type)) {
+        if ((STREAM_FILE == para->file_type) && VFORMAT_HEVC != para->vstream_info.video_format) {
             ret = write_stream_header(para);
             if (ret != PLAYER_SUCCESS) {
                 return ret;
@@ -1183,9 +1210,11 @@ int pre_header_feeding(play_para_t *para)
                 return ret;
             }
         } else if (VFORMAT_HEVC == para->vstream_info.video_format) {
-            ret = hevc_write_header(para);
-            if (ret != PLAYER_SUCCESS) {
-                return ret;
+            if(!(!memcmp(para->pFormatCtx->iformat->name,"mpegts",6) && para->playctrl_info.time_point < 0)) {
+                ret = hevc_write_header(para);
+                if (ret != PLAYER_SUCCESS) {
+                    return ret;
+                }
             }
         } else if ((CODEC_TAG_M4S2 == avcodec->codec_tag) ||
                    (CODEC_TAG_DX50 == avcodec->codec_tag) ||
@@ -1255,6 +1284,29 @@ int pre_header_feeding(play_para_t *para)
             pkt->hdr = NULL;
         }
     }
+    /*else if (para->stream_type == STREAM_TS && para->vstream_info.has_video && VFORMAT_HEVC == para->vstream_info.video_format && para->playctrl_info.time_point > 0) {
+        if (pkt->hdr == NULL) {
+            pkt->hdr = MALLOC(sizeof(hdr_buf_t));
+            pkt->hdr->data = (char *)MALLOC(HDR_BUF_SIZE);
+            if (!pkt->hdr->data) {
+                log_print("[pre_header_feeding] NOMEM!");
+                return PLAYER_NOMEM;
+            }
+            pkt->hdr->size = 0;
+        }
+        ret = mpegts_add_header(para);
+        if(ret != PLAYER_SUCCESS) {
+            return ret;
+        }
+        if (pkt->hdr) {
+            if (pkt->hdr->data) {
+                FREE(pkt->hdr->data);
+                pkt->hdr->data = NULL;
+            }
+            FREE(pkt->hdr);
+            pkt->hdr = NULL;
+        }
+    }*/
     return PLAYER_SUCCESS;
 }
 

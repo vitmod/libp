@@ -960,7 +960,10 @@ int HEVC_decode_SPS(const uint8_t *buf,int size,struct hevc_info*info);
 int ff_hevc_extract_rbsp(HEVCContext *s, const uint8_t *src, int length,
                          HEVCNAL *nal);
 
+int ff_hevc_decode_nal_vps(HEVCContext *s);
 int ff_hevc_decode_nal_sps(HEVCContext *s);
+int ff_hevc_decode_nal_pps(HEVCContext *s);
+int ff_hevc_decode_nal_sei(HEVCContext *s);
 
 /**
  * Compute POC of the current frame and return it.

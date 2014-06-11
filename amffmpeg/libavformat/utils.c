@@ -1426,7 +1426,10 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
         /* select current input stream component */
         st = s->cur_st;
         if (st) {
-            if (!st->need_parsing || !st->parser || (!strcmp(s->iformat->name, "mpegts") && !(am_getconfig_bool("media.amplayer.seekkeyframe")))) {
+            if (!st->need_parsing || !st->parser ||
+            (!strcmp(s->iformat->name, "mpegts") &&
+            !(am_getconfig_bool("media.amplayer.seekkeyframe"))
+            && (st->codec->codec_id != CODEC_ID_HEVC))) {
                 /* no parsing needed: we just output the packet as is */
                 /* raw data support */
                 *pkt = st->cur_pkt; st->cur_pkt.data= NULL;

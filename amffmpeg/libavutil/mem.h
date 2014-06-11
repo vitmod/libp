@@ -87,6 +87,21 @@ void *av_malloc(size_t size) av_malloc_attrib av_alloc_size(1);
 void *av_realloc(void *ptr, size_t size) av_alloc_size(2);
 
 /**
+ * Allocate a block of size * nmemb bytes with av_malloc().
+ * @param nmemb Number of elements
+ * @param size Size of the single element
+ * @return Pointer to the allocated block, NULL if the block cannot
+ * be allocated.
+ * @see av_malloc()
+ */
+av_alloc_size(1, 2) static inline void *av_malloc_array(size_t nmemb, size_t size)
+{
+    if (!size || nmemb >= INT_MAX / size)
+        return NULL;
+    return av_malloc(nmemb * size);
+}
+
+/**
  * Allocate or reallocate a block of memory.
  * This function does the same thing as av_realloc, except:
  * - It takes two arguments and checks the result of the multiplication for

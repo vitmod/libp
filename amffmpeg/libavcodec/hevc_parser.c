@@ -116,6 +116,7 @@ static inline int parse_nal_units(AVCodecParserContext *s,
     for (;;) {
         int src_length, consumed;
         if (s->flags & PARSER_FLAG_COMPLETE_FRAMES) {
+            unsigned char *p = buf;
             if (check_size_in_buffer(buf, buf_size)) {
                 buf += 4;
                 goto PASS;
@@ -145,17 +146,17 @@ PASS:
         init_get_bits8(gb, nal->data + 2, nal->size);
         switch (h->nal_unit_type) {
         case NAL_VPS:
-            // no ops..
+            ff_hevc_decode_nal_vps(h);
             break;
         case NAL_SPS:
-            // no ops..
+            ff_hevc_decode_nal_sps(h);
             break;
         case NAL_PPS:
-            // no ops..
+            ff_hevc_decode_nal_pps(h);
             break;
         case NAL_SEI_PREFIX:
         case NAL_SEI_SUFFIX:
-           // no ops..
+            ff_hevc_decode_nal_sei(h);
             break;
         case NAL_TRAIL_N:
         case NAL_TRAIL_R:
@@ -237,6 +238,12 @@ PASS:
 
             if (h->sps->separate_colour_plane_flag)
                 sh->colour_plane_id = get_bits(gb, 2);
+
+            if (!IS_IDR(h)) {
+                sh->pic_order_cnt_lsb = get_bits(gb, h->sps->log2_max_poc_lsb);
+                h->poc = ff_hevc_compute_poc(h, sh->pic_order_cnt_lsb);
+            } else
+                h->poc = 0;
 
             if (h->temporal_id == 0 &&
                 h->nal_unit_type != NAL_TRAIL_N &&

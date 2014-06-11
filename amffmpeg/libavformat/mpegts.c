@@ -118,6 +118,9 @@ struct MpegTSContext {
     /** raw packet size, including FEC if present            */
     int raw_packet_size;
 
+    int first_hevc_packet;
+    int is_hevc;
+
     int pos47;
 
     /** if true, all pids are analyzed to find streams       */
@@ -1606,6 +1609,187 @@ static int recalcpts_startwhetherornot(AVFormatContext *s,AVPacket *pkt)
 
 	return 0;
 }
+
+#if 0
+static int get_hevc_csd_packet(AVFormatContext *s, AVStream * st, const uint8_t *packet)
+{
+    uint8_t * p = packet;
+    uint8_t * b;
+    uint8_t * e;
+    uint8_t * dst = s->ts_hevc_csd_packet;
+    int i, ps_count = 0, len = 0, ps_start = 0;
+    memcpy(dst, packet, 3); // 3 bytes
+    dst += 3;
+    *dst++ = 0x10; // adaptation_field_control == 1, continuity_counter == 0
+    for(i = 0;i < TS_PACKET_SIZE;i++){
+        if(p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) {
+            p += 4;
+            i += 4;
+            break;
+        }
+        if(p[0] == 0 && p[1] == 0 && p[2] == 1) {
+            p += 3;
+            i += 3;
+            break;
+        }
+        p++;
+    }
+    for(;i < TS_PACKET_SIZE;i++){
+        if(p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) {
+            if(!ps_start) {
+                b = p;
+                ps_start = 1;
+            }
+            if(ps_count == 3) { // got vps/sps/pps
+                e = p - 1;
+                break;
+            }
+            if(((p[4]>>1) & 0x3f) == 32) { // vps
+                ps_count++;
+            }
+            if(((p[4]>>1) & 0x3f) == 33) { // sps
+                ps_count++;
+            }
+            if(((p[4]>>1) & 0x3f) == 34) { // pps
+                ps_count++;
+            }
+            p += 4;
+            i += 4;
+            continue;
+        }
+        if(p[0] == 0 && p[1] == 0 && p[2] == 1) {
+            if(!ps_start) {
+                b = p;
+                ps_start = 1;
+            }
+            if(ps_count == 3) { // got vps/sps/pps
+                e = p - 1;
+                break;
+            }
+            if(((p[3]>>1) & 0x3f) == 32) { // vps
+                ps_count++;
+            }
+            if(((p[3]>>1) & 0x3f) == 33) { // sps
+                ps_count++;
+            }
+            if(((p[3]>>1) & 0x3f) == 34) { // pps
+                ps_count++;
+            }
+            p += 3;
+            i += 3;
+            continue;
+        }
+        p++;
+    }
+
+    if(ps_count != 3) {
+        s->ts_hevc_csd_valid = 0;
+        av_log(NULL,AV_LOG_ERROR,"Could not get hevc csd data from ts packet!\n");
+        return -1;
+    }
+
+    len = e-b+1;
+    memcpy(dst, b, len);
+    dst += len;
+    len += 4;
+    for(i=0;i < TS_PACKET_SIZE-len;i++){
+        *dst++ = 0xFF;
+    }
+    s->ts_hevc_csd_valid = 1;
+    return 0;
+}
+#endif
+
+static int get_hevc_csd_packet(AVFormatContext *s, AVStream * st, const uint8_t *packet)
+{
+    uint8_t * p = packet;
+    uint8_t * b;
+    uint8_t * e;
+    int i, ps_count = 0, len = 0, ps_start = 0;
+    for(i = 0;i < TS_PACKET_SIZE;i++){
+        if(p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) {
+            p += 4;
+            i += 4;
+            break;
+        }
+        if(p[0] == 0 && p[1] == 0 && p[2] == 1) {
+            p += 3;
+            i += 3;
+            break;
+        }
+        p++;
+    }
+    for(;i < TS_PACKET_SIZE;i++){
+        if(p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) {
+           // if(!ps_start) {
+            //    b = p;
+           ///     ps_start = 1;
+            //}
+            if(ps_count == 3) { // got vps/sps/pps
+                e = p - 1;
+                break;
+            }
+            if(((p[4]>>1) & 0x3f) == 32) { // vps
+            if(!ps_start) {
+                b = p;
+                ps_start = 1;
+            }
+                ps_count++;
+            }
+            if(((p[4]>>1) & 0x3f) == 33) { // sps
+                ps_count++;
+            }
+            if(((p[4]>>1) & 0x3f) == 34) { // pps
+                ps_count++;
+            }
+            p += 4;
+            i += 4;
+            continue;
+        }
+        if(p[0] == 0 && p[1] == 0 && p[2] == 1) {
+           // if(!ps_start) {
+           //     b = p;
+           //     ps_start = 1;
+           // }
+            if(ps_count == 3) { // got vps/sps/pps
+                e = p - 1;
+                break;
+            }
+            if(((p[3]>>1) & 0x3f) == 32) { // vps
+            if(!ps_start) {
+                b = p;
+                ps_start = 1;
+            }
+                ps_count++;
+            }
+            if(((p[3]>>1) & 0x3f) == 33) { // sps
+                ps_count++;
+            }
+            if(((p[3]>>1) & 0x3f) == 34) { // pps
+                ps_count++;
+            }
+            p += 3;
+            i += 3;
+            continue;
+        }
+        p++;
+    }
+
+    if(ps_count != 3) {
+        av_log(NULL,AV_LOG_ERROR,"Could not get hevc csd data from ts packet!\n");
+        return -1;
+    }
+
+    len = e-b+1;
+    av_free(st->codec->extradata);
+    st->codec->extradata = av_mallocz(len + FF_INPUT_BUFFER_PADDING_SIZE);
+    if (!st->codec->extradata)
+        return AVERROR(ENOMEM);
+    memcpy(st->codec->extradata, b, len);
+    st->codec->extradata_size = len;
+    return 0;
+}
+
 /* handle one TS packet */
 static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
 {
@@ -1715,6 +1899,20 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
         if ((ret = tss->u.pes_filter.pes_cb(tss, p, p_end - p, is_start,
                                             pos - ts->raw_packet_size)) < 0)
             return ret;
+    }
+
+    if(tss->type == MPEGTS_PES) {
+        PESContext *pc = tss->u.pes_filter.opaque;
+        if(pc) {
+            AVStream * st = pc->st;
+            if(st) {
+                if(ts->first_hevc_packet == 1 && st->codec->codec_id == CODEC_ID_HEVC) {
+                    get_hevc_csd_packet(s, st, packet);
+                    ts->first_hevc_packet = 0;
+                    ts->is_hevc = 1;
+                }
+            }
+        }
     }
 
     return 0;
@@ -2038,6 +2236,7 @@ reget_packet_size:
                 st->start_time / 1000000.0, pcrs[0] / 27e6, ts->pcr_incr);
     }
 
+    ts->first_hevc_packet = 1;
     check_ac3_dts(s);
     avio_seek(pb, pos, SEEK_SET);
     return 0;
@@ -2209,9 +2408,7 @@ static int64_t mpegts_get_pcr(AVFormatContext *s, int stream_index,
     return timestamp;
 }
 
-#ifdef USE_SYNCPOINT_SEARCH
-
-static int read_seek2(AVFormatContext *s,
+static int read_seek2sync(AVFormatContext *s,
                       int stream_index,
                       int64_t min_ts,
                       int64_t target_ts,
@@ -2275,25 +2472,23 @@ static int read_seek2(AVFormatContext *s,
     return 0;
 }
 
-static int read_seek(AVFormatContext *s, int stream_index, int64_t target_ts, int flags)
+static int read_seek2(AVFormatContext *s, int stream_index, int64_t target_ts, int flags)
 {
     int ret;
     if (flags & AVSEEK_FLAG_BACKWARD) {
         flags &= ~AVSEEK_FLAG_BACKWARD;
-        ret = read_seek2(s, stream_index, INT64_MIN, target_ts, target_ts, flags);
+        ret = read_seek2sync(s, stream_index, INT64_MIN, target_ts, target_ts, flags);
         if (ret < 0)
             // for compatibility reasons, seek to the best-fitting timestamp
-            ret = read_seek2(s, stream_index, INT64_MIN, target_ts, INT64_MAX, flags);
+            ret = read_seek2sync(s, stream_index, INT64_MIN, target_ts, INT64_MAX, flags);
     } else {
-        ret = read_seek2(s, stream_index, target_ts, target_ts, INT64_MAX, flags);
+        ret = read_seek2sync(s, stream_index, target_ts, target_ts, INT64_MAX, flags);
         if (ret < 0)
             // for compatibility reasons, seek to the best-fitting timestamp
-            ret = read_seek2(s, stream_index, INT64_MIN, target_ts, INT64_MAX, flags);
+            ret = read_seek2sync(s, stream_index, INT64_MIN, target_ts, INT64_MAX, flags);
     }
     return ret;
 }
-
-#else
 
 static int read_seek(AVFormatContext *s, int stream_index, int64_t target_ts, int flags){
     MpegTSContext *ts = s->priv_data;
@@ -2347,7 +2542,16 @@ static int read_seek(AVFormatContext *s, int stream_index, int64_t target_ts, in
     return 0;
 }
 
-#endif
+static int mpegts_read_seek(AVFormatContext *s, int stream_index, int64_t target_ts, int flags){
+    MpegTSContext *ts = s->priv_data;
+    if(!flags) {
+        flags = AVSEEK_FLAG_BACKWARD;
+    }
+    if(ts->is_hevc == 1){
+        return read_seek2(s, stream_index, target_ts, flags);
+    }
+    return read_seek(s, stream_index, target_ts, flags);
+}
 
 /**************************************************************/
 /* parsing functions - called from other demuxers such as RTP */
@@ -2413,12 +2617,12 @@ AVInputFormat ff_mpegts_demuxer = {
     mpegts_read_header,
     mpegts_read_packet,
     mpegts_read_close,
-    read_seek,
-    mpegts_get_pcr,
-    .flags = AVFMT_SHOW_IDS|AVFMT_TS_DISCONT,
-#ifdef USE_SYNCPOINT_SEARCH
-    .read_seek2 = read_seek2,
-#endif
+    .read_seek = mpegts_read_seek,
+    .read_timestamp = mpegts_get_pcr,
+    .flags = AVFMT_SHOW_IDS|AVFMT_TS_DISCONT| AVFMT_GENERIC_INDEX,
+//#ifdef USE_SYNCPOINT_SEARCH
+//    .read_seek2 = read_seek2,
+//#endif
 };
 
 AVInputFormat ff_mpegtsraw_demuxer = {
@@ -2429,11 +2633,11 @@ AVInputFormat ff_mpegtsraw_demuxer = {
     mpegts_read_header,
     mpegts_raw_read_packet,
     mpegts_read_close,
-    read_seek,
-    mpegts_get_pcr,
-    .flags = AVFMT_SHOW_IDS|AVFMT_TS_DISCONT,
-#ifdef USE_SYNCPOINT_SEARCH
-    .read_seek2 = read_seek2,
-#endif
+    .read_seek =  mpegts_read_seek,
+    .read_timestamp = mpegts_get_pcr,
+    .flags = AVFMT_SHOW_IDS|AVFMT_TS_DISCONT| AVFMT_GENERIC_INDEX,
+//#ifdef USE_SYNCPOINT_SEARCH
+//    .read_seek2 = read_seek2,
+//#endif
     .priv_class = &mpegtsraw_class,
 };
