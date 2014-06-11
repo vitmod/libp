@@ -61,8 +61,9 @@ typedef enum {
     AFORMAT_PCM_WIFIDISPLAY = 22,
     AFORMAT_DRA    = 23,
     AFORMAT_SIPR   =24,
-    AFORMAT_MPEG1  =25,//AFORMAT_MPEG-->mp3,AFORMAT_MPEG1-->mp1,AFROMAT_MPEG2-->mp2
-    AFORMAT_MPEG2  =26,
+    AFORMAT_TRUEHD =25,
+    AFORMAT_MPEG1  =26,//AFORMAT_MPEG-->mp3,AFORMAT_MPEG1-->mp1,AFROMAT_MPEG2-->mp2
+    AFORMAT_MPEG2  =27,
     AFORMAT_UNSUPPORT ,
     AFORMAT_MAX    
 
@@ -86,7 +87,8 @@ typedef enum {
 								 ||(afmt == AFORMAT_FLAC)\
 								 ||(afmt == AFORMAT_PCM_WIFIDISPLAY) \
 								 ||(afmt == AFORMAT_COOK) \
-								 ||(afmt == AFORMAT_RAAC))
+								 ||(afmt == AFORMAT_RAAC)) \
+								 ||(afmt == AFORMAT_TRUEHD)
 
 
 #define IS_AUDIO_NOT_SUPPORT_EXCEED_2CH(afmt) ((afmt == AFORMAT_RAAC) \

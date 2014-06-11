@@ -52,7 +52,7 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_MPEG2, "mp3"},//mp2
     {ACODEC_FMT_MPEG1, "mp3"},//mp1
     {ACODEC_FMT_EAC3,"eac3"},
-
+    {ACODEC_FMT_TRUEHD,"thd"},
     {ACODEC_FMT_PCM_S16BE,"pcm"},
     {ACODEC_FMT_PCM_S16LE,"pcm"},
     {ACODEC_FMT_PCM_U8,"pcm"},

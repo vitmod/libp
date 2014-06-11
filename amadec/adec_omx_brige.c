@@ -44,6 +44,8 @@ int find_omx_lib(aml_audio_dec_t *audec)
         audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_DTSHD;
     }else if(audec->format==ACODEC_FMT_VORBIS){
         audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_VORBIS;
+    }else if(audec->format == ACODEC_FMT_TRUEHD){
+        audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_TRUEHD;
     }
     
     adec_print("%s %d audec->format=%d \n",__FUNCTION__,__LINE__,audec->format);
@@ -134,7 +136,8 @@ exit_decode_loop:
          (*audec->parm_omx_codec_read)(audec,outbuf,&outlen,&audec->exit_decode_thread);
              
          outlen_raw=0;
-         if(audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_DTSHD)
+         if(audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_DTSHD ||
+		 	audec->StageFrightCodecEnableType == OMX_ENABLE_CODEC_TRUEHD)
          {
              if(outlen>8) {
                   memcpy(&outlen,outbuf,4);
@@ -159,7 +162,6 @@ exit_decode_loop:
              }
              #endif
          }
-         
          if(outlen>0){
               memset(&g_AudioInfo,0,sizeof(AudioInfo));
               g_AudioInfo.channels=(*audec->parm_omx_codec_get_Nch)(audec);

@@ -188,6 +188,9 @@ aformat_t audio_type_convert(enum CodecID id, pfile_type File_type)
     case CODEC_ID_SIPR:
         format=AFORMAT_SIPR;
         break;
+	case CODEC_ID_TRUEHD:
+		format = AFORMAT_TRUEHD;
+		break;
     default:
         format = AFORMAT_UNSUPPORT;
         log_print("audio codec_id=0x%x\n", id);

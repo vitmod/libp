@@ -1654,7 +1654,8 @@ static char* player_aformat2str(aformat_t value)
             
         case AFORMAT_EAC3:
             return "AFORMAT_EAC3";       
-        
+        case AFORMAT_TRUEHD:
+			return "AFORMAT_TRUEHD";
         default:
             return "NOT_SUPPORT AFORMAT";
     } 

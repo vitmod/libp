@@ -238,8 +238,11 @@ struct adec_status {
 #define    ACODEC_FMT_APE    20
 #define    ACODEC_FMT_EAC3    21 
 #define    ACODEC_FMT_WIFIDISPLAY 22
-#define    ACODEC_FMT_MPEG1  25  //AFORMAT_MPEG-->mp3,AFORMAT_MPEG1-->mp1,AFROMAT_MPEG2-->mp2
-#define    ACODEC_FMT_MPEG2  26
+#define    ACODEC_FMT_TRUEHD 25
+#define    ACODEC_FMT_MPEG1  26  //AFORMAT_MPEG-->mp3,AFORMAT_MPEG1-->mp1,AFROMAT_MPEG2-->mp2
+#define    ACODEC_FMT_MPEG2  27
+
+
 
 
 

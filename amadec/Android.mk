@@ -156,6 +156,7 @@ LOCAL_SRC_FILES := \
 	   /omx_audio/ASF_mediasource.cpp  \
 	   /omx_audio/DTSHD_mediasource.cpp \
 	   /omx_audio/Vorbis_mediasource.cpp \
+	   /omx_audio/THD_mediasource.cpp
 
 LOCAL_MODULE := libamadec_omx_api
 LOCAL_MODULE_TAGS := optional

@@ -48,9 +48,12 @@ void restore_system_samplerate(struct aml_audio_dec* audec)
 #else
     int sr = 0;
 #endif 
-	if(audec->samplerate == 48000 || (audec->format != ACODEC_FMT_DTS && \
-		audec->format != ACODEC_FMT_AC3 && audec->format != ACODEC_FMT_EAC3))
-		return ;
+    if(audec->format == ACODEC_FMT_TRUEHD)
+        ;//do nothing
+    else if(audec->samplerate == 48000 || (audec->format != ACODEC_FMT_DTS && \
+            audec->format != ACODEC_FMT_AC3 && audec->format != ACODEC_FMT_EAC3 && 
+            audec->format != ACODEC_FMT_TRUEHD))
+        return ;
 	audio_io_handle_t handle = -1;	
 //for mx, raw/pcm use the same audio hal
 #ifndef USE_ARM_AUDIO_DEC
@@ -152,9 +155,15 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 		(audec->samplerate == 32000 || audec->samplerate == 44100)) ||  \
 		(audec->format == ACODEC_FMT_EAC3 && digital_raw == 2 && audec->samplerate == 44100) || \
 		(audec->format == ACODEC_FMT_EAC3 && digital_raw == 1 &&  \
-		(audec->samplerate == 32000 || audec->samplerate == 44100)))
+		(audec->samplerate == 32000 || audec->samplerate == 44100)) || 
+		(audec->format == ACODEC_FMT_TRUEHD && (digital_raw == 1 || digital_raw == 2)/* && 
+		(audec->samplerate == 192000 || audec->samplerate == 96000)*/))
 		
 	{
+	    int tmpsr = audec->samplerate;
+	    if(audec->format == ACODEC_FMT_TRUEHD && (digital_raw == 1 || digital_raw == 2)){ 
+		audec->samplerate = 192000;
+            }
 		int sr = 0;
 		if(/*sr*/48000 != audec->samplerate){
 #ifndef USE_ARM_AUDIO_DEC
@@ -197,7 +206,9 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 #endif
 
 		}
-		
+		if(audec->format == ACODEC_FMT_TRUEHD && (digital_raw == 1 || digital_raw == 2)){
+		    audec->samplerate = tmpsr;
+                }
 		
        }
 }
@@ -419,11 +430,11 @@ void audioCallback_raw(int event, void* user, void *info)
         adec_print("[%s %d]audioCallback: event = %d \n",__FUNCTION__,__LINE__, event);
         return;
     }
-
     if (buffer == NULL || buffer->size == 0) {
         adec_print("[%s %d]audioCallback: Wrong buffer\n",__FUNCTION__,__LINE__);
         return;
     }
+    if(audec->format != ACODEC_FMT_TRUEHD ){
     if(audec->i2s_iec958_sync_flag && audec->raw_bytes_readed< audec->i2s_iec958_sync_gate)
     {    char tmp[4096];
          int readed_bytes=0;
@@ -461,7 +472,7 @@ void audioCallback_raw(int event, void* user, void *info)
              //audec->i2s_iec958_sync_flag=0;
          }
     }
-    
+    }
     if (audec->adsp_ops.dsp_on) {
          int bytes_cnt=0;
          while(bytes_cnt<buffer->size && !audec->need_stop){
@@ -476,8 +487,10 @@ void audioCallback_raw(int event, void* user, void *info)
           adec_print("[%s %d]audioCallback: dsp not work!\n",__FUNCTION__,__LINE__);
     }
 // memset raw data when start playback to walkround HDMI audio format changed noise for some kind of TV set
-    if(audec->raw_bytes_readed < 16*4*1024)
+    if(audec->format != ACODEC_FMT_TRUEHD ){
+	if(audec->raw_bytes_readed < 16*4*1024)
 	memset((char *)(buffer->i16),0,buffer->size);
+    }
     return;
 }
 
@@ -491,7 +504,8 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
     out_ops->private_data_raw=NULL;
     if((audec->format!=ACODEC_FMT_DTS) &&
        (audec->format != ACODEC_FMT_AC3) &&
-       (audec->format != ACODEC_FMT_EAC3))
+       (audec->format != ACODEC_FMT_EAC3) &&
+       (audec->format != ACODEC_FMT_TRUEHD))
     {
           adec_print("[%s %d]NOTE: now just ACODEC_FMT_DTS_rawoutpu was support! ",__FUNCTION__,__LINE__);
           return 0;
@@ -504,7 +518,12 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
           amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",3);
           audec->codec_type=1;
     }
-    
+
+    if(audec->format == ACODEC_FMT_TRUEHD){
+        amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",7);
+        audec->codec_type=7;
+    }
+	
     int dgraw = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
     if(dgraw == 1){
         if((audec->format == ACODEC_FMT_AC3) ||
@@ -543,9 +562,11 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
 		aformat = AUDIO_FORMAT_AC3;
     else if(audec->format == ACODEC_FMT_EAC3)
 		aformat = AUDIO_FORMAT_EAC3;
+    else if(audec->format == ACODEC_FMT_TRUEHD)
+        aformat = AUDIO_FORMAT_TRUEHD;
 
    status = track->set(AUDIO_STREAM_MUSIC,
-        audec->samplerate,
+        (audec->format == ACODEC_FMT_TRUEHD)? 192000 : audec->samplerate,
         aformat,
         AUDIO_CHANNEL_OUT_STEREO,
         0,                       // frameCount
@@ -588,7 +609,6 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
  */
 extern "C" int android_init(struct aml_audio_dec* audec)
 {
-   
     Mutex::Autolock _l(mLock);
     status_t status;
     AudioTrack *track;
@@ -650,8 +670,9 @@ extern "C" int android_init(struct aml_audio_dec* audec)
 #ifdef USE_ARM_AUDIO_DEC
 	int user_raw_enable = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
 	out_ops->audio_out_raw_enable = user_raw_enable && (audec->format == ACODEC_FMT_DTS || 
-														audec->format == ACODEC_FMT_AC3 ||
-														audec->format == ACODEC_FMT_EAC3 );
+                                                            audec->format == ACODEC_FMT_AC3 ||
+                                                            audec->format == ACODEC_FMT_EAC3||
+                                                            audec->format == ACODEC_FMT_TRUEHD);
     if(out_ops->audio_out_raw_enable)
        android_init_raw(audec);
 #endif	
@@ -982,9 +1003,10 @@ extern "C" int android_stop_raw(struct aml_audio_dec* audec)
 #endif
     if((audec->format==ACODEC_FMT_DTS) ||
        (audec->format == ACODEC_FMT_AC3) ||
-       (audec->format == ACODEC_FMT_EAC3)){
-         amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);	 
-    }	 
+       (audec->format == ACODEC_FMT_EAC3) ||
+       (audec->format == ACODEC_FMT_TRUEHD)){
+         amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);
+    }
     out_ops->private_data_raw= NULL;
     return 0;
 }

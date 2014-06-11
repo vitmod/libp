@@ -464,7 +464,8 @@ static int enable_raw_output(aml_audio_dec_t *audec)
 	int enable = 0;
 	enable = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
 	if(enable){
-		if(audec->format== ACODEC_FMT_AC3 || audec->format==ACODEC_FMT_EAC3||audec->format==ACODEC_FMT_DTS)
+		if(audec->format== ACODEC_FMT_AC3 || audec->format==ACODEC_FMT_EAC3||audec->format==ACODEC_FMT_DTS||
+			audec->format == ACODEC_FMT_TRUEHD)
 			return 1;
 	}
 	return 0;

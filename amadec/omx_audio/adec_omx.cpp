@@ -12,6 +12,7 @@ interface to call OMX codec
 #include "ASF_mediasource.h"
 #include "DTSHD_mediasource.h"
 #include "Vorbis_mediasource.h"
+#include "THD_mediasource.h"
 
 #include <android/log.h>
 #include <stdio.h>
@@ -85,6 +86,9 @@ AmlOMXCodec::AmlOMXCodec(int codec_type,void *read_buffer,int *exit,aml_audio_de
         }else if(codec_type==OMX_ENABLE_CODEC_VORBIS){
             mine_type=MEDIA_MIMETYPE_AUDIO_VORBIS;
             m_OMXMediaSource=new Vorbis_MediaSource(read_buffer,audec);
+        }else if(codec_type == OMX_ENABLE_CODEC_TRUEHD){
+            mine_type = MEDIA_MIMETYPE_AUDIO_TRUEHD;
+            m_OMXMediaSource = new THD_MediaSource(read_buffer);
         }
         omx_codec_type=codec_type;
         LOGI("mine_type=%s %s %d \n",mine_type,__FUNCTION__,__LINE__);
