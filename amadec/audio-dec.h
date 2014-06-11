@@ -159,6 +159,7 @@ struct aml_audio_dec {
     fp_arm_omx_codec_get_FS     parm_omx_codec_get_FS;
     fp_arm_omx_codec_get_Nch    parm_omx_codec_get_Nch;
     int OmxFirstFrameDecoded;
+    int tsync_mode;
 };
 
 //from amcodec

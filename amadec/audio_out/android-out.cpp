@@ -240,7 +240,6 @@ void audioCallback(int event, void* user, void *info)
     audio_out_operations_t *out_ops = &audec->aout_ops;
     dsp_operations_t *dsp_ops = &audec->adsp_ops;
     unsigned long apts, pcrscr;
-    int tsync_mode;
 
     if (event != AudioTrack::EVENT_MORE_DATA) {
         adec_print(" ****************** audioCallback: event = %d \n", event);
@@ -263,11 +262,7 @@ void audioCallback(int event, void* user, void *info)
 
         //ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_GET_LAST_CHECKOUT_APTS, (int)&last_checkout);
     }
-    if (adec_get_tsync_info(&tsync_mode) == TSYNC_MODE_PCRMASTER) {
-        apts = dsp_ops->get_cur_pts(dsp_ops);
-        pcrscr = dsp_ops->get_cur_pcrscr(dsp_ops);
-    }
-    
+
     if(1){//!wfd_enable){
       adec_refresh_pts(audec);
     }
@@ -312,7 +307,7 @@ void audioCallback(int event, void* user, void *info)
       }
     }
 
-    if (tsync_mode == TSYNC_MODE_PCRMASTER) {
+    if (audec->tsync_mode == TSYNC_MODE_PCRMASTER) {
         int64_t apts64 = (int64_t)apts;
         int64_t pcrscr64 = (int64_t)pcrscr;
         if ((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)) {
@@ -649,7 +644,8 @@ extern "C" int android_init(struct aml_audio_dec* audec)
        wfd_enable = 0;
     }
 
-    adec_print("wfd_enable = %d", wfd_enable);
+    adec_get_tsync_info(&(audec->tsync_mode));
+    adec_print("wfd_enable = %d, tsync_mode=%d, ", wfd_enable, audec->tsync_mode);
     reset_system_samplerate(audec);
 #ifdef USE_ARM_AUDIO_DEC
 	int user_raw_enable = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
