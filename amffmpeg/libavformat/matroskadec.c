@@ -54,7 +54,7 @@
 #endif
 
 
-
+#define FF_API_ASS_SSA 1
 
 typedef enum {
     EBML_NONE,
