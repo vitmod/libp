@@ -864,7 +864,7 @@ static void update_current_time(play_para_t *p_para)
 #endif
         } else  if (!p_para->playctrl_info.end_flag) {
             time = get_current_time(p_para);
-            if( time == 0 ){
+            if( time/PTS_FREQ == 0 ){
                 return ; /*don't do update if time = 0, because it maybe have not init ok.*/
             }
             if (p_para->state.start_time == -1) {
