@@ -272,6 +272,8 @@ typedef struct {
     int num_packets;
     AVPacket *prev_pkt;
 
+    int first_hevc_packet;
+
     int done;
 
     /* What to skip before effectively reading a packet. */
@@ -1540,6 +1542,7 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
     int i, j, k, res;
 
     matroska->ctx = s;
+    matroska->first_hevc_packet = 1;
     
     /* First read the EBML header. */
     if (ebml_parse(matroska, ebml_syntax, &ebml)
@@ -1858,7 +1861,6 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
                        track->codec_priv.size);
             }
         }
-
         if (track->type == MATROSKA_TRACK_TYPE_VIDEO) {
             MatroskaTrackPlane *planes = track->operation.combine_planes.elem;
 
@@ -2287,6 +2289,76 @@ fail:
     return ret;
 }
 
+static int get_hevc_csd_packet(AVStream * st, const uint8_t *packet, int pkt_size)
+{
+    uint8_t * p = packet;
+    uint8_t * b;
+    uint8_t * e;
+    int i, ps_count = 0, len = 0, ps_start = 0;
+    for(i = 0;i < pkt_size;i++) {
+        if(p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1) {
+            if(!ps_start) {
+                b = p;
+                ps_start = 1;
+            }
+            if(ps_count == 3) { // got vps/sps/pps
+                e = p - 1;
+                break;
+            }
+            if(((p[4]>>1) & 0x3f) == 32) { // vps
+                ps_count++;
+            }
+            if(((p[4]>>1) & 0x3f) == 33) { // sps
+                ps_count++;
+            }
+            if(((p[4]>>1) & 0x3f) == 34) { // pps
+                ps_count++;
+            }
+            p += 4;
+            i += 4;
+            continue;
+        }
+        if(p[0] == 0 && p[1] == 0 && p[2] == 1) {
+            if(!ps_start) {
+                b = p;
+                ps_start = 1;
+            }
+            if(ps_count == 3) { // got vps/sps/pps
+                e = p - 1;
+                break;
+            }
+            if(((p[3]>>1) & 0x3f) == 32) { // vps
+                ps_count++;
+            }
+            if(((p[3]>>1) & 0x3f) == 33) { // sps
+                ps_count++;
+            }
+            if(((p[3]>>1) & 0x3f) == 34) { // pps
+                ps_count++;
+            }
+            p += 3;
+            i += 3;
+            continue;
+        }
+        p++;
+    }
+
+    if(ps_count != 3) {
+        av_log(NULL,AV_LOG_ERROR,"Could not get hevc csd data from mkv packet!\n");
+        return -1;
+    }
+
+    len = e-b+1;
+    av_free(st->codec->extradata);
+    st->codec->extradata = av_mallocz(len + FF_INPUT_BUFFER_PADDING_SIZE);
+    if (!st->codec->extradata)
+        return AVERROR(ENOMEM);
+    memcpy(st->codec->extradata, b, len);
+    st->codec->extradata_size = len;
+    return 0;
+}
+
+
 static int matroska_parse_frame(MatroskaDemuxContext *matroska,
                                 MatroskaTrack *track,
                                 AVStream *st,
@@ -2403,6 +2475,13 @@ static int matroska_parse_frame(MatroskaDemuxContext *matroska,
     dynarray_add(&matroska->packets, &matroska->num_packets, pkt);
     matroska->prev_pkt = pkt;
 #endif
+
+    if(matroska->first_hevc_packet == 1 &&
+        st->codec->codec_id == CODEC_ID_HEVC &&
+        !st->codec->extradata) {
+        get_hevc_csd_packet(st, pkt->data, pkt->size);
+        matroska->first_hevc_packet = 0;
+    }
 
     return 0;
 fail:

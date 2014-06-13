@@ -2809,7 +2809,7 @@ static int64_t mov_read_seek_sync(AVFormatContext *s,
     return t_pos;
 }
 
-static int64_t mpegts_read_seek2(AVFormatContext *s, int stream_index, int64_t target_ts, int flags){
+static int64_t mov_read_seek2(AVFormatContext *s, int stream_index, int64_t target_ts, int flags){
     int ret;
     if(!flags) {
         flags = AVSEEK_FLAG_BACKWARD;
@@ -2868,7 +2868,7 @@ static int mov_seek_stream(AVFormatContext *s, AVStream *st, int64_t timestamp, 
     // mov's stss is wrong sometimes, need to read seek
     // added by senbai.tao
     if(st->codec->codec_type == AVMEDIA_TYPE_VIDEO && sample <=0 && st->nb_index_entries && sc->keyframe_count <= 1) {
-        int64_t sync_point = mpegts_read_seek2(s, st->index, timestamp, flags);
+        int64_t sync_point = mov_read_seek2(s, st->index, timestamp, flags);
         sample = mov_index_search_pos(st->index_entries, st->nb_index_entries, sync_point, AVSEEK_FLAG_ANY);
     }
 
