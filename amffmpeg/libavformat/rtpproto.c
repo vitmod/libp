@@ -142,7 +142,7 @@ static int rtp_open(URLContext *h, const char *uri, int flags)
     char buf[1024];
     char path[1024];
     const char *p;
-
+    av_log(NULL, AV_LOG_INFO, "rtp_open %s\n", uri);
     s = av_mallocz(sizeof(RTPContext));
     if (!s)
         return AVERROR(ENOMEM);
@@ -204,6 +204,7 @@ static int rtp_open(URLContext *h, const char *uri, int flags)
 
     h->max_packet_size = s->rtp_hd->max_packet_size;
     h->is_streamed = 1;
+    h->is_slowmedia = 1;
     return 0;
 
  fail:

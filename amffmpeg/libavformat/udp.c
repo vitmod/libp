@@ -529,7 +529,7 @@ static int udp_open(URLContext *h, const char *uri, int flags)
         }
     }
 #endif
-
+    h->is_slowmedia = 1;
     return 0;
  fail:
     if (udp_fd >= 0)
