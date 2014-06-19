@@ -150,6 +150,9 @@ PASS:
             break;
         case NAL_SPS:
             ff_hevc_decode_nal_sps(h);
+            HEVCSPS *sps = (HEVCSPS*)h->sps_list[0]->data;
+            avctx->width = sps->width;
+            avctx->height = sps->height;
             break;
         case NAL_PPS:
             ff_hevc_decode_nal_pps(h);
