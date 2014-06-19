@@ -1196,10 +1196,10 @@ static int  update_buffering_states(play_para_t *p_para,
     }
     ffmpeg_seturl_buffered_level(p_para,(int)(10000*avlevel));
     
-    if (p_para->buffering_enable && p_para->buffering_start_time_s > 0 && !p_para->buffering_bitrate_finished) {
+    if (p_para->buffering_enable && p_para->buffering_exit_time_s > 0 && !p_para->buffering_bitrate_finished) {
         /*reset  buffering parameters for  frame rate*/
         int bitrate = 0;
-        int buftime = p_para->buffering_start_time_s;
+        int buftime = p_para->buffering_exit_time_s;
         int vbitrate=0,abitrate=0;
 		
         if (p_para->pFormatCtx) {
@@ -1287,7 +1287,7 @@ static int  update_buffering_states(play_para_t *p_para,
         }
         p_para->buffering_force_delay_s = 0;
     }
-    if(p_para->buffering_start_time_s>0){
+    if(p_para->buffering_exit_time_s>0){
         if(p_para->vstream_info.has_video && get_video_codec(p_para))
             codec_get_video_cur_delay_ms(get_video_codec(p_para),&vdelayms);
         if(p_para->astream_info.has_audio && get_audio_codec(p_para))
@@ -1297,22 +1297,22 @@ static int  update_buffering_states(play_para_t *p_para,
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&
-            (avdelayms>0 && avdelayms < p_para->buffering_start_time_s*100)  &&
+            (avdelayms>0 && avdelayms < p_para->buffering_enter_time_s*1000)  &&
             (maxlevel < p_para->buffering_threshhold_max * 3 / 4) &&
             !p_para->playctrl_info.read_end_flag) {
             codec_pause(p_para->codec);
             set_player_state(p_para, PLAYER_BUFFERING);
             update_player_states(p_para, 1);
-            log_print("enter buffering!!!,avdelayms=%d mS\n",avdelayms);
+            log_print("enter buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS\n",avdelayms,adelayms,vdelayms);
         } else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
-                   ((avdelayms > p_para->buffering_start_time_s*1000)  ||
+                   ((avdelayms > p_para->buffering_exit_time_s*1000)  ||
                     (avdelayms<=0 && minlevel > p_para->buffering_threshhold_middle)  ||
                     (maxlevel > p_para->buffering_threshhold_max) ||
                     p_para->playctrl_info.read_end_flag)) {
             codec_resume(p_para->codec);
             set_player_state(p_para, PLAYER_BUFFER_OK);
             update_player_states(p_para, 1);
-            log_print("leave buffering!!!,avdelayms=%d mS\n",avdelayms);
+            log_print("leave buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS\n",avdelayms,adelayms,vdelayms);
             set_player_state(p_para, PLAYER_RUNNING);
             update_player_states(p_para, 1);
         }

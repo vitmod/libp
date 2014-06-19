@@ -22,6 +22,7 @@
 #include "thread_mgt.h"
 #include "stream_decoder.h"
 #include "player_ffmpeg_ctrl.h"
+#include <amconfigutils.h>
 
 
 /******************************
@@ -702,11 +703,12 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     if (p_para->buffering_enable) {
         /*check threshhold is valid*/
         if(c_para->buffing_starttime_s <= 0){
-            p_para->buffering_start_time_s = 10;  //10 seonds			
+            p_para->buffering_exit_time_s = 10;  //10 seonds	
         }else{
-            p_para->buffering_start_time_s = c_para->buffing_starttime_s;
+            p_para->buffering_exit_time_s = c_para->buffing_starttime_s;
         }
-       log_print("set buffering time to %f seconds\n", p_para->buffering_start_time_s);
+		p_para->buffering_enter_time_s = am_getconfig_float_def("media.amplayer.onbuffering.S",0.120); //120ms
+        log_print("set buffering exit time to %f S,enter time t %f S\n", p_para->buffering_exit_time_s,p_para->buffering_enter_time_s);
         if (c_para->buffing_starttime_s > 0 && c_para->buffing_middle <= 0) {
             c_para->buffing_middle = 0.02;    //for tmp start.we will reset after start.
         }
