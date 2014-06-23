@@ -534,6 +534,8 @@ static
 				case MAD_FLOW_BREAK:
 					goto fail;
 				case MAD_FLOW_IGNORE:
+					audio_codec_print("[%s,%d] MAD_FLOW_IGNORE\n", __FUNCTION__,__LINE__);
+                                        goto fail;
 					break;
 				case MAD_FLOW_CONTINUE:
 				default:
@@ -793,7 +795,7 @@ struct mad_pcm *pcm)
 		//putchar((sample >> 8) & 0xff);
 		pcm_out_data[0] = sample_l >> 0;
 		pcm_out_data[1] = sample_l >> 8;
-              pcm_out_data += 2;
+               pcm_out_data += 2;
 		if (nchannels == 2) {
 			sample_r = scale(*right_ch++);
 			//putchar((sample >> 0) & 0xff);
@@ -841,12 +843,14 @@ struct mad_frame *frame)
 	default:
 		break;
 	}
-	fprintf(stderr, "decoding error 0x%04x (%s) at byte offset %u\n",
+	audio_codec_print("decoding error 0x%04x (%s) at byte offset %u\n",
 		stream->error, mad_stream_errorstr(stream),
 		stream->this_frame - stream->buffer);
 
 	/* return MAD_FLOW_BREAK here to stop decoding (and propagate an error) */
-
+        if(stream->error == MAD_ERROR_BADBITALLOC)
+           return MAD_FLOW_IGNORE;
+	
 	return MAD_FLOW_CONTINUE;
 }
 
