@@ -82,12 +82,14 @@ unsigned long adec_calc_pts(aml_audio_dec_t *audec)
         return -1;
     }
 
+    if(!audec->apts_start_flag)
+        return pts;
     delay_pts = out_ops->latency(audec) * 90;
 
-    if (delay_pts < pts) {
+    if (delay_pts+audec->first_apts < pts) {
         pts -= delay_pts;
     } else {
-        pts = 0;
+        pts =audec->first_apts;
     }
     return pts;
 }
@@ -170,7 +172,8 @@ int adec_pts_start(aml_audio_dec_t *audec)
     {
         return -1;
     }
-
+    audec->first_apts=pts;
+    audec->apts_start_flag=1;
     return 0;
 }
 

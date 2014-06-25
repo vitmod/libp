@@ -32,6 +32,8 @@ AmlOMXCodec::AmlOMXCodec(int codec_type,void *read_buffer,int *exit,aml_audio_de
     status_t m_OMXClientConnectStatus=m_OMXClient.connect();
     lock_init();
     locked();
+    buf_decode_offset=0;
+    buf_decode_offset_pre=0;
     if(m_OMXClientConnectStatus != OK){
         LOGE("Err:omx client connect error\n");
     }else{
@@ -147,6 +149,7 @@ status_t AmlOMXCodec::read(unsigned char *buf,unsigned *size,int *exit)
     if(status == OK && (*size!=0) ){
         memcpy( buf,srcBuffer->data() + srcBuffer->range_offset(),*size);
         srcBuffer->set_range(srcBuffer->range_offset() + (*size),srcBuffer->range_length() - (*size));
+        srcBuffer->meta_data()->findInt64(kKeyTime, &buf_decode_offset);
     }
     
     if (srcBuffer->range_length() == 0) {
@@ -209,7 +212,15 @@ void AmlOMXCodec::pause()
 
 int AmlOMXCodec::GetDecBytes()
 {
-    return m_OMXMediaSource->GetReadedBytes();
+    int used_len=0;
+    if(omx_codec_type==OMX_ENABLE_CODEC_AC3 ||omx_codec_type==OMX_ENABLE_CODEC_EAC3)
+    {
+        used_len=buf_decode_offset - buf_decode_offset_pre;
+        buf_decode_offset_pre=buf_decode_offset;
+        return used_len;
+    }else{
+        return m_OMXMediaSource->GetReadedBytes();
+    }
 }
 
 void AmlOMXCodec::lock_init()

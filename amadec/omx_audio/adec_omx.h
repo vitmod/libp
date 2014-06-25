@@ -58,6 +58,8 @@ public:
 //private:	
 	sp<MediaSource>	      m_codec;
     pthread_mutex_t       lock;
+    int64_t buf_decode_offset;
+    int64_t buf_decode_offset_pre;
 	
 };
 

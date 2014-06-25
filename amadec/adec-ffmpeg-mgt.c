@@ -677,7 +677,8 @@ static void start_adec(aml_audio_dec_t *audec)
     char buf[32];
     apts = vpts = 0;
     audec->no_first_apts = 0;
-       
+    audec->apts_start_flag=0;
+    audec->first_apts=0;
     if (audec->state == INITTED) {
          //get info from the audiodsp == can get from amstreamer
          while ((!get_first_apts_flag(dsp_ops)) && (!audec->need_stop) && (!audec->no_first_apts)) 

@@ -30,7 +30,7 @@ typedef enum {
 #define TSYNC_MODE   "/sys/class/tsync/mode"
 #define TSYNC_FIRSTVPTS "/sys/class/tsync/firstvpts"
 
-#define SYSTIME_CORRECTION_THRESHOLD        (90000*15/100)
+#define SYSTIME_CORRECTION_THRESHOLD        (90000*6/100)//modified for amlogic-pd-91949
 #define APTS_DISCONTINUE_THRESHOLD          (90000*3)
 #define REFRESH_PTS_TIME_MS                 (1000/10)
 
