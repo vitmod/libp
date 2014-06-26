@@ -1273,7 +1273,7 @@ void *adec_armdec_loop(void *args)
         adec_flag_check(audec);
         msg = adec_get_message(audec);
         if (!msg) {
-            usleep(100000);
+            adec_thread_wait(audec,100*1000);
             continue;
         }
 

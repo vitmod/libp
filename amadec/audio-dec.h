@@ -80,6 +80,12 @@ typedef struct {
     lock_t tslock;
 }Package_List;
 
+typedef struct adec_thread_mgt {
+    pthread_mutex_t  pthread_mutex;
+    pthread_cond_t   pthread_cond;
+    pthread_t        pthread_id;
+} adec_thread_mgt_t;
+
 typedef struct {
     char buff[10];
     int size;
@@ -160,6 +166,7 @@ struct aml_audio_dec {
     fp_arm_omx_codec_get_Nch    parm_omx_codec_get_Nch;
     int OmxFirstFrameDecoded;
     int tsync_mode;
+    adec_thread_mgt_t thread_mgt;
 };
 
 //from amcodec
@@ -246,5 +253,8 @@ int feeder_init(aml_audio_dec_t *);
 int feeder_release(aml_audio_dec_t *);
 void *adec_armdec_loop(void *args);
 void *adec_wfddec_msg_loop(void *args);
+int  adec_thread_wait(aml_audio_dec_t *audec, int microseconds);
+int adec_thread_wakeup(aml_audio_dec_t *audec);
+
 ADEC_END_DECLS
 #endif

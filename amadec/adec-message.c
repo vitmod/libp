@@ -93,6 +93,14 @@ int adec_send_message(aml_audio_dec_t *audec, adec_cmd_t *cmd)
     message_pool_t *pool;
 
     pool = &audec->message_pool;
+	
+    int retry_count = 0;
+    adec_thread_wakeup(audec);
+    while(pool->message_num > MESSAGE_NUM_MAX/2) { 
+        usleep(1000*10);
+        if(retry_count++ > (pool->message_num - MESSAGE_NUM_MAX/2) * 10 ) 
+            break;
+    }
 
     pthread_mutex_lock(&pool->msg_mutex);
     if (pool->message_num < MESSAGE_NUM_MAX) {

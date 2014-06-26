@@ -571,6 +571,34 @@ int vdec_pts_pause(void)
 {
     return amsysfs_set_sysfs_str(TSYNC_EVENT, "VIDEO_PAUSE:0x1");
 }
+
+int  adec_thread_wait(aml_audio_dec_t *audec, int microseconds)
+{
+    struct timespec pthread_ts;
+    struct timeval now;
+    adec_thread_mgt_t *mgt = &audec->thread_mgt;
+    int ret;
+
+    gettimeofday(&now, NULL);
+    pthread_ts.tv_sec = now.tv_sec + (microseconds + now.tv_usec) / 1000000;
+    pthread_ts.tv_nsec = ((microseconds + now.tv_usec) * 1000) % 1000000000;
+    pthread_mutex_lock(&mgt->pthread_mutex);
+    ret = pthread_cond_timedwait(&mgt->pthread_cond, &mgt->pthread_mutex, &pthread_ts);
+    pthread_mutex_unlock(&mgt->pthread_mutex);
+    return ret;
+}
+int adec_thread_wakeup(aml_audio_dec_t *audec)
+{
+    adec_thread_mgt_t *mgt = &audec->thread_mgt;
+    int ret;
+
+    pthread_mutex_lock(&mgt->pthread_mutex);
+    ret = pthread_cond_signal(&mgt->pthread_cond);
+    pthread_mutex_unlock(&mgt->pthread_mutex);
+
+    return ret;
+}
+
 int audiodec_init(aml_audio_dec_t *audec)
 {
     int ret = 0;
@@ -601,6 +629,9 @@ int audiodec_init(aml_audio_dec_t *audec)
 		int codec_type=get_audio_decoder();
 		RegisterDecode(audec,codec_type);
 		ret = pthread_create(&tid, NULL, (void *)adec_armdec_loop, (void *)audec);
+		pthread_mutex_init(&audec->thread_mgt.pthread_mutex, NULL);
+		pthread_cond_init(&audec->thread_mgt.pthread_cond, NULL);
+		audec->thread_mgt.pthread_id = tid;
 		pthread_setname_np(tid,"AmadecArmdecLP");
     }
     if (ret != 0) {
