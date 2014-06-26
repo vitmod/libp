@@ -1597,7 +1597,12 @@ int time_search(play_para_t *am_p,int flags)
                         double actiont = 0.0;
                         int64_t pts_diff = 0;
 
-                        pts_diff = (int64_t)time_point - pkt.pts/90000;
+                        if(am_p->pFormatCtx->start_time > 0){
+                            pts_diff = (int64_t)(time_point + am_p->pFormatCtx->start_time/AV_TIME_BASE - pkt.pts/90000);
+                        }
+                        else
+                            pts_diff = (int64_t)time_point - pkt.pts/90000;
+
                         //if search time is more than 10, we large the pts diff range.
                         if (num_search <= 5) {
                             r_off++;
