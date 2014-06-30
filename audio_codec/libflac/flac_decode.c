@@ -688,7 +688,7 @@ int audio_dec_decode(audio_decoder_operations_t *adec_ops, char *outbuf, int *ou
 	
 decodecontinue:
 	s->bitstream = inbuf;
-	s->bitstream_size += inlen;
+	s->bitstream_size = inlen;
 	s->bitstream_index = 0;
 	
 	buf = s->bitstream;
@@ -779,22 +779,35 @@ FIND_SYNC_WORD:
 			}
 		}else{
 			float sum0=0,sum1=0;
+			//downmix here
+			//FL + (sum of other surround channels >> 1)
+			//FR + (sum of other surround channels >> 1)
 		    for (j = 0; j < s->blocksize; j++) 
 			{   
-				sum0=s->decoded[0][j];
-				sum1=s->decoded[1][j];
+				if (s->is32){
+					sum0 = s->decoded[0][j] << s->sample_shift;
+					sum1 = s->decoded[1][j] << s->sample_shift;
+				}else {
+					if(s->sample_shift>=0){
+						sum0 = s->decoded[0][j] << s->sample_shift;
+						sum1 = s->decoded[1][j] << s->sample_shift;
+					}else{
+						sum0 = s->decoded[0][j] >> (-1*s->sample_shift);
+						sum1 = s->decoded[1][j] >> (-1*s->sample_shift);
+					}
+				}
 				for (i = 2; i <s->channels; i++) 
 				{
 					if (s->is32){
-						sum0+= s->decoded[i][j] << s->sample_shift;
-					    sum1+= s->decoded[i][j] << s->sample_shift;
+						sum0+= (s->decoded[i][j] << s->sample_shift)>>1;
+						sum1+= (s->decoded[i][j] << s->sample_shift)>>1;
 					}else {
 				    	if(s->sample_shift>=0){
-	                   		sum0 += s->decoded[i][j] << s->sample_shift;
-							sum1 += s->decoded[i][j] << s->sample_shift;
+							sum0 += (s->decoded[i][j] << s->sample_shift)>>1;
+							sum1 += (s->decoded[i][j] << s->sample_shift)>>1;
 	                	}else{
-	                   		sum0 += s->decoded[i][j] >> (-1*s->sample_shift);
-							sum1 += s->decoded[i][j] >> (-1*s->sample_shift);
+							sum0 += (s->decoded[i][j] >> (-1*s->sample_shift))>>1;
+							sum1 += (s->decoded[i][j] >> (-1*s->sample_shift))>>1;
 	                	}
 	            	}
 				}
