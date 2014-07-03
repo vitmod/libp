@@ -1580,10 +1580,21 @@ static int mov_read_stts(MOVContext *c, AVIOContext *pb, MOVAtom atom)
          }	
     }
 
+    if (pb->eof_reached)
+        return AVERROR_EOF;
+
     st->nb_frames= total_sample_count;
     if(duration)
         st->duration= duration;
+    sc->track_end = duration;
     return 0;
+}
+
+static void mov_update_dts_shift(MOVStreamContext *sc, int duration)
+{
+    if (duration < 0) {
+        sc->dts_shift = FFMAX(sc->dts_shift, -duration);
+    }
 }
 
 static int mov_read_ctts(MOVContext *c, AVIOContext *pb, MOVAtom atom)
@@ -2183,7 +2194,7 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     int64_t dts;
     int data_offset = 0;
     unsigned entries, first_sample_flags = frag->flags;
-    int flags, distance, i;
+    int flags, distance, i, found_keyframe = 0;
 
     for (i = 0; i < c->fc->nb_streams; i++) {
         if (c->fc->streams[i]->id == frag->track_id) {
@@ -2229,24 +2240,29 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 
     if (flags & 0x001) data_offset        = avio_rb32(pb);
     if (flags & 0x004) first_sample_flags = avio_rb32(pb);
-    dts = st->duration - sc->time_offset;
+       dts    = sc->track_end - sc->time_offset;
     offset = frag->base_data_offset + data_offset;
     distance = 0;
     av_dlog(c->fc, "first sample flags 0x%x\n", first_sample_flags);
-    for (i = 0; i < entries; i++) {
+    for (i = 0; i < entries && !pb->eof_reached; i++) {
         unsigned sample_size = frag->size;
         int sample_flags = i ? frag->flags : first_sample_flags;
         unsigned sample_duration = frag->duration;
-        int keyframe;
+        int keyframe = 0;
 
         if (flags & 0x100) sample_duration = avio_rb32(pb);
         if (flags & 0x200) sample_size     = avio_rb32(pb);
         if (flags & 0x400) sample_flags    = avio_rb32(pb);
         sc->ctts_data[sc->ctts_count].count = 1;
         sc->ctts_data[sc->ctts_count].duration = (flags & 0x800) ? avio_rb32(pb) : 0;
+        mov_update_dts_shift(sc, sc->ctts_data[sc->ctts_count].duration);
         sc->ctts_count++;
-        if ((keyframe = st->codec->codec_type == AVMEDIA_TYPE_AUDIO ||
-             (flags & 0x004 && !i && !sample_flags) || sample_flags & 0x2000000))
+        if (st->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+            keyframe = 1;
+        else if (!found_keyframe)
+            keyframe = found_keyframe =
+                !(sample_flags & (0x00010000 |  0x01000000));
+        if (keyframe)
             distance = 0;
         av_add_index_entry(st, offset, dts, sample_size, distance,
                            keyframe ? AVINDEX_KEYFRAME : 0);
@@ -2257,8 +2273,12 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         dts += sample_duration;
         offset += sample_size;
     }
+
+    if (pb->eof_reached)
+        return AVERROR_EOF;
+
     frag->moof_offset = offset;
-    st->duration = dts + sc->time_offset;
+    st->duration = sc->track_end = dts + sc->time_offset;
     return 0;
 }
 

@@ -127,6 +127,7 @@ typedef struct MOVStreamContext {
     int has_palette;
 
     int readed_count;	  ///readed count/ /by zz.
+    int64_t track_end;    ///< used for dts generation in fragmented movie files
 } MOVStreamContext;
 
 typedef struct MOVContext {
