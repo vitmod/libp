@@ -106,7 +106,6 @@ void *audio_decode_loop_omx(void *args)
     adec_print("\n\naudio_decode_loop_omx start!\n");
     
     audec = (aml_audio_dec_t *)args;
-    audec->state = INITING;
     aout_ops = &audec->aout_ops;
     adec_ops = audec->adec_ops;
     memset(outbuf, 0, AVCODEC_MAX_AUDIO_FRAME_SIZE);

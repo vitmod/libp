@@ -668,7 +668,7 @@ static int get_first_apts_flag(dsp_operations_t *dsp_ops)
  * \brief start audio dec when receive START command.
  * \param audec pointer to audec
  */
-static void start_adec(aml_audio_dec_t *audec)
+static int start_adec(aml_audio_dec_t *audec)
 {
     int ret;
     audio_out_operations_t *aout_ops = &audec->aout_ops;
@@ -686,7 +686,7 @@ static void start_adec(aml_audio_dec_t *audec)
          {
              adec_print("wait first pts checkin complete !");
              times++;
-             if (times>=5) 
+             if (times>=5) // 0.5s 
              {
                  amsysfs_get_sysfs_str(TSYNC_VPTS, buf, sizeof(buf));// read vpts
                  if (sscanf(buf, "0x%lx", &vpts) < 1) {
@@ -694,6 +694,11 @@ static void start_adec(aml_audio_dec_t *audec)
                     return -1;
                  }
                  // save vpts to apts
+                 if(vpts == 0) // vpts invalid too
+                 {
+                     times = 0; // loop again
+                     continue;
+                 }
                  adec_print("## can't get first apts, save vpts to apts,vpts=%lx, \n",vpts);
                  sprintf(buf, "0x%lx", vpts);
                  amsysfs_set_sysfs_str(TSYNC_APTS, buf);
@@ -701,7 +706,10 @@ static void start_adec(aml_audio_dec_t *audec)
              }
              usleep(100000);
          }
-        
+         adec_print("get first apts ok, times:%d need_stop:%d \n",times,audec->need_stop);
+         if(audec->need_stop)
+            return 0;
+
          /*start  the  the pts scr,...*/
          ret = adec_pts_start(audec);
          if (audec->auto_mute) {
@@ -717,6 +725,13 @@ static void start_adec(aml_audio_dec_t *audec)
          aout_ops->start(audec);
          audec->state = ACTIVE;
     }
+    else
+    {
+        adec_print("amadec status invalid, start adec failed \n");
+        return -1;
+    }
+
+    return 0;
 }
 
 /**
@@ -1229,46 +1244,66 @@ void *adec_armdec_loop(void *args)
     
     audec = (aml_audio_dec_t *)args;
     aout_ops = &audec->aout_ops;
-    while (!audec->need_stop) {
-        audec->state = INITING;
-        ret = audio_codec_init(audec);
-        if (ret == 0) {
-            //---------------------
-            if(audec->StageFrightCodecEnableType){
-                start_decode_thread_omx(audec);
-                if(audec->need_stop){
-                     adec_print("[%s %d]NOTE: when audec->need_stop/%d (audec->state/%d != INITTED)",__FUNCTION__,__LINE__,audec->need_stop,audec->state);
-                     audio_codec_release(audec);
-                }else if(audec->OmxFirstFrameDecoded==1){
-                         ret = aout_ops->init(audec);
-                         if (ret) {
-                            adec_print("[%s %d]Audio out device init failed!",__FUNCTION__,__LINE__);
-                            audio_codec_release(audec);
-                            continue;
-                         }
-                         audec->state = INITTED;
-                         start_adec(audec);
-                }
-            }else{
-                ret = aout_ops->init(audec);
-                if (ret) {
-                    adec_print("[%s %d]Audio out device init failed!",__FUNCTION__,__LINE__);
-                    audio_codec_release(audec);
-                    continue;
-                }
-                audec->state = INITTED;
-                start_decode_thread(audec);
-                start_adec(audec);
-            }
-            //-----------------------------
-            break;
-        }
 
-        if(!audec->need_stop){
-            usleep(100000);
+    // codec init
+    audec->state = INITING;
+    while(1)
+    {
+        if(audec->need_stop)
+            goto MSG_LOOP;
+
+        ret = audio_codec_init(audec);
+        if(ret ==0)
+            break;
+        usleep(10000);
+    }
+    audec->state = INITTED;
+    
+    //start decode thread
+    while(1)
+    {
+        if(audec->need_stop)
+        {
+            //no need to call release, will do it in stop_adec
+            goto MSG_LOOP;
         }
+        if(audec->StageFrightCodecEnableType){
+            start_decode_thread_omx(audec);
+            if(audec->OmxFirstFrameDecoded != 1) // just one case, need_stop == 1
+            {
+                //usleep(10000); // no need
+                continue;
+            }
+        }
+        else
+            start_decode_thread(audec);
+        //ok
+        break;
+    }
+    
+    //aout init
+    while(1)
+    {
+        if(audec->need_stop)
+        {
+            //no need to call release, will do it in stop_adec
+            goto MSG_LOOP;
+        }
+        ret = aout_ops->init(audec);
+        if (ret) 
+        {
+            adec_print("[%s %d]Audio out device init failed!",__FUNCTION__,__LINE__);
+            usleep(10000);
+            continue;
+        }
+        //ok
+        break;
     }
 
+    //wait first pts decoded
+    start_adec(audec);
+
+MSG_LOOP:
     do {
         
         adec_reset_track(audec);
