@@ -758,7 +758,7 @@ static void get_stream_info(play_para_t *p_para)
                     log_print("H.264 4K2K video format applied.");
                 } else if ((p_para->vstream_info.video_width * p_para->vstream_info.video_height) >(1920*1088))  {
                     unsupported_video = 1;
-                    log_print("[%s:%d] H.264 video profile not supported");
+                    log_print("[%d x %d] H.264 video profile not supported",p_para->vstream_info.video_width,p_para->vstream_info.video_height);
                 }
             }
         } else {
