@@ -11,6 +11,7 @@ typedef struct {
 
 typedef struct {
     int exist;
+    int support4k;
 } sys_hevc_profile_t;
 
 typedef struct {

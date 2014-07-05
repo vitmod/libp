@@ -117,10 +117,10 @@ static inline int parse_nal_units(AVCodecParserContext *s,
         int src_length, consumed;
         if (s->flags & PARSER_FLAG_COMPLETE_FRAMES) {
             unsigned char *p = buf;
-            if (check_size_in_buffer(buf, buf_size)) {
+            if (check_size_in_buffer(buf, buf_end -buf)) {
                 buf += 4;
                 goto PASS;
-            } else if (check_size_in_buffer3(buf, buf_size)) {
+            } else if (check_size_in_buffer3(buf, buf_end -buf)) {
                 buf += 3;
                 goto PASS;
             }

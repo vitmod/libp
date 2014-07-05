@@ -89,7 +89,10 @@ static int parse_hevc_param(char *str, sys_hevc_profile_t *para, int size)
     para->exist = 1;
 	
     log_info("hevc decoder exist.");
-	
+
+    if(strstr(str,"4k"))
+        para->support4k = 1;
+
     return 0;
 }
 

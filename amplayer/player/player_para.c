@@ -764,7 +764,11 @@ static void get_stream_info(play_para_t *p_para)
         } else {
             if ((p_para->vstream_info.video_width > 1920) ||
                 (p_para->vstream_info.video_height > 1088)) {
-                unsupported_video = 1;
+                unsupported_video = 1; 
+                if (p_para->vstream_info.video_format == VFORMAT_HEVC){
+                    unsupported_video=!p_para->vdec_profile.hevc_para.support4k ;
+                }
+               /// unsupported_video = 1;
             } else if (p_para->vstream_info.video_format == VFORMAT_VC1) {
                 if ((!p_para->vdec_profile.vc1_para.interlace_enable) &&
                     (p_para->pFormatCtx->streams[video_index]->codec->frame_interlace)) {
