@@ -152,6 +152,8 @@ static inline int parse_nal_units(AVCodecParserContext *s,
         switch(h->nal_unit_type) {
         case NAL_SPS:
             ff_h264_decode_seq_parameter_set(h);
+            avctx->width = h->width;
+            avctx->height = h->height;
             break;
         case NAL_PPS:
             ff_h264_decode_picture_parameter_set(h, h->s.gb.size_in_bits);

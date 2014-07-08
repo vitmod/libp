@@ -1438,10 +1438,7 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
         /* select current input stream component */
         st = s->cur_st;
         if (st) {
-            if (!st->need_parsing || !st->parser ||
-            (!strcmp(s->iformat->name, "mpegts") &&
-            !(am_getconfig_bool("media.amplayer.seekkeyframe"))
-            && (st->codec->codec_id != CODEC_ID_HEVC))) {
+            if (!st->need_parsing || !st->parser) {
                 /* no parsing needed: we just output the packet as is */
                 /* raw data support */
                 *pkt = st->cur_pkt; st->cur_pkt.data= NULL;
@@ -3333,13 +3330,17 @@ int av_find_stream_info(AVFormatContext *ic)
         return 0;
     }
     av_log(NULL, AV_LOG_INFO, "[%s:%d]fast_switch=%d, seekkeyframe=%x,\n", __FUNCTION__, __LINE__, fast_switch,(am_getconfig_bool("media.amplayer.seekkeyframe")));
-	/*
-	if(fast_switch && !(am_getconfig_bool("media.amplayer.seekkeyframe"))){	
-	    for (i=0; i<ic->nb_streams; i++) {
-            ic->streams[i]->need_parsing = AVSTREAM_PARSE_NONE;
-	    }
+
+
+    if(fast_switch){	
+       for (i=0; i<ic->nb_streams; i++) {
+           if(ic->streams[i]->need_parsing == AVSTREAM_PARSE_NONE && 
+             !strcmp(ic->iformat->name, "mpegts") && 
+              am_getconfig_bool("media.amplayer.seekkeyframe")){ /*mpegts seekkeyframe need parsing.*/
+                  ic->streams[i]->need_parsing = AVSTREAM_PARSE_FULL;
+            }
        }
-	*/
+    }
     for(i=0;i<ic->nb_streams;i++) {	
         AVCodec *codec;
         st = ic->streams[i];
@@ -3380,10 +3381,12 @@ int av_find_stream_info(AVFormatContext *ic)
         	}
 
         //try to just open decoders, in case this is enough to get parameters
-        if(!has_codec_parameters_ex(st->codec,fast_switch)){
+        //only when  get enough data then opencodec
+        //for fast start.
+        if(avio_tell(ic->pb) > 500*1024 && !has_codec_parameters_ex(st->codec,fast_switch)){
             if (codec && !st->codec->codec){
                 avcodec_open(st->codec, codec);
-            	}
+            }
         }
     }
 
@@ -3457,7 +3460,7 @@ int av_find_stream_info(AVFormatContext *ic)
             if (!(ic->ctx_flags & AVFMTCTX_NOHEADER) ||(fast_switch && ic->nb_streams>=2) || (2==fast_switch && 1==ic->nb_streams)) {
                 /* if we found the info for all the codecs, we can stop */
                 ret = count;
-                av_log(ic, AV_LOG_INFO, "All info found\n");
+                av_log(ic, AV_LOG_INFO, "All info found at pos=%lld\n", avio_tell(ic->pb));
                 break;
             }
         }
@@ -3547,8 +3550,12 @@ int av_find_stream_info(AVFormatContext *ic)
            it takes longer and uses more memory. For MPEG-4, we need to
            decompress for QuickTime. */
         if (!has_codec_parameters_ex(st->codec,fast_switch) ||( !fast_switch && !has_decode_delay_been_guessed(st))){
-            try_decode_frame(st, pkt);	
-        }
+            if(avio_tell(ic->pb) > 500*1024){/*just on wait more time & data*/
+                av_log(NULL, AV_LOG_INFO, "[%s:%d] st %d,try_decode_frame st->incdex\n", __FUNCTION__, __LINE__,st->index);
+                try_decode_frame(st, pkt);
+                av_log(NULL, AV_LOG_INFO, "[%s:%d] st %d,try_decode_frame st->incdex \n", __FUNCTION__, __LINE__,st->index);
+            }
+		}
 		
         st->codec_info_nb_frames++;
         count++;
@@ -3665,7 +3672,7 @@ int av_find_stream_info(AVFormatContext *ic)
         }
     }
 #endif
-
+     av_log(ic, AV_LOG_INFO, "FindStream info end at pos=%lld\n", avio_tell(ic->pb));
  find_stream_info_err:
     for (i=0; i < ic->nb_streams; i++)
         av_freep(&ic->streams[i]->info);

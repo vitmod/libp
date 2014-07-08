@@ -654,7 +654,7 @@ static void get_stream_info(play_para_t *p_para)
             /* find chinese language audio track */
             if (strncmp(prop_value, "false", 5)&&(t = av_dict_get(pStream->metadata, "language", NULL, 0))) {
                 if (audio_format != AFORMAT_UNSUPPORT && !strncmp(t->value, "chi", 3)) {
-                    if (t = av_dict_get(pFormat->streams[temp_aidx]->metadata, "language", NULL, 0)) {
+                    if (temp_aidx>=0 && (t = av_dict_get(pFormat->streams[temp_aidx]->metadata, "language", NULL, 0))) {
                         if (!strncmp(t->value, "chi", 3)) {
                             log_print("[%s:%d]already find chinese language track, not change :key=%s value=%s audio track, %d\n", __FUNCTION__,  __LINE__, t->key, t->value, temp_aidx);
                         } else {

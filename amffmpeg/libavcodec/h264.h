@@ -582,6 +582,8 @@ typedef struct H264Context{
     // Timestamp stuff
     int sei_buffering_period_present;  ///< Buffering period SEI flag
     int initial_cpb_removal_delay[32]; ///< Initial timestamps for CPBs
+
+    int width, height; //add by zz
 }H264Context;
 
 

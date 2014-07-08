@@ -421,7 +421,7 @@ int ff_h264_decode_seq_parameter_set(H264Context *h){
     if(!sps->sar.den)
         sps->sar.den= 1;
 
-    if(s->avctx->debug&FF_DEBUG_PICT_INFO){
+    if(1 || s->avctx->debug&FF_DEBUG_PICT_INFO){
         av_log(h->s.avctx, AV_LOG_DEBUG, "sps:%u profile:%d/%d poc:%d ref:%d %dx%d %s %s crop:%d/%d/%d/%d %s %s %d/%d b%d\n",
                sps_id, sps->profile_idc, sps->level_idc,
                sps->poc_type,
@@ -438,7 +438,9 @@ int ff_h264_decode_seq_parameter_set(H264Context *h){
                sps->bit_depth_luma
                );
     }
-
+    h->width = sps->mb_width * 16;
+    h->height = (2 - sps->frame_mbs_only_flag) * (sps->mb_height * 16);
+    av_log(h->s.avctx, AV_LOG_INFO, "get size from SPS width=%d height =%d\n", h->width, h->height);
     av_free(h->sps_buffers[sps_id]);
     h->sps_buffers[sps_id]= sps;
     h->sps = *sps;
