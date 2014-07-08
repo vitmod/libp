@@ -506,6 +506,12 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
             break;
         }
     }
+
+    if(match_types(t->type, "thd")){
+        adec_print("audio format is truehd, so chose AUDIO_ARM_DECODER");
+        audio_decoder = AUDIO_ARM_DECODER;
+        goto exit;
+    }
 	
 	ret = property_get("media.arm.audio.decoder",value,NULL);
 	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
