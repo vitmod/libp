@@ -22,7 +22,7 @@
 #include "libavformat/avio.h"
 #include "libavutil/opt.h"
 #endif
-
+#include <amthreadpool.h>
 #define SAVE_BACKUP 1
 
 typedef struct _PreEstBWContext{
@@ -424,8 +424,8 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
         buf_len = def_buf_size;  
         
     }
-    memset(buffer,0,buf_len);
-    int isize = 0;
+    //memset(buffer,0,buf_len);
+    int64_t isize = 0;
 
     do{
         ret = hls_http_read(handle,buffer+isize,buf_len);
@@ -490,7 +490,7 @@ static void *_pre_estimate_bw_worker(void *ctx) {
         buf_len = def_buf_size;  
         
     }
-    memset(buffer,0,buf_len);
+    ///memset(buffer,0,buf_len);
     int isize = 0;
 
     do{
@@ -544,7 +544,7 @@ int preEstimateBandwidth(void *h, void * buf, int length) {
         if(pre_bw_worker_exit>0) {
             break;
         }
-	 usleep(10*1000);
+	 amthreadpool_thread_usleep(10*1000);
     }
     int64_t pre_bw = (int64_t)pre_bw_bytes * 8 * 1000000/(in_gettimeUs()-thread_startUs);
     pre_bw = (pre_bw * 8)/10;
@@ -554,7 +554,7 @@ int preEstimateBandwidth(void *h, void * buf, int length) {
 int hls_task_create(pthread_t *thread_out, pthread_attr_t const * attr,void *(*start_routine)(void *), void * arg){
     int ret = -1;
 #ifdef _USE_FFMPEG_CODE 
-    ret = ffmpeg_pthread_create(thread_out,attr,start_routine,arg);
+    ret = amthreadpool_pthread_create(thread_out,attr,start_routine,arg);
 #else
     ret = pthread_create(thread_out,attr,start_routine,arg);
 #endif
@@ -562,7 +562,7 @@ int hls_task_create(pthread_t *thread_out, pthread_attr_t const * attr,void *(*s
 }
 int hls_task_join(pthread_t thid, void ** ret_val){
 #ifdef _USE_FFMPEG_CODE 
-    ffmpeg_pthread_join(thid,ret_val);
+    amthreadpool_pthread_join(thid,ret_val);
 #else
     pthread_join(thid,ret_val);
 #endif

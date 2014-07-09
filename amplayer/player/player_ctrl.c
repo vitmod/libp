@@ -27,7 +27,7 @@
 #include "player_ffmpeg_ctrl.h"
 #include "player_cache_mgt.h"
 #include "player_priv.h"
-
+#include <amthreadpool.h>
 
 #ifndef FBIOPUT_OSD_SRCCOLORKEY
 #define  FBIOPUT_OSD_SRCCOLORKEY    0x46fb
@@ -502,7 +502,6 @@ int player_timesearch(int pid, float s_time)
 {
     player_cmd_t cmd;
     int ret;
-
     log_print("[player_timesearch:enter]pid=%d s_time=%f\n", pid, s_time);
 
     MEMSET(&cmd, 0, sizeof(player_cmd_t));
@@ -1689,4 +1688,3 @@ char *player_value2str(char *key, int value)
      else
         return ("INVALID KEYWORDS");    
 }
-

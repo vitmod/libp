@@ -29,7 +29,7 @@ HLSFifoBuffer *hls_fifo_alloc(unsigned int size)
         in_freepointer(&f);
 
     }
-    memset(f->buffer,0,size);
+  ///  memset(f->buffer,0,size);
     LOGV("Succeed to allocate fifo\n");
     return f;
 }

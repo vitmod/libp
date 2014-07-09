@@ -6,6 +6,7 @@
 #include <sys/mman.h>
 #include <audio-dec.h>
 #include <adec-pts-mgt.h>
+#include <amthreadpool.h>
 
 
 
@@ -99,7 +100,9 @@ static inline void waiting_bits(int bits)
 	int bytes;
 	bytes=READ_MPEG_REG(AIU_MEM_AIFIFO_BYTES_AVAIL);
 	while(bytes*8<bits){
-		usleep(1000);
+		if(amthreadpool_on_requare_exit(0))
+			break;
+		amthreadpool_thread_usleep(1000);
 		bytes=READ_MPEG_REG(AIU_MEM_AIFIFO_BYTES_AVAIL);
 	}	
 }
@@ -126,7 +129,7 @@ int read_buffer(unsigned char *buffer,int size)
 	#if 0
 	while( size >=  iii){
 		cc++ ;
-		usleep(1000);
+		amthreadpool_thread_usleep(1000);
 		iii = READ_MPEG_REG(AIU_MEM_AIFIFO_LEVEL)-EXTRA_DATA_SIZE;
 		if (cc%2000 == 0)
 			adec_print("read_buffer start in while iii = %d!!exit_decode_thread:%d \n", iii,exit_decode_thread);
@@ -151,7 +154,7 @@ int read_buffer(unsigned char *buffer,int size)
 				
 				adec_print("read_buffer while AIU_MEM_AIFIFO_BYTES_AVAIL = %d!!\n", bytes);
 				wait_times++;
-				if(wait_times>10) {					
+				if(wait_times>10 || amthreadpool_on_requare_exit(0)) {
 					adec_print("goto out!!\n");
 					goto out;
 				}
@@ -163,8 +166,8 @@ int read_buffer(unsigned char *buffer,int size)
 			{
 				while(!AIFIFO_READY){
 					fifo_ready_wait++;
-					usleep(1000);
-					if(fifo_ready_wait > 100){
+					amthreadpool_thread_usleep(1000);
+					if(fifo_ready_wait > 100 || amthreadpool_on_requare_exit(0)){
 						adec_print("FATAL err,AIFIFO is not ready,check!!\n");
 						return 0;
 					}	

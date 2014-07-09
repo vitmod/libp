@@ -12,7 +12,7 @@
 #include <itemlist.h>
 #include <amconfigutils.h>
 
-static struct itemlist kill_item_list;
+
 static char format_string[128] = {0};
 static char vpx_string[8] = {0};
 static int ffmpeg_load_external_module();
@@ -63,7 +63,8 @@ int ffmpeg_interrupt_callback(unsigned long npid)
     if (pid == 0) {
         pid = pthread_self();
     }
-    interrupted = itemlist_have_match_data(&kill_item_list, pid);
+    interrupted = amthreadpool_on_requare_exit(pid);
+
     if (!interrupted) {
         dealock_detected_cnt = 0;
         return 0;
@@ -91,11 +92,11 @@ int ffmpeg_interrupt_callback(unsigned long npid)
 }
 void ffmpeg_interrupt(pthread_t thread_id)
 {
-    itemlist_add_tail_data(&kill_item_list, thread_id);
+    amthreadpool_pool_thread_cancel(thread_id);
 }
 void ffmpeg_uninterrupt(pthread_t thread_id)
 {
-    itemlist_del_match_data_item(&kill_item_list, thread_id);
+    amthreadpool_pool_thread_uncancel(thread_id);
 }
 int ffmpeg_init(void)
 {
@@ -107,12 +108,8 @@ int ffmpeg_init(void)
     ffmpeg_load_external_module();
     av_lockmgr_register(ffmpeg_lock);
     url_set_interrupt_cb(ffmpeg_interrupt_callback);
-    kill_item_list.max_items = MAX_PLAYER_THREADS;
-    kill_item_list.item_ext_buf_size = 0;
-    kill_item_list.muti_threads_access = 1;
-    kill_item_list.reject_same_item_data = 1;
-    itemlist_init(&kill_item_list);
     max_lock_time_s = (int)am_getconfig_float_def("media.amplayer.maxlocktime.s",30.0);
+	amthreadpool_system_init();
     return 0;
 }
 int ffmpeg_buffering_data(play_para_t *para)

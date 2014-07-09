@@ -22,6 +22,11 @@ int itemlist_init(struct itemlist *itemlist)
     ITEM_LOCK_INIT(itemlist);
     return 0;
 }
+int itemlist_deinit(struct itemlist *itemlist)
+{
+    ITEM_LOCK_DESTROY(itemlist);
+	return 0;
+}
 
 struct item * item_alloc(int ext) {
     return malloc(sizeof(struct item) + ext);
@@ -196,23 +201,32 @@ struct item *  itemlist_find_match_item_ex(struct itemlist *itemlist,struct item
     return finditem;
 }
 
-int itemlist_add_tail_data(struct itemlist *itemlist, unsigned long data)
+int itemlist_add_tail_data_ext(struct itemlist *itemlist, unsigned long data,int extnum,unsigned long *extdata)
 {
     struct item *item;
+	int i;
     if (itemlist->reject_same_item_data && itemlist_have_match_data(itemlist, data)) {
         return 0;    /*have matched in list*/
     }
-    item = item_alloc(itemlist->item_ext_buf_size);
+    item = item_alloc(extnum * sizeof(unsigned long));
     if (item == NULL) {
         return -12;//noMEM
     }
     item->item_data = data;
+	for(i =0 ;i < extnum ;i++ ){
+		item->extdata[i]=extdata[i];
+	}
     if (itemlist_add_tail(itemlist, item) != 0) {
         item_free(item);
         return -1;
     }
     return 0;
 }
+int itemlist_add_tail_data(struct itemlist *itemlist, unsigned long data)
+{
+	return itemlist_add_tail_data_ext(itemlist,data,0,0);
+}
+
 int  itemlist_get_head_data(struct itemlist *itemlist, unsigned long *data)
 {
     struct item *item = NULL;

@@ -22,6 +22,7 @@
 #include <audiodsp.h>
 #include <log-print.h>
 #include <cutils/properties.h>
+#include <amthreadpool.h>
 
 firmware_s_t firmware_list[] = {
     {0, MCODEC_FMT_MPEG123, "audiodsp_codec_mad.bin"},
@@ -246,7 +247,7 @@ int audiodsp_start(aml_audio_dec_t *audec)
             ret = ioctl(dsp_ops->dsp_file_fd, AUDIODSP_WAIT_FORMAT, 0);
 	    if(ret!=0 && !audec->need_stop){
                 err_count++;			
-                usleep(1000*20);
+                amthreadpool_thread_usleep(1000*20);
                 if (err_count > PARSER_WAIT_MAX){ 
 	             ioctl(dsp_ops->dsp_file_fd, AUDIODSP_STOP, 0);//audiodsp_start failed,should stop audiodsp 								
 	             adec_print("[%s:%d] audio dsp not ready for decode PCM in 2s\n", __FUNCTION__, __LINE__);

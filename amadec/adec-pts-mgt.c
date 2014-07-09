@@ -17,6 +17,7 @@
 #include <adec-pts-mgt.h>
 #include <cutils/properties.h>
 #include <sys/time.h>
+#include <amthreadpool.h>
 
 #define DROP_PCM_DURATION_THRESHHOLD 4 //unit:s
 #define DROP_PCM_MAX_TIME 1000 // unit :ms
@@ -132,7 +133,7 @@ int adec_pts_start(aml_audio_dec_t *audec)
         return -1;
     }
 
-    usleep(1000);
+    amthreadpool_thread_usleep(1000);
 
 	if (audec->no_first_apts) {
 		if (amsysfs_get_sysfs_str(TSYNC_APTS, buf, sizeof(buf)) == -1) {
@@ -469,9 +470,9 @@ int droppcm_use_size(aml_audio_dec_t *audec, int drop_size)
             } else 
                 nDropCount++;
             if (!strcmp(platformtype, "messon8")) {
-                usleep(50000);  // 10ms
+                amthreadpool_thread_usleep(50000);  // 10ms
             } else {
-                usleep(50000);  // 50ms
+                amthreadpool_thread_usleep(50000);  // 50ms
             }
             adec_print("==ret:0 no pcm nDropCount:%d \n",nDropCount);
         }
@@ -564,11 +565,11 @@ int droppcm_get_refpts(aml_audio_dec_t *audec, unsigned long *refpts)
                     adec_print("## [%s::%d] unable to get firstpts! \n",__FUNCTION__,__LINE__);
                     return -1;
                 }
-                usleep(10000); // 10ms
                 if (gettime() - start_time >= (circount*1000)) {
                     adec_print("## [%s::%d] max time reached! %d ms \n",__FUNCTION__,__LINE__, circount);
                     break;
                 }
+                amthreadpool_thread_usleep(10000); // 10ms
             }
             adec_print("## [%s::%d] firstvpts:0x%x, use:%lld us, maxtime:%d ms, ---\n",__FUNCTION__,__LINE__, firstvpts, gettime()-start_time, circount);
             if (firstvpts) {

@@ -14,6 +14,8 @@
 #include <linux/fb.h>
 #include <sys/system_properties.h>
 #include <Amsysfsutils.h>
+#include <amthreadpool.h>
+
 
 static freescale_setting_t freescale_setting[] = {
     {
@@ -1072,7 +1074,7 @@ int wait_play_end()
 
         }
         waitcount++;
-        usleep(500);
+        amthreadpool_thread_usleep(500);
         memset(buf,0,sizeof(buf));
         ret = amsysfs_get_sysfs_str("/sys/class/amstream/videobufused", buf, 32);     	
     } 
@@ -1095,7 +1097,7 @@ int wait_video_unreg()
 	    }
 
 		waitcount++;
-        usleep(500);
+        amthreadpool_thread_usleep(500);
         memset(buf,0,sizeof(buf));
 	    ret = amsysfs_get_sysfs_str("/sys/module/amvideo/parameters/new_frame_count", buf, 32);       
 	}

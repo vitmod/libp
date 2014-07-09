@@ -30,7 +30,9 @@
 #include "amconfigutils.h"
 #include "libavutil/avstring.h"
 
-#define IO_BUFFER_SIZE 32768
+//#define IO_BUFFER_SIZE 32768
+#define IO_BUFFER_SIZE 4*1024
+
 #define IO_BUFFER_MIN_SIZE 1024
 /**
  * Do seeks within this distance ahead of the current buffer by skipping
@@ -855,7 +857,7 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
                 do {
                     fill_buffer(s);
                     len = s->buf_end - s->buf_ptr;
-                } while ((len == 0) && (retry_num-- > 0));
+                } while ((len == 0) && (retry_num-- > 0) && !url_interrupt_cb());
 
                 if (len == 0) {
                     av_log(NULL, AV_LOG_ERROR, "[%s:%d]retry timeout, fill buffer failed\n", __FUNCTION__, __LINE__);
@@ -868,10 +870,13 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
             s->buf_ptr += len;
             size -= len;
         }
+        if(url_interrupt_cb())
+            break;
     }
     if (size1 == size) {
         if (s->error)      return s->error;
         if (url_feof(s))   return AVERROR_EOF;
+        if (url_interrupt_cb())   return AVERROR_EOF;
 		return AVERROR(EAGAIN);/*no error, not eof,RETRY again*/
     }
     return size1 - size;

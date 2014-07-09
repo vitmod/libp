@@ -10,6 +10,7 @@
 #include "pcmenc_api.h" //xujian
 #include "spdif_api.h" //xujian
 #include <log-print.h>
+#include <amthreadpool.h>
 
 pcm51_encoded_info_t		dts_transenc_info;
 static int							dts_init_flag = 0;				
@@ -103,7 +104,7 @@ int dts_transenc_process_frame()
 						memset(stream,0,input_size);//insert zero pcm data when 958 hw buffer underrun
                     }
 					else{
-                    	usleep(1000);
+                    	amthreadpool_thread_usleep(1000);
                     	return -1;
 					}	
                 }
@@ -124,7 +125,7 @@ int dts_transenc_process_frame()
 	rv = iec958_packed_frame_write_958buf(output, output_size);
 	if(rv==-1){
 	    write_success_flag=0;
-	    usleep(1000);
+	    amthreadpool_thread_usleep(1000);
 	}	
 	else
 	    write_success_flag=1;

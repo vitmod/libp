@@ -22,6 +22,7 @@
 #include "player_set_sys.h"
 #include "player_profile.h"
 
+#include <amthreadpool.h>
 
 struct stream_decoder;
 struct am_packet;
@@ -103,8 +104,6 @@ typedef struct message_pool {
 
 
 typedef struct player_thread_mgt {
-    pthread_mutex_t  pthread_mutex;
-    pthread_cond_t   pthread_cond;
     pthread_t        pthread_id;
     player_status    player_state;
 } player_thread_mgt_t;
@@ -197,7 +196,8 @@ typedef struct play_para {
     float buffering_threshhold_min;
     float buffering_threshhold_middle;
     float buffering_threshhold_max;
-    float buffering_exit_time_s; 
+    float buffering_exit_time_s;
+	int buffering_time_s_changed; 
     float buffering_enter_time_s; 
     float buffering_force_delay_s; 
     long buffering_check_point;	

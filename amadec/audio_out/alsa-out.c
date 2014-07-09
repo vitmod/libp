@@ -21,6 +21,7 @@
 #include <adec-pts-mgt.h>
 #include <log-print.h>
 #include <alsa-out.h>
+#include <amthreadpool.h>
 
 
 #define USE_INTERPOLATION
@@ -602,7 +603,7 @@ static void *alsa_playback_loop(void *args)
         }
 
         while (alsa_params->pause_flag) {
-            usleep(10000);
+            amthreadpool_thread_usleep(10000);
         }
 	  if(alsa_params->stop_flag){
 	  	goto exit;
@@ -760,7 +761,7 @@ int alsa_init(struct aml_audio_dec* audec)
     /*TODO:  create play thread */
     pthread_mutex_init(&alsa_param->playback_mutex, NULL);
     pthread_cond_init(&alsa_param->playback_cond, NULL);
-    err = pthread_create(&tid, NULL, (void *)alsa_playback_loop, (void *)audec);
+    err = amthreadpool_pthread_create(&tid, NULL, (void *)alsa_playback_loop, (void *)audec);
     if (err != 0) {
         adec_print("alsa_playback_loop thread create failed!");
         snd_pcm_close(alsa_param->handle);
@@ -865,7 +866,7 @@ int alsa_stop(struct aml_audio_dec* audec)
     alsa_params->stop_flag = 1;
     alsa_params->wait_flag = 0;
     pthread_cond_signal(&alsa_params->playback_cond);
-    pthread_join(alsa_params->playback_tid, NULL);
+    amthreadpool_pthread_join(alsa_params->playback_tid, NULL);
     pthread_cond_destroy(&alsa_params->playback_cond);
 
 

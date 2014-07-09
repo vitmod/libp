@@ -1,6 +1,6 @@
 //coded by peter,20130221
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "M3uSession"
 
 #include <stdio.h>
@@ -10,6 +10,8 @@
 #include "hls_utils.h"
 #include "hls_download.h"
 #include "hls_bandwidth_measure.h"
+#include "libavformat/avio.h"
+#include <amthreadpool.h>
 
 #ifdef HAVE_ANDROID_OS
 #include "hls_common.h"
@@ -126,6 +128,9 @@ typedef struct _M3ULiveSession{
     int (*interrupt)(void);
     int64_t output_stream_offset;
     int startsegment_index;
+    void *urlcontext;
+    int *last_notify_err_seq_num;
+    int onInterruptwait;
 }M3ULiveSession;
 
 
@@ -958,7 +963,7 @@ static void _thread_wait_timeUs(M3ULiveSession* s,int microseconds){
         ret = pthread_mutex_trylock(&s->session_lock); 
         if(ret!=0){
             LOGV("Can't get lock,use usleep\n");
-            usleep(microseconds);
+            amthreadpool_thread_usleep(microseconds);
             return;
         }
         outtime.tv_sec = t/1000000;
@@ -1006,7 +1011,7 @@ static int _fetch_segment_file(M3ULiveSession* s,M3uBaseNode* segment,int isLive
     
 open_retry:
 {
-    if(s->is_closed>0||s->seekflag>0){
+    if(s->is_closed>0||s->seekflag>0 || (s->interrupt && (*s->interrupt)())){
         LOGV("Get close flag before opening,(value:%d) or seek flag(value:%d)\n",s->is_closed,s->seekflag);
         return 0;
     }
@@ -1247,8 +1252,8 @@ open_retry:
                 handle = NULL;
                 if(drop_estimate_bw==0){
                     fetch_end = in_gettimeUs();
-                    bandwidth_measure_add(s->bw_meausure_handle,read_size,fetch_end-fetch_start);
-                }                 
+                }
+                bandwidth_measure_add(s->bw_meausure_handle,read_size,fetch_end-fetch_start);
                 return 0;                
             }
             if(rlen == HLSERROR(EAGAIN)){
@@ -1434,7 +1439,7 @@ static void* _download_worker(void* ctx){
     do{
         
         if(first_download>0){
-            _thread_wait_timeUs(s,50*1000); 
+            ///_thread_wait_timeUs(s,50*1000); 
             first_download = 0;
         }
         ret = _download_next_segment(s); //100ms delay       
@@ -1469,7 +1474,11 @@ static void* _download_worker(void* ctx){
             _thread_wait_timeUs(s,-1); 
             s->download_monitor_timer = in_gettimeUs();
         }
-
+        while(s->is_closed<1 && s->interrupt && (*s->interrupt)()){
+        	 s->onInterruptwait = 1;
+        	 amthreadpool_thread_usleep(1000*1000);//waked by close or read. 
+        	 s->onInterruptwait = 0; 
+        }
     }while(s->is_closed<1);
     if(s->err_code!=0){
         s->err_code = -(DOWNLOAD_EXIT_CODE);
@@ -1747,7 +1756,7 @@ int64_t m3u_session_seekUs(void* hSession,int64_t posUs,int (*interupt_func_cb)(
                 break;
             }
         }
-        usleep(1000*10);
+        amthreadpool_thread_usleep(1000*10);
     }      
     return realPosUs;
 }
@@ -1916,10 +1925,11 @@ int m3u_session_read_data(void* hSession,void* buf,int len){
     int ret = 0;
     M3ULiveSession* session = (M3ULiveSession*)hSession;
 #ifdef USE_SIMPLE_CACHE
-    int datlen = hls_simple_cache_get_data_size(session->cache);
-    if(datlen>0){
-        ret = hls_simple_cache_read(session->cache,buf,HLSMIN(len,datlen));
-    }
+    ///int datlen = hls_simple_cache_get_data_size(session->cache);
+    ///if(datlen>0){
+        ///ret = hls_simple_cache_read(session->cache,buf,HLSMIN(len,datlen));
+    ret = hls_simple_cache_block_read(session->cache,buf,len,100*1000);
+    ///}
 #endif
     if(ret ==0){
         if(session->err_code<0){
@@ -1956,7 +1966,7 @@ int m3u_session_close(void* hSession){
 
     LOGV("Receive close command\n");
     session->is_closed = 1;
-    
+    amthreadpool_thread_wake(session->tid);
     if(session->tid!=0){
         LOGV("Terminate session download task\n");
         _thread_wake_up(session);
@@ -2092,7 +2102,7 @@ int64_t m3u_session_hybrid_seek(void* hSession,int64_t seg_st,int64_t pos,int (*
                 break;
             }
         }
-        usleep(1000*10);
+        amthreadpool_thread_usleep(1000*10);
     }    
     return seg_st;
      
@@ -2120,7 +2130,7 @@ void* m3u_session_seek_by_index(void* hSession,int prev_index,int index,int (*in
     
    
     while(session->seekflag == 2){
-        usleep(1000*10);
+        amthreadpool_thread_usleep(1000*10);
         if(interupt_func_cb!=NULL){
             if(interupt_func_cb() >0){
                 TRACE();

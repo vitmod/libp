@@ -475,6 +475,9 @@ int is_mmsh_file(AVIOContext *pb,const char *name)
 			score+=30;
 			if(strstr(line,"MSWM.asf"))
 				score+=30;
+		}else{
+		  if(ret >10 && score ==0)
+		  	  break;//not..
 		}
 	}while(score>=0 && score<100 && ret>0 && linecnt++<5);
 	av_log(NULL,AV_LOG_INFO,"is_mmsh_file=%d\n",score);

@@ -10,6 +10,7 @@
 #include <adec-pts-mgt.h>
 #include <adec_write.h>
 #include "adec_omx_brige.h"
+#include <amthreadpool.h>
 
 #define  LOG_TAG    "Adec_omx_bridge"
 #define adec_print(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
@@ -176,7 +177,7 @@ exit_decode_loop:
                       if((g_AudioInfo.channels!=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
                       {   
                            while(audec->format_changed_flag && !audec->exit_decode_thread){
-                               usleep(20000);
+                               amthreadpool_thread_usleep(20000);
                            }
                            if(!audec->exit_decode_thread){
                                adec_print("Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",
@@ -204,7 +205,7 @@ exit_decode_loop:
              while(outlen&& !audec->exit_decode_thread)
              {   
                   if((g_bst->buf_length-g_bst->buf_level)<outlen){
-                       usleep(20000);
+                       amthreadpool_thread_usleep(20000);
                        continue;
                   }
                   wlen=write_pcm_buffer(outbuf, g_bst,outlen); 
@@ -215,7 +216,7 @@ exit_decode_loop:
              while(rawoutput_enable && !audec->exit_decode_thread && outlen_raw)
              {
                   if(g_bst_raw->buf_length-g_bst_raw->buf_level<outlen_raw){
-                       usleep(20000);
+                       amthreadpool_thread_usleep(20000);
                        continue;
                   }
                   wlen=write_pcm_buffer(outbuf_raw, g_bst_raw,outlen_raw);
@@ -239,7 +240,7 @@ void start_decode_thread_omx(aml_audio_dec_t *audec)
     pthread_t    tid;
     int wait_aout_ops_start_time=0;
 
-    ret = pthread_create(&tid, NULL, (void *)audio_decode_loop_omx, (void *)audec);
+    ret = amthreadpool_pthread_create(&tid, NULL, (void *)audio_decode_loop_omx, (void *)audec);
     if (ret != 0) {
         adec_print("Create <audio_decode_loop_omx> thread failed!\n");
         return;
@@ -249,7 +250,7 @@ void start_decode_thread_omx(aml_audio_dec_t *audec)
     adec_print("Create <audio_decode_loop_omx> thread success! tid = %d\n", tid); 
     
     while ((!audec->need_stop)&&(!audec->OmxFirstFrameDecoded)){
-        usleep(50);
+        amthreadpool_thread_usleep(50);
         wait_aout_ops_start_time++;
     }
     adec_print("[%s] start thread finished: <audec->OmxFirstFrameDecoded=%d> used time: %d*50(us)\n",__FUNCTION__,audec->OmxFirstFrameDecoded,wait_aout_ops_start_time);
@@ -260,7 +261,7 @@ void start_decode_thread_omx(aml_audio_dec_t *audec)
 void stop_decode_thread_omx(aml_audio_dec_t *audec)
 {
     audec->exit_decode_thread=1;
-    int ret = pthread_join(audec->sn_threadid, NULL);
+    int ret = amthreadpool_pthread_join(audec->sn_threadid, NULL);
     audec->exit_decode_thread=0;
     audec->sn_threadid=-1;
     audec->sn_getpackage_threadid=-1;

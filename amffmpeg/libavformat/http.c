@@ -42,7 +42,7 @@
 /* used for protocol handling */
 #define BUFFER_SIZE (1024*4)
 #define MAX_REDIRECTS 8
-#define OPEN_RETRY_MAX 3
+#define OPEN_RETRY_MAX 2
 #define READ_RETRY_MAX 3
 #define MAX_CONNECT_LINKS 1
 #define READ_SEEK_TIMES 10
@@ -141,6 +141,10 @@ static int http_open_cnx(URLContext *h)
 	s->latest_get_time_ms=0;
     /* fill the dest addr */
  redo:
+    if (url_interrupt_cb()) {
+        av_log(h, AV_LOG_INFO, "http_open_cnx interrupt, err :-%d\n", AVERROR(EIO));
+        return AVERROR(EIO);
+    }
     /* needed in any case to build the host string */
     av_url_split(NULL, 0, auth, sizeof(auth), hostname, sizeof(hostname), &port,
                  path1, sizeof(path1), s->location);
@@ -271,6 +275,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     HTTPContext *s = h->priv_data;
 	int ret;
 	int open_retry=0;
+	int64_t http_starttime = av_gettime();
     h->is_streamed = 1;
     s->hd = NULL;
 
@@ -292,7 +297,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
 	s->max_connects=MAX_CONNECT_LINKS;	
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 	
 	ret = http_open_cnx(h);
-	while(ret<0 && open_retry++<retry_times && !url_interrupt_cb() && (s->http_code != 404 ||s->http_code != 503 || s->http_code != 500)){
+	while(ret<0 && ++open_retry<retry_times && !url_interrupt_cb() && (s->http_code != 404 ||s->http_code != 503 || s->http_code != 500)){
 		s->is_seek=0;
 		s->canseek=0;
     	ret = http_open_cnx(h);
@@ -301,6 +306,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
     if(ret < 0){
         bandwidth_measure_free(s->bandwidth_measure);
     }  
+    av_log(h, AV_LOG_INFO,"http  connect used %d ms\n",(int)(av_gettime()-http_starttime));	
     return ret;
 }
 static int shttp_open(URLContext *h, const char *uri, int flags)
@@ -308,6 +314,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     HTTPContext *s = h->priv_data;
     int ret;
     int open_retry=0;
+    int64_t http_starttime = av_gettime();
 
     int retry_times=0;
     float value=0.0;
@@ -329,17 +336,18 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 	s->max_connects=MAX_CONNECT_LINKS;	
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 		
 	ret = http_open_cnx(h);
-	while(ret<0 && open_retry++<retry_times && !url_interrupt_cb()){
+	while(ret<0 && ++open_retry<retry_times && !url_interrupt_cb()){
 		s->is_seek=0;
 		s->canseek=0;
     	ret = http_open_cnx(h);
     }
 
 	s->is_seek = 0;
-	h->is_slowmedia=1;
-    if(ret < 0){
-        bandwidth_measure_free(s->bandwidth_measure);
-    }
+        if(ret < 0){
+            bandwidth_measure_free(s->bandwidth_measure);
+        }
+	h->is_slowmedia=1;	
+	av_log(h, AV_LOG_INFO,"http  connect used %d ms\n",(int)(av_gettime()-http_starttime)); 
 	return ret;
 }
 

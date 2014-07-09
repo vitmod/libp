@@ -54,48 +54,6 @@ URLProtocol *first_protocol = NULL;
 static int (*url_interrupt_cb_ext)(int) = NULL;
 
 
-static struct itemlist pidlist;
-int ffmpeg_pthread_map_init(void)
-{
-	pidlist.max_items = 16;
-	pidlist.item_ext_buf_size = 4;
-	pidlist.muti_threads_access = 1;
-	pidlist.reject_same_item_data = 1;
-	itemlist_init(&pidlist);
-	return 0;
-}
-
-int ffmpeg_pthread_create(pthread_t *thread_out, pthread_attr_t const * attr,
-                   void *(*start_routine)(void *), void * arg)
-{
-	int ret;
-	pthread_t	    pid;
-	ret=pthread_create(&pid,attr,start_routine,arg);
-	if(ret==0){
-		*thread_out=pid;
-		struct item *piditem= item_alloc(4); 
-		if(piditem){
-			piditem->item_data=pid;
-			piditem->extdata[0]=pthread_self();
-			av_log(NULL, AV_LOG_INFO, "ffmpeg_pthread_create add map tid=%u,ptid=%u\n",pid,piditem->extdata[0]);
-			if(itemlist_add_tail(&pidlist,piditem)!=0)
-				item_free(piditem);
-			/*ignore all errors...*/
-		}
-	}
-	return ret;
-}
-
-int ffmpeg_pthread_join(pthread_t thid, void ** ret_val)
-{
-	int ret;
-	ret=pthread_join(thid,ret_val);
-	struct item *piditem=itemlist_find_match_item(&pidlist,(unsigned long)thid);
-       av_log(NULL, AV_LOG_INFO, "pidlist count=%d,max_items=%u\n",pidlist.item_count,pidlist.max_items);
-	itemlist_del_match_data_item(&pidlist, (unsigned long )thid);
-	return ret;
-}
-
 URLProtocol *av_protocol_next(URLProtocol *p)
 {
     if(p) return p->next;
@@ -385,8 +343,6 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
         }else{
         	len+=ret;
         }
-        if (url_interrupt_cb()) /*at least try several times for some teardown cmd finished.*/
-            return AVERROR_EXIT;
     }
     return len;
 }
@@ -518,17 +474,7 @@ int ffurl_get_file_handle(URLContext *h)
 
 int url_interrupt_cb(void)
 {
-    pthread_t tid=pthread_self();
-    pthread_t ptid=tid;
-    struct item *piditem;
-    if(url_interrupt_cb_ext!=NULL){
-	piditem=itemlist_find_match_item(&pidlist,(unsigned long)tid);
-	if(piditem){
-		ptid=piditem->extdata[0];
-	}	
-	return url_interrupt_cb_ext(ptid);
-    }
-    return 0;
+	return url_interrupt_cb_ext(0);
 }
 
 void avio_set_interrupt_cb(URLInterruptCB *interrupt_cb )

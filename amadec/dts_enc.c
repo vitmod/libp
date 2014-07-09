@@ -8,6 +8,8 @@
 #include "dts_enc.h"
 #include "dts_transenc_api.h"
 #include <cutils/properties.h>
+#include <amthreadpool.h>
+
 typedef enum {
     IDLE,
     TERMINATED,
@@ -94,7 +96,7 @@ int dtsenc_init()
     dtsenc_info.state=INITTED;
 
    pthread_t    tid;
-       ret = pthread_create(&tid, NULL, (void *)dts_enc_loop, NULL);
+       ret = amthreadpool_pthread_create(&tid, NULL, (void *)dts_enc_loop, NULL);
         if (ret != 0) {
            dtsenc_release();
            return -1;
@@ -137,7 +139,7 @@ int dtsenc_stop()
     //jone the thread
     if(dtsenc_info.thread_pid<=0)
         return -1;
-    int ret = pthread_join(dtsenc_info.thread_pid, NULL);
+    int ret = amthreadpool_pthread_join(dtsenc_info.thread_pid, NULL);
     dtsenc_info.thread_pid=0;
     if(dtsenc_info.state!=STOPPED)
             return -1;
@@ -163,13 +165,13 @@ static void *dts_enc_loop()
         switch(dtsenc_info.state)
         {
             case INITTED:
-               usleep(10000);
+               amthreadpool_thread_usleep(10000);
                continue;
             case ACTIVE:
                 break;
             case PAUSED:
 				iec958buf_fill_zero();
-                usleep(100000);
+                amthreadpool_thread_usleep(100000);
                 continue;
             case STOPPED:
                 goto quit_loop;
@@ -178,7 +180,7 @@ static void *dts_enc_loop()
           }
           //shaoshuai --non_block
           ret=dts_transenc_process_frame();
-          //usleep(100000);
+          //amthreadpool_thread_usleep(100000);
           //adec_print("====dts_enc thread is running \n");
     }
  quit_loop:

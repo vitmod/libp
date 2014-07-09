@@ -28,14 +28,16 @@
 /******************************
  * reset subtitle prop
  ******************************/
-static void release_subtitle()
+static void release_subtitle(play_para_t *para)
 {
-    set_subtitle_num(0);
-    set_subtitle_curr(0);
-    set_subtitle_index(0);
-    set_subtitle_fps(0);
-    set_subtitle_subtype(0);
-    set_subtitle_startpts(0);
+    if(para->sstream_info.has_sub){
+        set_subtitle_num(0);
+        set_subtitle_curr(0);
+        set_subtitle_index(0);
+        set_subtitle_fps(0);
+        set_subtitle_subtype(0);
+        set_subtitle_startpts(0);
+    }
 }
 
 /******************************
@@ -44,6 +46,10 @@ static void release_subtitle()
 static int player_para_release(play_para_t *para)
 {
     int i;
+
+    if (para->decoder && para->decoder->stop_async) {
+        para->decoder->stop_async(para);
+    }
 
     if (para->vstream_info.has_video) {
         for (i = 0; i < para->media_info.stream_info.total_video_num; i ++) {
@@ -87,23 +93,25 @@ static int player_para_release(play_para_t *para)
             }
         }
     }
-    ffmpeg_close_file(para);
 
-    if (para->playctrl_info.pause_flag) {
-        codec_resume(para->codec);     //clear pause state
-        para->playctrl_info.pause_flag = 0;
-    }
 
-    if (para->decoder && para->decoder->release) {
-        para->decoder->release(para);
-        para->decoder = NULL;
-    }
+
     if (para->file_name) {
         FREE(para->file_name);
         para->file_name = NULL;
     }
-    release_subtitle();
-
+      /*
+      if (para->playctrl_info.pause_flag) {
+             codec_resume(para->codec);     //clear pause state
+             para->playctrl_info.pause_flag = 0;
+      }
+      */
+    release_subtitle(para);
+    if (para->decoder && para->decoder->release) {
+        para->decoder->release(para);
+        para->decoder = NULL;
+    }
+    ffmpeg_close_file(para);
     return PLAYER_SUCCESS;
 }
 
@@ -727,6 +735,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
         }else{
             p_para->buffering_exit_time_s = c_para->buffing_starttime_s;
         }
+		p_para->buffering_time_s_changed = 1;
 		p_para->buffering_enter_time_s = am_getconfig_float_def("media.amplayer.onbuffering.S",0.120); //120ms
         log_print("set buffering exit time to %f S,enter time t %f S\n", p_para->buffering_exit_time_s,p_para->buffering_enter_time_s);
         if (c_para->buffing_starttime_s > 0 && c_para->buffing_middle <= 0) {
@@ -891,7 +900,7 @@ void *player_thread(play_para_t *player)
         log_print("[player_dec_init]ffmpeg_open_file failed(%s)*****ret=%x!\n", player->file_name, ret);
         goto release0;
     }
-
+    url_set_seek_flags(player->pFormatCtx->pb,LESS_BUFF_DATA | NO_READ_RETRY);
     ffmpeg_parse_file_type(player, &filetype);
     set_player_state(player, PLAYER_TYPE_REDY);
     send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_TYPE_REDY, 0);

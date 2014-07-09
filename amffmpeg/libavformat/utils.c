@@ -3091,7 +3091,7 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 		case AVMEDIA_TYPE_AUDIO:
 		    //val = enc->sample_rate && enc->channels && enc->sample_fmt != AV_SAMPLE_FMT_NONE;
 		    
-		    if((fastmode == 2) && (enc->codec_id != CODEC_ID_PCM_WIFIDISPLAY)){
+		    if(fastmode && (enc->codec_id != CODEC_ID_PCM_WIFIDISPLAY)){
 		       val =1;
                  }else{
                     val = enc->sample_rate && enc->channels;
@@ -3333,11 +3333,13 @@ int av_find_stream_info(AVFormatContext *ic)
         return 0;
     }
     av_log(NULL, AV_LOG_INFO, "[%s:%d]fast_switch=%d, seekkeyframe=%x,\n", __FUNCTION__, __LINE__, fast_switch,(am_getconfig_bool("media.amplayer.seekkeyframe")));
-    if(fast_switch && !(am_getconfig_bool("media.amplayer.seekkeyframe"))){	
+	/*
+	if(fast_switch && !(am_getconfig_bool("media.amplayer.seekkeyframe"))){	
 	    for (i=0; i<ic->nb_streams; i++) {
             ic->streams[i]->need_parsing = AVSTREAM_PARSE_NONE;
 	    }
-    }
+       }
+	*/
     for(i=0;i<ic->nb_streams;i++) {	
         AVCodec *codec;
         st = ic->streams[i];

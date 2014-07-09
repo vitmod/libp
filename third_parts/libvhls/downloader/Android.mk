@@ -12,7 +12,8 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
 	$(TOP)/frameworks/native/include\
 	$(LIBPLAYER_PATH)/amffmpeg\
-	$(LOCAL_PATH)/../common
+	$(LOCAL_PATH)/../common \
+	$(LIBPLAYER_PATH)/amavutils/include/\
 
 LOCAL_STATIC_LIBRARIES +=libhls_common
 LOCAL_SHARED_LIBRARIES +=libamplayer

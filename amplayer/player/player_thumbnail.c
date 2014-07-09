@@ -403,7 +403,7 @@ int thumbnail_extract_video_frame(void *handle, int64_t time, int flag)
 	 if(tryNum++>TRY_DECODE_MAX && i > READ_FRAME_MAX)
 	 	break;
 	 if(tryNum%10==0)
-        usleep(100);
+        amthreadpool_thread_usleep(100);
     }
 
     if (frame->data) {

@@ -33,6 +33,7 @@
 #include "hls_livesession.h"
 
 #include "bandwidth_measure.h" 
+#include <amthreadpool.h>
 
 #define BUFFER_SIZE (1024*4)
 #define CIRCULAR_BUFFER_SIZE (20*188*4096)
@@ -226,7 +227,7 @@ int CacheHttp_Open(void ** handle,const char* headers,void* arg)
 
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 
     
-    ret = ffmpeg_pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
+    ret = amthreadpool_pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, s);
     pthread_setname_np(s->circular_buffer_thread,"AmffmpegHTTP");	
     av_log(NULL, AV_LOG_INFO, "----------- pthread_create ret=%d\n",ret);
 
@@ -338,7 +339,7 @@ int CacheHttp_Close(void * handle)
     CacheHttpContext * s = (CacheHttpContext *)handle;
     s->EXIT = 1;
    
-    ffmpeg_pthread_join(s->circular_buffer_thread, NULL);
+    amthreadpool_pthread_join(s->circular_buffer_thread, NULL);
    
     av_log(NULL,AV_LOG_DEBUG,"-----------%s:%d\n",__FUNCTION__,__LINE__);
     if(s->fifo) {

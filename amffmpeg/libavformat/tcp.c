@@ -46,9 +46,13 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     char buf[256];
     int ret;
     socklen_t optlen;
-    int timeout = 500, listen_timeout = -1;
+    int timeout_ms=50*1000; //50S
+    #define TCP_POLL_WAIT_MS 30
+    int timeout = timeout_ms/(TCP_POLL_WAIT_MS);
+	int listen_timeout = -1;
     char hostname[1024],proto[1024],path[1024];
     char portstr[10];
+	int64_t tcp_starttime=av_gettime();
 
     av_url_split(proto, sizeof(proto), NULL, 0, hostname, sizeof(hostname),
         &port, path, sizeof(path), uri);
@@ -63,7 +67,10 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
         if (av_find_info_tag(buf, sizeof(buf), "listen", p))
             listen_socket = 1;
         if (av_find_info_tag(buf, sizeof(buf), "timeout", p)) {
-            timeout = strtol(buf, NULL, 10);
+            timeout_ms = strtol(buf, NULL, 10);
+            if(timeout_ms < 1000)/*Must >1S ,if not think S unit*/
+                timeout = timeout_ms*1000/TCP_POLL_WAIT_MS;
+            av_log(h, AV_LOG_INFO,"get timeout %d ms\n",timeout *TCP_POLL_WAIT_MS );
         }
         if (av_find_info_tag(buf, sizeof(buf), "listen_timeout", p)) {
             listen_timeout = strtol(buf, NULL, 10);
@@ -153,7 +160,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
                 ret = AVERROR_EXIT;
                 goto fail1;
             }
-            ret = poll(&p, 1, 100);
+            ret = poll(&p, 1, TCP_POLL_WAIT_MS);
             if (ret > 0)
                 break;
         }
@@ -191,6 +198,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     h->is_streamed = 1;
     s->fd = fd;
     freeaddrinfo(ai);
+	av_log(h, AV_LOG_INFO,"tcp  connect %s used %d ms\n",hostname,(int)(av_gettime()-tcp_starttime));	
     return 0;
 
  fail:

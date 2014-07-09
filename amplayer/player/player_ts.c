@@ -136,7 +136,6 @@ static int stream_ts_release(play_para_t *p_para)
             codec_set_audio_resample_ena(p_para->codec, 0); 
             codec_release_audio_utils(p_para->codec);
         }
-
         codec_close(p_para->codec);
         codec_free(p_para->codec);
     }
@@ -144,12 +143,19 @@ static int stream_ts_release(play_para_t *p_para)
     return 0;
 }
 
+static int stream_ts_stop_async(play_para_t *p_para)
+{
+    if(p_para->astream_info.has_audio)
+        codec_close_audio_async(p_para->codec);
+    return 0;
+}
 static const stream_decoder_t ts_decoder = {
     .name = "TS",
     .type = STREAM_TS,
     .init = stream_ts_init,
     .add_header = NULL,
     .release = stream_ts_release,
+    .stop_async = stream_ts_stop_async,
 };
 
 int ts_register_stream_decoder()

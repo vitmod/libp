@@ -660,7 +660,6 @@ static int raw_read(play_para_t *para)
                         log_error("[%s:%d] read data failed! ret=%d! \n", __FUNCTION__, __LINE__, rev_byte);
                         break;
                     }
-                    usleep(10000); // 10ms
                     if (fd_keyframe >= 0)
                         write(fd_keyframe, pkt->avpkt->data, pkt->avpkt->size);
                     //log_print("find key frame: rev_byte:%d, stream_index = %d, size = %10d, pos = %lld, pts=%lld, dts=%lld, flags:%d, \n", rev_byte, pkt->avpkt->stream_index, pkt->avpkt->size, pkt->avpkt->pos, pkt->avpkt->pts, pkt->avpkt->dts, pkt->avpkt->flags);
@@ -3328,7 +3327,7 @@ void player_switch_sub(play_para_t *para)
         if(-1==set_subtitle_index(index))
         {
           log_print("set cur subtitle index = %d failed ! \n",index);
-          usleep(1000);
+          amthreadpool_thread_usleep(1000);
         }
         return;
     } else {

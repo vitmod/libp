@@ -794,7 +794,6 @@ int codec_close(codec_para_t *pcodec)
 
     res |= codec_close_cntl(pcodec);
     res |= codec_h_close(pcodec->handle);
-
     return res;
 }
 
@@ -811,6 +810,20 @@ void codec_close_audio(codec_para_t *pcodec)
         pcodec->has_audio = 0;		
     }
     audio_stop(&pcodec->adec_priv);
+    return;
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_close_audio  Close audio decoder
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*/
+/* --------------------------------------------------------------------------*/
+void codec_close_audio_async(codec_para_t *pcodec)
+{
+    if(pcodec)
+        audio_stop_async(&pcodec->adec_priv);
     return;
 }
 

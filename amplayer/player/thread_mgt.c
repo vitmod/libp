@@ -11,33 +11,18 @@
 
 #include "player_priv.h"
 #include "thread_mgt.h"
+#include <amthreadpool.h>
 
 
 int  player_thread_wait(play_para_t *player, int microseconds)
 {
-    struct timespec pthread_ts;
-    struct timeval now;
-    player_thread_mgt_t *mgt = &player->thread_mgt;
-    int ret;
-
-    gettimeofday(&now, NULL);
-    pthread_ts.tv_sec = now.tv_sec + (microseconds + now.tv_usec) / 1000000;
-    pthread_ts.tv_nsec = ((microseconds + now.tv_usec) * 1000) % 1000000000;
-    pthread_mutex_lock(&mgt->pthread_mutex);
-    ret = pthread_cond_timedwait(&mgt->pthread_cond, &mgt->pthread_mutex, &pthread_ts);
-    pthread_mutex_unlock(&mgt->pthread_mutex);
-    return ret;
+    return amthreadpool_thread_usleep(microseconds);
 }
+
+
 int wakeup_player_thread(play_para_t *player)
 {
-    player_thread_mgt_t *mgt = &player->thread_mgt;
-    int ret;
-
-    pthread_mutex_lock(&mgt->pthread_mutex);
-    ret = pthread_cond_signal(&mgt->pthread_cond);
-    pthread_mutex_unlock(&mgt->pthread_mutex);
-
-    return ret;
+    return amthreadpool_thread_wake(player->thread_mgt.pthread_id);
 }
 
 player_status get_player_state(play_para_t *player)
@@ -49,6 +34,12 @@ player_status get_player_state(play_para_t *player)
     }
     return status;
 }
+void *player_thread_t(void *arg)
+{
+	void *ret;
+	ret=player_thread((play_para_t*)arg);
+	return ret;
+}
 
 int player_thread_create(play_para_t *player)
 {
@@ -59,16 +50,15 @@ int player_thread_create(play_para_t *player)
 
     pthread_attr_init(&pthread_attr);
     pthread_attr_setstacksize(&pthread_attr, 0);   //default stack size maybe better
-    pthread_mutex_init(&mgt->pthread_mutex, NULL);
-    pthread_cond_init(&mgt->pthread_cond, NULL);
     log_print("***player_para=%p,start_param=%p\n", player, player->start_param);
-    ret = pthread_create(&tid, &pthread_attr, (void*)&player_thread, (void*)player);
+    ret = amthreadpool_pthread_create(&tid, &pthread_attr, (void*)&player_thread_t, (void*)player);
     if (ret != 0) {
         log_print("creat player thread failed !\n");
         return ret;
     }
     log_print("[player_thread_create:%d]creat thread success,tid=%lu\n", __LINE__, tid);
     pthread_setname_np(tid,"AmplayerMain");
+	pthread_attr_destroy(&pthread_attr);
     mgt->pthread_id = tid;
     return PLAYER_SUCCESS;
 
@@ -79,7 +69,7 @@ int player_thread_wait_exit(play_para_t *player)
     player_thread_mgt_t *mgt = &player->thread_mgt;
     log_print("[player_thread_wait_exit:%d]pid=[%d] thead_id=%lu\n", __LINE__, player->player_id, mgt->pthread_id);
     if (mgt) {
-        ret = pthread_join(mgt->pthread_id, NULL);
+        ret = amthreadpool_pthread_join(mgt->pthread_id, NULL);
     } else {
         ret = 0;
     }

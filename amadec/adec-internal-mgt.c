@@ -20,6 +20,7 @@
 #include <cutils/properties.h>
 #include <dts_enc.h>
 #include <Amsysfsutils.h>
+#include <amthreadpool.h>
 
 #define MULTICH_SUPPORT_PROPERTY "media.multich.support.info"
 
@@ -147,7 +148,7 @@ static void start_adec(aml_audio_dec_t *audec)
 
 				audec->no_first_apts = 1;
 			}
-            usleep(100000);
+            amthreadpool_thread_usleep(100000);
         }
          /*Since audio_track->start consumed too much time 
         *for the first time after platform restart, 
@@ -166,7 +167,7 @@ static void start_adec(aml_audio_dec_t *audec)
             adec_pts_pause();
 
             while ((!audec->need_stop) && track_switch_pts(audec)) {
-                usleep(1000);
+                amthreadpool_thread_usleep(1000);
             }
 
             audiodsp_automute_off(dsp_ops);
@@ -289,9 +290,9 @@ static void adec_flag_check(aml_audio_dec_t *audec)
     if (audec->auto_mute && (audec->state > INITTED) &&(audec->state != PAUSED)) {
         aout_ops->pause(audec);
         adec_print("automute, pause audio out!\n");
-	 usleep(10000);			
+	 amthreadpool_thread_usleep(10000);			
         while ((!audec->need_stop) && track_switch_pts(audec)) {
-            usleep(1000);
+            amthreadpool_thread_usleep(1000);
         }
         aout_ops->resume(audec);
         adec_print("resume audio out, automute invalid\n");
@@ -334,7 +335,7 @@ static void *adec_message_loop(void *args)
         }
 
 	if(!audec->need_stop){
-            usleep(100000);
+            amthreadpool_thread_usleep(100000);
 	    }
     }
             
@@ -342,7 +343,7 @@ static void *adec_message_loop(void *args)
         //if(message_pool_empty(audec))
         //{
         //adec_print("there is no message !\n");
-        //  usleep(100000);
+        //  amthreadpool_thread_usleep(100000);
         //  continue;
         //}
         adec_reset_track(audec);
@@ -350,7 +351,7 @@ static void *adec_message_loop(void *args)
 
         msg = adec_get_message(audec);
         if (!msg) {
-            usleep(100000);
+            amthreadpool_thread_usleep(100000);
             continue;
         }
 
@@ -679,19 +680,19 @@ int audiodec_init(aml_audio_dec_t *audec)
    }		
     if (get_audio_decoder() == AUDIO_ARC_DECODER) {
     		audec->adsp_ops.dsp_file_fd = -1;
-		ret = pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);
+		ret = amthreadpool_pthread_create(&tid, NULL, (void *)adec_message_loop, (void *)audec);
 		pthread_setname_np(tid,"AmadecMsgloop");
     }
     else if(wfd && (nCodecType == ACODEC_FMT_AAC ||nCodecType ==  ACODEC_FMT_WIFIDISPLAY)){
 		adec_print("using wfd audio decoder \n");
-		ret = pthread_create(&tid, NULL, (void *)adec_wfddec_msg_loop, (void *)audec);
+		ret = amthreadpool_pthread_create(&tid, NULL, (void *)adec_wfddec_msg_loop, (void *)audec);
 		pthread_setname_np(tid,"AmadecWFDMsgloop");		
     }
     else 
     {
 		int codec_type=get_audio_decoder();
 		RegisterDecode(audec,codec_type);
-		ret = pthread_create(&tid, NULL, (void *)adec_armdec_loop, (void *)audec);
+		ret = amthreadpool_pthread_create(&tid, NULL, (void *)adec_armdec_loop, (void *)audec);
 		pthread_mutex_init(&audec->thread_mgt.pthread_mutex, NULL);
 		pthread_cond_init(&audec->thread_mgt.pthread_cond, NULL);
 		audec->thread_mgt.pthread_id = tid;

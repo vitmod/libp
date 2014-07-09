@@ -13,6 +13,8 @@ LOCAL_C_INCLUDES := \
     $(TOP)/external/openssl/include\
     $(LOCAL_PATH)/../common\
     $(LOCAL_PATH)/../downloader\
+    $(LIBPLAYER_PATH)/amffmpeg \
+    $(LIBPLAYER_PATH)/amavutils/include/
 
 
 LOCAL_MODULE := libhls

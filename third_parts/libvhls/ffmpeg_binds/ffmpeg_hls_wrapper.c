@@ -3,6 +3,8 @@
 #include "hls_m3ulivesession.h"
 #include "amconfigutils.h"
 #include "hls_cmf_impl.h"
+#include <amthreadpool.h>
+
 #ifndef INT_MAX
 #define INT_MAX   2147483647
 #endif
@@ -130,11 +132,11 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
             len = 0;
             break;
         }
-        len = m3u_session_read_data(hSession, buf,size);
+        len = m3u_session_read_data(hSession, buf,size); //wait read.
 
         if (len <0) {
             if(len == AVERROR(EAGAIN)){
-                usleep(1000*100);
+                ;///amthreadpool_thread_usleep(1000*100);
             }else{
                 break;
             }
@@ -379,7 +381,7 @@ static int _ffmpeg_cmf_getopt(URLContext *h, uint32_t  cmd, uint32_t flag, int64
                         break;
                     }
                     ret = hls_cmf_get_fsize(ctx->hls_ctx,cmf_ctx,2); 
-                    usleep(100*1000);//100ms
+                    amthreadpool_thread_usleep(100*1000);//100ms
                 }
                 if(ret<=0&&url_interrupt_cb()==0){
                     ret = hls_cmf_get_fsize(ctx->hls_ctx,cmf_ctx,3); 

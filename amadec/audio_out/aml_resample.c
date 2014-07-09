@@ -332,7 +332,7 @@ static int dsp_pcm_read(aml_audio_dec_t*audec,char *data_in,int len)
 #if 0 
           wait_times++;
           adec_print("wait dsp times: %d\n", wait_times);
-		  //usleep(20);
+		  //amthreadpool_thread_usleep(20);
 		  if(wait_times>1){
 		    adec_print("NOTE:dsp no enough data!");
 		    break;

@@ -12,6 +12,7 @@
 #include <Amsysfsutils.h>
 #include <audio-dec.h>
 #include <cutils/properties.h>
+#include <amthreadpool.h>
 
 
 typedef struct 
@@ -253,7 +254,7 @@ static void start_adec(aml_audio_dec_t *audec)
                  amsysfs_set_sysfs_str(TSYNC_APTS, buf);
                  audec->no_first_apts = 1;
              }
-             usleep(100000);
+             amthreadpool_thread_usleep(100000);
          }
         
          /*start  the  the pts scr,...*/
@@ -262,7 +263,7 @@ static void start_adec(aml_audio_dec_t *audec)
              avsync_en(0);
              adec_pts_pause();
              while ((!audec->need_stop) && track_switch_pts(audec)) {
-                usleep(1000);
+                amthreadpool_thread_usleep(1000);
              }
              avsync_en(1);
              adec_pts_resume();
@@ -387,9 +388,9 @@ static void adec_flag_check(aml_audio_dec_t *audec)
     audio_out_operations_t *aout_ops = &audec->aout_ops;
     if (audec->auto_mute && (audec->state > INITTED)) {
         aout_ops->pause(audec);
-        usleep(10000); 
+        amthreadpool_thread_usleep(10000); 
         while ((!audec->need_stop) && track_switch_pts(audec)) {
-            usleep(1000);
+            amthreadpool_thread_usleep(1000);
         }
 #ifdef OUT_USE_AUDIOTRACK		
         aout_ops->resume(audec);
@@ -407,7 +408,7 @@ static void start_wfd_decode_thread(aml_audio_dec_t *audec)
         return -1;
     }
     pthread_t    tid;
-    ret = pthread_create(&tid, NULL, (void *)audio_wfd_decode_loop, (void *)audec);
+    ret = amthreadpool_pthread_create(&tid, NULL, (void *)audio_wfd_decode_loop, (void *)audec);
     if (ret != 0) {
         adec_print("[%s]Create ffmpeg decode thread failed!\n",__FUNCTION__);
         return ret;
@@ -420,7 +421,7 @@ static void stop_wfd_decode_thread(aml_audio_dec_t *audec)
 {
     adec_print("enter stop_wfd_decode_thread \n");
     audec->exit_decode_thread=1;
-    int ret = pthread_join(audec->sn_threadid, NULL);
+    int ret = amthreadpool_pthread_join(audec->sn_threadid, NULL);
     adec_print("[%s]wfd decode thread exit success\n",__FUNCTION__);
     audec->exit_decode_thread=0;
     audec->sn_threadid=-1;
@@ -447,7 +448,7 @@ static int wfd_audio_codec_init(aml_audio_dec_t *audec){
       while(0!=set_sysfs_int(DECODE_ERR_PATH,DECODE_NONE_ERR))
       {
           adec_print("[%s %d]set codec fatal failed ! \n",__FUNCTION__,__LINE__);
-          usleep(100000);
+          amthreadpool_thread_usleep(100000);
       }	  
 /*
 	  //enable uio interface
@@ -700,7 +701,7 @@ void *adec_wfddec_msg_loop(void *args)
         }
 
         if(!audec->need_stop){
-            usleep(100000);
+            amthreadpool_thread_usleep(100000);
         }
     }
 
@@ -710,7 +711,7 @@ void *adec_wfddec_msg_loop(void *args)
         adec_flag_check(audec);
         msg = adec_get_message(audec);
         if (!msg) {
-            usleep(100000);
+            amthreadpool_thread_usleep(100000);
             continue;
         }
 

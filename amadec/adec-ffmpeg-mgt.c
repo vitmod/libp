@@ -11,6 +11,7 @@
 #include <adec_omx_brige.h>
 #include <Amsysfsutils.h>
 #include <audio-dec.h>
+#include <amthreadpool.h>
 
 
 
@@ -490,7 +491,7 @@ static int audio_codec_init(aml_audio_dec_t *audec)
       while(0!=set_sysfs_int(DECODE_ERR_PATH,DECODE_NONE_ERR))
       {
           adec_print("[%s %d]set codec fatal failed ! \n",__FUNCTION__,__LINE__);
-          usleep(100000);
+          amthreadpool_thread_usleep(100000);
       }
        
       adec_print("[%s %d]param:data_width:%d samplerate:%d channel:%d \n",
@@ -704,7 +705,7 @@ static int start_adec(aml_audio_dec_t *audec)
                  amsysfs_set_sysfs_str(TSYNC_APTS, buf);
                  audec->no_first_apts = 1;
              }
-             usleep(100000);
+             amthreadpool_thread_usleep(100000);
          }
          adec_print("get first apts ok, times:%d need_stop:%d \n",times,audec->need_stop);
          if(audec->need_stop)
@@ -716,7 +717,7 @@ static int start_adec(aml_audio_dec_t *audec)
              avsync_en(0);
              adec_pts_pause();
              while ((!audec->need_stop) && track_switch_pts(audec)) {
-                usleep(1000);
+                amthreadpool_thread_usleep(1000);
              }
              avsync_en(1);
              adec_pts_resume();
@@ -835,9 +836,9 @@ static void adec_flag_check(aml_audio_dec_t *audec)
     audio_out_operations_t *aout_ops = &audec->aout_ops;
     if (audec->auto_mute && (audec->state > INITTED)) {
         aout_ops->pause(audec);
-        usleep(10000); 
+        amthreadpool_thread_usleep(10000); 
         while ((!audec->need_stop) && track_switch_pts(audec)) {
-            usleep(1000);
+            amthreadpool_thread_usleep(1000);
         }
         aout_ops->resume(audec);
         audec->auto_mute = 0;
@@ -853,11 +854,11 @@ static void start_decode_thread(aml_audio_dec_t *audec)
     }
 
     pthread_t    tid;
-    int ret = pthread_create(&tid, NULL, (void *)audio_getpackage_loop, (void *)audec);
+    int ret = amthreadpool_pthread_create_name(&tid, NULL, (void *)audio_getpackage_loop, (void *)audec,"getpackagelp");
     audec->sn_getpackage_threadid=tid;
     adec_print("[%s]Create get package thread success! tid = %d\n",__FUNCTION__,tid);
 
-    ret = pthread_create(&tid, NULL, (void *)audio_decode_loop, (void *)audec);
+    ret = amthreadpool_pthread_create_name(&tid, NULL, (void *)audio_decode_loop, (void *)audec,"decodeloop");
     if (ret != 0) {
         adec_print("[%s]Create ffmpeg decode thread failed!\n",__FUNCTION__);
         return ret;
@@ -869,10 +870,9 @@ static void start_decode_thread(aml_audio_dec_t *audec)
 static void stop_decode_thread(aml_audio_dec_t *audec)
 {
     audec->exit_decode_thread=1;
-
-    int ret = pthread_join(audec->sn_threadid, NULL);
+    int ret = amthreadpool_pthread_join(audec->sn_threadid, NULL);
     adec_print("[%s]decode thread exit success\n",__FUNCTION__);
-    ret = pthread_join(audec->sn_getpackage_threadid, NULL);
+    ret = amthreadpool_pthread_join(audec->sn_getpackage_threadid, NULL);
     adec_print("[%s]get package thread exit success\n",__FUNCTION__);
 
     audec->exit_decode_thread=0;
@@ -961,7 +961,7 @@ static void check_audio_info_changed(aml_audio_dec_t *audec)
 		{    //experienc value:0.2 Secs      
 			BufLevelAllowDoFmtChg=g_bst->samplerate*g_bst->channels*(audec->adec_ops->bps>>3)/5;
 			while((audec->format_changed_flag|| g_bst->buf_level>BufLevelAllowDoFmtChg) && !audec->exit_decode_thread ){
-				usleep(20000);
+				amthreadpool_thread_usleep(20000);
 			}				
 			if(!audec->exit_decode_thread){
 				adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",
@@ -1010,7 +1010,7 @@ exit_decode_loop:
           if(nNextFrameSize==-1){
                nNextFrameSize=adec_ops->nInBufSize;
           }else if(nNextFrameSize==0){
-               usleep(1000);
+               amthreadpool_thread_usleep(1000);
                continue;
           }
           
@@ -1035,7 +1035,7 @@ exit_decode_loop:
                nRet = read_buffer(inbuf+rlen, nReadSizePerTime);//read 10K per time
                if(nRet<=0){   
 			sleeptime++;   	
-                    usleep(1000);
+                    amthreadpool_thread_usleep(1000);
                     continue;
                }
                rlen+=nRet;
@@ -1052,7 +1052,7 @@ exit_decode_loop:
           rlen += inlen;
           while(package_add(audec,inbuf,rlen) && !audec->exit_decode_thread)
           {
-              usleep(1000);
+              amthreadpool_thread_usleep(1000);
           }
           inbuf=NULL;
       }
@@ -1117,7 +1117,7 @@ exit_decode_loop:
           //step 2  get read buffer size
           p_Package=package_get(audec);
           if(!p_Package){
-               usleep(1000);
+               amthreadpool_thread_usleep(1000);
                continue;
           }
           if (inbuf != NULL) {
@@ -1213,7 +1213,7 @@ exit_decode_loop:
                            int wlen=0;
                            while(outlen && !audec->exit_decode_thread) {
                                 if(g_bst->buf_length-g_bst->buf_level<outlen){
-                                   usleep(100000);
+                                   amthreadpool_thread_usleep(100000);
                                    continue;
                                 }
                                 wlen=write_pcm_buffer(outbuf, g_bst,outlen); 
@@ -1223,7 +1223,7 @@ exit_decode_loop:
                       }
                   }
             }else{
-                  usleep(1000);
+                  amthreadpool_thread_usleep(1000);
                   continue;
             }
     }
@@ -1293,7 +1293,7 @@ void *adec_armdec_loop(void *args)
         if (ret) 
         {
             adec_print("[%s %d]Audio out device init failed!",__FUNCTION__,__LINE__);
-            usleep(10000);
+            amthreadpool_thread_usleep(10000);
             continue;
         }
         //ok
@@ -1310,7 +1310,7 @@ MSG_LOOP:
         adec_flag_check(audec);
         msg = adec_get_message(audec);
         if (!msg) {
-            adec_thread_wait(audec,100*1000);
+            amthreadpool_thread_usleep(100*1000);//if not wait,need changed to amthread usleep
             continue;
         }
 

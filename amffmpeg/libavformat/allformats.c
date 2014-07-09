@@ -75,6 +75,12 @@ void av_register_all(void)
     av_register_input_format(&ff_cmf_demuxer);
 	
     /* (de)muxers */
+
+	//for fast parser mpegts.
+    REGISTER_MUXDEMUX (MPEGTS, mpegts);
+
+
+	
     REGISTER_MUXER    (A64, a64);
     REGISTER_DEMUXER  (AAC, aac);
     REGISTER_MUXDEMUX (AC3, ac3);
@@ -168,7 +174,7 @@ void av_register_all(void)
     REGISTER_MUXER    (MPEG2VIDEO, mpeg2video);
     REGISTER_MUXER    (MPEG2VOB, mpeg2vob);
     REGISTER_DEMUXER  (MPEGPS, mpegps);
-    REGISTER_MUXDEMUX (MPEGTS, mpegts);
+
     REGISTER_DEMUXER  (MPEGTSRAW, mpegtsraw);
     REGISTER_DEMUXER  (MPEGVIDEO, mpegvideo);
     REGISTER_MUXER    (MPJPEG, mpjpeg);
@@ -303,8 +309,6 @@ extern URLProtocol ff_rtsp_protocol ;
 
 extern URLProtocol ff_cmftest_protocol	;
 	ffurl_register_protocol(&ff_cmftest_protocol,sizeof(ff_cmftest_protocol));
-	ffmpeg_pthread_map_init();
-
 	ffmpeg_api_functions_keeper();
 }
 

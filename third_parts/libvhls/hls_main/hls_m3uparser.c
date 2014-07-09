@@ -18,6 +18,7 @@
 #else
 #include "hls_debug.h"
 #endif
+#include <amthreadpool.h>
 
 
 typedef struct _M3UParser{

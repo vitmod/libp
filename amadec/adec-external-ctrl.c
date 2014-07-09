@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include <audio-dec.h>
+#include <amthreadpool.h>
 
 
 int audio_decode_basic_init(void)
@@ -182,6 +183,7 @@ int audio_decode_stop(void *handle)
     if (cmd) {
         cmd->ctrl_cmd = CMD_STOP;
         ret = adec_send_message(audec, cmd);
+        amthreadpool_pool_thread_cancel(audec->thread_pid);
     } else {
         adec_print("message alloc failed, no memory!");
         ret = -1;
@@ -215,7 +217,7 @@ int audio_decode_release(void **handle)
         ret = -1;
     }
 
-    ret = pthread_join(audec->thread_pid, NULL);
+    ret = amthreadpool_pthread_join(audec->thread_pid, NULL);
 
     free(*handle);
     *handle = NULL;

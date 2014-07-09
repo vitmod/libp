@@ -10,6 +10,7 @@ typedef struct stream_decoder {
     int (*init)(play_para_t *);
     int (*add_header)(play_para_t *);
     int (*release)(play_para_t *);
+    int (*stop_async)(play_para_t *);
 } stream_decoder_t;
 
 static inline codec_para_t * codec_alloc(void)

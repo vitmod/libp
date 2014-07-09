@@ -10,13 +10,14 @@
 #else
 #include "hls_debug.h"
 #endif
-
+#include <amthreadpool.h>
 
 typedef struct _SimpleCache{
     int size;
     int free_size;
     HLSFifoBuffer* fifo;
-    pthread_mutex_t lock;  
+    pthread_mutex_t lock;
+    unsigned long read_thread_id;
 }SimpleCache_t;
 
 int hls_simple_cache_alloc(int size_max,void** handle){
@@ -26,6 +27,7 @@ int hls_simple_cache_alloc(int size_max,void** handle){
     }
     SimpleCache_t* cache = (SimpleCache_t*)malloc(sizeof(SimpleCache_t));
     if(cache){
+		cache->read_thread_id = 0;
         cache->fifo = hls_fifo_alloc(size_max);
         if(cache->fifo == NULL){
             free(cache);
@@ -43,16 +45,18 @@ int hls_simple_cache_alloc(int size_max,void** handle){
     return -1;
 }
 int hls_simple_cache_write(void* handle,void* buf,int size){//just judge free space by caller
+    int oldsize;
     if(handle == NULL){
         return -1;
     }
     SimpleCache_t* cache = (SimpleCache_t*)handle;
     pthread_mutex_lock(&cache->lock);
-
+    oldsize=hls_fifo_size(cache->fifo);
     hls_fifo_generic_write(cache->fifo,buf,size,NULL);
     cache->free_size=hls_fifo_space(cache->fifo);
     pthread_mutex_unlock(&cache->lock);
-
+    if(oldsize<100 && cache->read_thread_id!= 0)
+		amthreadpool_thread_wake(cache->read_thread_id);
     return size;
 }
 
@@ -109,6 +113,19 @@ int hls_simple_cache_read(void* handle,void* buffer,int size){
     pthread_mutex_unlock(&cache->lock);
 
     return rsize;
+}
+
+int hls_simple_cache_block_read(void* handle,void* buffer,int size,int wait_us)
+{
+	int readed;
+    readed=hls_simple_cache_read(handle,buffer,size);
+    if(!readed){
+        SimpleCache_t* cache = (SimpleCache_t*)handle;
+        cache->read_thread_id=pthread_self();
+        amthreadpool_thread_usleep(wait_us);
+		readed=hls_simple_cache_read(handle,buffer,size);
+    }
+	return readed;
 }
 int hls_simple_cache_free(void* handle){
     if(handle == NULL){

@@ -119,6 +119,7 @@ int adec_send_message(aml_audio_dec_t *audec, adec_cmd_t *cmd)
         pool->message_in_index = (pool->message_in_index + 1) % MESSAGE_NUM_MAX;
         ret = 0;
     }
+    amthreadpool_thread_wake(audec->thread_pid);
     pthread_mutex_unlock(&pool->msg_mutex);
 
     return ret;

@@ -26,8 +26,8 @@ extern "C" {
 #include "aml_resample.h"
 #include <audiodsp_update_format.h>
 #include <Amsysfsutils.h>
+#include <amthreadpool.h>
 }
-
 namespace android
 {
 
@@ -442,7 +442,7 @@ void audioCallback_raw(int event, void* user, void *info)
          if(bytes_readed_diff==0){
             //adec_print("NOTE: bytes_readed_diff/0 audec->pcm_bytes_readed/%d\n",audec->pcm_bytes_readed);
             while(audec->pcm_bytes_readed==0 && !audec->need_stop){
-               usleep(2000);
+               amthreadpool_thread_usleep(2000);
             }
             adec_print("NOTE:i2s has started read pcm\n");
          }

@@ -14,6 +14,7 @@
 #define AUDIO_CTRL_H
 void audio_start(void **priv, codec_para_t *pcodec);
 void audio_stop(void **priv);
+void audio_stop_async(void **priv);
 void audio_pause(void *priv);
 void audio_resume(void *priv);
 void audio_basic_init(void);
