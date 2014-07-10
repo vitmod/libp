@@ -213,7 +213,8 @@ int amthreadpool_on_requare_exit(pthread_t pid)
 	}
     return !!t->on_requred_exit;
 }
-static int amthreadpool_pool_thread_cancel_l1(pthread_t pid,int cancel)
+
+static int amthreadpool_pool_thread_cancel_l1(pthread_t pid,int cancel,int allthreads)
 {
     struct itemlist *itemlist;
     threadpool_thread_data_t *t,*t1;
@@ -225,7 +226,7 @@ static int amthreadpool_pool_thread_cancel_l1(pthread_t pid,int cancel)
         return 0;
     }
     pool=t->pool;
-    if(pool && pool->pid == pid){
+    if(allthreads && pool && pool->pid == pid){
         itemlist = &pool->threadlist;
         FOR_EACH_ITEM_IN_ITEMLIST(itemlist, item)
         t1 = THREAD_OF_ITEM(item);
@@ -239,12 +240,20 @@ static int amthreadpool_pool_thread_cancel_l1(pthread_t pid,int cancel)
 
 int amthreadpool_pool_thread_cancel(pthread_t pid)
 {
-    return amthreadpool_pool_thread_cancel_l1(pid,3);
+    return amthreadpool_pool_thread_cancel_l1(pid,3,1);
 }
 
 int amthreadpool_pool_thread_uncancel(pthread_t pid)
 {
-    return amthreadpool_pool_thread_cancel_l1(pid,0);
+    return amthreadpool_pool_thread_cancel_l1(pid,0,1);
+}
+int amthreadpool_thread_cancel(pthread_t pid)
+{
+    return amthreadpool_pool_thread_cancel_l1(pid,3,0);
+}
+int amthreadpool_thread_uncancel(pthread_t pid)
+{
+    return amthreadpool_pool_thread_cancel_l1(pid,0,0);
 }
 
 static int amthreadpool_release(pthread_t pid)

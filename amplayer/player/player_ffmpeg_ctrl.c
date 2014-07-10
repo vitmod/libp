@@ -90,14 +90,30 @@ int ffmpeg_interrupt_callback(unsigned long npid)
     abort();
     return 1;
 }
+
+
+/*interrupt this thread poll include sub thread.*/
 void ffmpeg_interrupt(pthread_t thread_id)
 {
     amthreadpool_pool_thread_cancel(thread_id);
 }
+/*uninterrupt this thread poll include sub thread.*/
 void ffmpeg_uninterrupt(pthread_t thread_id)
 {
     amthreadpool_pool_thread_uncancel(thread_id);
 }
+/*interrupt this thread only.*/
+void ffmpeg_interrupt_light(pthread_t thread_id)
+{
+    amthreadpool_pool_thread_cancel(thread_id);
+}
+/*uninterrupt this thread only.*/
+
+void ffmpeg_uninterrupt_light(pthread_t thread_id)
+{
+    amthreadpool_pool_thread_uncancel(thread_id);
+}
+
 int ffmpeg_init(void)
 {
     if (basic_init > 0) {

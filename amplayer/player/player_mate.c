@@ -88,7 +88,7 @@ int player_mate_sleep(play_para_t *player)
     if(player->playctrl_info.temp_interrupt_ffmpeg){
 	     player->playctrl_info.temp_interrupt_ffmpeg=0;	
 	     log_print("ffmpeg_uninterrupt tmped by player mate!\n");	 
-            ffmpeg_uninterrupt(player->thread_mgt.pthread_id);
+         ffmpeg_uninterrupt_light(player->thread_mgt.pthread_id);
     }
     mate->mate_should_sleep = 1;	 
     while (mate->mate_isrunng) {
@@ -194,7 +194,7 @@ static int player_mate_thread_cmd_proxy(play_para_t *player, struct player_mate 
 	player->playctrl_info.ignore_ffmpeg_errors=1;	
 	player->playctrl_info.temp_interrupt_ffmpeg=1;
 	log_print("ffmpeg_interrupt tmped by player mate!\n");
-	ffmpeg_interrupt(player->thread_mgt.pthread_id);
+	ffmpeg_interrupt_light(player->thread_mgt.pthread_id);
 	codec_resume(player->codec);  /*auto resume on*/
     }
     if (p_para->playctrl_info.pause_flag) {
