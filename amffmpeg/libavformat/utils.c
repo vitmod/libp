@@ -3383,7 +3383,7 @@ int av_find_stream_info(AVFormatContext *ic)
         //try to just open decoders, in case this is enough to get parameters
         //only when  get enough data then opencodec
         //for fast start.
-        if(avio_tell(ic->pb) > 500*1024 && !has_codec_parameters_ex(st->codec,fast_switch)){
+        if(!has_codec_parameters_ex(st->codec,fast_switch)){
             if (codec && !st->codec->codec){
                 avcodec_open(st->codec, codec);
             }
@@ -3550,11 +3550,7 @@ int av_find_stream_info(AVFormatContext *ic)
            it takes longer and uses more memory. For MPEG-4, we need to
            decompress for QuickTime. */
         if (!has_codec_parameters_ex(st->codec,fast_switch) ||( !fast_switch && !has_decode_delay_been_guessed(st))){
-            if(avio_tell(ic->pb) > 500*1024){/*just on wait more time & data*/
-                av_log(NULL, AV_LOG_INFO, "[%s:%d] st %d,try_decode_frame st->incdex\n", __FUNCTION__, __LINE__,st->index);
-                try_decode_frame(st, pkt);
-                av_log(NULL, AV_LOG_INFO, "[%s:%d] st %d,try_decode_frame st->incdex \n", __FUNCTION__, __LINE__,st->index);
-            }
+            try_decode_frame(st, pkt);
 		}
 		
         st->codec_info_nb_frames++;
