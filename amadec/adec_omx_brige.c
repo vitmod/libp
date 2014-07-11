@@ -193,7 +193,8 @@ exit_decode_loop:
          }
          if(outlen>0)
             dlen=(*audec->parm_omx_codec_get_declen)(audec);
-
+         else
+             dlen = 0;
          //write to the pcm buffer
          audec->decode_offset+=dlen;
          audec->pcm_cache_size=outlen;
