@@ -131,6 +131,7 @@ typedef struct _M3ULiveSession{
     void *urlcontext;
     int *last_notify_err_seq_num;
     int onInterruptwait;
+    int no_new_file_can_download;
 }M3ULiveSession;
 
 
@@ -846,6 +847,8 @@ rinse_repeat:
         
     }else{
         pthread_mutex_unlock(&s->session_lock);
+        if(s->no_new_file_can_download)/*not new file,do wait.*/
+            _thread_wait_timeUs(s,500*1000);
         LOGV("Drop refresh playlist\n");
         return 0;
 
@@ -1306,12 +1309,14 @@ static int _download_next_segment(M3ULiveSession* s){
     }
     if(s->seektimeUs<0&&(s->cur_seq_num-firstSeqNumberInPlaylist>m3u_get_node_num(s->playlist))){
         LOGE("Can't find invalid segment in playlist,need refresh playlist\n");
+        s->no_new_file_can_download = 1;
         pthread_mutex_unlock(&s->session_lock);
         return 0;
     }
     int seekDiscontinuity = 1;
     M3uBaseNode* node = NULL;
     int seek_by_pos = -1;
+	s->no_new_file_can_download = 0;
     if(s->seektimeUs>=0){
        
         if(m3u_is_complete(s->playlist)>0){
