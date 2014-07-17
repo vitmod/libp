@@ -900,7 +900,8 @@ void *player_thread(play_para_t *player)
         log_print("[player_dec_init]ffmpeg_open_file failed(%s)*****ret=%x!\n", player->file_name, ret);
         goto release0;
     }
-    url_set_seek_flags(player->pFormatCtx->pb,LESS_BUFF_DATA | NO_READ_RETRY);
+    if(player->pFormatCtx && player->pFormatCtx->pb && player->pFormatCtx->pb->is_slowmedia)
+        url_set_seek_flags(player->pFormatCtx->pb,LESS_BUFF_DATA | NO_READ_RETRY);
     ffmpeg_parse_file_type(player, &filetype);
     set_player_state(player, PLAYER_TYPE_REDY);
     send_event(player, PLAYER_EVENTS_STATE_CHANGED, PLAYER_TYPE_REDY, 0);

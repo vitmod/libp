@@ -353,14 +353,12 @@ int url_lpread(URLContext *s,unsigned char * buf,int size)
 			if(lp->rp>=lp->buffer_end)
 				lp->rp=lp->buffer;
 			len-=valid_data_can_read;
-            if(lp->seekflags & NO_READ_RETRY)
-                break;
 		}
 		LP_ASSERT(lp->rp>=lp->buffer);
 		LP_ASSERT(lp->rp<lp->buffer_end);
 	}
 	lp_unlock(&lp->mutex);
-	return (tbuf-buf);
+	return (size-len);
 }
 
 int64_t url_lpseek(URLContext *s, int64_t offset, int whence)

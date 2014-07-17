@@ -33,7 +33,7 @@
 //#define IO_BUFFER_SIZE 32768
 #define IO_BUFFER_SIZE 4*1024
 
-#define IO_BUFFER_MIN_SIZE 1024
+#define IO_BUFFER_MIN_SIZE 1*1024
 /**
  * Do seeks within this distance ahead of the current buffer by skipping
  * data instead of calling the protocol seek function, for seekable
@@ -849,9 +849,7 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
                     size -= len;
                     buf += len;
                     s->buf_ptr = s->buffer;
-                    s->buf_end = s->buffer/* + len*/;
-					if((s->seekflags& NO_READ_RETRY))
-                        break;
+                    s->buf_end = s->buffer;
                 }
             }else{
                 do {

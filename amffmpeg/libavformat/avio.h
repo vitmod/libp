@@ -49,14 +49,7 @@
  *       function pointers specified in avio_alloc_context()
  */
 
-/*
-if user seek.
-try less read seek,for fast seek..
-*/
-#define LESS_READ_SEEK	(0x1000)
-#define MORE_READ_SEEK	(0x2000) 
-#define LESS_BUFF_DATA	(0x4000) //do not buffering more data for fast read.
-#define NO_READ_RETRY	(0x8000) //do not buffering more data for fast read.
+
 
 
 typedef struct {
@@ -231,11 +224,17 @@ attribute_deprecated int url_poll(URLPollEntry *poll_table, int n, int timeout);
 #define URL_RDWR   (URL_RDONLY|URL_WRONLY)  /**< read-write */
 
 
-#define URL_MINI_BUFFER	0x20000000
-#define URL_NO_LP_BUFFER	0x40000000
+#define URL_MINI_BUFFER	  0x20000000
+#define URL_NO_LP_BUFFER  0x40000000
 
-
-#define URL_SEGMENT_MEDIA  0x2000
+#define URL_SEGMENT_MEDIA 0x2000
+#define URL_LESS_WAIT     0x4000
+#define URL_FAST_REOPEN   0x8000
+/*URL flags*/
+#define LESS_READ_SEEK	(0x10000)
+#define MORE_READ_SEEK	(0x20000) 
+#define LESS_BUFF_DATA	(0x40000) //do not buffering more data,just buffered need..
+#define NO_READ_RETRY	(0x80000) //do not retry read,if have get data and then get eagain.
 
 /**
  * @}
