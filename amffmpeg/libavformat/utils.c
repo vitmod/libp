@@ -3280,8 +3280,9 @@ int av_find_stream_info(AVFormatContext *ic)
     int bit_rate = 0;
     int64_t old_offset=-1;
     int fast_switch = 1;
+    int dts_count = 0;
     float value;
-	int64_t streamtype = -1;
+    int64_t streamtype = -1;
 
     if (am_getconfig_float("media.libplayer.fastswitch", &value) == 0) {
         fast_switch = (int)value;
@@ -3501,30 +3502,34 @@ int av_find_stream_info(AVFormatContext *ic)
             }
             st->info->codec_info_duration += pkt->duration;
         }
-        {
-            int64_t last = st->info->last_dts;
-            int64_t duration= pkt->dts - last;
+        if(st->codec->codec_type == AVMEDIA_TYPE_VIDEO){ // just video
+            if(pkt->dts == AV_NOPTS_VALUE){  // for some invalid dts case
+                dts_count++;
+            }else{
+                int64_t last = st->info->last_dts;
+                int64_t duration= pkt->dts - last;
+                if(pkt->dts != AV_NOPTS_VALUE && last != AV_NOPTS_VALUE && duration>0){
+                    double dur= duration * av_q2d(st->time_base);
 
-            if(pkt->dts != AV_NOPTS_VALUE && last != AV_NOPTS_VALUE && duration>0){
-                double dur= duration * av_q2d(st->time_base);
-
-//                if(st->codec->codec_type == AVMEDIA_TYPE_VIDEO)
-//                    av_log(NULL, AV_LOG_ERROR, "%f\n", dur);
-                if (st->info->duration_count < 2)
-                    memset(st->info->duration_error, 0, sizeof(st->info->duration_error));
-                for (i=1; i<FF_ARRAY_ELEMS(st->info->duration_error); i++) {
-                    int framerate= get_std_framerate(i);
-                    int ticks= lrintf(dur*framerate/(1001*12));
-                    double error= dur - ticks*1001*12/(double)framerate;
-                    st->info->duration_error[i] += error*error;
+    //                if(st->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+    //                    av_log(NULL, AV_LOG_ERROR, "%f\n", dur);
+                    if (st->info->duration_count < 2)
+                        memset(st->info->duration_error, 0, sizeof(st->info->duration_error));
+                    for (i=1; i<FF_ARRAY_ELEMS(st->info->duration_error); i++) {
+                        int framerate= get_std_framerate(i);
+                        int ticks= lrintf(dur*framerate/(1001*12));
+                        double error= dur - ticks*1001*12/(double)framerate;
+                        st->info->duration_error[i] += error*error;
+                    }
+                    duration /= ++dts_count;
+                    st->info->duration_count += dts_count;
+                    // ignore the first 4 values, they might have some random jitter
+                    if (st->info->duration_count > 3)
+                        st->info->duration_gcd = av_gcd(st->info->duration_gcd, duration);
                 }
-                st->info->duration_count++;
-                // ignore the first 4 values, they might have some random jitter
-                if (st->info->duration_count > 3)
-                    st->info->duration_gcd = av_gcd(st->info->duration_gcd, duration);
-            }
-            if (last == AV_NOPTS_VALUE || st->info->duration_count <= 1)
                 st->info->last_dts = pkt->dts;
+                dts_count = 0;
+            }
         }
         if(st->parser && st->parser->parser->split && !st->codec->extradata){
             int i= st->parser->parser->split(st->codec, pkt->data, pkt->size);
