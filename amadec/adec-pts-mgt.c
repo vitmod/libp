@@ -178,6 +178,15 @@ int adec_pts_start(aml_audio_dec_t *audec)
     return 0;
 }
 
+static void enable_slowsync_repeate()
+{
+    const char * slowsync_path = "/sys/class/tsync/slowsync_enable";
+    const char * slowsync_repeate_path = "/sys/class/video/slowsync_repeat_enable";
+    amsysfs_set_sysfs_int(slowsync_path, 1);
+    amsysfs_set_sysfs_int(slowsync_repeate_path, 1);
+    adec_print("enable slowsync repeate. \n");
+}
+
 int adec_pts_droppcm(aml_audio_dec_t *audec)
 {
     unsigned long refpts, apts, oldapts;
@@ -187,7 +196,7 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
     int audio_ahead = 0;
     unsigned pts_ahead_val = SYSTIME_CORRECTION_THRESHOLD;
 	int diff;
-
+    int sync_switch_ms = 200; // ms
     starttime = gettime();
 
     // drop pcm according to media.amplayer.dropms
@@ -215,8 +224,16 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
     apts = adec_calc_pts(audec);
     diff = (apts > refpts)?(apts-refpts):(refpts-apts);
     adec_print("before drop --apts 0x%x,refpts 0x%x,apts %s, diff 0x%x\n",apts,refpts,(apts>refpts)?"big":"small",diff);
-    if(apts>=refpts) { //no need to drop pcm
-        adec_print("## [%s::%d] apts:%x, refpts:%x, no need to drop pcm---\n",__FUNCTION__,__LINE__, apts, refpts);
+
+    if(property_get("media.amplayer.sync_switch_ms",value,NULL) > 0){
+        sync_switch_ms = atoi(value);
+    }
+    adec_print("sync switch setting: %d ms \n",sync_switch_ms);
+    //auto switch -- if diff not too much, using slow sync
+    if(apts>=refpts || diff/90 < sync_switch_ms)
+    {
+        enable_slowsync_repeate();
+        adec_print("diff less than %d (ms), use slowsync repeate mode \n",sync_switch_ms);
         return 0;
     }
 

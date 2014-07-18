@@ -122,8 +122,15 @@ static void start_adec(aml_audio_dec_t *audec)
 	int times=0;
     char buf[32];
 	apts = vpts = 0;
-
-	audec->no_first_apts = 0;
+    
+    char value[PROPERTY_VALUE_MAX]={0};
+    int wait_count = 100;
+    if(property_get("media.amadec.wait_count",value,NULL) > 0){
+        wait_count = atoi(value);
+    }
+    adec_print("wait first apts count :%d \n",wait_count);
+	
+    audec->no_first_apts = 0;
     if (audec->state == INITTED) {
         audec->state = ACTIVE;
 
@@ -131,7 +138,7 @@ static void start_adec(aml_audio_dec_t *audec)
             adec_print("wait first pts checkin complete times=%d,!\n",times);
 			times++;
 
-			if (times>=5) {
+			if (times >= wait_count) {
 				// read vpts
 				amsysfs_get_sysfs_str(TSYNC_VPTS, buf, sizeof(buf));
 				if (sscanf(buf, "0x%lx", &vpts) < 1) {
