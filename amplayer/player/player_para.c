@@ -1300,6 +1300,8 @@ static void subtitle_para_init(play_para_t *player)
     char out[20];
     char default_sub = "firstindex";
 
+    if(!player->sstream_info.has_sub)
+        return ; /*no subtitle ignore init for fast start playing*/
     if (player->vstream_info.has_video) {
         video_fps = (UNIT_FREQ) / (float)player->vstream_info.video_rate;
         set_subtitle_fps(video_fps * 100);

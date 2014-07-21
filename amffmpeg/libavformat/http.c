@@ -407,7 +407,7 @@ static int process_line(URLContext *h, char *line, int line_count,
 {
     HTTPContext *s = h->priv_data;
     char *tag, *p, *end;
-	av_log(h, AV_LOG_INFO, "process_line:%s \n",line);
+	av_log(h, AV_LOG_DEBUG, "process_line:%s \n",line);
     /* end of header */
     if (line[0] == '\0')
         return 0;
@@ -573,7 +573,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
              post && s->chunksize >= 0 ? "Transfer-Encoding: chunked\r\n" : "",
              headers,
              authstr ? authstr : "");
-	av_log(NULL,AV_LOG_INFO,"HTTP[%s]\n",s->buffer);
+	av_log(NULL,AV_LOG_DEBUG,"HTTP[%s]\n",s->buffer);
     av_freep(&authstr);
     if ((err=ffurl_write(s->hd, s->buffer, strlen(s->buffer)) )< 0){
 		av_log(h, AV_LOG_INFO, "process_line:ffurl_write failed,%d\n",err);
@@ -601,8 +601,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     for(;;) {
         if (http_get_line(s, line, sizeof(line)) < 0)
             return AVERROR(EIO);
-        av_dlog(NULL, "header='%s'\n", line);	
-		
+        ///av_dlog(NULL, "header='%s'\n", line);	
         err = process_line(h, line, s->line_count, new_location);
 		
         if (err < 0)

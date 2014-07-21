@@ -10,8 +10,9 @@
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
 #define LEVEL_SETING_PATH "media.amplayer.loglevel"
+#include  <libavutil/log.h>
 
-static int global_level = 50;
+static int global_level = 35;
 
 int log_open(const char *name)
 {
@@ -45,11 +46,12 @@ int update_loglevel_setting(void)
     int ret;
     char value[64];
     if (GetSystemSettingString(LEVEL_SETING_PATH, value, NULL) > 0 && (sscanf(value, "%d", &ret)) > 0) {
-        log_print("get loglevel setting,loglevel changed to %d\n", ret);
+        log_error("get loglevel setting,loglevel changed to %d\n", global_level);
         global_level = ret; ///for amplayer
-        av_log_set_level(ret);//for ffmpeg//
     } else {
     }
+	log_error("loglevel changed to %d\n", global_level);
+    av_log_set_level(global_level);//for ffmpeg//
     return 0;
 }
 

@@ -207,21 +207,21 @@ static void _sort_m3u_session_bandwidth(M3ULiveSession* ss){
         && ss->bandwidth_list[ss->bandwidth_item_num-1]->mBandwidth < BANDWIDTH_THRESHOLD) {
         coeff = 1000;
     }
-    LOGV("*************************Dump all bandwidth list start ********************\n");
+    LOGI("*************************Dump all bandwidth list start ********************\n");
     for(i=0; i<ss->bandwidth_item_num; i++){
         if(ss->bandwidth_list[i]){
             ss->bandwidth_list[i]->index = i;
             temp = ss->bandwidth_list[i];
             temp->mBandwidth *= coeff;
             if(ss->log_level >= HLS_SHOW_URL) {
-                LOGV("***Item index:%d,Bandwidth:%lu,url:%s\n",temp->index,temp->mBandwidth,temp->url);
+                LOGI("***Item index:%d,Bandwidth:%lu,url:%s\n",temp->index,temp->mBandwidth,temp->url);
             } else {
-                LOGV("***Item index:%d,Bandwidth:%lu\n",temp->index,temp->mBandwidth);
+                LOGI("***Item index:%d,Bandwidth:%lu\n",temp->index,temp->mBandwidth);
             }
             
         }
     }
-    LOGV("*************************Dump all bandwidth list  end ********************\n");
+    LOGI("*************************Dump all bandwidth list  end ********************\n");
 }
 
 #define ADD_TSHEAD_RECALC_DISPTS_TAG 	("amlogictsdiscontinue")
@@ -298,7 +298,7 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
     }
 
     if(redirectUrl){
-        LOGV("Got re-direct url,location:%s\n",redirectUrl);
+        LOGI("Got re-direct url,location:%s\n",redirectUrl);
         ss->redirectUrl = redirectUrl;
     }
     
@@ -326,7 +326,7 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
 
         *unchanged = 1;
 
-        LOGV("Playlist unchanged, refresh state is now %d",
+        LOGI("Playlist unchanged, refresh state is now %d",
              (int)ss->refresh_state);
         free(buf);
         return NULL;
@@ -551,9 +551,9 @@ static int _get_decrypt_key(M3ULiveSession* s,int playlistIndex,AESKeyInfo_t* ke
                 
                 index = i;
                 if(s->log_level >= HLS_SHOW_URL) {
-                    LOGV("Found aes key,url:%s,index:%d\n",keyUrl,index);
+                    LOGI("Found aes key,url:%s,index:%d\n",keyUrl,index);
                 } else {
-                    LOGV("Found aes key,index:%d\n",index);
+                    LOGI("Found aes key,index:%d\n",index);
                 }
                 break;
             }
@@ -1107,7 +1107,7 @@ open_retry:
             need_retry = 1;
             goto open_retry;
         }else{//failed to download,need skip this file
-            LOGV("[%s],skip this segment\n",isLive>0?"LIVE":"VOD");
+            LOGI("[%s],skip this segment\n",isLive>0?"LIVE":"VOD");
             s->err_code = errcode<0?(-errcode):(-ret); //small trick,avoid to exit player read logic                  
             hls_http_close(handle);
             handle = NULL;
@@ -1386,9 +1386,9 @@ static int _download_next_segment(M3ULiveSession* s){
 
     int ret = -1;
     if(s->log_level >= HLS_SHOW_URL) {
-        LOGV("start fetch segment file,url:%s,seq:%d\n",segment.fileUrl,s->cur_seq_num);
+        LOGI("start fetch segment file,url:%s,seq:%d\n",segment.fileUrl,s->cur_seq_num);
     } else {
-        LOGV("start fetch segment file,seq:%d\n",s->cur_seq_num);
+        LOGI("start fetch segment file,seq:%d\n",s->cur_seq_num);
     }
     ret = _fetch_segment_file(s,&segment,isLive);
     if(segment.range_length>0){        
@@ -1455,7 +1455,7 @@ static void* _download_worker(void* ctx){
             now = in_gettimeUs(); 
             
             if((now-s->download_monitor_timer)/1000000>failover_time){
-                LOGV("Can't go on playing in failover time,%d s\n",failover_time);
+                LOGE("Can't go on playing in failover time,%d s\n",failover_time);
                 if(s->err_code == 0){
                     s->err_code = -501;
                 }
@@ -1473,7 +1473,7 @@ static void* _download_worker(void* ctx){
             if(s->err_code<0){
                 break;
             }
-            LOGV("Download all segments,worker sleep...\n");
+            LOGI("Download all segments,worker sleep...\n");
             s->eof_flag = 1;
             s->err_code = 0;
             _thread_wait_timeUs(s,-1); 
@@ -1488,7 +1488,7 @@ static void* _download_worker(void* ctx){
     if(s->err_code!=0){
         s->err_code = -(DOWNLOAD_EXIT_CODE);
     }
-    LOGV("Session download worker end,error code:%d\n",s->err_code);
+    LOGI("Session download worker end,error code:%d\n",s->err_code);
     return (void*)NULL;
     
 }
@@ -1609,7 +1609,7 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     }
 
     if(session->log_level >= HLS_SHOW_URL) {
-        LOGV("Open baseUrl :%s\n",session->baseUrl);
+        LOGI("Open baseUrl :%s\n",session->baseUrl);
     }
 #ifdef USE_SIMPLE_CACHE
     int cache_size_max = 1024*1024*10; //10M
@@ -1701,12 +1701,12 @@ int m3u_session_open(const char* baseUrl,const char* headers,void** hSession){
     }else{
         session->bw_meausure_handle = bandwidth_measure_alloc(BW_MEASURE_ITEM_DEFAULT,0);
     }
-    LOGV("Session open complete\n");
+    LOGI("Session open complete\n");
     *hSession = session;
     return 0;
 
 fail_open:
-   LOGV("failed to open Session %x\n", *hSession);
+   LOGE("failed to open Session %x\n", *hSession);
    if(*hSession!=NULL){
    	m3u_session_close(*hSession);
    }
@@ -1969,7 +1969,7 @@ int m3u_session_close(void* hSession){
     }
     M3ULiveSession* session = (M3ULiveSession*)hSession;
 
-    LOGV("Receive close command\n");
+    LOGI("Receive close command\n");
     session->is_closed = 1;
     amthreadpool_thread_wake(session->tid);
     if(session->tid!=0){
@@ -2041,7 +2041,7 @@ int m3u_session_close(void* hSession){
     pthread_mutex_destroy(&session->session_lock);
     pthread_cond_destroy(&session->session_cond);    
     free(session);
-    LOGV("m3u live session released\n");
+    LOGI("m3u live session released\n");
 
     return 0;
     

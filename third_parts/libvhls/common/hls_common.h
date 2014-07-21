@@ -15,22 +15,26 @@ typedef enum {
     HLS_SHOW_URL,
 } HLS_LOG_LEVEL;
 
+#ifndef LOG_TAG
 #define LOG_TAG "vhls"
-
+#endif
 #ifndef LOGV
-#define LOGV(...)	LOG_PRI(ANDROID_LOG_VERBOSE, LOG_TAG,__VA_ARGS__)
+#define LOGV ALOGV
 #endif
 
 #ifndef LOGI
-#define LOGI(...)	LOG_PRI(ANDROID_LOG_INFO, LOG_TAG,__VA_ARGS__)
+#define LOGI ALOGI
+
 #endif
 
 #ifndef LOGW
-#define LOGW(...)	LOG_PRI(ANDROID_LOG_WARN, LOG_TAG,__VA_ARGS__)
+#define LOGW ALOGW
+
 #endif
 
 #ifndef LOGE
-#define LOGE(...)       LOG_PRI(ANDROID_LOG_ERROR, LOG_TAG,__VA_ARGS__)
+#define LOGE ALOGE
+
 #endif
 
 

@@ -1299,13 +1299,7 @@ write_packet:
 
         //wait for play end...
         while (!player->playctrl_info.end_flag) {
-            if (!player->playctrl_info.reset_flag) {
-                player_thread_wait(player, 50 * 1000);
-            }
-
-            check_decoder_worksta(player);
-
-            ret = check_flag(player);
+	    ret = check_flag(player);
             if (ret == BREAK_FLAG) {
                 if (player->playctrl_info.search_flag
                     || player->playctrl_info.fast_forward
@@ -1317,7 +1311,10 @@ write_packet:
             } else if (ret == CONTINUE_FLAG) {
                 continue;
             }
-
+            if (!player->playctrl_info.reset_flag) {
+                player_thread_wait(player, 50 * 1000);
+            }
+            check_decoder_worksta(player);
             if (update_playing_info(player) != PLAYER_SUCCESS) {
                 break;
             }

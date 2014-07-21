@@ -1,6 +1,6 @@
 //coded by peter,20130215
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "M3uParser"
 
 
@@ -96,29 +96,29 @@ static int dump_all_nodes(M3UParser* var){
         pthread_mutex_unlock(&var->parser_lock);
         return 0;
     }
-    LOGV("*******************Dump All nodes from list start*****************************\n");
+    LOGI("*******************Dump All nodes from list start*****************************\n");
     if(var->log_level >= HLS_SHOW_URL) {
         LOGV("***Base url:%s\n",var->baseUrl);
     }
     if(!var->is_variant_playlist){
-        LOGV("***Target duration:%d\n",var->target_duration);
-        LOGV("***Have complete tag? %s,Total duration:%lld\n",var->is_complete>0?"YES":"NO",(long long)var->durationUs);    
+        LOGI("***Target duration:%d\n",var->target_duration);
+        LOGI("***Have complete tag? %s,Total duration:%lld\n",var->is_complete>0?"YES":"NO",(long long)var->durationUs);
     }
     list_for_each_entry_safe_reverse(pos, tmp, &var->head,list){
         if(var->is_variant_playlist && var->log_level >= HLS_SHOW_URL){
-            LOGV("***Stream index:%d,url:%s,bandwidth:%d,program-id:%d\n",pos->index,pos->fileUrl,pos->bandwidth,pos->program_id);
+            LOGI("***Stream index:%d,url:%s,bandwidth:%d,program-id:%d\n",pos->index,pos->fileUrl,pos->bandwidth,pos->program_id);
         }else{
             if(var->log_level >= HLS_SHOW_URL) {
-                LOGV("***Segment index:%d,url:%s,startUs:%lld,duration:%lld\n",pos->index,pos->fileUrl,(long long)pos->startUs,(long long)pos->durationUs);
+                LOGI("***Segment index:%d,url:%s,startUs:%lld,duration:%lld\n",pos->index,pos->fileUrl,(long long)pos->startUs,(long long)pos->durationUs);
             }
-            LOGV("***Media range:%lld,media offset:%lld,media seq:%d",(long long)pos->range_length,(long long)pos->range_offset,pos->media_sequence);
-            LOGV("***With encrypt key info:%s\n",pos->flags&CIPHER_INFO_FLAG?"YES":"NO");
+            LOGI("***Media range:%lld,media offset:%lld,media seq:%d",(long long)pos->range_length,(long long)pos->range_offset,pos->media_sequence);
+            LOGI("***With encrypt key info:%s\n",pos->flags&CIPHER_INFO_FLAG?"YES":"NO");
             if((pos->flags&CIPHER_INFO_FLAG) && var->log_level >= HLS_SHOW_URL){
-                LOGV("***Cipher key 's url:%s\n",pos->key!=NULL?pos->key->keyUrl:"unknow");
+                LOGI("***Cipher key 's url:%s\n",pos->key!=NULL?pos->key->keyUrl:"unknow");
             }
         }
     }
-    LOGV("*******************Dump All nodes from list end*******************************\n");
+    LOGI("*******************Dump All nodes from list end*******************************\n");
     pthread_mutex_unlock(&var->parser_lock);  
 
     return 0;
