@@ -323,9 +323,13 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
                                          int (*transfer_func)(URLContext *h, unsigned char *buf, int size))
 {
     int ret, len;
-    int64_t timeouttime = av_gettime()+10*(1000*1000);/*10*1S.*/
+    int64_t timeouttime = 10*(1000*1000);/*10*1S.*/
     int retry=0;
     len = 0;
+    if(h->flags & URL_LESS_WAIT)
+        timeouttime = av_gettime() + timeouttime /10;
+    else
+        timeouttime = av_gettime() + timeouttime;
     while (len < size_min) {
         ret = transfer_func(h, buf+len, size-len);/*low level retry 1S*/
         if (url_interrupt_cb())

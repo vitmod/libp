@@ -108,15 +108,21 @@ struct item * itemlist_peek_tail(struct itemlist *itemlist) {
     ITEM_UNLOCK(itemlist);
     return item;
 }
+int  itemlist_del_item_locked(struct itemlist *itemlist, struct item *item)
+{
+    list_del(&item->list);
+    itemlist->item_count--;
+    return 0;
+}
 
 int  itemlist_del_item(struct itemlist *itemlist, struct item *item)
 {
     ITEM_LOCK(itemlist);
-    list_del(&item->list);
-    itemlist->item_count--;
+    itemlist_del_item_locked(itemlist,item);
     ITEM_UNLOCK(itemlist);
     return 0;
 }
+
 
 int  itemlist_clean(struct itemlist *itemlist, data_free_fun free_fun)
 {

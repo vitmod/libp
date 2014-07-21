@@ -83,17 +83,19 @@ static inline int64_t ff_network_gettime(void)
     return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
-static inline int ff_network_wait_fd_wait(int fd, int write,int realwaitMS)
+static inline int ff_network_wait_fd_wait_max(int fd, int write,int realwaitMS,int ext_max_wait_ms)
 {
     int ev = write ? POLLOUT : POLLIN;
     struct pollfd p = { .fd = fd, .events = ev, .revents = 0 };
     int ret=0;
 	#define POLL_WAIT_MS 30 ///ms
-	#define WAIT_MAX_MS	 1000 //100*10=1S,low level READ.
+	int maxwait_ms=1000;//100*10=1S,low level READ.
 	int64_t starttime=ff_network_gettime();
 	int64_t curtime;
-	int retry = 0;
-	int retry_max=WAIT_MAX_MS/POLL_WAIT_MS;
+    int retry = 0;
+    int retry_max=maxwait_ms/POLL_WAIT_MS;
+    int retry_print_num=maxwait_ms/100+1;
+	if(ext_max_wait_ms>0) maxwait_ms = ext_max_wait_ms;
 	do{
 		if(url_interrupt_cb() && realwaitMS<=0){
 			return AVERROR_EXIT;
@@ -105,15 +107,19 @@ static inline int ff_network_wait_fd_wait(int fd, int write,int realwaitMS)
 		if(p.revents & (ev | POLLERR | POLLHUP))
 		    return 0;/*disconnect , EOF*/
 		curtime = ff_network_gettime();
-        if( retry++ % (1 + retry_max/5) == (retry_max/5) )
+        if( retry++ % (1 + retry_max/retry_print_num) == (retry_max/retry_print_num) )
             av_log(NULL,AV_LOG_INFO,"network poll wait data=%d ms\n",(int)(curtime - starttime));
-	}while(curtime < starttime + WAIT_MAX_MS * 1000);
+	}while(curtime < starttime + maxwait_ms * 1000);
     return ret < 0 ? ff_neterrno() : p.revents & (ev | POLLERR | POLLHUP) ? 0 : AVERROR(EAGAIN);
+}
+static inline int ff_network_wait_fd_wait(int fd, int write,int realwaitMS)
+{
+	return ff_network_wait_fd_wait_max(fd,write,realwaitMS,0);
 }
 
 static inline int ff_network_wait_fd(int fd, int write)
 {
-    return ff_network_wait_fd_wait(fd,write,0);
+    return ff_network_wait_fd_wait_max(fd,write,0,0);
 }
 
 

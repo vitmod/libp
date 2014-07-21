@@ -22,7 +22,8 @@ OBJS = allformats.o         \
        cmfdec.o	\
        cmfvpb.o	\
        bandwidth_measure.o      \
-       ptslist.o      
+       ptslist.o      \
+       tcp_pool.o      
        
 
 # muxers/demuxers

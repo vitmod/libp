@@ -236,6 +236,10 @@ attribute_deprecated int url_poll(URLPollEntry *poll_table, int n, int timeout);
 #define LESS_BUFF_DATA	(0x40000) //do not buffering more data,just buffered need..
 #define NO_READ_RETRY	(0x80000) //do not retry read,if have get data and then get eagain.
 
+#define URL_LESS_WAIT    0x4000
+#define URL_FAST_REOPEN  0x8000
+
+
 /**
  * @}
  */

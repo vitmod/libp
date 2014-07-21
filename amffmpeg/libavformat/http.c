@@ -31,7 +31,9 @@
 #include "httpauth.h"
 #include "url.h"
 #include "libavutil/opt.h"
-#include "bandwidth_measure.h" 
+#include "bandwidth_measure.h"
+#include "tcp_pool.h"
+
 /* XXX: POST protocol is not completely implemented because ffmpeg uses
    only a subset of it. */
 
@@ -52,8 +54,6 @@
 
 /*#define READ_RETRY_MAX_TIME_MS (120*1000) 
 /*60 seconds no data get,we will reset it*/
-
-
 typedef struct {
     const AVClass *class;
     URLContext *hd;
@@ -73,8 +73,13 @@ typedef struct {
     int latest_get_time_ms;
     int is_broadcast;
     int read_seek_count;
+    int is_livemode;
     void * bandwidth_measure;	
     char hosname[1024];    
+    int port;
+    int keep_alive;
+    int keep_alive_timeout;
+    int flags;
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
@@ -96,6 +101,26 @@ static const AVClass shttpcontext_class = {
 };
 
 
+static int fastnetworkmode = 1;
+static int config_rettry =2;
+static int config_read_wait_time_max_ms =120*1000;
+static int enable_http_keepalive = 1;
+
+
+static int init_def_settings()
+{
+	static int inited =0;
+	if(inited>0)
+		return 0;
+	inited++;
+	fastnetworkmode = (int)am_getconfig_bool_def("media.player.fastnetwork",1);
+	config_rettry=(int)am_getconfig_float_def("libplayer.http.openretry",2);
+	config_read_wait_time_max_ms=(int)am_getconfig_float_def("libplayer.http.readwaitmx.ms",120000);
+	enable_http_keepalive = (int)am_getconfig_bool_def("media.player.httpkeepalive",1);
+	av_log(NULL, AV_LOG_ERROR, "http config:\nfastnetworkmode=%d,config_rettry=%d,config_read_wait_time_max_ms=%d,enable_http_keepalive=%d\n",
+	       fastnetworkmode,config_rettry,config_read_wait_time_max_ms,enable_http_keepalive);
+	return 0;
+}
 static int http_connect(URLContext *h, const char *path, const char *hoststr,
                         const char *auth, int *new_location);
 
@@ -109,6 +134,29 @@ void ff_http_set_headers(URLContext *h, const char *headers)
 
     av_strlcpy(s->headers, headers, sizeof(s->headers));
 }
+
+static int http_close_and_keep(HTTPContext *s,int close)
+{
+	int ret = 0;
+    char footer[] = "0\r\n\r\n";
+	int needclose=close || s->willclose || !s->keep_alive;
+
+	if(!s->hd)
+		return 0;
+	if(needclose){
+	    /* signal end of chunked encoding if used */
+	    if ((s->flags & AVIO_FLAG_WRITE) && s->chunksize != -1) {
+	        ret = ffurl_write(s->hd, footer, sizeof(footer) - 1);
+	        ret = ret > 0 ? 0 : ret;
+	    }
+		tcppool_close_tcplink(s->hd);
+	}else{
+        tcppool_release_tcplink(s->hd);
+	}
+	s->hd=NULL;
+	return 0;
+}
+
 
 void ff_http_set_chunked_transfer_encoding(URLContext *h, int is_chunked)
 {
@@ -133,10 +181,11 @@ static int http_open_cnx(URLContext *h)
     HTTPAuthType cur_auth_type;
     HTTPContext *s = h->priv_data;
     URLContext *hd =  s->hd;
-
+	int flags =AVIO_FLAG_READ_WRITE;
+	flags |= fastnetworkmode!=0 ?URL_LESS_WAIT:0;
     proxy_path = getenv("http_proxy");
     use_proxy = (proxy_path != NULL) && !getenv("no_proxy") &&
-        av_strstart(proxy_path, "http://", NULL);
+    av_strstart(proxy_path, "http://", NULL);
 
 	s->latest_get_time_ms=0;
     /* fill the dest addr */
@@ -165,13 +214,15 @@ static int http_open_cnx(URLContext *h)
     ff_url_join(buf, sizeof(buf), "tcp", NULL, hostname, port, NULL);
     strcpy(s->hosname, hostname);
     av_log(h, AV_LOG_INFO, "s->hostname ,%s\n",s->hosname);
+    tcppool_find_free_tcplink(&s->hd,buf,flags);
     if (!s->hd) {      
-        err = ffurl_open(&hd, buf, AVIO_FLAG_READ_WRITE);
+        err = ffurl_open(&hd, buf, flags);
         if (err < 0){
     	     av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
             goto fail;
         }	
         s->hd = hd;
+        tcppool_opened_tcplink(hd,buf,flags);
     }else{
         av_log(h,AV_LOG_INFO,"http_open_cnx,using old handle\n");
     }
@@ -182,8 +233,8 @@ static int http_open_cnx(URLContext *h)
     }
     if (s->http_code == 401) {
         if (cur_auth_type == HTTP_AUTH_NONE && s->auth_state.auth_type != HTTP_AUTH_NONE) {
-            ffurl_close(hd);
-            s->hd = NULL;
+            //ffurl_close(hd);
+             http_close_and_keep(s,0);
             goto redo;
         } else{
             av_log(h, AV_LOG_ERROR, "http_open_cnx:failed s->http_code=%d cur_auth_type=%d\n",s->http_code, cur_auth_type);
@@ -193,21 +244,21 @@ static int http_open_cnx(URLContext *h)
     if ((s->http_code == 301 || s->http_code == 302 || s->http_code == 303 || s->http_code == 307)
         && location_changed == 1) {
         /* url moved, get next */
-        ffurl_close(hd);
-        s->hd = NULL;
+       // ffurl_close(hd);
+		http_close_and_keep(s,0);
         if (redirects++ >= MAX_REDIRECTS){
-	     av_log(h, AV_LOG_ERROR, "HTTP open reach MAX_REDIRECTS\n");
+            av_log(h, AV_LOG_ERROR, "HTTP open reach MAX_REDIRECTS\n");
             return AVERROR(EIO);
         }
         location_changed = 0;
-	 h->location=s->location;
+        h->location=s->location;
         goto redo;
     }
     return 0;
  fail:
     if (s->hd){
-        ffurl_close(s->hd);
-        s->hd = NULL;        
+       http_close_and_keep(s,1);//link problem closed it.
+       // ffurl_close(s->hd);
     }
     if(s->is_seek && s->canseek)
 		s->canseek=0;//changed can't support seek;
@@ -235,8 +286,8 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
     		memcpy(old_buf, s->buf_ptr, old_buf_size);
 	}else{
 		if(old_hd){
-			ffurl_close(old_hd);
-			
+
+			tcppool_close_tcplink(old_hd);
 			av_log(h, AV_LOG_INFO, "[%s]close old handle\n", __FUNCTION__);
 		}
 		old_hd=NULL;
@@ -264,8 +315,10 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
 		}
     }
 	if(s->max_connects>1){
-		if(old_hd)
-    		ffurl_close(old_hd);
+		if(old_hd != s->hd){
+			tcppool_close_tcplink(old_hd);
+    		//ffurl_close(old_hd);
+		}
 	}
     return off;
 }
@@ -278,23 +331,24 @@ static int http_open(URLContext *h, const char *uri, int flags)
 	int64_t http_starttime = av_gettime();
     h->is_streamed = 1;
     s->hd = NULL;
-
-    int retry_times=0;
+    int retry_times;
     float value=0.0;
-    int config_ret=am_getconfig_float("libplayer.http.openretry",&value);
-    if(config_ret<0){
-    	 retry_times=OPEN_RETRY_MAX;
-    }else{
-        retry_times=(int)value;
-    }
-	
+    init_def_settings();
+    retry_times=config_rettry;
+    s->is_livemode = 0;
     s->filesize = -1;
     s->is_seek=1;
     s->canseek=1;
     s->is_broadcast = 0;
     s->read_seek_count = 0;
+    char* tmp = strstr(uri, "livemode=1");
+    if(tmp){
+        s->is_livemode = 1;
+    }
+    s->keep_alive = enable_http_keepalive;
+    s->flags = flags;
     av_strlcpy(s->location, uri, sizeof(s->location));
-	s->max_connects=MAX_CONNECT_LINKS;	
+    s->max_connects=MAX_CONNECT_LINKS;	
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 	
 	ret = http_open_cnx(h);
 	while(ret<0 && ++open_retry<retry_times && !url_interrupt_cb() && (s->http_code != 404 ||s->http_code != 503 || s->http_code != 500)){
@@ -315,16 +369,10 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     int ret;
     int open_retry=0;
     int64_t http_starttime = av_gettime();
-
-    int retry_times=0;
+    int retry_times;
     float value=0.0;
-    int config_ret=am_getconfig_float("libplayer.http.openretry",&value);
-    if(config_ret<0){
-    	 retry_times=OPEN_RETRY_MAX;
-    }else{
-        retry_times=(int)value;
-    }
-    
+	init_def_settings();
+	retry_times=config_rettry;
     h->is_streamed = 1;
     s->hd = NULL;
     s->filesize = -1;
@@ -332,6 +380,12 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     s->canseek=1;
     s->is_broadcast = 0;
     s->read_seek_count = 0;
+    char* tmp = strstr(uri, "livemode=1");
+    if(tmp){
+        s->is_livemode = 1;
+    }
+    s->keep_alive = enable_http_keepalive;
+    s->flags = flags;
     av_strlcpy(s->location, uri+1, sizeof(s->location));	
 	s->max_connects=MAX_CONNECT_LINKS;	
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 		
@@ -355,12 +409,18 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 static int http_getc(HTTPContext *s)
 {
     int len = 0;
-    int retry=0;
+	int64_t lastgetdatatime = av_gettime();
+	int64_t timeout_us=1000*10000;
+	
+	
+	if(!fastnetworkmode){
+        timeout_us = 10*1000*1000;
+	}
+	if(!s->hd)
+		return AVERROR(EIO); 
     if (s->buf_ptr >= s->buf_end) {
 		do {
-		if(retry++>0)
-		 	return AVERROR(EIO);
-	        len = ffurl_read(s->hd, s->buffer, BUFFER_SIZE);
+	        len = s->hd->prot->url_read(s->hd, s->buffer, BUFFER_SIZE);
 	        if (len < 0 && len != AVERROR(EAGAIN)) {
 				av_log(NULL, AV_LOG_ERROR, "http_getc failed\n");
 	            return AVERROR(EIO);
@@ -370,9 +430,10 @@ static int http_getc(HTTPContext *s)
 	        } else if (len > 0) {
 	        	s->buf_ptr = s->buffer;
 				s->buf_end = s->buffer + len;
+				lastgetdatatime = av_gettime();
 	        }	
-		 //if(retry++>10)
-		 //	return AVERROR(EIO);/*10 times,avoid alway no return problem*/
+		    if(av_gettime() > lastgetdatatime + timeout_us )
+		        return AVERROR(ETIMEDOUT);
 		}while (len == AVERROR(EAGAIN));		
     }
     return *s->buf_ptr++;
@@ -414,6 +475,8 @@ static int process_line(URLContext *h, char *line, int line_count,
 
     p = line;
     if (line_count == 0) {
+		if(strstr(p,"HTTP") == NULL)
+			return -1;//not http response
         while (!isspace(*p) && *p != '\0')
             p++;
         while (isspace(*p))
@@ -481,6 +544,11 @@ static int process_line(URLContext *h, char *line, int line_count,
         } else if (!strcasecmp (tag, "Connection")) {
             if (!strcmp(p, "close"))
                 s->willclose = 1;
+			else if (!strcasecmp(p, "Keep-Alive")){
+				s->willclose = 0;
+			}else {
+				s->willclose = 1;/*no keep alive is close*/
+			}
         }else  if (!strcasecmp (tag, "Server")) {
             if (!strncmp(p, "Octoshape-Ondemand", strlen("Octoshape-Ondemand")))
                 h->is_streamed = 0;     /* Octoshape-Ondemand http server support seek */
@@ -526,7 +594,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     char headers[1024*4] = "";
     char *authstr = NULL;
     int64_t off = s->off;
-    int len = 0;    	
+    int len = 0;
     /* send http header */
     post = h->flags & AVIO_FLAG_WRITE;
     authstr = ff_http_auth_create_response(&s->auth_state, auth, path,
@@ -552,8 +620,14 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: ")&&!has_header(headers, "\r\nConnection: "))
-        len += av_strlcpy(headers + len, "Connection: close\r\n",
+
+	    if(s->keep_alive){
+             len += av_strlcpy(headers + len, "Connection: keep-alive\r\n",
                           sizeof(headers)-len);
+		}else{
+            len += av_strlcpy(headers + len, "Connection: close\r\n",
+                          sizeof(headers)-len);
+		}
     if (!has_header(s->headers, "\r\nHost: "))
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Host: %s\r\n", hoststr);
@@ -586,7 +660,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     s->line_count = 0;
     s->off = 0;
     s->filesize = -1;
-    s->willclose = 0;
+    s->willclose = 1;
     s->do_readseek_size=0;//
     if (post) {
         /* Pretend that it did work. We didn't read any header yet, since
@@ -603,11 +677,11 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
             return AVERROR(EIO);
         ///av_dlog(NULL, "header='%s'\n", line);	
         err = process_line(h, line, s->line_count, new_location);
-		
-        if (err < 0)
-            return err;
-        if (err == 0)
-            break;
+		if(err <0){
+		    return err;
+        }
+		if (err == 0)
+           break;
         s->line_count++;
     }
 
@@ -630,14 +704,8 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
 
     HTTPContext *s = h->priv_data;
     int len;
-    int retry_times=0;
+    int retry_times=config_rettry;
     float value=0.0;
-    int config_ret=am_getconfig_float("libplayer.http.readretry",&value);
-    if(config_ret<0){
-    	 retry_times=READ_RETRY_MAX;
-    }else{
-        retry_times=(int)value;
-    }
     int err_retry=retry_times;
     if(s->filesize>0&&s->off == s->filesize){
         av_log(h, AV_LOG_INFO, "http_read maybe reach EOS,force to exit,current: %lld,file size:%lld\n",s->off,s->filesize);        
@@ -685,7 +753,7 @@ retry:
         memcpy(buf, s->buf_ptr, len);
         s->buf_ptr += len;
     } else {
-        if (!s->willclose && s->filesize >= 0 && s->off >= s->filesize){
+        if (s->filesize >= 0 && s->off >= s->filesize){
             av_log(h, AV_LOG_ERROR, "http_read eof len=%d\n",len);
 	      bandwidth_measure_finish_read(s->bandwidth_measure,0);	
             return 0;
@@ -708,8 +776,9 @@ retry:
     if(len==AVERROR(EAGAIN)){
 		struct timespec new_time;
 		long new_time_mseconds;
-		long max_wait_time=READ_RETRY_MAX_TIME_MS;
-		if(!s->canseek) max_wait_time=READ_RETRY_MAX_TIME_MS*2;/*if can't support seek,we wait more time*/
+		float value=0.0;
+		long max_wait_time=config_read_wait_time_max_ms;
+		if(!s->canseek) max_wait_time=max_wait_time*2;/*if can't support seek,we wait more time*/
     	clock_gettime(CLOCK_MONOTONIC, &new_time);
 		av_log(h, AV_LOG_INFO, "clock_gettime sec=%u nsec=%u\n", new_time.tv_sec, new_time.tv_nsec);
 		new_time_mseconds = (new_time.tv_nsec / 1000000 + new_time.tv_sec * MILLION);
@@ -815,17 +884,8 @@ int ff_http_do_new_request(URLContext *h, const char *uri)
 static int http_close(URLContext *h)
 {
     int ret = 0;
-    char footer[] = "0\r\n\r\n";
-    HTTPContext *s = h->priv_data;
-
-    /* signal end of chunked encoding if used */
-    if ((h->flags & AVIO_FLAG_WRITE) && s->chunksize != -1) {
-        ret = ffurl_write(s->hd, footer, sizeof(footer) - 1);
-        ret = ret > 0 ? 0 : ret;
-    }
-
-    if (s->hd)
-        ffurl_close(s->hd);
+	HTTPContext *s = h->priv_data;
+    http_close_and_keep(s,0);
     bandwidth_measure_free(s->bandwidth_measure);	
     return ret;
 }

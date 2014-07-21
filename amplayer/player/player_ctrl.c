@@ -253,7 +253,8 @@ int player_stop(int pid)
 
     player_close_pid_data(pid);
     log_print("[player_stop:exit]pid=%d\n", pid);
-
+    tcppool_refresh_link_and_check();
+	log_print("[tcppool_refresh_link_and_check]pid=%d\n", pid);
     return r;
 }
 

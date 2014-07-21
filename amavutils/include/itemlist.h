@@ -69,6 +69,8 @@ struct item * item_alloc(int ext);
 void item_free(struct item *item);
 int itemlist_deinit(struct itemlist *itemlist);
 
+int  itemlist_del_item(struct itemlist *itemlist, struct item *item);
+int  itemlist_del_item_locked(struct itemlist *itemlist, struct item *item);
 
 int itemlist_add_tail(struct itemlist *itemlist, struct item *item);
 struct item * itemlist_get_head(struct itemlist *itemlist);

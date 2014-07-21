@@ -53,7 +53,8 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
     char hostname[1024],proto[1024],path[1024];
     char portstr[10];
 	int64_t tcp_starttime=av_gettime();
-
+	if(h->flags & URL_LESS_WAIT)
+		timeout_ms=200*100; //200 ms
     av_url_split(proto, sizeof(proto), NULL, 0, hostname, sizeof(hostname),
         &port, path, sizeof(path), uri);
     if (strcmp(proto, "tcp"))
@@ -220,9 +221,10 @@ static int tcp_read(URLContext *h, uint8_t *buf, int size)
 {
     TCPContext *s = h->priv_data;
     int ret;
-
+    int maxwait_ms=h->flags&URL_LESS_WAIT?300:1000;
+	
     if (!(h->flags & AVIO_FLAG_NONBLOCK)) {
-        ret = ff_network_wait_fd(s->fd, 0);
+        ret = ff_network_wait_fd_wait_max(s->fd, 0,0,maxwait_ms);
         if (ret < 0){
             av_log(h, AV_LOG_INFO,"ff_network_wait_fd return error %d,errmsg:%s \n",ret,strerror(errno)!=NULL?strerror(errno):"unkown");
             return ret;
@@ -242,7 +244,7 @@ static int tcp_write(URLContext *h, const uint8_t *buf, int size)
     int ret;
 
     if (!(h->flags & AVIO_FLAG_NONBLOCK)) {
-        ret = ff_network_wait_fd(s->fd, 1);
+        ret = ff_network_wait_fd_wait(s->fd,1,30);
         if (ret < 0)
             return ret;
     }

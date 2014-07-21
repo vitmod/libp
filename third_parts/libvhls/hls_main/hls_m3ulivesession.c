@@ -1118,7 +1118,7 @@ open_retry:
 
     //allocate cache node
     long long fsize = hls_http_get_fsize(handle);
-    int read_retries = 5;
+    int64_t lastreadtime_us = in_gettimeUs();
     LOGV("Get segment file size:%lld\n",fsize);
     long long read_size = 0;
     
@@ -1176,7 +1176,6 @@ open_retry:
         rlen = hls_http_read(handle,buf_tmp+buf_tmp_rsize,HLSMIN(buf_tmp_size-buf_tmp_rsize,READ_ONCE_BLOCK_SIZE));
        
         if(rlen>0){
-
             buf_tmp_rsize+=rlen;
             read_size +=rlen;
             if(fsize>0){
@@ -1220,7 +1219,7 @@ open_retry:
                 }
                 return 0;                
             }
-            
+            lastreadtime_us = in_gettimeUs();
         }else if(rlen == 0){
 
             if(buf_tmp_rsize>0){
@@ -1241,6 +1240,7 @@ open_retry:
             }            
             return 0;
         }else{
+        	int64_t failed_curtime_us=av_gettime();
             if(fsize>0&&read_size >=fsize){
                 
 #ifdef USE_SIMPLE_CACHE
@@ -1260,10 +1260,18 @@ open_retry:
                 return 0;                
             }
             if(rlen == HLSERROR(EAGAIN)){
-                if(isLive==0&&read_retries--<0){//about 5s
+                LOGV("Read retry. live=%d outtime=%lld\n",isLive,failed_curtime_us - lastreadtime_us);
+                if(isLive==0&& av_gettime()> lastreadtime_us + 5*1000*1000){//about 5s
                     hls_http_close(handle);
                     return rlen;
                 }
+                if(isLive >0 && (failed_curtime_us - lastreadtime_us)> 1*1000*1000 
+                  && (failed_curtime_us - fetch_start)> segmentDurationUs /2){
+                    /*segmentDurationUs /3  not get any data,reopen it.*/
+                    hls_http_close(handle);
+                    handle = NULL;
+                    return 0;
+				}	
                 _thread_wait_timeUs(s,100*1000);
                 continue;
             }

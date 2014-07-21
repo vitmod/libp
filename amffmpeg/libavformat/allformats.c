@@ -24,6 +24,8 @@
 #include "url.h"
 #include "avio.h"
 #include "libavformat/ptslist.h"
+#include "tcp_pool.h"
+
 #define REGISTER_MUXER(X,x) { \
     extern AVOutputFormat ff_##x##_muxer; \
     if(CONFIG_##X##_MUXER) av_register_output_format(&ff_##x##_muxer); }
@@ -310,6 +312,8 @@ extern URLProtocol ff_rtsp_protocol ;
 extern URLProtocol ff_cmftest_protocol	;
 	ffurl_register_protocol(&ff_cmftest_protocol,sizeof(ff_cmftest_protocol));
 	ffmpeg_api_functions_keeper();
+
+	tcppool_init();
 }
 
 
