@@ -1496,8 +1496,12 @@ redirect:
     } else {
         /* open the tcp connection */
         ff_url_join(tcpname, sizeof(tcpname), "tcp", NULL, host, port, NULL);
-        if (ffurl_open(&rt->rtsp_hd, tcpname, AVIO_FLAG_READ_WRITE) < 0) {
-            err = AVERROR(EIO);
+	int ret=ffurl_open(&rt->rtsp_hd, tcpname, AVIO_FLAG_READ_WRITE);
+        if (ret < 0) {
+	    if(ret==AVERROR_EXIT)
+	    	err = AVERROR_EXIT;
+	    else
+            	err = AVERROR(EIO);
             goto fail;
         }
         rt->rtsp_hd_out = rt->rtsp_hd;
@@ -1587,12 +1591,14 @@ redirect:
  fail:
     ff_rtsp_close_streams(s);
     ff_rtsp_close_connections(s);
-    if (reply->status_code >=300 && reply->status_code < 400 && s->iformat) {
-        av_strlcpy(s->filename, reply->location, sizeof(s->filename));
-        av_log(s, AV_LOG_INFO, "Status %d: Redirecting to %s\n",
-               reply->status_code,
-               s->filename);
-        goto redirect;
+    if(err!=AVERROR_EXIT){
+    	if (reply->status_code >=300 && reply->status_code < 400 && s->iformat) {
+        	av_strlcpy(s->filename, reply->location, sizeof(s->filename));
+        	av_log(s, AV_LOG_INFO, "Status %d: Redirecting to %s\n",
+               		reply->status_code,
+               		s->filename);
+        	goto redirect;
+    	}
     }
     ff_network_close();
     return err;
