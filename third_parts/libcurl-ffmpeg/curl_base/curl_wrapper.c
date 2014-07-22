@@ -32,11 +32,9 @@ static void response_process(char * line, Curl_Data * buf)
             }
             buf->handle->chunk_size = strtol(ptr, NULL, 10);
             buf->handle->open_quited = 1;
-            //pthread_cond_signal(&buf->handle->info_cond);
         }
         if (c_stristr(line, "Transfer-Encoding: chunked")) {
             buf->handle->open_quited = 1;
-            //pthread_cond_signal(&buf->handle->info_cond);
         }
         return;
     }
@@ -46,7 +44,6 @@ static void response_process(char * line, Curl_Data * buf)
             if ((slash = strchr(ptr, '/')) && strlen(slash) > 0) {
                 buf->handle->chunk_size = atoll(slash + 1);
                 buf->handle->open_quited = 1;
-                //pthread_cond_signal(&buf->handle->info_cond);
             }
         }
         return;
@@ -82,7 +79,6 @@ static void response_process(char * line, Curl_Data * buf)
     }
     if (buf->handle->http_code >= 400 && buf->handle->http_code < 600) {
         buf->handle->open_quited = 1;
-        //pthread_cond_signal(&buf->handle->info_cond);
     }
 }
 
@@ -511,12 +507,16 @@ static int curl_wrapper_open_cnx(CURLWContext *con, CURLWHandle *h, Curl_Data *b
             return ret;
         }
     }
-    if (flags == C_PROT_HTTP) {
+    if (flags == C_PROT_HTTP || flags == C_PROT_HTTPS) {
         ret = curl_wrapper_easy_setopt_http_basic(h, buf);
         if (ret != 0) {
             CLOGE("curl_wrapper_easy_setopt_http_basic failed\n");
             return ret;
         }
+    }
+    if(flags == C_PROT_HTTPS) {  // ignore certificate verification.
+        curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_SSL_VERIFYPEER, 0L));
+        curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_SSL_VERIFYHOST, 0L));
     }
     con->quited = 0;
     h->quited = 0;

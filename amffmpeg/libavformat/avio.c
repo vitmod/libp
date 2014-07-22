@@ -260,7 +260,7 @@ int ffurl_alloc(URLContext **puc, const char *filename, int flags)
 int ffurl_open(URLContext **puc, const char *filename, int flags)
 {
 	int ret;
-	if(am_getconfig_bool("media.libplayer.curlenable") && (!strncmp(filename, "http", strlen("http")) || !strncmp(filename, "shttp", strlen("shttp")))) {
+	if(am_getconfig_bool("media.libplayer.curlenable") && (!strncmp(filename, "https", strlen("https")) || !strncmp(filename, "shttps", strlen("shttps")))) {
 		char * file = (char *)av_malloc(strlen(filename) + 10);
 		int num = snprintf(file, strlen(filename) + 10, "curl:%s", filename);
 		ret = ffurl_alloc(puc, file, flags);
@@ -281,7 +281,7 @@ int ffurl_open(URLContext **puc, const char *filename, int flags)
 int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *headers, int * http_error_flag)
 {
 	int ret;
-	if(am_getconfig_bool("media.libplayer.curlenable")  && (!strncmp(filename, "http", strlen("http")) || !strncmp(filename, "shttp", strlen("shttp")))) {
+	if(am_getconfig_bool("media.libplayer.curlenable")  && (!strncmp(filename, "https", strlen("https")) || !strncmp(filename, "shttps", strlen("shttps")))) {
 		char * file = (char *)av_malloc(strlen(filename) + 10);
 		int num = snprintf(file, strlen(filename) + 10, "curl:%s", filename);
 		ret = ffurl_alloc(puc, file, flags);

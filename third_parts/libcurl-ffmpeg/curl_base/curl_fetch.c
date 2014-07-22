@@ -74,9 +74,11 @@ CFContext * curl_fetch_init(const char * uri, const char * headers, int flags)
 #if 1
     if (c_stristart(uri, "http://", NULL) || c_stristart(uri, "shttp://", NULL)) {
         handle->prot_type = C_PROT_HTTP;
+    } else if (c_stristart(uri, "https://", NULL) || c_stristart(uri, "shttps://", NULL)) {
+        handle->prot_type = C_PROT_HTTPS;
     }
     memset(handle->uri, 0, sizeof(handle->uri));
-    if (c_stristart(uri, "shttp://", NULL)) {
+    if (c_stristart(uri, "shttp://", NULL) || c_stristart(uri, "shttps://", NULL)) {
         c_strlcpy(handle->uri, uri + 1, sizeof(handle->uri));
     } else {
         c_strlcpy(handle->uri, uri, sizeof(handle->uri));
@@ -121,7 +123,7 @@ int curl_fetch_open(CFContext * h)
         return -1;
     }
 #if 1
-    if (h->prot_type == C_PROT_HTTP) {
+    if (h->prot_type == C_PROT_HTTP || h->prot_type == C_PROT_HTTPS) {
         curl_wrapper_set_para(h->cwh_h, NULL, C_MAX_REDIRECTS, 10, NULL);
         curl_wrapper_set_para(h->cwh_h, NULL, C_USER_AGENT, 0, IPAD_IDENT);
         curl_wrapper_set_para(h->cwh_h, (void *)h->cwd, C_HEADERS, 0, NULL);
@@ -457,7 +459,7 @@ int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
         curl_fetch_http_set_headers(h, h->headers);
     }
 #if 1
-    if (h->prot_type == C_PROT_HTTP) {
+    if (h->prot_type == C_PROT_HTTP || h->prot_type == C_PROT_HTTPS) {
         curl_wrapper_set_para(h->cwh_h, NULL, C_MAX_REDIRECTS, 10, NULL);
         curl_wrapper_set_para(h->cwh_h, NULL, C_USER_AGENT, 0, IPAD_IDENT);
         curl_wrapper_set_para(h->cwh_h, (void *)h->cwd, C_HEADERS, 0, NULL);
@@ -524,13 +526,6 @@ int curl_fetch_http_set_headers(CFContext * h, const char * headers)
         int tmp = CURLMIN(end_ptr - beg_ptr + 1, sizeof(fields) - 1);
         c_strlcpy(fields, beg_ptr, tmp);
         fields[tmp] = '\0';
-        /*
-        char * tmp_ptr = c_strrstr(fields, "\r\n"); // must remove CRLF
-        if(tmp_ptr) {
-            *tmp_ptr = '\0';
-        }
-        beg_ptr = end_ptr + 5;
-        */
         beg_ptr = end_ptr + 2;
 #if 0
         if (c_stristart(fields, "Connection:", NULL) || c_stristart(fields, "X-Playback-Session-Id:", NULL)) {
@@ -543,7 +538,7 @@ int curl_fetch_http_set_headers(CFContext * h, const char * headers)
 #endif
     }
     int ret = 0;
-    if (h->prot_type == C_PROT_HTTP) {
+    if (h->prot_type == C_PROT_HTTP || h->prot_type == C_PROT_HTTPS) {
         ret = curl_wrapper_set_para(h->cwh_h, (void *)h->chunk, C_HTTPHEADER, 0, NULL);
     }
     return ret;
@@ -557,7 +552,7 @@ int curl_fetch_http_set_cookie(CFContext * h, const char * cookie)
         return -1;
     }
     int ret = 0;
-    if (h->prot_type == C_PROT_HTTP) {
+    if (h->prot_type == C_PROT_HTTP || h->prot_type == C_PROT_HTTPS) {
         ret = curl_wrapper_set_para(h->cwh_h, NULL, C_COOKIES, 0, cookie);
     }
     return ret;
