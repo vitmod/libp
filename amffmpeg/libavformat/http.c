@@ -662,6 +662,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     s->filesize = -1;
     s->willclose = 1;
     s->do_readseek_size=0;//
+    s->http_code = -1;
     if (post) {
         /* Pretend that it did work. We didn't read any header yet, since
          * we've still to send the POST data, but the code calling this
@@ -680,8 +681,13 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 		if(err <0){
 		    return err;
         }
-		if (err == 0)
+		if (err == 0){
+		   if( s->http_code == -1 || s->line_count ==0 ){
+		   	   av_log(h, AV_LOG_INFO, "http return NULL,or not valid http_code = %d at line %d\n",s->http_code,s->line_count);
+               return -1;/*read end and not get http valid response*/
+		   }
            break;
+		}
         s->line_count++;
     }
 
@@ -693,7 +699,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 		if(s->do_readseek_size >= s->filesize - 1024) // we could not get rest data sometime when server in problem, this can prevent unlimited retry.
 			s->read_seek_count++;
 		av_log(h, AV_LOG_INFO, "Server Can't support SEEK,we try do read seek to resume playing readseek size=%lld\n",s->do_readseek_size);
-     }
+    }
 	return (off == s->off) ? 0 : -1;
 }
 
