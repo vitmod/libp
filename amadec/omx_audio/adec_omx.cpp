@@ -217,7 +217,7 @@ void AmlOMXCodec::pause()
 int AmlOMXCodec::GetDecBytes()
 {
     int used_len=0;
-    if(omx_codec_type==OMX_ENABLE_CODEC_AC3 ||omx_codec_type==OMX_ENABLE_CODEC_EAC3)
+    if(omx_codec_type==OMX_ENABLE_CODEC_AC3 ||omx_codec_type==OMX_ENABLE_CODEC_EAC3|| omx_codec_type==OMX_ENABLE_CODEC_DTSHD)
     {
         used_len=buf_decode_offset - buf_decode_offset_pre;
         buf_decode_offset_pre=buf_decode_offset;
