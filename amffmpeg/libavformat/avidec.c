@@ -1030,13 +1030,14 @@ resync:
         if(size > ast->remaining)
             size= ast->remaining;
 
+#if 0
 		 if(size == 6 && avi->stream_index == 0)
 		 {
 			 //return exit and dop this frame when the stream is error. bug92899
 			 av_log(s, AV_LOG_ERROR, "return exit and dop this frame when the stream is error!\n");
 			 return AVERROR_EOF;
 		 }
-		
+#endif
         avi->last_pkt_pos= avio_tell(pb);
         err= av_get_packet(pb, pkt, size);
         if(err<0)

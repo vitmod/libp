@@ -762,6 +762,10 @@ static void get_stream_info(play_para_t *p_para)
                     log_print("[%d x %d] H.264 video profile not supported",p_para->vstream_info.video_width,p_para->vstream_info.video_height);
                 }
             }
+        } else if (p_para->vstream_info.video_format == VFORMAT_MPEG4) {
+            if ((p_para->vstream_info.video_width * p_para->vstream_info.video_height) > (1920*1088)){
+                unsupported_video = 1; 
+            }
         } else {
             if ((p_para->vstream_info.video_width > 1920) ||
                 (p_para->vstream_info.video_height > 1088)) {
