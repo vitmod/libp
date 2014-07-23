@@ -38,16 +38,28 @@
 
 #define FLOAT_SCALE (1.0f/(1<<15))
 
-#define DM_MUL REAL_CONST(0.3203772410170407) // 1/(1+sqrt(2) + 1/sqrt(2))
+#define DM_MUL   1//REAL_CONST(0.3203772410170407) // 1/(1+sqrt(2) + 1/sqrt(2))
 #define RSQRT2 REAL_CONST(0.7071067811865475244) // 1/sqrt(2)
 
+/*
 
+There are two types of down-mix to stereo:
+1.       Lt/Rt downmix:
+Lt = L + (0.707*C) - (0.707*Ls) - (0.707*Rs)
+Rt = R + (0.707*C) + (0.707*Ls) + (0.707*Rs)
+2.       Lo/Ro downmix:
+Lo = L + (0.707*C) + (0.707*Ls)
+Ro = R + (0.707*C) + (0.707*Rs)
+
+*/
 static INLINE real_t get_sample(real_t **input, uint8_t channel, uint16_t sample,
                                 uint8_t down_matrix, uint8_t *internal_channel)
 {
     if (!down_matrix)
         return input[internal_channel[channel]][sample];
 
+// for multi-channel( > 2ch ) downmix to 2ch case
+#if 0  //LoRo downmix mode
     if (channel == 0)
     {
         return DM_MUL * (input[internal_channel[1]][sample] +
@@ -58,6 +70,19 @@ static INLINE real_t get_sample(real_t **input, uint8_t channel, uint16_t sample
             input[internal_channel[0]][sample] * RSQRT2 +
             input[internal_channel[4]][sample] * RSQRT2);
     }
+#else //LtRt downmix mode
+    if (channel == 0)
+    {
+        return DM_MUL * (input[internal_channel[1]][sample] +
+            input[internal_channel[0]][sample] * RSQRT2 -
+            input[internal_channel[3]][sample] * RSQRT2-input[internal_channel[4]][sample] * RSQRT2);
+    } else {
+        return DM_MUL * (input[internal_channel[2]][sample] +
+            input[internal_channel[0]][sample] * RSQRT2 +
+            input[internal_channel[3]][sample] * RSQRT2+
+            input[internal_channel[4]][sample] * RSQRT2);
+    }
+#endif
 }
 
 #ifndef HAS_LRINTF

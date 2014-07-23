@@ -72,11 +72,11 @@
 #define MAX_CHANNELS 6 /* make this higher to support files with more channels */
 
 //audio decoder buffer 6144 bytes
-#define AAC_INPUTBUF_SIZE   (2 * 768 * 4*1)	/* pick something big enough to hold a bunch of frames */
+#define AAC_INPUTBUF_SIZE   (2 * 768)	/* pick something big enough to hold a bunch of frames */
 
 #define ERROR_RESET_COUNT  1000
 #define  RSYNC_SKIP_BYTES  1
-#define FRAME_RECORD_NUM   1000
+#define FRAME_RECORD_NUM   40
 #define FRAME_SIZE_MARGIN  300
 
 enum {
@@ -254,7 +254,7 @@ int audio_dec_init(
 #endif	
 	)
 {
-    audio_codec_print("\n\n[%s]BuildDate--%s  BuildTime--%s",__FUNCTION__,__DATE__,__TIME__);
+    audio_codec_print("[%s]BuildDate--%s  BuildTime--%s",__FUNCTION__,__DATE__,__TIME__);
     FaadContext *gFaadCxt = NULL;	
     adec_ops->pdecoder = calloc(1,sizeof(FaadContext));
     if(!adec_ops->pdecoder){
@@ -307,6 +307,7 @@ retry:
 		gFaadCxt->hDecoder=NULL;
 		if(inbuf_size < 0)
 			inbuf_size = 0;
+		audio_codec_print("init fail,inbuf_size %d \n",inbuf_size);
 		if(inbuf_size <  (get_frame_size(gFaadCxt)+FRAME_SIZE_MARGIN)/*AAC_INPUTBUF_SIZE/2*/){
 			audio_codec_print("input size %d at least %d ,need more data \n",inbuf_size,(get_frame_size(gFaadCxt)+FRAME_SIZE_MARGIN));
 			*inbuf_consumed = inlen-inbuf_size;
@@ -367,13 +368,14 @@ int audio_dec_decode(
 		gFaadCxt->error_count= 0;
 		ret = audio_decoder_init(adec_ops,outbuf,outlen,dec_buf,dec_bufsize,&inbuf_consumed);
 		if(ret ==  AAC_ERROR_NO_ENOUGH_DATA){
-			audio_codec_print("decoder cost %d byte input data ,but initiation failed.^_^ \n",inlen);
+			audio_codec_print("decoder buf size %d,cost %d byte input data ,but initiation failed.^_^ \n",inlen,inbuf_consumed);
 			dec_bufsize -= inbuf_consumed;
 			goto exit;
 		}
 		gFaadCxt->init_flag = 1;	
 		dec_buf += inbuf_consumed;
 		dec_bufsize -= inbuf_consumed;
+	        audio_codec_print("decoder init finished cost %d\n",inbuf_consumed);	
 		if(dec_bufsize < 0)
 			dec_bufsize = 0;
 	}
@@ -435,9 +437,15 @@ int audio_dec_decode(
 
 	if (frameInfo.error > 0)//failed seek to the head
 	{
-		audio_codec_print( "Error: %s\n", NeAACDecGetErrorMessage(frameInfo.error));
+        if(frameInfo.error != 34 &&frameInfo.error != 35 ){
 		dec_bufsize -= RSYNC_SKIP_BYTES;
+		audio_codec_print( "Error: %s,inlen %d\n", NeAACDecGetErrorMessage(frameInfo.error),inlen);		
+        }
+	  else{
+	  	audio_codec_print("%s,,inlen %d\n", NeAACDecGetErrorMessage(frameInfo.error),inlen);
+	  }
 		gFaadCxt->error_count++;
+		//err 34,means aac profile changed , PS.SBR,LC ....,normally happens when switch audio source
 		if(gFaadCxt->error_count  >= ERROR_RESET_COUNT ||frameInfo.error == 34){
 			if( gFaadCxt->hDecoder){
 				NeAACDecClose(gFaadCxt->hDecoder);

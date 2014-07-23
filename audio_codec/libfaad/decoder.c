@@ -885,7 +885,7 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
 NEXT_CHECK:
 	while(pbuffer_size >= 2){
 		if(pbuffer[0] == 0x56 && (pbuffer[1] & 0xe0) == 0xe0){ //LOAS sync word detected
-			LATM_LOG("find LOAS sync word pos %d\n",buffer_size-pbuffer_size);
+		//	LATM_LOG("find LOAS sync word pos %d\n",buffer_size-pbuffer_size);
 			break;
 		}
 		pbuffer++;
@@ -1008,7 +1008,10 @@ exit_check:
 
             hDecoder->sf_index = adts.sf_index;
             hDecoder->object_type = adts.profile + 1;
-
+            if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
+                hDecoder->last_sf_index = hDecoder->sf_index;
+                hDecoder->last_ch_configure = adts.channel_configuration;
+            }
             *samplerate = get_sample_rate(hDecoder->sf_index);
             *channels = (adts.channel_configuration > 6) ?
                 2 : adts.channel_configuration;
@@ -1018,7 +1021,7 @@ exit_check:
             /*we guess it is a ADTS aac files and try to resync from the error*/
             int ii;
             int adts_err = 0;
-       //     faad_log_info("[%s %d]guess it is a ADTS aac files and try to resync\n",__FUNCTION__,__LINE__);
+            faad_log_info("[%s %d]guess it is a ADTS aac files and try to resync\n",__FUNCTION__,__LINE__);
             faad_initbits(&ld, buffer, buffer_size);
             for ( ii = 0; ii < buffer_size; ii++)
             {
@@ -1037,7 +1040,7 @@ exit_check:
                       } 
                       hDecoder->sf_index = adts.sf_index;
                       hDecoder->object_type = adts.profile + 1;
-					  
+                      faad_log_info("sf index %d,object type %d \n",hDecoder->sf_index,hDecoder->object_type);
                       if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
                           hDecoder->last_sf_index = hDecoder->sf_index;
                           hDecoder->last_ch_configure = adts.channel_configuration;
@@ -1052,7 +1055,7 @@ exit_check:
                 }
             }
             if(ii == buffer_size){
-          //       faad_log_info("[%s %d]sync for adts frame failed\n",__FUNCTION__,__LINE__);
+                 faad_log_info("[%s %d]sync for adts frame failed\n",__FUNCTION__,__LINE__);
                  return -1;
             }   
         }		
@@ -1666,6 +1669,7 @@ NEXT_CHECK:
 			return NULL;
 		}
 		if(buffer_size < ( LOAS_HEADER_SIZE+i_frame_size)){
+			hInfo->error =  35; 
 			LATM_LOG("buffer size small then frame size,need more data\n");
 			return NULL;
 		}
@@ -1729,6 +1733,12 @@ NEXT_CHECK:
         adts.old_format = hDecoder->config.useOldADTSFormat;
         if ((hInfo->error = adts_frame(&adts, &ld)) > 0)
             goto error;
+	if(adts.aac_frame_length > buffer_size)
+	{
+		hInfo->error = 35;
+		audio_codec_print("decoder need more data for adts frame,frame len %d,have %d \n",adts.aac_frame_length,buffer_size);
+		goto error;
+	}
 	    hDecoder->sf_index = adts.sf_index;	
 	    if(adts.sf_index != hDecoder->last_sf_index && adts.channel_configuration != hDecoder->last_ch_configure){
 	        if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){
