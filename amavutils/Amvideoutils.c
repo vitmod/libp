@@ -457,7 +457,11 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     int video_on_vpp2 = is_video_on_vpp2();
     int vertical_panel = is_vertical_panel();
     int vertical_panel_reverse = is_vertical_panel_reverse();
+#ifndef SINGLE_EXTERNAL_DISPLAY_USE_FB1
     int hdmi_swith_on_vpp1 = is_hdmi_on_vpp1_new();
+#else
+    int hdmi_swith_on_vpp1 = !is_hdmi_on_vpp1_new();
+#endif
     
     if (video_on_vpp2) {
         int fb0_w, fb0_h, fb2_w, fb2_h;
@@ -496,6 +500,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
             }
         }        
     }
+#ifndef SINGLE_EXTERNAL_DISPLAY_USE_FB1
 	if(screen_portrait && hdmi_swith_on_vpp1){
 		int val = 0 ;
 		val = x ;
@@ -505,6 +510,7 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 		w = h;
 		h = val;
 	}
+#endif
     LOGI("amvideo_utils_set_virtual_position :: x=%d y=%d w=%d h=%d\n", x, y, w, h);
 
     bzero(buf, SYSCMD_BUFSIZE);
@@ -574,8 +580,13 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         }
     }
 
+#ifndef SINGLE_EXTERNAL_DISPLAY_USE_FB1
     if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new )
 		||(screen_portrait && hdmi_swith_on_vpp1))
+#else
+    if ((video_on_vpp2 && vertical_panel) || (screen_portrait && video_on_vpp2_new )
+		/*||(screen_portrait && hdmi_swith_on_vpp1)*/)
+#endif
         amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, 0);
     else
         amsysfs_set_sysfs_int(PPMGR_ANGLE_PATH, (rotation/90) & 3);

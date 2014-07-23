@@ -6,6 +6,12 @@ ifeq ($(TARGET_USE_TRIPLE_FB_BUFFERS), true)
 LOCAL_CFLAGS += -DENABLE_FB_TRIPLE_BUFFERS
 endif
 
+ifeq ($(TARGET_EXTERNAL_DISPLAY),true)
+ifeq ($(TARGET_SINGLE_EXTERNAL_DISPLAY_USE_FB1),true)
+LOCAL_CFLAGS += -DSINGLE_EXTERNAL_DISPLAY_USE_FB1
+endif
+endif
+
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 	
 LOCAL_SRC_FILES += $(notdir $(wildcard $(LOCAL_PATH)/*.cpp)) 
 
