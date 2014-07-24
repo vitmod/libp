@@ -286,9 +286,10 @@ static void get_av_codec_type(play_para_t *p_para)
                     if ((0 != pStream->time_base.den) && (0 != pStream->nb_frames)) {
                         fix_rate = UNIT_FREQ * pStream->duration * pStream->time_base.num / pStream->time_base.den / pStream->nb_frames;
                     }
-                    p_para->vstream_info.video_rate = fix_rate;
-                    log_print("[%s:%d]video_codec_rate=%d,video_rate=%d\n", __FUNCTION__, __LINE__, p_para->vstream_info.video_codec_rate, p_para->vstream_info.video_rate);
-
+                    if((fix_rate < UNIT_FREQ / 10) && (fix_rate > UNIT_FREQ / 60)) {
+                        p_para->vstream_info.video_rate = fix_rate;
+                        log_print("[%s:%d]video_codec_rate=%d,video_rate=%d\n", __FUNCTION__, __LINE__, p_para->vstream_info.video_codec_rate, p_para->vstream_info.video_rate);
+                    }
                 }
             } else if (p_para->file_type == FLV_FILE) {
                 if (pStream->special_fps > 0) {
