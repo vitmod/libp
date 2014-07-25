@@ -15,6 +15,11 @@ int amthreadpool_pthread_create(pthread_t * newthread,
                                 __const pthread_attr_t * attr,
                                 void * (*start_routine)(void *),
                                 void * arg);
+int amthreadpool_pthread_create_name(pthread_t * newthread,
+                                     __const pthread_attr_t * attr,
+                                     void * (*start_routine)(void *),
+                                     void * arg, const char *name);
+
 int amthreadpool_pthread_join(pthread_t thid, void ** ret_val);
 int amthreadpool_system_init(void);
 int amthreadpool_system_dump_info(void);

@@ -35,6 +35,7 @@
 #include "network.h"
 #include "os_support.h"
 #include "url.h"
+#include <amthreadpool.h>
 
 #if HAVE_PTHREADS
 #include <pthread.h>
@@ -518,12 +519,12 @@ static int udp_open(URLContext *h, const char *uri, int flags)
     }
 
     s->udp_fd = udp_fd;
-
-#if 0 && HAVE_PTHREADS
+#if HAVE_PTHREADS	
+    s->circular_buffer_thread = 0;
     if (!is_output && s->circular_buffer_size) {
         /* start the task going */
         s->fifo = av_fifo_alloc(s->circular_buffer_size);
-        if (pthread_create(&s->circular_buffer_thread, NULL, circular_buffer_task, h)) {
+        if (amthreadpool_pthread_create_name(&s->circular_buffer_thread, NULL, circular_buffer_task, h,"ffmpeg_udp")) {
             av_log(h, AV_LOG_ERROR, "pthread_create failed\n");
             goto fail;
         }
@@ -567,6 +568,10 @@ static int udp_read(URLContext *h, uint8_t *buf, int size)
                 if (ret<0)
                     return ret;
             }
+            
+            if (url_interrupt_cb()) {
+                return AVERROR_EXIT;
+            }
         } while( 1);
     }
 
@@ -604,7 +609,8 @@ static int udp_write(URLContext *h, const uint8_t *buf, int size)
 static int udp_close(URLContext *h)
 {
     UDPContext *s = h->priv_data;
-
+    if(s->circular_buffer_thread != 0)
+        amthreadpool_pthread_join(s->circular_buffer_thread,NULL);
     if (s->is_multicast && (h->flags & AVIO_FLAG_READ))
         udp_leave_multicast_group(s->udp_fd, (struct sockaddr *)&s->dest_addr);
     closesocket(s->udp_fd);
