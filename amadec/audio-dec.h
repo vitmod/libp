@@ -185,6 +185,7 @@ typedef struct {
 	int SessionID;
 	int dspdec_not_supported;//check some profile that audiodsp decoder can not support,we switch to arm decoder	
 	int droppcm_flag;				// drop pcm flag, if switch audio (1)
+	int automute;
 } arm_audio_info;
 
  typedef struct {

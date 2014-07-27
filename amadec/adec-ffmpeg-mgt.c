@@ -712,7 +712,7 @@ static int start_adec(aml_audio_dec_t *audec)
              }
              amthreadpool_thread_usleep(100000);
          }
-         adec_print("get first apts ok, times:%d need_stop:%d \n",times,audec->need_stop);
+         adec_print("get first apts ok, times:%d need_stop:%d auto_mute %d\n",times,audec->need_stop,audec->auto_mute);
          if(audec->need_stop)
             return 0;
 

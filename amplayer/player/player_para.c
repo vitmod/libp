@@ -1695,7 +1695,12 @@ int player_decoder_init(play_para_t *p_para)
 		if(p_para->playctrl_info.buf_limited_time_ms<=0)	/*wfd not need blocked write.*/
 			p_para->playctrl_info.buf_limited_time_ms=1000;
 	}else{
-		p_para->playctrl_info.buf_limited_time_ms=0;/*0 is not limited.*/
+	    if (p_para->vstream_info.has_video && p_para->astream_info.has_audio && (p_para->astream_num > 1)) {
+            log_print("[%s:%d]multiple audio switch, set buffer time to 2s\n", __FUNCTION__, __LINE__);
+            p_para->playctrl_info.buf_limited_time_ms=2000;
+        } else {
+		    p_para->playctrl_info.buf_limited_time_ms=0;/*0 is not limited.*/
+        }
 	}
 	{
 		log_print("[%s] set buf_limited_time_ms to %d\n", __FUNCTION__, p_para->playctrl_info.buf_limited_time_ms);

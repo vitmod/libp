@@ -2934,6 +2934,7 @@ void player_switch_audio(play_para_t *para)
     }    
 
 	/* automute */
+    pcodec->automute_flag = 1;
     codec_audio_automute(pcodec->adec_priv, 1);
 
     /* close audio */
@@ -3134,7 +3135,8 @@ audio_init:
     codec_resume_audio(pcodec, para->astream_info.resume_audio);
 
     /* unmute*/
-    codec_audio_automute(pcodec->adec_priv, 0);
+    pcodec->automute_flag = 0;
+    //codec_audio_automute(pcodec->adec_priv, 0);
     //for ts case, when switch aid , reset audio&video decoder
     //controled by property "media.ts.switchaid.policy"
     if (para->stream_type == STREAM_TS && para->vstream_info.has_video) {

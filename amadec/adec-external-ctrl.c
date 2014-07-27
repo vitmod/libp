@@ -60,6 +60,7 @@ int audio_decode_init(void **handle, arm_audio_info *a_ainfo)
 	audec->bitrate=a_ainfo->bitrate;
 	audec->block_align=a_ainfo->block_align;
 	audec->codec_id=a_ainfo->codec_id;
+    audec->auto_mute=a_ainfo->automute;
 	if (a_ainfo->droppcm_flag) {
 		audec->droppcm_flag = a_ainfo->droppcm_flag;
 		a_ainfo->droppcm_flag = 0;
@@ -242,7 +243,7 @@ int audio_decode_automute(void *handle, int stat)
         adec_print("audio handle is NULL !\n");
         return -1;
     }
-    adec_print("set automute!\n");
+    adec_print("[%s:%d]set automute %d!\n", __FUNCTION__, __LINE__, stat);
     //audec->auto_mute = 1;
     audec->auto_mute = stat;
     return 0;
