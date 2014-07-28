@@ -21,6 +21,8 @@ int audio_decode_basic_init(void)
 #ifndef ALSA_OUT
     android_basic_init();
 #endif
+    amthreadpool_system_init();
+
     return 0;
 }
 

@@ -90,7 +90,7 @@ unsigned long adec_calc_pts(aml_audio_dec_t *audec)
     if (delay_pts+audec->first_apts < pts) {
         pts -= delay_pts;
     } else {
-        pts =audec->first_apts;
+        ///pts =audec->first_apts;
     }
     return pts;
 }
