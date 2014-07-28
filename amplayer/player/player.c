@@ -1019,6 +1019,7 @@ void *player_thread(play_para_t *player)
     set_cntl_mode(player, TRICKMODE_NONE);
     set_cntl_avthresh(player, AV_SYNC_THRESH);
     set_cntl_syncthresh(player);
+    set_sysfs_int("/sys/class/tsync/vpause_flag",0); // reset vpause flag -> 0
 
     set_player_state(player, PLAYER_START);
     update_playing_info(player);
