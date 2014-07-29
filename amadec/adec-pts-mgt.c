@@ -199,6 +199,28 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
     int sync_switch_ms = 200; // ms
     starttime = gettime();
 
+    int samplerate = 0;
+    int channels = 0;
+    //ARM based decoder,should got from decoder 
+    adec_print("adec_pts_droppcm start get audio sr/ch info \n");
+    while(!audec->need_stop){
+        if(audec->g_bst){
+            samplerate = audec->g_bst->samplerate;
+            channels = audec->g_bst->channels;                
+        }
+        //DSP decoder must have got audio info when feeder_init 
+        else{
+            samplerate = audec->samplerate;
+            channels = audec->channels;     
+        }
+        if(!samplerate  || !channels){
+            amthreadpool_thread_usleep(10000);      
+            continue;  
+        }
+        break;  
+    }
+    adec_print("adec_pts_droppcm  get audio sr/ch info done sr %d, ch %d \n",samplerate,channels);
+
     // drop pcm according to media.amplayer.dropms
     memset(value,0,sizeof(value));
     if(property_get("media.amplayer.dropms",value,NULL) > 0){
@@ -242,7 +264,8 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
 
     // drop pcm
     droppts = refpts - apts+pts_ahead_val*audio_ahead;
-    drop_size = (droppts/90) * (audec->samplerate/1000) * audec->channels *2;
+    drop_size = (droppts/90) * (audec->samplerate/1000) * audec->channels *2;    
+    adec_print("[%s::%d] audec->samplerated = %d, audec->channels = %d! \n",__FUNCTION__,__LINE__, audec->samplerate, audec->channels);
     adec_print("[%s::%d] droppts:0x%x, drop_size=%d,  audio ahead %d,ahead pts value %d \n",	__FUNCTION__,__LINE__, 
         droppts, drop_size, audio_ahead,pts_ahead_val);
     if (droppcm_use_size(audec, drop_size) == -1) {

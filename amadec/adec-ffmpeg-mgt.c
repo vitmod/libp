@@ -380,7 +380,8 @@ static int OutBufferInit(aml_audio_dec_t *audec)
     }else{
         adec_print("[%s %d] audec->g_bst/%p",__FUNCTION__,__LINE__,audec->g_bst);
     }
-
+    
+    memset(audec->g_bst,0,sizeof(buffer_stream_t));
 
     if(audec->adec_ops->nOutBufSize<=0) //set default if not set
         audec->adec_ops->nOutBufSize=DEFAULT_PCM_BUFFER_SIZE;
@@ -393,6 +394,8 @@ static int OutBufferInit(aml_audio_dec_t *audec)
     adec_print("[%s %d]pcm buffer init ok buf_size:%d\n",__FUNCTION__,__LINE__,audec->g_bst->buf_length);
 
     audec->g_bst->data_width=audec->data_width=AV_SAMPLE_FMT_S16;
+    
+#if 0    
     if(audec->channels>0)
         audec->g_bst->channels=audec->channels;
     else
@@ -401,6 +404,8 @@ static int OutBufferInit(aml_audio_dec_t *audec)
         audec->g_bst->samplerate=audec->samplerate;
     else
         audec->g_bst->samplerate=audec->samplerate=48000;
+#endif
+    
     audec->g_bst->format = audec->format;
 
     return 0;
@@ -959,13 +964,13 @@ static void check_audio_info_changed(aml_audio_dec_t *audec)
 	{
 		if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
 		{    //experienc value:0.2 Secs      
-			BufLevelAllowDoFmtChg=g_bst->samplerate*g_bst->channels*(audec->adec_ops->bps>>3)/5;
+			BufLevelAllowDoFmtChg=audec->samplerate*audec->channels*(audec->adec_ops->bps>>3)/5;
 			while((audec->format_changed_flag|| g_bst->buf_level>BufLevelAllowDoFmtChg) && !audec->exit_decode_thread ){
 				amthreadpool_thread_usleep(20000);
 			}				
 			if(!audec->exit_decode_thread){
-				adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",
-				__FUNCTION__,g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels,g_bst->buf_level);
+				adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",				
+                __FUNCTION__,audec->samplerate,audec->channels,g_AudioInfo.samplerate,g_AudioInfo.channels,g_bst->buf_level);				
 				g_bst->channels=audec->channels=g_AudioInfo.channels;
 				g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
 				audec->aout_ops.pause(audec);
