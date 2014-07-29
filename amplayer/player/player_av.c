@@ -628,7 +628,7 @@ static int raw_read(play_para_t *para)
         }
 		
         if (am_getconfig_bool("media.amplayer.seekkeyframe")) {
-            if (para->vstream_info.has_video && para->playctrl_info.seek_keyframe && !url_is_segment_media(para->pFormatCtx->pb)) {
+            if (para->vstream_info.has_video && para->playctrl_info.seek_keyframe && !url_is_segment_media(para->pFormatCtx->pb) && (para->vstream_info.video_format != VFORMAT_REAL)) {
                 para->playctrl_info.seek_keyframe = 0;
         
                 int64_t old_offset = avio_tell(pb);
