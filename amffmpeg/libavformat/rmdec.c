@@ -32,6 +32,8 @@
 #define DEINT_ID_VBRF MKTAG('v', 'b', 'r', 'f') ///< VBR case for AAC
 #define DEINT_ID_VBRS MKTAG('v', 'b', 'r', 's') ///< VBR case for AAC
 
+#define TRUNC_TIME_PROBE_SIZE 12000000
+static int sync(AVFormatContext *s, int64_t *timestamp, int *flags, int *stream_index, int64_t *pos);
 struct RMStream {
     AVPacket pkt;      ///< place to store merged video frame / reordered audio data
     int videobufsize;  ///< current assembled frame size
@@ -463,6 +465,34 @@ static int rm_read_header_old(AVFormatContext *s)
     return rm_read_audio_stream_info(s, s->pb, st, st->priv_data, 1);
 }
 
+static void rm_check_duration(AVFormatContext *s)
+{
+    RMDemuxContext *rm = s->priv_data;
+    int i, len, flags;
+    int64_t timestamp, pos, duration=0;
+    int64_t save_off = avio_tell(s->pb);
+
+    if ((rm->old_format) || (!s->pb->seekable))
+        return;
+
+    for (;;) {
+        len=sync(s, &timestamp, &flags, &i, &pos);
+        if (len<0 || url_feof(s->pb)) {
+            av_log(NULL, AV_LOG_ERROR, "%"PRId64", %"PRId64", %"PRId64", %"PRId64", %"PRId64"", timestamp, s->streams[0]->start_time, s->streams[1]->start_time, s->streams[0]->duration, s->streams[1]->duration);
+            break;
+        }
+        if (i<2){
+            s->streams[i]->duration = timestamp - s->streams[i]->start_time;
+            if (s->streams[i]->duration > duration)
+                duration = s->streams[i]->duration;
+        }
+    }
+
+    s->duration = duration;
+
+    avio_seek(s->pb, (unsigned int)save_off, SEEK_SET);
+}
+
 static int rm_read_header(AVFormatContext *s)
 {
     RMDemuxContext *rm = s->priv_data;
@@ -474,6 +504,8 @@ static int rm_read_header(AVFormatContext *s)
     unsigned int data_off = 0, indx_off = 0;
     char buf[128], mime[128];
     int flags = 0;
+	int avg_packet_size = 0, nb_packets = 0;
+	int trunk_duration_check = 0;
 
     tag = avio_rl32(pb);
     if (tag == MKTAG('.', 'r', 'a', 0xfd)) {
@@ -507,10 +539,13 @@ static int rm_read_header(AVFormatContext *s)
             avio_rb32(pb); /* max bit rate */
             avio_rb32(pb); /* avg bit rate */
             avio_rb32(pb); /* max packet size */
-            avio_rb32(pb); /* avg packet size */
-            avio_rb32(pb); /* nb packets */
-            duration = avio_rb32(pb); /* duration */
-            s->duration = av_rescale(duration, AV_TIME_BASE, 1000);
+            avg_packet_size = avio_rb32(pb); /* avg packet size */
+            nb_packets = avio_rb32(pb); /* nb packets */
+            avio_rb32(pb); /* duration */
+			if ((nb_packets * avg_packet_size > avio_size(pb) * 1.5) &&
+                (avio_size(pb) < TRUNC_TIME_PROBE_SIZE)) {
+                trunk_duration_check = 1;
+            }
             avio_rb32(pb); /* preroll */
             indx_off = avio_rb32(pb); /* index offset */
             data_off = avio_rb32(pb); /* data offset */
@@ -565,6 +600,8 @@ static int rm_read_header(AVFormatContext *s)
         rm_read_index(s);
         avio_seek(pb, data_off + 18, SEEK_SET);
     }
+	if (trunk_duration_check)
+	  rm_check_duration(s);
 
     return 0;
 }
