@@ -61,6 +61,8 @@
 
 #define AUDIO_BANDWIDTH_MAX 100000  //100k
 #define BANDWIDTH_THRESHOLD 5000 //5k
+#define POS_SEEK_THRESHOLD 5000000 //5s
+
 
 #define ERROR_MSG() LOGE("Null session pointer check:%s,%s,%d\n",__FILE__,__FUNCTION__,__LINE__)
 enum RefreshState {
@@ -1533,10 +1535,53 @@ static int _download_next_segment(M3ULiveSession* s){
         return HLSERROR(EAGAIN);
 
     }
+
+
+#if 0
     if(s->seekflag >0&&s->seekposByte>0){
         seek_by_pos = s->seekposByte;    
         s->seekposByte = -1;
     }
+#else
+     //LOGV("--------------- seekflag = %d \n", s->seekflag);
+    if(s->seekflag >= 0){ // seek by byte    
+        //LOGV("_download_next_segment: seek_by_pos = %d, s->seekposByte = %lld, s->seektimeUs = %lld\n", seek_by_pos, s->seekposByte, s->seektimeUs);
+        if(s->seekposByte>0) {
+            seek_by_pos = s->seekposByte;
+            s->seekposByte = -1;
+        }
+        else if(s->seektimeUs>0) {
+            int64_t length = 0;   
+            void* handle = NULL;
+ 
+            if ((s->seektimeUs - node->startUs) > POS_SEEK_THRESHOLD) {
+                //LOGV("_download_next_segment: node->fileUrl = %s \n", node->fileUrl);
+                int rv = hls_http_open(node->fileUrl, s->headers, NULL, &handle);
+                
+                LOGV("_download_next_segment: rv = %d \n", rv);
+                LOGV("_download_next_segment: s->seektimeUs = %lld, node->startUs = %lld \n", s->seektimeUs, node->startUs);
+                if(rv!=0){
+                    if(handle!=NULL){
+                        hls_http_close(handle);
+                    }
+                    return -1;
+                }
+                
+                if(handle!=NULL){            
+                    length = hls_http_get_fsize(handle);
+                    LOGV("_download_next_segment: length = %lld \n", length);                
+                    hls_http_close(handle);
+                }
+            }
+            
+            if(length > 0) {
+                seek_by_pos = (int)(length*((s->seektimeUs-node->startUs-POS_SEEK_THRESHOLD)/(float)(node->durationUs)));
+                LOGV("seek to node num :%d,  pos : %d, seektimeUs : %lld, startUs : %lld \n", node->index, seek_by_pos,s->seektimeUs,node->startUs);
+            }
+            s->seektimeUs = -1;
+        }
+    } 
+#endif
 
     M3uBaseNode segment;
     memcpy((void*)&segment,node,sizeof(M3uBaseNode));
@@ -1963,8 +2008,12 @@ int64_t m3u_session_seekUs(void* hSession,int64_t posUs,int (*interupt_func_cb)(
             }
         }
         amthreadpool_thread_usleep(1000*10);
-    }      
-    return realPosUs;
+    }   
+    
+    if ((posUs - realPosUs) > POS_SEEK_THRESHOLD)
+        return posUs - POS_SEEK_THRESHOLD;
+    else 
+        return realPosUs;
 }
 int64_t m3u_session_seekUs_offset(void* hSession,int64_t posUs, int64_t *streamoffset){
     if(hSession == NULL){
