@@ -717,6 +717,7 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
         }
 		p_para->buffering_time_s_changed = 1;
 		p_para->buffering_enter_time_s = am_getconfig_float_def("media.amplayer.onbuffering.S",0.120); //120ms
+        p_para->div_buf_time = 10;
         log_print("set buffering exit time to %f S,enter time t %f S\n", p_para->buffering_exit_time_s,p_para->buffering_enter_time_s);
         if (c_para->buffing_starttime_s > 0 && c_para->buffing_middle <= 0) {
             c_para->buffing_middle = 0.02;    //for tmp start.we will reset after start.
@@ -1338,7 +1339,7 @@ write_packet:
                 set_player_state(player, PLAYER_SEARCHOK);
                 update_playing_info(player);
                 update_player_states(player, 1);
-
+                player->div_buf_time = 10;
                 if (player->playctrl_info.f_step == 0) {
                     // set_black_policy(player->playctrl_info.black_out);
                 }

@@ -1274,6 +1274,9 @@ static int  update_buffering_states(play_para_t *p_para,
         log_print("update_buffering_states,vlevel=%d,vsize=%d,level=%f,status=%d\n",
                   vbuf->data_len, vbuf->size, vlevel, get_player_state(p_para));
 
+    if(!p_para->playctrl_info.audio_ready)
+        return 0;
+    
     if (p_para->buffering_force_delay_s > 0) {
         if (p_para->buffering_check_point == 0) {
             check_time_interrupt(&p_para->buffering_check_point, -1);
@@ -1297,13 +1300,15 @@ static int  update_buffering_states(play_para_t *p_para,
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&
-            (avdelayms>0 && avdelayms < p_para->buffering_enter_time_s*1000)  &&
+            (avdelayms>0 && avdelayms < (p_para->buffering_enter_time_s*1000/p_para->div_buf_time))  &&
             (maxlevel < p_para->buffering_threshhold_max * 3 / 4) &&
             !p_para->playctrl_info.read_end_flag) {
             codec_pause(p_para->codec);
             set_player_state(p_para, PLAYER_BUFFERING);
             update_player_states(p_para, 1);
             log_print("enter buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS\n",avdelayms,adelayms,vdelayms);
+            if(p_para->div_buf_time > 1)
+                p_para->div_buf_time--;
         } else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
                    ((avdelayms > p_para->buffering_exit_time_s*1000)  ||
                     (avdelayms<=0 && minlevel > p_para->buffering_threshhold_middle)  ||
