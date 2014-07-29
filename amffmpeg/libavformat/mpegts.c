@@ -223,6 +223,7 @@ typedef struct PESContext {
     int64_t pts, dts;
     int64_t ts_packet_pos; /**< position of first TS packet of this PES packet */
     int     has_private_data;
+    int     has_hdcp_desc;
     uint32_t track_index;
     uint64_t input_CTR;
     uint8_t header[MAX_PES_HEADER_SIZE];
@@ -641,6 +642,19 @@ static void mpegts_find_stream_type(AVStream *st,
     }
 }
 
+static HDCPDecryptFunc* get_HDCP_decrypt()
+{
+    void * mLibHandle = dlopen("libstagefright_hdcp.so", RTLD_NOW);
+
+    if (mLibHandle == NULL) {
+        av_log(NULL, AV_LOG_ERROR, "Unable to locate libstagefright_hdcp.so\n");
+        return NULL;
+    }
+    av_log(NULL, AV_LOG_ERROR, "get_HDCP_decrypt\n");
+
+    return (HDCPDecryptFunc*)dlsym(mLibHandle, "_ZN7android17HDCPModuleAmlogic7decryptEPKvjjyPv");
+}
+
 static int mpegts_set_stream_info(AVStream *st, PESContext *pes,
                                   uint32_t stream_type, uint32_t prog_reg_desc)
 {
@@ -698,22 +712,18 @@ static int mpegts_set_stream_info(AVStream *st, PESContext *pes,
     }
     if (st->codec->codec_id == CODEC_ID_NONE)
         mpegts_find_stream_type(st, pes->stream_type, MISC_types);
-
+    if(prog_reg_desc == AV_RL32("HDCP")) {
+        if(HDCP_decrypt == NULL) {
+            HDCP_decrypt = get_HDCP_decrypt();
+            if(HDCP_decrypt == NULL) {
+                av_log(NULL, AV_LOG_ERROR, "get HDCP_decrypt failed.");
+            }
+        }
+        pes->has_hdcp_desc = 1;
+    }
     return 0;
 }
 
-static HDCPDecryptFunc* get_HDCP_decrypt()
-{
-    void * mLibHandle = dlopen("libstagefright_hdcp.so", RTLD_NOW);
-
-    if (mLibHandle == NULL) {
-        av_log(NULL, AV_LOG_ERROR, "Unable to locate libstagefright_hdcp.so\n");
-        return NULL;
-    }
-    av_log(NULL, AV_LOG_ERROR, "get_HDCP_decrypt\n");
-
-    return (HDCPDecryptFunc*)dlsym(mLibHandle, "_ZN7android17HDCPModuleAmlogic7decryptEPKvjjyPv");
-}
 
 static int get_nal_size(uint8_t* buf, int size)
 {
@@ -745,13 +755,8 @@ static void new_pes_packet(PESContext *pes, AVPacket *pkt)
         }  
     }
 #endif
-    if(pes->has_private_data == 1) {
-        if(HDCP_decrypt == NULL) {
-            HDCP_decrypt = get_HDCP_decrypt();
-            if(HDCP_decrypt == NULL) {
-                av_log(NULL, AV_LOG_ERROR, "get HDCP_decrypt failed.");
-            }
-        }
+    if(pes->has_hdcp_desc == 1 &&  pes->has_private_data == 1) {
+
         int skip = 0;
         if (pes->buffer[0] == 0x00 && pes->buffer[1] == 0x00 &&
                     pes->buffer[2] == 0x00 && pes->buffer[3] == 0x01) {
@@ -1060,6 +1065,7 @@ static PESContext *add_pes_stream(MpegTSContext *ts, int pid, int pcr_pid)
         return 0;
     }
     pes->has_private_data = 0;
+    pes->has_hdcp_desc = 0;
     pes->track_index = 0;
     pes->input_CTR = 0;
     return pes;
