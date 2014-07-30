@@ -636,6 +636,7 @@ int avio_get_str16be(AVIOContext *pb, int maxlen, char *buf, int buflen);
 #define AVIO_FLAG_READ  1                                      /**< read-only */
 #define AVIO_FLAG_WRITE 2                                      /**< write-only */
 #define AVIO_FLAG_READ_WRITE (AVIO_FLAG_READ|AVIO_FLAG_WRITE)  /**< read-write pseudo flag */
+#define AVIO_FLAG_CACHE 4
 /**
  * @}
  */

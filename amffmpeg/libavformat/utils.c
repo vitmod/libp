@@ -836,9 +836,15 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
 		s->pb->filename=listfile;
     	 }
     	 else{
-        	if ((ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers)) < 0){
+    		 int flags=AVIO_FLAG_READ;
+    		if (av_strstart(filename, "rtp:", NULL))
+        		flags |= AVIO_FLAG_CACHE;
+    	 	
+        	if ((ret = avio_open_h(&s->pb, filename, flags, headers)) < 0){
         	    return ret;
-        	} else if(!strncmp(filename, "vhls:", strlen("vhls:"))){  //no need to try in new protocol matching
+        	} 
+
+        	if(!strncmp(filename, "vhls:", strlen("vhls:"))||!strncmp(filename, "rtp:", strlen("rtp:"))){  //no need to try in new protocol matching
             	    goto PASS_THROUGH;
             	}
     	 }

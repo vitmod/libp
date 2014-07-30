@@ -26,6 +26,7 @@
 #include "avformat.h"
 #include "rtp.h"
 #include "url.h"
+#include <itemlist.h>
 
 typedef struct PayloadContext PayloadContext;
 typedef struct RTPDynamicProtocolHandler_s RTPDynamicProtocolHandler;
@@ -137,6 +138,9 @@ typedef struct RTPPacket {
     uint16_t seq;
     uint8_t *buf;
     int len;
+
+    int valid_data_offset;
+    
     int64_t recvtime;
     struct RTPPacket *next;
 } RTPPacket;
@@ -144,6 +148,12 @@ typedef struct RTPPacket {
 typedef struct RTPContext {
     URLContext *rtp_hd, *rtcp_hd;
     int rtp_fd, rtcp_fd;
+
+    int use_cache;
+    volatile uint8_t brunning;
+    pthread_t recv_thread;
+    struct itemlist recvlist;
+    int last_seq;
 } RTPContext;
 
 // moved out of rtp.c, because the h264 decoder needs to know about this structure..

@@ -524,6 +524,7 @@ static int udp_open(URLContext *h, const char *uri, int flags)
     if (!is_output && s->circular_buffer_size) {
         /* start the task going */
         s->fifo = av_fifo_alloc(s->circular_buffer_size);
+        av_log(h, AV_LOG_INFO, "[%s:%d]start the udp circular receive\n",__FUNCTION__,__LINE__);
         if (amthreadpool_pthread_create_name(&s->circular_buffer_thread, NULL, circular_buffer_task, h,"ffmpeg_udp")) {
             av_log(h, AV_LOG_ERROR, "pthread_create failed\n");
             goto fail;

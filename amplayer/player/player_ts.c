@@ -24,7 +24,8 @@ static int stream_ts_init(play_para_t *p_para)
     }
     MEMSET(codec, 0, sizeof(codec_para_t));
 
-    codec->noblock = !!p_para->buffering_enable;
+    codec->noblock =!!p_para->buffering_enable;
+    log_print("[%s:%d]codec->noblock=%d\n", __FUNCTION__, __LINE__,codec->noblock);
     if (vinfo->has_video) {
         codec->has_video = 1;
         codec->video_type = vinfo->video_format;
