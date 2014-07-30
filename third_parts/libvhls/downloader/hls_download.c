@@ -106,7 +106,7 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
     headers[0] = '\0';
     _add_auth_headers(headers);
     if(_headers!=NULL&&strlen(_headers)>0){  
-        if(in_get_sys_prop_bool("media.libplayer.curlenable")>0){
+        if(in_get_sys_prop_bool("media.libplayer.curlenable")>0&&strstr(url, "https://")){
             snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"%s\r\n",_headers);  
         }else{
             snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"%s",_headers);  

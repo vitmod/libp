@@ -284,7 +284,7 @@ static void* _fetch_play_list(const char* url,M3ULiveSession* ss,int* unchanged)
     if(ss->headers!=NULL&&strlen(ss->headers)>0){
         snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n%s",ss->headers);
     }else{
-        if(in_get_sys_prop_bool("media.libplayer.curlenable")<=0){
+        if(in_get_sys_prop_bool("media.libplayer.curlenable")<=0||!strstr(url, "https://")){
             snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n");
         }
     }
@@ -1032,7 +1032,7 @@ open_retry:
         snprintf(str,32,"%lld",len);
         *(str+strlen(str)+1) = '\0';  
         snprintf(headers+pos,MAX_URL_SIZE-pos,"Range: bytes=%lld-%s",(long long)range_offset,range_length<=0?"":str);
-        if(in_get_sys_prop_bool("media.libplayer.curlenable")<=0){
+        if(in_get_sys_prop_bool("media.libplayer.curlenable")<=0||!strstr(url, "https://")){
             snprintf(headers+strlen(headers),MAX_URL_SIZE-strlen(headers),"\r\n");
         }
 	 if(s->log_level >= HLS_SHOW_URL) {
