@@ -264,7 +264,7 @@ int audio_dec_init(
     gFaadCxt = (FaadContext*)adec_ops->pdecoder;
     memset(gFaadCxt,0,sizeof(FaadContext));
     adec_ops->nInBufSize= AAC_INPUTBUF_SIZE;  //4608 bytes input buffer size
-    adec_ops->nOutBufSize=DefaultOutBufSize;
+    adec_ops->nOutBufSize= 3 * adec_ops->channels * adec_ops->samplerate * 16/8; // 3s
     gFaadCxt->gChannels=adec_ops->channels;
     gFaadCxt->gSampleRate=adec_ops->samplerate;
     gFaadCxt->init_flag = 0;
