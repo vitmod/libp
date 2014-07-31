@@ -125,6 +125,9 @@ void in_hex_dump(const char* title,const unsigned char* dat,size_t length);
 
 int in_get_mac_address(const char* device,char* mac,int size);   
 
+
+char * in_strrstr(const char *s, const char *str);
+
 unsigned long in_get_free_mem_size();
 #ifdef __cplusplus
 #if __cplusplus

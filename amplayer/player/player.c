@@ -318,7 +318,7 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
             log_print("seek durint searching, clear ff/fb first\n");
         }
 
-        if (msg->f_param < para->state.full_time && msg->f_param >= 0) {
+        if ((para->start_param->is_livemode == 1) || (msg->f_param < para->state.full_time && msg->f_param >= 0)) {
             para->playctrl_info.search_flag = 1;
             para->playctrl_info.time_point = msg->f_param;
             para->playctrl_info.end_flag = 1;

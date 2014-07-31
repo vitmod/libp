@@ -31,7 +31,11 @@ int getLocalCurrentTime(char** buf,int* len){
     strftime(strTime, sizeof(strTime), "%Y_%m_%d-%H_%M_%S",timeinfo);
     int slen = strlen(strTime) +1;
     char* p = malloc(slen);
+    #ifdef LIVEPLAY_SEEK
+    *(p+slen-1) = '\0';
+    #else
     *(p+slen) = '\0';
+    #endif
     strcpy(p,strTime);
     *buf = p;
     *len = slen;
@@ -252,6 +256,19 @@ char* in_strip_blank(char *pStr)
     *(p+1) = 0;
     return pStr;
 }
+
+char * in_strrstr(const char *s, const char *str)
+{
+    char *p;
+    int len = strlen(s);
+    for (p = s + len - 1; p >= s; p--) {
+        if ((*p == *str) && (memcmp(p, str, strlen(str)) == 0)) {
+            return p;
+        }
+    }
+    return NULL;
+}
+
 #include <sys/sysinfo.h>
 unsigned long in_get_free_mem_size(){
     struct sysinfo s_info;

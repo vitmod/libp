@@ -310,7 +310,8 @@ typedef struct
 	float buffing_middle;					 //auto buffering middle limit
 	float buffing_max;						 //auto buffering high limit
 	int is_playlist;						 //no use
-	int is_type_parser;						 //is try to get file type 
+	int is_type_parser;						 //is try to get file type
+	int is_livemode;                               // support timeshift for chinamobile 
 	int buffing_starttime_s;			//for rest buffing_middle,buffering seconds data to start.
 	int buffing_force_delay_s;
 	int lowbuffermode_flag;

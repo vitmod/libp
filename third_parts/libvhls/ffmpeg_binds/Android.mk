@@ -5,6 +5,10 @@ include $(CLEAR_VARS)
 LOCAL_ARM_MODE := arm
 LOCAL_PRELINK_MODULE := false
 
+ifeq ($(LIVEPLAY_SEEK), true)
+ LOCAL_CFLAGS += -DLIVEPLAY_SEEK
+endif
+
 LOCAL_SRC_FILES := $(notdir $(wildcard $(LOCAL_PATH)/*.c)) 		
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../include \

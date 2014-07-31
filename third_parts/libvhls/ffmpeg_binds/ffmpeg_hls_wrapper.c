@@ -250,7 +250,11 @@ static int64_t ffmpeg_hls_exseek(URLContext *h, int64_t pos, int whence){
         }
 
     }else if(whence == AVSEEK_TO_TIME){
+    	#ifdef LIVEPLAY_SEEK
+        if(pos>=0){
+        #else
         if(ctx->durationUs>0&&pos>=0&&(pos*1000000)<ctx->durationUs){
+		#endif
             int64_t seekToUs = m3u_session_seekUs(hSession,pos*1000000,interrupt_call_cb);
             RLOG("Seek to time:%lld\n",seekToUs);
             return (seekToUs/1000000);

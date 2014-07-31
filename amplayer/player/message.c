@@ -223,6 +223,9 @@ int update_player_states(play_para_t *para, int force)
     if (check_time_interrupt(&cb->callback_old_time, cb->update_interval) || force) {
         player_info_t state;
         MEMCPY(&state, &para->state, sizeof(state));
+        if(para->start_param->is_livemode == 1) {
+            state.current_ms = 0;
+        }
         //if(force == 1)
         log_print("**[update_state]pid:%d status=%s(last:%s) err=0x%x curtime=%d (ms:%d) fulltime=%d lsttime=%d\n",
                   para->player_id,

@@ -4,6 +4,10 @@ include $(CLEAR_VARS)
 LOCAL_ARM_MODE := arm
 LOCAL_MODULE_TAGS := optional
 
+ifeq ($(LIVEPLAY_SEEK), true)
+ LOCAL_CFLAGS += -DLIVEPLAY_SEEK
+endif
+
 LIBPLAYER_PATH=$(TOP)/packages/amlogic/LibPlayer
 LOCAL_SRC_FILES := \
 	hls_utils.c\

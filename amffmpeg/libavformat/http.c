@@ -375,6 +375,7 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 	retry_times=config_rettry;
     h->is_streamed = 1;
     s->hd = NULL;
+    s->is_livemode = 0;
     s->filesize = -1;
     s->is_seek=1;
     s->canseek=1;
@@ -800,7 +801,11 @@ retry:
 	}
 	if(len==0 && (s->off < s->filesize-10) && s->read_seek_count < READ_SEEK_TIMES){
 		av_log(h, AV_LOG_INFO, "http_read return 0,but off not reach filesize,maybe close by server try again\n");
-		len=-1000;/*force to retry,if else data <10,don't do it*/
+	       if(s->is_livemode == 1){
+		    len = 0;
+		}else{
+		len = -1000; // ignore it, just continue
+	       }
 	}
 errors:
 	if(len<0){

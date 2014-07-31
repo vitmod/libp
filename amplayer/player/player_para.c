@@ -1185,7 +1185,7 @@ int player_dec_reset(play_para_t *p_para)
         p_para->astream_info.check_first_pts = 0;
     }
 	log_print("player dec reset p_para->playctrl_info.time_point=%f\n",p_para->playctrl_info.time_point);
-    if((p_para->playctrl_info.time_point>=0) && (p_para->state.full_time > 0)){	
+    if((p_para->playctrl_info.time_point>=0) && ((p_para->state.full_time > 0) || (p_para->start_param->is_livemode == 1))){	
     	 ret = time_search(p_para,-1);
     }else{
         if(p_para->pFormatCtx && p_para->pFormatCtx->pb && p_para->stream_type == STREAM_RM){
