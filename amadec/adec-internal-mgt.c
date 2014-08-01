@@ -23,7 +23,7 @@
 #include <amthreadpool.h>
 
 #define MULTICH_SUPPORT_PROPERTY "media.multich.support.info"
-
+#define PCM_88_96_SUPPORT        "media.libplayer.88_96K"
 static int set_tsync_enable(int enable)
 {
 
@@ -504,6 +504,7 @@ static void set_multichs_prop()
     int dgraw = 0;
     dgraw = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
     infobuf = (char *)malloc(1024 * sizeof(char));
+    property_set(PCM_88_96_SUPPORT,"0");
     if(infobuf == NULL){
         adec_print("%s: malloc infobuf failed.\n",__FUNCTION__);
     }else{
@@ -533,6 +534,11 @@ static void set_multichs_prop()
                         property_set(MULTICH_SUPPORT_PROPERTY,"hdmi2");
                         channel = channel < 2 ? 2 : channel;
                     }
+                }else if(
+                    ( (infobuf[i] == '8') && (infobuf[i+1] == '8') && (infobuf[i+2] == '.')&& (infobuf[i+3] == '2'))
+                   ||((infobuf[i] == '9') && (infobuf[i+1] == '6')))
+                {
+                       property_set(PCM_88_96_SUPPORT,"1");
                 }
             }
             if(channel == 0)
@@ -582,11 +588,11 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 	if (ret>0 && match_types(t->type,value))
 	{	
 		char type_value[] = "ac3,eac3";
+		set_multichs_prop();
 		if(match_types(t->type,type_value))
 		{   
             #ifdef DOLBY_USE_ARMDEC
 			adec_print("DOLBY_USE_ARMDEC=%d",DOLBY_USE_ARMDEC);
-			set_multichs_prop();
 			audio_decoder = AUDIO_ARM_DECODER;					  
             #else
 			audio_decoder = AUDIO_ARC_DECODER;

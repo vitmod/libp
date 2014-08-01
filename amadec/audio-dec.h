@@ -135,7 +135,7 @@ struct aml_audio_dec {
 	int StageFrightCodecEnableType;
 	int64_t pcm_bytes_readed;
 	int64_t raw_bytes_readed;
-	int codec_type;
+	float codec_type;
 	int raw_frame_size;
 	int pcm_frame_size;
 	int i2s_iec958_sync_flag;
@@ -169,6 +169,7 @@ struct aml_audio_dec {
     int OmxFirstFrameDecoded;
     int tsync_mode;
     adec_thread_mgt_t thread_mgt;
+    int dtshdll_flag;
 };
 
 //from amcodec

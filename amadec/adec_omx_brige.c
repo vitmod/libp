@@ -138,12 +138,14 @@ exit_decode_loop:
          outlen_raw=0;
          if(audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_DTSHD ||
 		 	audec->StageFrightCodecEnableType == OMX_ENABLE_CODEC_TRUEHD)
-         {
+         {   int outlen0=outlen;
              if(outlen>8) {
                   memcpy(&outlen,outbuf,4);
                   outbuf+=4;
-                  memcpy(&outlen_raw,outbuf+outlen,4);
-                  outbuf_raw=outbuf+outlen+4;
+                  if(outlen+8<outlen0){
+                    memcpy(&outlen_raw,outbuf+outlen,4);
+                    outbuf_raw=outbuf+outlen+4;
+                  } 
              }else{
                   outlen=0;
              }
@@ -157,6 +159,7 @@ exit_decode_loop:
                   outbuf+=4;
                   memcpy(&outlen_raw,outbuf+outlen,4);
                   outbuf_raw=outbuf+outlen+4;
+                  memset(outbuf+outlen,0,4);
              }else{
                   outlen=0;
              }
