@@ -1578,10 +1578,19 @@ int update_playing_info(play_para_t *p_para)
                 }
             }
         }
-        if (p_para->playctrl_info.audio_ready == 1 ||
+
+        if ((p_para->playctrl_info.audio_ready == 1 ||
             p_para->playctrl_info.fast_backward ||
-            p_para->playctrl_info.fast_forward) {
+            p_para->playctrl_info.fast_forward) &&
+            !p_para->playctrl_info.end_flag){
             update_current_time(p_para);
+        }
+        if ((get_player_state(p_para) == PLAYER_PLAYEND && p_para->state.seek_point > p_para->state.full_time)
+            || ((p_para->state.seek_point > p_para->state.current_time) && (p_para->state.seek_point < p_para->state.current_time+10) && (p_para->state.seek_delay-- > 0))
+            || (abs(p_para->state.seek_point - p_para->state.current_time) > 90000*10 && (p_para->state.seek_delay-- > 0))) {
+            //log_print("## [%s:%d] use seek_point: seek_pos=%d, cur_time=%d, seek_delay=%d, \n", __FUNCTION__, __LINE__,p_para->state.seek_point,p_para->state.current_time,p_para->state.seek_delay);
+            p_para->state.current_time = p_para->state.seek_point;
+            p_para->state.current_ms = p_para->state.current_time * 1000;
         }
         p_para->state.pts_video = get_pts_video(p_para);
     }

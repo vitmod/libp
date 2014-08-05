@@ -207,6 +207,8 @@ typedef struct player_info
     unsigned int drm_rental;
 	int64_t download_speed; //download speed
     unsigned int last_pts;
+    int seek_point;
+    int seek_delay;
 }player_info_t;
 
 typedef struct pid_info
