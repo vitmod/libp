@@ -394,18 +394,11 @@ static int OutBufferInit(aml_audio_dec_t *audec)
     adec_print("[%s %d]pcm buffer init ok buf_size:%d\n",__FUNCTION__,__LINE__,audec->g_bst->buf_length);
 
     audec->g_bst->data_width=audec->data_width=AV_SAMPLE_FMT_S16;
-    
-#if 0    
+        
     if(audec->channels>0)
         audec->g_bst->channels=audec->channels;
-    else
-        audec->g_bst->channels=audec->channels=2;
     if(audec->samplerate>0)
-        audec->g_bst->samplerate=audec->samplerate;
-    else
-        audec->g_bst->samplerate=audec->samplerate=48000;
-#endif
-    
+        audec->g_bst->samplerate=audec->samplerate;  
     audec->g_bst->format = audec->format;
 
     return 0;
