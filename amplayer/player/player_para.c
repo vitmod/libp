@@ -1257,6 +1257,7 @@ int player_dec_reset(play_para_t *p_para)
         log_print("[%s:%d]audio_mute=%d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.audio_mute);
         codec_audio_automute(p_para->acodec->adec_priv, p_para->playctrl_info.audio_mute);
     }
+	p_para->play_last_reset_systemtime_us = player_get_systemtime_ms();
     return ret;
 }
 static int check_ctx_bitrate(play_para_t *p_para)

@@ -203,6 +203,8 @@ typedef struct play_para {
     // first time enter buffering thres<buffer_enter_s/div_buf_time
     // enter buffering one more time, div_buf_time--, promote buffer level
     int div_buf_time;
+    int play_start_systemtime_us; //
+    int play_last_reset_systemtime_us; //
     float buffering_force_delay_s; 
     long buffering_check_point;	
     int buffering_bitrate_finished;  

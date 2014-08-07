@@ -1310,7 +1310,7 @@ static int  update_buffering_states(play_para_t *p_para,
             if(p_para->div_buf_time > 1)
                 p_para->div_buf_time--;
         } else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
-                   ((avdelayms > p_para->buffering_exit_time_s*1000)  ||
+                   ((avdelayms > p_para->buffering_exit_time_s*1000/((p_para->div_buf_time>2)?(p_para->div_buf_time>>1):1))  ||
                     (avdelayms<=0 && minlevel > p_para->buffering_threshhold_middle)  ||
                     (maxlevel > p_para->buffering_threshhold_max) ||
                     p_para->playctrl_info.read_end_flag)) {
@@ -1320,8 +1320,23 @@ static int  update_buffering_states(play_para_t *p_para,
             log_print("leave buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS\n",avdelayms,adelayms,vdelayms);
             set_player_state(p_para, PLAYER_RUNNING);
             update_player_states(p_para, 1);
+            if(p_para->div_buf_time > 1)
+                p_para->div_buf_time--;
         }
     }
+
+	/*
+	if running and buffering div_buf_time is>1.
+	we need dec div_buf_time ..
+	if >20 div not valied.
+	*/
+	if(get_player_state(p_para) == PLAYER_RUNNING && p_para->div_buf_time > 1){
+		if(player_get_systemtime_ms()-p_para->play_start_systemtime_us > 20*1000){
+			p_para->div_buf_time= 1;
+		}else if(player_get_systemtime_ms()-p_para->play_start_systemtime_us > 5*1000){
+			p_para->div_buf_time--;
+		}
+	}
     //}
     return 0;
 }
