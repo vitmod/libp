@@ -3002,6 +3002,11 @@ typedef struct AVCodecContext {
      int mpegps_video_idprobed;
 	/*for some special asf files */
 	 int durcount;
+
+    // need filter 10bit for hevc
+    int bit_depth;
+    // need filter long term ref pic for hevc
+    int long_term_ref_pic;
 } AVCodecContext;
 
 int  av_codec_get_seek_preroll(const AVCodecContext *avctx);

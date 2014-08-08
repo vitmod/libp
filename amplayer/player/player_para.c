@@ -767,10 +767,17 @@ static void get_stream_info(play_para_t *p_para)
                 unsupported_video = 1; 
             }
         } else {
+            if(p_para->vstream_info.video_format == VFORMAT_HEVC) {
+                unsupported_video = (p_para->pFormatCtx->streams[video_index]->codec->bit_depth == 10 ||
+                p_para->pFormatCtx->streams[video_index]->codec->long_term_ref_pic == 1);
+                if(unsupported_video == 1) {
+                    log_print("[%s:%d]hevc 10 bit profile or long term ref pic, not support now!\n", __FUNCTION__, __LINE__);
+                }
+            }
             if ((p_para->vstream_info.video_width > 1920) ||
                 (p_para->vstream_info.video_height > 1088)) {
                 unsupported_video = 1; 
-                if (p_para->vstream_info.video_format == VFORMAT_HEVC){
+                if (p_para->vstream_info.video_format == VFORMAT_HEVC) {
                     unsupported_video=!p_para->vdec_profile.hevc_para.support4k ;
                 }
                /// unsupported_video = 1;

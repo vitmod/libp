@@ -146,6 +146,7 @@ int check_size_in_buffer3(unsigned char *p, int len)
                 dst[di++] = 0;
                 si       += 3;
 
+#if 0
                 s->skipped_bytes++;
                 if (s->skipped_bytes_pos_size < s->skipped_bytes) {
                     s->skipped_bytes_pos_size *= 2;
@@ -157,6 +158,7 @@ int check_size_in_buffer3(unsigned char *p, int len)
                 }
                 if (s->skipped_bytes_pos)
                     s->skipped_bytes_pos[s->skipped_bytes-1] = di - 1;
+#endif
                 continue;
             } else // next start code
                 goto nsc;

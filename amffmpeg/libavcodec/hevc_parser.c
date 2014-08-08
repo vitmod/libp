@@ -153,6 +153,10 @@ PASS:
             HEVCSPS *sps = (HEVCSPS*)h->sps_list[0]->data;
             avctx->width = sps->width;
             avctx->height = sps->height;
+            avctx->bit_depth = sps->bit_depth;
+            if(sps->long_term_ref_pics_present_flag==1 && sps->num_long_term_ref_pics_sps>0) {
+                avctx->long_term_ref_pic = 1;
+            }
             break;
         case NAL_PPS:
             ff_hevc_decode_nal_pps(h);
