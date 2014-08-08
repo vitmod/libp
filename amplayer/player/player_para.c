@@ -1609,7 +1609,10 @@ init_fail:
 int player_offset_init(play_para_t *p_para)
 {
     int ret = PLAYER_SUCCESS;
-    if (p_para->playctrl_info.time_point >= 0) {
+    if(get_player_state(p_para)==PLAYER_SEARCHOK){
+	log_print("[%s:%d]PLAYER_SEARCHOK nothing to do\n", __FUNCTION__,__LINE__);
+    }
+    else if (p_para->playctrl_info.time_point >= 0) {
         p_para->off_init = 1;
         if(p_para->playctrl_info.time_point>0)
             ret = time_search(p_para,AVSEEK_FLAG_BACKWARD);
@@ -1636,8 +1639,28 @@ int player_offset_init(play_para_t *p_para)
 init_fail:
     return ret;
 }
+int player_seek_init(struct play_para *p_para)
+{
+    int ret = PLAYER_SUCCESS;
+    p_para->off_init = 1;
+    if(p_para->playctrl_info.time_point>0)
+        ret = time_search(p_para,AVSEEK_FLAG_BACKWARD);
+    else
+        ret = time_search(p_para,AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);/*if seek to 0,don't care whether keyframe. */
+    if (ret != PLAYER_SUCCESS) {
+        set_player_state(p_para, PLAYER_ERROR);
+        ret = PLAYER_SEEK_FAILED;
+        log_error("[%s:%d]time_search to pos:%ds failed!", __FUNCTION__, __LINE__, p_para->playctrl_info.time_point);
+        return ret;
+    }
 
-
+    p_para->off_init = 0;
+    if (p_para->playctrl_info.time_point < p_para->state.full_time) {
+        p_para->state.current_time = p_para->playctrl_info.time_point;
+        p_para->state.current_ms = p_para->playctrl_info.time_point * 1000;
+    }
+    return PLAYER_SUCCESS;
+}
 int player_decoder_init(play_para_t *p_para)
 {
     int ret;

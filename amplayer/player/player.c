@@ -782,9 +782,8 @@ static int check_start_cmd(play_para_t *player)
         if (msg->ctrl_cmd & CMD_SEARCH) {
             if (msg->f_param < player->state.full_time && msg->f_param >= 0) {
                 player->playctrl_info.time_point = msg->f_param;
-                log_print("pid[%d]::seek before start, set time_point to %f\n", player->player_id, player->playctrl_info.time_point);
-                set_player_state(player, PLAYER_SEARCHOK);
-                update_player_states(player, 1);
+                check_msg(player, msg);
+                log_print("pid[%d]::seek before start, set time_point to %f search_flag=%d\n", player->player_id, player->playctrl_info.time_point,player->playctrl_info.search_flag);
                 message_free(msg);
                 msg = NULL;
                 return 0;
@@ -987,6 +986,22 @@ void *player_thread(play_para_t *player)
                 update_player_states(player, 1);
                 goto release0;
             }
+	     else{
+                if (player->playctrl_info.time_point >= 0) {
+                	log_print("pid[%d]::do the init seek search_flag=%d\n", player->player_id,player->playctrl_info.search_flag);
+                	ret=player_seek_init(player);
+		     	if(ret==PLAYER_SUCCESS&&player->playctrl_info.search_flag){
+		     		log_print("pid[%d]::update PLAYER_SEARCHOK status\n", player->player_id);
+		            	set_player_state(player, PLAYER_SEARCHOK);
+		            	update_playing_info(player);
+		            	update_player_states(player, 1);
+		     	}
+		     	else
+		     		player->playctrl_info.time_point=-1;
+			player->playctrl_info.search_flag=0;
+            	  }
+	     }
+            
             if (ffmpeg_buffering_data(player) < 0) {
                 player_thread_wait(player, 100 * 1000);
             }
@@ -1017,6 +1032,7 @@ void *player_thread(play_para_t *player)
         	url_fseek(player->pFormatCtx->pb, player->data_offset, SEEK_SET);
         }
     }
+    
     log_print("pid[%d]::decoder prepare\n", player->player_id);
     ret = player_decoder_init(player);
     if (ret != PLAYER_SUCCESS) {
