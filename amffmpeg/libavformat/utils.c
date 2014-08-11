@@ -51,6 +51,10 @@
 #undef NDEBUG
 #include <assert.h>
 
+
+//added by aml
+#include <cutils/properties.h>
+
 /**
  * @file
  * various utility functions for use within FFmpeg
@@ -2841,8 +2845,16 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     int64_t valid_offset, offset, duration;
     int retry=0;
     int first_dts=0;
+    int64_t estimate_size = DURATION_MAX_READ_SIZE;
+    char value[PROPERTY_VALUE_MAX]={0};
 
     ic->cur_st = NULL;
+   
+    //read from prop
+    if(property_get("media.amplayer.estimate_size",value,NULL) > 0){
+        estimate_size = (int64_t)atoi(value);
+    }
+    av_log(NULL, AV_LOG_WARNING, "Estimate Size:%d (Byte)\n", estimate_size);
 
     /* flush packet queue */
     flush_packet_queue(ic);
@@ -2875,7 +2887,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
 
     end_time = AV_NOPTS_VALUE;
     do{
-	offset = valid_offset - (DURATION_MAX_READ_SIZE<<retry);
+	offset = valid_offset - (estimate_size<<retry);
         if (offset < 0)
             offset = 0;
         //av_log(NULL,AV_LOG_INFO, "[%s:%d]offset=%llx valid_offset=%llx \n", __FUNCTION__, __LINE__, offset, valid_offset);
@@ -2883,7 +2895,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
         avio_seek(ic->pb, offset, SEEK_SET);
         read_size = 0;
         for(;;) {
-            if (read_size >= DURATION_MAX_READ_SIZE<<(FFMAX(retry-1,0)))
+            if (read_size >= estimate_size<<(FFMAX(retry-1,0)))
                 break;
             do{
                 ret = av_read_packet(ic, pkt);
@@ -2899,25 +2911,32 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
                 (st->start_time != AV_NOPTS_VALUE ||
                  st->first_dts  != AV_NOPTS_VALUE)) {
                 duration = end_time = pkt->pts;
-               // av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx start_time=%llx first_dts=%llx\n",__FUNCTION__, __LINE__,duration, st->start_time, st->first_dts);
+                //av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx start_time=%llx first_dts=%llx\n",__FUNCTION__, __LINE__,duration, st->start_time, st->first_dts);
 
                 if (st->start_time != AV_NOPTS_VALUE)  duration -= st->start_time;
                 else                                   duration -= st->first_dts;
-    	      //  av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx\n",__FUNCTION__, __LINE__,duration);
+    	        //av_log(NULL, AV_LOG_INFO, "[%s:%d] duration=0x%llx\n",__FUNCTION__, __LINE__,duration);
 
                 if (duration < 0)
                     duration += 1LL<<st->pts_wrap_bits;
                 if (duration > 0) {
-                    if (st->duration == AV_NOPTS_VALUE ||
-                        st->duration < duration)
-                        st->duration = duration;                      
+                    if(st->duration == AV_NOPTS_VALUE || st->info->last_duration <=0 ||
+                      (st->duration < duration && FFABS(duration - st->info->last_duration) < 60LL*st->time_base.den / st->time_base.num))
+                        st->duration = duration;
+                    if(FFABS(duration - st->info->last_duration) > 600LL*st->time_base.den / st->time_base.num && st->info->last_duration > 0)
+                    {
+    	                //av_log(NULL, AV_LOG_INFO, "[%s:%d] diff too much duration=0x%llx  last_duration:%llx index:%d \n",__FUNCTION__, __LINE__,duration,st->info->last_duration,pkt->stream_index);
+                        st->duration = st->info->last_duration;
+                        continue;
+                    }
+                    st->info->last_duration = duration;
                 }
             }
             av_free_packet(pkt);
         }
        // av_log(NULL, AV_LOG_INFO, "[%s:%d] endtime=0x%llx retry=%d\n",__FUNCTION__, __LINE__,end_time , retry);
     }while(   end_time==AV_NOPTS_VALUE
-           && valid_offset > (DURATION_MAX_READ_SIZE<<retry)
+           && valid_offset > (estimate_size<<retry)
            && ++retry <= DURATION_MAX_RETRY);
    av_log(NULL, AV_LOG_INFO, "[%s:%d] ic->duration=0x%llx\n",__FUNCTION__, __LINE__, ic->duration);
 
