@@ -788,6 +788,7 @@ int mpeg_check_sequence(play_para_t *para)
     int64_t cur_offset = 0;
     AVFormatContext *s = para->pFormatCtx;
     unsigned char buf[MPEG_PROBE_SIZE];
+    unsigned char *pbuf = &buf[0];
     if(!s->pb) return 0;
     cur_offset = avio_tell(s->pb);
     offset = 0;
@@ -822,8 +823,15 @@ int mpeg_check_sequence(play_para_t *para)
         }
     }
     if (seq_size > 0) {
+        if (seq_size > MPEG_PROBE_SIZE) {
+            pbuf = MALLOC(seq_size);
+            if (NULL == pbuf) {
+                log_error("[%s:%d]malloc buf failed\n", __FUNCTION__, __LINE__);
+                return -1;
+            }
+        }
         url_fseek(s->pb, pos1, SEEK_SET);
-        read_size = get_buffer(s->pb, buf, seq_size);
+        read_size = get_buffer(s->pb, pbuf, seq_size);
         if (read_size < 0) {
             log_error("[mpeg_check_sequence:%d] read error: %d\n", __LINE__, read_size);
             avio_seek(s->pb, cur_offset, SEEK_SET);
@@ -831,7 +839,7 @@ int mpeg_check_sequence(play_para_t *para)
         }
 #ifdef DEBUG_MPEG_SEARCH
         for (i = 0; i < seq_size; i++) {
-            log_print("%02x ", buf[i]);
+            log_print("%02x ", pbuf[i]);
             if (i % 8 == 7) {
                 log_print("\n");
             }
@@ -840,7 +848,7 @@ int mpeg_check_sequence(play_para_t *para)
 
         para->vstream_info.extradata = MALLOC(seq_size);
         if (para->vstream_info.extradata) {
-            MEMCPY(para->vstream_info.extradata, buf, seq_size);
+            MEMCPY(para->vstream_info.extradata, pbuf, seq_size);
             para->vstream_info.extradata_size = seq_size;
 #ifdef DEBUG_MPEG_SEARCH
             for (i = 0; i < seq_size; i++) {
@@ -852,6 +860,10 @@ int mpeg_check_sequence(play_para_t *para)
 #endif
         } else {
             log_error("[mpeg_check_sequece:%d] no enough memory !\n", __LINE__);
+        }
+
+        if (seq_size > MPEG_PROBE_SIZE && pbuf) {
+            FREE(pbuf);
         }
     } else {
         log_error("[mpeg_check_sequence:%d]max probe size reached! not find sequence header!\n", __LINE__);
