@@ -415,6 +415,7 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     const int def_buf_size = 1024*1024;
     int buf_len = 0;
     int err_code = 0;
+#if 0
     if(flen>0){
         buffer = (unsigned char* )malloc(flen);
         buf_len = flen;         
@@ -424,14 +425,19 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
         buf_len = def_buf_size;  
         
     }
-    //memset(buffer,0,buf_len);
-    int64_t isize = 0;
+#else
+    // for gzip, filesize cannot recognized as real buf size
+    buffer = (unsigned char* )malloc(def_buf_size);
+    buf_len = def_buf_size;
+#endif
+    memset(buffer,0,buf_len);
+    int isize = 0;
 
     do{
         ret = hls_http_read(handle,buffer+isize,buf_len);
         if(ret<=0){
             if (ret!= HLSERROR(EAGAIN)) {
-                if(ret!=0){
+                if(ret!=0 && ret != HLSERROR(ERROR_END_OF_STREAM)){
                     LOGE("Read data failed, errno %d\n", errno);
                 }
                 break;
@@ -455,7 +461,7 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     err_code = hls_http_get_error_code(handle);
     hls_http_close(handle);
     
-    if(ret<0){
+    if(ret<0 && ret != HLSERROR(ERROR_END_OF_STREAM)){
         ret = err_code<0?err_code:ret;
         LOGE("failed to fetch file,return value:%d\n",ret);        
         return ret;        

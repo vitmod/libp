@@ -518,6 +518,7 @@ static int curl_wrapper_open_cnx(CURLWContext *con, CURLWHandle *h, Curl_Data *b
         curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_SSL_VERIFYPEER, 0L));
         curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_SSL_VERIFYHOST, 0L));
     }
+    curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_ACCEPT_ENCODING, "gzip"));
     con->quited = 0;
     h->quited = 0;
     h->open_quited = 0;

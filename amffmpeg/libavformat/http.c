@@ -22,8 +22,9 @@
 #include "libavutil/avstring.h"
 #include "avformat.h"
 #include <unistd.h>
-#include<time.h>
+#include <time.h>
 #include <strings.h>
+#include <zlib.h>
 #include "internal.h"
 #include "network.h"
 #include "http.h"
@@ -54,6 +55,7 @@
 
 /*#define READ_RETRY_MAX_TIME_MS (120*1000) 
 /*60 seconds no data get,we will reset it*/
+
 typedef struct {
     const AVClass *class;
     URLContext *hd;
@@ -74,7 +76,14 @@ typedef struct {
     int is_broadcast;
     int read_seek_count;
     int is_livemode;
-    void * bandwidth_measure;	
+    void * bandwidth_measure;
+    /*----------  for gzip -----------*/
+    int b_compressed;
+    struct {
+        z_stream   stream;
+        uint8_t   *p_buffer;
+    }b_inflate;
+    /*----------------- -----------*/
     char hosname[1024];    
     int port;
     int keep_alive;
@@ -348,7 +357,20 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->keep_alive = enable_http_keepalive;
     s->flags = flags;
     av_strlcpy(s->location, uri, sizeof(s->location));
-    s->max_connects=MAX_CONNECT_LINKS;	
+    s->max_connects=MAX_CONNECT_LINKS;
+
+    /*----------  for gzip -----------*/
+    s->b_compressed = 0;
+    /* 15 is the max windowBits, +32 to enable optional gzip decoding */
+    if(inflateInit2(&s->b_inflate.stream, 32+15 ) != Z_OK ) {
+        av_log(h, AV_LOG_ERROR, "Error during zlib initialisation: %s\n", s->b_inflate.stream.msg);
+    }
+    if(zlibCompileFlags() & (1<<17)) {
+        av_log(h, AV_LOG_ERROR, "zlib was compiled without gzip support!\n");
+    }
+    s->b_inflate.p_buffer = NULL;
+    /*-----------------------------*/
+
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 	
 	ret = http_open_cnx(h);
 	while(ret<0 && ++open_retry<retry_times && !url_interrupt_cb() && (s->http_code != 404 ||s->http_code != 503 || s->http_code != 500)){
@@ -388,7 +410,20 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     s->keep_alive = enable_http_keepalive;
     s->flags = flags;
     av_strlcpy(s->location, uri+1, sizeof(s->location));	
-	s->max_connects=MAX_CONNECT_LINKS;	
+    s->max_connects=MAX_CONNECT_LINKS;
+
+    /*----------  for gzip -----------*/
+    s->b_compressed = 0;
+    /* 15 is the max windowBits, +32 to enable optional gzip decoding */
+    if(inflateInit2(&s->b_inflate.stream, 32+15 ) != Z_OK ) {
+        av_log(h, AV_LOG_ERROR, "Error during zlib initialisation: %s\n", s->b_inflate.stream.msg);
+    }
+    if(zlibCompileFlags() & (1<<17)) {
+        av_log(h, AV_LOG_ERROR, "zlib was compiled without gzip support!\n");
+    }
+    s->b_inflate.p_buffer = NULL;
+    /*-----------------------------*/
+	
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 		
 	ret = http_open_cnx(h);
 	while(ret<0 && ++open_retry<retry_times && !url_interrupt_cb()){
@@ -535,7 +570,16 @@ static int process_line(URLContext *h, char *line, int line_count,
             /* seek when we get real file size */
             if(s->filesize>0)
                 h->is_streamed = 0; /* we _can_ in fact seek */
-        } else if (!strcasecmp (tag, "Transfer-Encoding") && !strncasecmp(p, "chunked", 7)) {
+        }
+         /*----------  for gzip -----------*/
+        else if (!strcasecmp (tag, "Content-Encoding")) {
+            if(!strcasecmp(p, "identity" ))
+	         ;
+	     else if(!strcasecmp(p, "gzip" ) || !strcasecmp(p, "deflate" ))
+	         s->b_compressed = 1;
+	 }
+	 /*-----------------------------*/
+	 else if (!strcasecmp (tag, "Transfer-Encoding") && !strncasecmp(p, "chunked", 7)) {
             s->filesize = -1;
             s->chunksize = 0;
         } else if (!strcasecmp (tag, "WWW-Authenticate")) {
@@ -839,6 +883,31 @@ errors:
 
 }
 
+// for gzip
+static int http_read_compressed(URLContext *h, uint8_t *buf, int size)
+{
+    HTTPContext *s = h->priv_data;
+    if(s->b_compressed) {
+        int ret;
+        if(!s->b_inflate.p_buffer) {
+            s->b_inflate.p_buffer = av_malloc(256*1024);
+        }
+        if(s->b_inflate.stream.avail_in == 0) {
+            int i_read = http_read(h, s->b_inflate.p_buffer, 256*1024);
+            if(i_read <= 0)
+                return i_read;
+            s->b_inflate.stream.next_in = s->b_inflate.p_buffer;
+            s->b_inflate.stream.avail_in = i_read;
+        }
+        s->b_inflate.stream.avail_out = size;
+        s->b_inflate.stream.next_out = buf;
+        ret = inflate(&s->b_inflate.stream, Z_SYNC_FLUSH);
+        return size - s->b_inflate.stream.avail_out;
+    } else {
+        return http_read(h, buf, size);
+    }
+}
+
 /* used only when posting data */
 static int http_write(URLContext *h, const uint8_t *buf, int size)
 {
@@ -898,6 +967,12 @@ static int http_close(URLContext *h)
 	HTTPContext *s = h->priv_data;
     http_close_and_keep(s,0);
     bandwidth_measure_free(s->bandwidth_measure);	
+
+    /*----------  for gzip -----------*/
+    inflateEnd(&s->b_inflate.stream);
+    av_free(s->b_inflate.p_buffer);
+    /*-----------------------------*/
+	
     return ret;
 }
 
@@ -976,7 +1051,7 @@ static int http_get_info(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *i
 URLProtocol ff_http_protocol = {
     .name                = "http",
     .url_open            = http_open,
-    .url_read            = http_read,
+    .url_read            = http_read_compressed,/*http_read*/
     .url_write           = http_write,
     .url_seek            = http_seek,
     .url_close           = http_close,
@@ -988,7 +1063,7 @@ URLProtocol ff_http_protocol = {
 URLProtocol ff_shttp_protocol = {
     .name                = "shttp",
     .url_open            = shttp_open,
-    .url_read            = http_read,
+    .url_read            = http_read_compressed,/*http_read*/
     .url_write           = http_write,
     .url_seek            = http_seek,
     .url_close           = http_close,
