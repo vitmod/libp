@@ -17,8 +17,8 @@ static int DTSDemuxMatchDTSSync2(uint32_t ui32TempSync, uint32_t ui32TempSync2)
 {
       /* 16-bit bit core stream*/
       if( ui32TempSync == DTSDEMUX_SYNCWORD_CORE_16  || ui32TempSync == DTSDEMUX_SYNCWORD_CORE_14 ||
-          ui32TempSync == DTSDEMUX_SYNCWORD_CORE_16M || ui32TempSync == DTSDEMUX_SYNCWORD_CORE_14M
-     /*ui32TempSync == DTSDEMUX_SYNCWORD_SUBSTREAM|| ui32TempSync == DTSDEMUX_SYNCWORD_SUBSTREAM_M*/)
+          ui32TempSync == DTSDEMUX_SYNCWORD_CORE_16M || ui32TempSync == DTSDEMUX_SYNCWORD_CORE_14M ||
+          ui32TempSync == DTSDEMUX_SYNCWORD_SUBSTREAM|| ui32TempSync == DTSDEMUX_SYNCWORD_SUBSTREAM_M)
       {
             return 1;
       }
@@ -35,6 +35,7 @@ static int Dtshd_Estimate_Frame_size( unsigned char *buf,int size,int *syncpos)
      int i32Index=0;
      int result=0;
      unsigned int ui32Sync_word=0,ui32Sync_word2=0;
+     unsigned int ui32Sync_word_save=0,ui32Sync_word2_save=0;
      int first_sync_Detected=0,first_sync_pos=-1;
      int frame_size=0;
      *syncpos=0;
@@ -57,18 +58,22 @@ static int Dtshd_Estimate_Frame_size( unsigned char *buf,int size,int *syncpos)
             if(first_sync_Detected==0){
                 first_sync_Detected=1;
                 first_sync_pos=i32Index;
+                ui32Sync_word_save=ui32Sync_word;
                 ALOGI("first_sync_pos/%d ",first_sync_pos);
             }else if(first_sync_Detected==1){
-                frame_size=i32Index-first_sync_pos;
-                ALOGI("FrameSize detect: %d/bytes",frame_size);
-                break;
+                if(ui32Sync_word_save==ui32Sync_word){
+                   frame_size=i32Index-first_sync_pos;
+                   ALOGI("FrameSize detect: %d/bytes",frame_size);
+                   break;
+                }
             }
          }
      }
    
      if(frame_size==0)
      {
-         ALOGE("[%s %d ]FrameSize detect Falied ",__FUNCTION__,__LINE__);
+         ALOGE("[%s %d ]FrameSize detect Falied,used defualt value/1024\n",__FUNCTION__,__LINE__);
+         frame_size=1024;
      }else{
          frame_size += 4;
      }

@@ -9,7 +9,7 @@
 
 namespace android {
 
-#define DTSHD_INPUT_DATA_LEN_PTIME               (32*1024)
+#define DTSHD_INPUT_DATA_LEN_PTIME               (40*1024)
 #define DTSHD_OMX_DECODER_NUMBUF    2
 #define DTSDEMUX_SYNCWORD_CORE_16M          0x7ffe8001
 #define DTSDEMUX_SYNCWORD_CORE_14M          0x1fffe800
