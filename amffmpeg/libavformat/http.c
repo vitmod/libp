@@ -191,6 +191,7 @@ static int http_open_cnx(URLContext *h)
     HTTPContext *s = h->priv_data;
     URLContext *hd =  s->hd;
 	int flags =AVIO_FLAG_READ_WRITE;
+	int ret;
 	flags |= fastnetworkmode!=0 ?URL_LESS_WAIT:0;
     proxy_path = getenv("http_proxy");
     use_proxy = (proxy_path != NULL) && !getenv("no_proxy") &&
@@ -236,10 +237,18 @@ static int http_open_cnx(URLContext *h)
         av_log(h,AV_LOG_INFO,"http_open_cnx,using old handle\n");
     }
     cur_auth_type = s->auth_state.auth_type;
-    if (http_connect(h, path, hoststr, auth, &location_changed) < 0){
+	
+    if ((ret=http_connect(h, path, hoststr, auth, &location_changed) ) < 0){
         av_log(h, AV_LOG_ERROR, "http_open_cnx:http_connect failed\n");
+		if(ret == -101){
+			http_close_and_keep(s,1);//link problem closed it.
+			goto redo;/*link error ,reconnect it.*/
+			}
+
         goto fail;
     }
+	av_log(h, AV_LOG_ERROR, "http_connect result %d\n",ret);
+    
     if (s->http_code == 401) {
         if (cur_auth_type == HTTP_AUTH_NONE && s->auth_state.auth_type != HTTP_AUTH_NONE) {
             //ffurl_close(hd);
@@ -724,12 +733,16 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
         ///av_dlog(NULL, "header='%s'\n", line);	
         err = process_line(h, line, s->line_count, new_location);
 		if(err <0){
+			if( s->http_code == -1 || s->line_count ==0 ){
+				av_log(h, AV_LOG_INFO, "http return NULL,or not valid http_code = %d at line %d\n",s->http_code,s->line_count);
+				return -101;/*read end and not get http valid response*/
+				}
 		    return err;
         }
 		if (err == 0){
 		   if( s->http_code == -1 || s->line_count ==0 ){
 		   	   av_log(h, AV_LOG_INFO, "http return NULL,or not valid http_code = %d at line %d\n",s->http_code,s->line_count);
-               return -1;/*read end and not get http valid response*/
+               return -101;/*read end and not get http valid response*/
 		   }
            break;
 		}
