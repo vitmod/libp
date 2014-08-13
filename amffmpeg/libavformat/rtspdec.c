@@ -74,6 +74,8 @@ static void *recv_buffer_task( void *_AVFormatContext)
 	ret=_rtsp_read_packet(lpCtx, lpkt);
 	if(ret == 0){
 		itemlist_add_tail_data(&(lpRTSPCtx->bufferlist), (unsigned long) lpkt) ;	
+		//av_free_packet(lpkt);
+	    	//av_free(lpkt);
 		lpkt=NULL;
 	}
 	else{
@@ -91,6 +93,9 @@ static void *recv_buffer_task( void *_AVFormatContext)
 	   	break;
 	 }
     }
+
+    if(lpRTSPCtx->brunning==0)
+    	ret=AVERROR_EXIT;
     
     lpRTSPCtx->recv_buffer_error = ret;
     lpRTSPCtx->brunning=0;
@@ -281,7 +286,7 @@ static int rtsp_read_header(AVFormatContext *s,
     	if(NULL == lpRTSPCtx)
 		return -1;
 
-    	lpRTSPCtx->bufferlist.max_items = 2000;
+    	lpRTSPCtx->bufferlist.max_items = 0;
     	lpRTSPCtx->bufferlist.item_ext_buf_size = 0;   
     	lpRTSPCtx->bufferlist.muti_threads_access = 1;
     	lpRTSPCtx->bufferlist.reject_same_item_data = 1;  
@@ -303,6 +308,26 @@ static int rtsp_read_header(AVFormatContext *s,
 }
 /*
 FILE *g_dumpFile=NULL;
+uint16_t last_rtp_req=0;
+uint16_t last_rtcp_req=0;
+static void check_header(char *lpkt_buf,int len){
+	uint16_t seq2 = AV_RB16(lpkt_buf + 2);
+	int16_t diff2=0;
+	if (lpkt_buf[1] >= RTCP_SR && lpkt_buf[1] <= RTCP_APP) {
+		diff2 = seq2 - last_rtcp_req;
+		if (diff2 != 1) {
+			av_log(NULL, AV_LOG_WARNING, "RTCP over tcp: diff2 = %d seq2=%d last_rtcp_req=%d type=%d\n",diff2,seq2,last_rtcp_req,lpkt_buf[1] );
+		}
+		last_rtcp_req=seq2;				
+	}
+	else{
+		diff2 = seq2 - last_rtp_req;
+		if (diff2 != 1) {
+			av_log(NULL, AV_LOG_WARNING, "RTP over tcp: diff2 = %d seq2=%d last_rtp_req=%d\n",diff2,seq2,last_rtp_req);
+		}
+		last_rtp_req=seq2;		
+	}
+}
 static void dump(char *lpkt_buf,int len){
 	if (lpkt_buf[0] & 0x20){					// remove the padding data
 		int padding = lpkt_buf[len - 1];
@@ -530,11 +555,11 @@ static int rtsp_read_packet(AVFormatContext *s, AVPacket *pkt)
 	unsigned long ldata = 0;
 	while(lpRTSPCtx->brunning > 0) {
 		if (url_interrupt_cb()) 
-            		return -1;
+            		return AVERROR_EXIT;
 
 		if(itemlist_get_head_data(&lpRTSPCtx->bufferlist, &ldata) == 0)
 			break;	
-		usleep(30);
+		amthreadpool_thread_usleep(10);
 	}
 
 	if(ldata == 0){
@@ -772,7 +797,7 @@ static int rtsp_protocol_open(URLContext *h, const char *uri, int flags)
     	goto fail;
     }
 
-    rtspCtx->bufferlist.max_items = 2000;
+    rtspCtx->bufferlist.max_items = 0;
     rtspCtx->bufferlist.item_ext_buf_size = 0;   
     rtspCtx->bufferlist.muti_threads_access = 1;
     rtspCtx->bufferlist.reject_same_item_data = 0;  
@@ -849,7 +874,7 @@ static int rtsp_protocol_read(URLContext *h, uint8_t *buf, int size)
     	
     	if(itemlist_peek_head_data(&(rtspCtx->bufferlist), (unsigned long *)&rpkt) == -1){
 		// no data to read, waited
-		usleep(20);
+		amthreadpool_thread_usleep(10);
 		continue;			
 	}	
 	single_readsize=min(rpkt->size-rpkt->offset, size-readsize);

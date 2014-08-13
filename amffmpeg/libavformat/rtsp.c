@@ -1496,7 +1496,10 @@ redirect:
     } else {
         /* open the tcp connection */
         ff_url_join(tcpname, sizeof(tcpname), "tcp", NULL, host, port, NULL);
-	int ret=ffurl_open(&rt->rtsp_hd, tcpname, AVIO_FLAG_READ_WRITE);
+        if(rt->use_protocol_mode){
+		av_strlcat(tcpname, "?rcvbuf_size=1024", sizeof(tcpname));
+        }
+   	 int ret=ffurl_open(&rt->rtsp_hd, tcpname, AVIO_FLAG_READ_WRITE);
         if (ret < 0) {
 	    if(ret==AVERROR_EXIT)
 	    	err = AVERROR_EXIT;
@@ -1789,7 +1792,7 @@ int ff_rtsp_fetch_packet(AVFormatContext *s, AVPacket *pkt)
             if (ret == -RTCP_BYE) {
                 rt->nb_byes++;
 
-                av_log(s, AV_LOG_DEBUG, "Received BYE for stream %d (%d/%d)\n",
+                av_log(s, AV_LOG_INFO, "Received BYE for stream %d (%d/%d)\n",
                        rtsp_st->stream_index, rt->nb_byes, rt->nb_rtsp_streams);
 
                 if (rt->nb_byes == rt->nb_rtsp_streams)

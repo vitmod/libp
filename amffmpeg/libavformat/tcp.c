@@ -52,6 +52,12 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
 	int listen_timeout = -1;
     char hostname[1024],proto[1024],path[1024];
     char portstr[10];
+
+    int rcvbuf_oldlen=0;
+    int rcvbuf_newlen=0;
+    int rcvbuf_len=0;
+    int datalen=0;
+    
 	int64_t tcp_starttime=av_gettime();
 	if(h->flags & URL_LESS_WAIT)
 		timeout_ms=200*100; //200 ms
@@ -76,6 +82,10 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
         if (av_find_info_tag(buf, sizeof(buf), "listen_timeout", p)) {
             listen_timeout = strtol(buf, NULL, 10);
 
+        }
+
+        if (av_find_info_tag(buf, sizeof(buf), "rcvbuf_size", p)) {
+            rcvbuf_len = strtol(buf, NULL, 10);
         }
     }
     memset(&hints, 0, sizeof(hints));
@@ -137,6 +147,23 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
         ff_socket_nonblock(fd, 1);
     } else {
  redo:
+ 	if(rcvbuf_len > 0){
+		 datalen=sizeof(int);
+		 if( getsockopt( fd, SOL_SOCKET, SO_RCVBUF, (void *)&rcvbuf_oldlen, &datalen ) < 0 ){
+	        	av_log(h, AV_LOG_WARNING, "getsockopt(SO_RECVBUF): oldlen %s\n", strerror(errno));
+	    	 }
+
+	        rcvbuf_len = rcvbuf_len * 1024;
+	        if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void *)&rcvbuf_len, sizeof(rcvbuf_len)) < 0) {
+	            av_log(h, AV_LOG_WARNING, "setsockopt(SO_RECVBUF): %s\n", strerror(errno));
+	        }
+
+	 	 datalen=sizeof(int);
+		 if( getsockopt( fd, SOL_SOCKET, SO_RCVBUF, (void *)&rcvbuf_newlen, &datalen ) < 0 ){
+	        	av_log(h, AV_LOG_WARNING, "getsockopt(SO_RECVBUF): oldlen %s\n", strerror(errno));
+	    	 }
+		 av_log(h, AV_LOG_WARNING, "set recv buf oldlen=%d len=%d newlen=%d \n",rcvbuf_oldlen,rcvbuf_len,rcvbuf_newlen);
+ 	} 
         ff_socket_nonblock(fd, 1);
         ret = connect(fd, cur_ai->ai_addr, cur_ai->ai_addrlen);
     }
