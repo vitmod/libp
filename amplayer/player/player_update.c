@@ -1300,7 +1300,7 @@ static int  update_buffering_states(play_para_t *p_para,
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&
-            (avdelayms>0 && avdelayms < (p_para->buffering_enter_time_s*1000/p_para->div_buf_time))  &&
+            (avdelayms>=0 && avdelayms < (p_para->buffering_enter_time_s*1000/p_para->div_buf_time))  &&
             (maxlevel < p_para->buffering_threshhold_max * 3 / 4) &&
             !p_para->playctrl_info.read_end_flag) {
             codec_pause(p_para->codec);
