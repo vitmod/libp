@@ -303,8 +303,6 @@ enum CodecID {
     CODEC_ID_MACE3,
     CODEC_ID_MACE6,
     CODEC_ID_VMDAUDIO,
-    CODEC_ID_SONIC,
-    CODEC_ID_SONIC_LS,
     CODEC_ID_FLAC,
     CODEC_ID_MP3ADU,
     CODEC_ID_MP3ON4,
@@ -346,6 +344,8 @@ enum CodecID {
     CODEC_ID_AAC_LATM,
     CODEC_ID_QDMC,
     CODEC_ID_CELT,
+    CODEC_ID_SONIC       = MKBETAG('S','O','N','C'),
+    CODEC_ID_SONIC_LS    = MKBETAG('S','O','N','L'),    
 
     /* subtitle codecs */
     CODEC_ID_DVD_SUBTITLE= 0x17000,
