@@ -82,15 +82,18 @@ unsigned long adec_calc_pts(aml_audio_dec_t *audec)
         adec_print("cur_out is NULL!\n ");
         return -1;
     }
+    delay_pts = out_ops->latency(audec) * 90;
 
     if(!audec->apts_start_flag)
         return pts;
-    delay_pts = out_ops->latency(audec) * 90;
-
-    if (delay_pts+audec->first_apts < pts) {
+  
+    int diff = abs(delay_pts-pts);
+    // in some case, audio latency got from audiotrack is bigger than pts<hw not enabled>, so when delay_pts-pts < 100ms ,so set apts to 0.
+    //because 100ms pcr-apts diff cause  apts reset .
+    if (delay_pts/*+audec->first_apts*/ < pts) {
         pts -= delay_pts;
-    } else {
-        ///pts =audec->first_apts;
+    } else if(diff < 9000) {
+    	pts = 0;
     }
     return pts;
 }
@@ -163,18 +166,8 @@ int adec_pts_start(aml_audio_dec_t *audec)
 	            return -1;
 	        }
 	    }
-	}
-
-    adec_print("audio pts start from 0x%lx", pts);
-
-    sprintf(buf, "AUDIO_START:0x%lx", pts);
-
-    if(amsysfs_set_sysfs_str(TSYNC_EVENT, buf) == -1)
-    {
-        return -1;
-    }
+	}   
     audec->first_apts=pts;
-    audec->apts_start_flag=1;
     return 0;
 }
 
@@ -322,12 +315,31 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     unsigned long systime;
     unsigned long last_pts = audec->adsp_ops.last_audio_pts;
     unsigned long last_kernel_pts = audec->adsp_ops.kernel_audio_pts;
+    int apts_start_flag = 0;//store the last flag
+    int samplerate = 48000;
+    int channels = 2;
     char buf[64];
     char ret_val = -1;
     if (audec->auto_mute == 1) {
         return 0;
     }
-
+    apts_start_flag = audec->apts_start_flag;
+//if the audio start has not been triggered to tsync,calculate the audio  pcm data which writen to audiotrack   
+    if(!audec->apts_start_flag){
+	    if(audec->g_bst){
+	    	samplerate = audec->g_bst->samplerate;
+	    	channels = audec->g_bst->channels;                
+	    }
+	    //DSP decoder must have got audio info when feeder_init 
+	    else{
+	    	samplerate = audec->samplerate;
+	    	channels = audec->channels;     
+	    }
+	    // 170 ms  audio hal have  triggered the output hw.
+    	    if(audec->pcm_bytes_readed*1000/(samplerate*channels*2) >= 170 ){
+    	    	audec->apts_start_flag =  1;
+    	    }
+    }	    
     memset(buf, 0, sizeof(buf));
 
     systime = audec->adsp_ops.get_cur_pcrscr(&audec->adsp_ops);
@@ -344,7 +356,14 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         return -1;
         //}
     }
-
+    if(apts_start_flag != audec->apts_start_flag){   	
+	    adec_print("audio pts start from 0x%lx", pts);
+	    sprintf(buf, "AUDIO_START:0x%lx", pts);
+	    if(amsysfs_set_sysfs_str(TSYNC_EVENT, buf) == -1)
+	    {
+	        return -1;
+	    }
+    }	    
     if ((abs(pts - last_pts) > APTS_DISCONTINUE_THRESHOLD) && (audec->adsp_ops.last_pts_valid)) {
         /* report audio time interruption */
         adec_print("pts = %lx, last pts = %lx\n", pts, last_pts);
@@ -384,7 +403,8 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         }
 
     /* report apts-system time difference */
-
+    if(!apts_start_flag)
+      return 0;
     if(audec->adsp_ops.set_cur_apts){
         ret_val = audec->adsp_ops.set_cur_apts(&audec->adsp_ops,pts);
     }
@@ -397,7 +417,8 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         adec_print("unable to open file %s,err: %s", TSYNC_APTS, strerror(errno));
         return -1;
     }
-    //adec_print("report apts as %ld,system pts=%ld, difference= %ld\n", pts, systime, (pts - systime));
+    if(abs(pts - systime) >= 90000/10)
+    adec_print("report apts as 0x%x,system pts=0x%x, difference= %ld\n", pts, systime, (pts - systime));
     return 0;
 }
 

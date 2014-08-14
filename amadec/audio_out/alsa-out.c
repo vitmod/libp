@@ -601,7 +601,7 @@ static void *alsa_playback_loop(void *args)
             len = len + len2;
             offset = 0;
         }
-
+        audec->pcm_bytes_readed += len;
         while (alsa_params->pause_flag) {
             amthreadpool_thread_usleep(10000);
         }
