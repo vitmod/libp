@@ -783,6 +783,7 @@ static int check_start_cmd(play_para_t *player)
             if (msg->f_param < player->state.full_time && msg->f_param >= 0) {
                 player->playctrl_info.time_point = msg->f_param;
                 check_msg(player, msg);
+                player->playctrl_info.end_flag = 0;
                 log_print("pid[%d]::seek before start, set time_point to %f search_flag=%d\n", player->player_id, player->playctrl_info.time_point,player->playctrl_info.search_flag);
                 message_free(msg);
                 msg = NULL;
