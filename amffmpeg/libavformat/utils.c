@@ -3310,7 +3310,7 @@ int av_find_stream_info(AVFormatContext *ic)
 				fast_switch=SOFTDEMUX_PARSE_MODE;
 			}
 		}
-	}else if((!strcmp(ic->iformat->name, "rtsp"))){
+	}else if((!strcmp(ic->iformat->name, "rtsp")) || (!strcmp(ic->iformat->name, "flv"))){
 		fast_switch=SOFTDEMUX_PARSE_MODE;/*always need to parse for rtsp.*/
 	}
 
