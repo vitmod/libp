@@ -1032,29 +1032,40 @@ int read_av_packet(play_para_t *para)
     }
 
     if (raw_mode == 1) {
-        player_mate_wake(para, 100 * 1000);
+
+        if(para->pFormatCtx->pb->local_playback == 0)
+            player_mate_wake(para, 100 * 1000);
+
         ret = raw_read(para);
-	 if(ret <0 && para->playctrl_info.ignore_ffmpeg_errors){
-	 	 para->playctrl_info.ignore_ffmpeg_errors=0;
-		 if(para->pFormatCtx&& para->pFormatCtx->pb)
-		 	para->pFormatCtx->pb->error=0;
-	 	 ret=0;
-	 }
-        player_mate_sleep(para);
+        if(ret <0 && para->playctrl_info.ignore_ffmpeg_errors){
+            para->playctrl_info.ignore_ffmpeg_errors=0;
+            if(para->pFormatCtx&& para->pFormatCtx->pb)
+                para->pFormatCtx->pb->error=0;
+            ret=0;
+        }
+        if(para->pFormatCtx->pb->local_playback == 0)
+            player_mate_sleep(para);
+
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
             log_print("raw read failed!\n");
             return ret;
         }
     } else if (raw_mode == 0) {
-        player_mate_wake(para, 100 * 1000);
+
+        if(para->pFormatCtx->pb->local_playback == 0)
+            player_mate_wake(para, 100 * 1000);
+
         ret = non_raw_read(para);
-	 if(ret <0 && para->playctrl_info.ignore_ffmpeg_errors){
-	 	 para->playctrl_info.ignore_ffmpeg_errors=0;
-		 if(para->pFormatCtx&& para->pFormatCtx->pb)
-		 	para->pFormatCtx->pb->error=0;
-	 	 ret=0;
-	 }
-        player_mate_sleep(para);
+        if(ret <0 && para->playctrl_info.ignore_ffmpeg_errors){
+            para->playctrl_info.ignore_ffmpeg_errors=0;
+            if(para->pFormatCtx&& para->pFormatCtx->pb)
+                para->pFormatCtx->pb->error=0;
+            ret=0;
+        }
+		
+        if(para->pFormatCtx->pb->local_playback == 0)
+            player_mate_sleep(para);
+		
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
             log_print("non raw read failed!\n");
             return ret;

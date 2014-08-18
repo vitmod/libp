@@ -187,15 +187,14 @@ static int player_mate_thread_cmd_proxy(play_para_t *player, struct player_mate 
     }	
     check_msg(player,cmd);
     message_free(cmd);
-    if(player->playctrl_info.search_flag){
-	/*in mate thread seek,and interrupt the read thread.
-	    so we need to ignore the first ffmpeg erros.
-	*/
-	player->playctrl_info.ignore_ffmpeg_errors=1;	
-	player->playctrl_info.temp_interrupt_ffmpeg=1;
-	log_print("ffmpeg_interrupt tmped by player mate!\n");
-	ffmpeg_interrupt_light(player->thread_mgt.pthread_id);
-	codec_resume(player->codec);  /*auto resume on*/
+    if(player->playctrl_info.search_flag  && p_para->pFormatCtx->pb->local_playback == 0){
+        /*in mate thread seek,and interrupt the read thread.
+              so we need to ignore the first ffmpeg erros. */
+        player->playctrl_info.ignore_ffmpeg_errors=1;	
+        player->playctrl_info.temp_interrupt_ffmpeg=1;
+        log_print("ffmpeg_interrupt tmped by player mate!\n");
+        ffmpeg_interrupt_light(player->thread_mgt.pthread_id);
+        codec_resume(player->codec);  /*auto resume on*/
     }
 
     if (p_para->playctrl_info.end_flag) {
