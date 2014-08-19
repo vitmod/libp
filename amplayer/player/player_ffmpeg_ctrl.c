@@ -322,16 +322,6 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
 			      log_print("NOTE: change type->fmt_string=%s to flac\n", type->fmt_string);
 			      type->fmt_string = format_string;
 		  	  }
-			  if((strstr(type->fmt_string,"aac")!=NULL) && (sttmp->codec->codec_id==CODEC_ID_AAC))
-			  {
-			  	unsigned char* buf=pFCtx->pb->buffer;
-			  	log_print("pFCtx->data_offset=%lld %c %c %c %c\n",pFCtx->data_offset,buf[0],buf[1], buf[2],buf[3]);
-				if((buf[0]=='A' && buf[1]=='D' && buf[2]=='I' && buf[3]=='F'))
-				{   
-					log_print("the stream is pure adif: set adif_ctrl_flag=1\n");
-					am_p->media_info.stream_info.adif_file_flag=1;
-				}
-			  }
 		 }
 	   //-----------------------------------------------------
         // special process for webm/vpx, flv/vp6, hevc/h.265
