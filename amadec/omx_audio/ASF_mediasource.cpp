@@ -24,10 +24,12 @@ int Asf_MediaSource::set_Asf_MetaData(aml_audio_dec_t *audec)
     mMeta->setInt32(kKeySampleRate,paudio_info->sample_rate );
     mMeta->setInt32(kKeyChannelCount, paudio_info->channels);
     mMeta->setInt32(kKeyBitRate,paudio_info->bitrate);
+/*	
     if(paudio_info->codec_id==CODEC_ID_WMAV1_FFMPEG)
         paudio_info->codec_id=CODEC_ID_WMAV1_OMX;
     else if(paudio_info->codec_id==CODEC_ID_WMAV2_FFMPEG)
         paudio_info->codec_id=CODEC_ID_WMAV2_OMX;
+*/	
     mMeta->setInt32(kKeyCodecID,paudio_info->codec_id);
     mMeta->setData(kKeyExtraData,0,paudio_info->extradata,paudio_info->extradata_size);
     mMeta->setInt32(kKeyExtraDataSize, paudio_info->extradata_size);
@@ -36,7 +38,7 @@ int Asf_MediaSource::set_Asf_MetaData(aml_audio_dec_t *audec)
     ALOGI("ASF-->channels/%d samplerate/%d bitrate/%d  codec_ID/%d extradata_size/%d block_align/%d\n",ChNum,sample_rate,
     paudio_info->bitrate,paudio_info->codec_id,paudio_info->extradata_size,block_align);
 
-    if(ChNum==1 && paudio_info->codec_id==CODEC_ID_WMAV2_OMX){
+    if(ChNum==1 && paudio_info->codec_id==CODEC_ID_WMAV2){
         ChNum=2;
         ALOGI("ASF-->here ChNum:change mono to stero!\n");
     }

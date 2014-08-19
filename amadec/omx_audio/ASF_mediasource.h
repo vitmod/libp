@@ -13,9 +13,61 @@ namespace android {
 typedef int (*fp_read_buffer)(unsigned char *,int);
 
 //should corespond to  the CodecID defined in  <amffmpeg/libavcodec/avcodec.h>
-#define CODEC_ID_WMAV1_FFMPEG  0x15007    
-#define CODEC_ID_WMAV2_FFMPEG  0x15008 //wma
-#define CODEC_ID_WMAPRO_FFMPEG 0x15028 //wmapro
+enum {
+    CODEC_ID_MP2= 0x15000,
+    CODEC_ID_MP3, ///< preferred ID for decoding MPEG audio layer 1, 2 or 3
+    CODEC_ID_AAC,
+    CODEC_ID_AC3,
+    CODEC_ID_DTS,
+    CODEC_ID_VORBIS,
+    CODEC_ID_DVAUDIO,
+    CODEC_ID_WMAV1,
+    CODEC_ID_WMAV2,
+    CODEC_ID_MACE3,
+    CODEC_ID_MACE6,
+    CODEC_ID_VMDAUDIO,
+    CODEC_ID_FLAC,
+    CODEC_ID_MP3ADU,
+    CODEC_ID_MP3ON4,
+    CODEC_ID_SHORTEN,
+    CODEC_ID_ALAC,
+    CODEC_ID_WESTWOOD_SND1,
+    CODEC_ID_GSM, ///< as in Berlin toast format
+    CODEC_ID_QDM2,
+    CODEC_ID_COOK,
+    CODEC_ID_TRUESPEECH,
+    CODEC_ID_TTA,
+    CODEC_ID_SMACKAUDIO,
+    CODEC_ID_QCELP,
+    CODEC_ID_WAVPACK,
+    CODEC_ID_DSICINAUDIO,
+    CODEC_ID_IMC,
+    CODEC_ID_MUSEPACK7,
+    CODEC_ID_MLP,
+    CODEC_ID_GSM_MS, /* as found in WAV */
+    CODEC_ID_ATRAC3,
+    CODEC_ID_VOXWARE,
+    CODEC_ID_APE,
+    CODEC_ID_NELLYMOSER,
+    CODEC_ID_MUSEPACK8,
+    CODEC_ID_SPEEX,
+    CODEC_ID_WMAVOICE,
+    CODEC_ID_WMAPRO,
+    CODEC_ID_WMALOSSLESS,
+    CODEC_ID_ATRAC3P,
+    CODEC_ID_EAC3,
+    CODEC_ID_SIPR,
+    CODEC_ID_MP1,
+    CODEC_ID_TWINVQ,
+    CODEC_ID_TRUEHD,
+    CODEC_ID_MP4ALS,
+    CODEC_ID_ATRAC1,
+    CODEC_ID_BINKAUDIO_RDFT,
+    CODEC_ID_BINKAUDIO_DCT,
+    CODEC_ID_AAC_LATM,
+    CODEC_ID_QDMC,
+    CODEC_ID_CELT,
+};    
 
 #define CODEC_ID_WMAV1_OMX    0x160
 #define CODEC_ID_WMAV2_OMX    0x161
