@@ -272,7 +272,7 @@ void audioCallback(int event, void* user, void *info)
     unsigned long apts, pcrscr;
 
     if (event != AudioTrack::EVENT_MORE_DATA) {
-        adec_print(" ****************** audioCallback: event = %d audec->g_bst->buflevel/%d\n", event,audec->g_bst->buf_level);
+        adec_print(" ****************** audioCallback: event = %d \n", event);
         return;
     }
 
