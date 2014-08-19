@@ -1267,6 +1267,7 @@ int player_dec_reset(play_para_t *p_para)
         codec_audio_automute(p_para->acodec->adec_priv, p_para->playctrl_info.audio_mute);
     }
 	p_para->play_last_reset_systemtime_us = player_get_systemtime_ms();
+	p_para->latest_lowlevel_av_delay_ms = 0;
     return ret;
 }
 static int check_ctx_bitrate(play_para_t *p_para)
@@ -1598,7 +1599,7 @@ int player_dec_init(play_para_t *p_para)
         log_print("====bitrate=%d max_raw_size=%d\n", p_para->pFormatCtx->bit_rate, p_para->max_raw_size);
     }
     subtitle_para_init(p_para);
-
+    p_para->latest_lowlevel_av_delay_ms = 0;
     //set_tsync_enable(1);        //open av sync
     //p_para->playctrl_info.avsync_enable = 1;
     return PLAYER_SUCCESS;

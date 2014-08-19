@@ -864,7 +864,8 @@ static void update_current_time(play_para_t *p_para)
 #endif
         } else  if (!p_para->playctrl_info.end_flag) {
             time = get_current_time(p_para);
-            if( time/PTS_FREQ == 0 ){
+			/*av delay is too low ,ignore update time.*/
+            if( time/PTS_FREQ == 0 || p_para->latest_lowlevel_av_delay_ms <= 10){
                 return ; /*don't do update if time = 0, because it maybe have not init ok.*/
             }
             if (p_para->state.start_time == -1) {
@@ -1162,7 +1163,7 @@ static int  update_buffering_states(play_para_t *p_para,
     float alevel, vlevel;
     float minlevel, maxlevel;
     float avlevel;
-    int adelayms=0,vdelayms=0,avdelayms=0;
+    int adelayms= -1,vdelayms= -1,avdelayms=0;
     if (abuf->size > 0) {
         alevel = (float)abuf->data_len / abuf->size;
 	  ffmepg_seturl_codec_buf_info(p_para,2,abuf->size);	
@@ -1291,11 +1292,17 @@ static int  update_buffering_states(play_para_t *p_para,
         p_para->buffering_force_delay_s = 0;
     }
     if(p_para->buffering_exit_time_s>0){
-        if(p_para->vstream_info.has_video && get_video_codec(p_para))
+        if(p_para->vstream_info.has_video && get_video_codec(p_para)){
             codec_get_video_cur_delay_ms(get_video_codec(p_para),&vdelayms);
-        if(p_para->astream_info.has_audio && get_audio_codec(p_para))
+			avdelayms = vdelayms;
+        }
+        if(p_para->astream_info.has_audio && get_audio_codec(p_para)){
             codec_get_audio_cur_delay_ms(get_audio_codec(p_para),&adelayms);
-        avdelayms=MIN(vdelayms,adelayms);
+			avdelayms = adelayms;
+        }
+        if(vdelayms >=0 && adelayms >=0)
+            avdelayms=MIN(vdelayms,adelayms);
+        p_para->latest_lowlevel_av_delay_ms = avdelayms;
     }
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {

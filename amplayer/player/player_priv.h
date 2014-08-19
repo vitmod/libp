@@ -198,7 +198,8 @@ typedef struct play_para {
     float buffering_threshhold_max;
     float buffering_exit_time_s;
 	int buffering_time_s_changed; 
-    float buffering_enter_time_s; 
+    float buffering_enter_time_s;
+    int latest_lowlevel_av_delay_ms;
     // used for dynimically adjust buffering_enter_time_s, 
     // first time enter buffering thres<buffer_enter_s/div_buf_time
     // enter buffering one more time, div_buf_time--, promote buffer level
