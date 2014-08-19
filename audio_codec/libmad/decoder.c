@@ -534,6 +534,10 @@ static
 				case MAD_FLOW_BREAK:
 					goto fail;
 				case MAD_FLOW_IGNORE:
+					// for this error,we should skip one bytes for another frame sync,otherwise no chance to cosume data again
+					if(stream->this_frame == stream->buffer){
+						stream->this_frame = stream->buffer+1;
+					}	
 					audio_codec_print("[%s,%d] MAD_FLOW_IGNORE\n", __FUNCTION__,__LINE__);
                                         goto fail;
 					break;
@@ -805,9 +809,10 @@ struct mad_pcm *pcm)
         		pcm_out_data += 2;
 		}
 		
-	}
-
-	return MAD_FLOW_CONTINUE;
+	}	
+	stream->this_frame = stream->next_frame;	
+	return MAD_FLOW_STOP;
+	//return MAD_FLOW_CONTINUE;
 }
 
 /*
@@ -885,7 +890,6 @@ int audio_dec_decode(
 	decoder.cb_data = &buffer;
 
 	/* start decoding */
-
 	result = mad_decoder_run(&decoder, MAD_DECODER_MODE_SYNC);
 
 	/* release the decoder */
