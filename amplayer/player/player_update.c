@@ -865,7 +865,7 @@ static void update_current_time(play_para_t *p_para)
         } else  if (!p_para->playctrl_info.end_flag) {
             time = get_current_time(p_para);
 			/*av delay is too low ,ignore update time.*/
-            if( time/PTS_FREQ == 0 || p_para->latest_lowlevel_av_delay_ms <= 10){
+            if( time/PTS_FREQ == 0 || (p_para->latest_lowlevel_av_delay_ms >0 && p_para->latest_lowlevel_av_delay_ms <= 10) ){
                 return ; /*don't do update if time = 0, because it maybe have not init ok.*/
             }
             if (p_para->state.start_time == -1) {
@@ -1196,7 +1196,17 @@ static int  update_buffering_states(play_para_t *p_para,
 	avlevel=MIN(avlevel, 1);
     }
     ffmpeg_seturl_buffered_level(p_para,(int)(10000*avlevel));
-    
+    if(p_para->vstream_info.has_video && get_video_codec(p_para)){
+        codec_get_video_cur_delay_ms(get_video_codec(p_para),&vdelayms);
+        avdelayms = vdelayms;
+    }
+    if(p_para->astream_info.has_audio && get_audio_codec(p_para)){
+        codec_get_audio_cur_delay_ms(get_audio_codec(p_para),&adelayms);
+        avdelayms = adelayms;
+    }
+    if(vdelayms >=0 && adelayms >=0)
+        avdelayms=MIN(vdelayms,adelayms);
+    p_para->latest_lowlevel_av_delay_ms = avdelayms;
     if (p_para->buffering_enable && p_para->buffering_time_s_changed && !p_para->buffering_bitrate_finished) {
         /*reset  buffering parameters for  frame rate*/
         int bitrate = 0;
@@ -1290,19 +1300,6 @@ static int  update_buffering_states(play_para_t *p_para,
             return 0;
         }
         p_para->buffering_force_delay_s = 0;
-    }
-    if(p_para->buffering_exit_time_s>0){
-        if(p_para->vstream_info.has_video && get_video_codec(p_para)){
-            codec_get_video_cur_delay_ms(get_video_codec(p_para),&vdelayms);
-			avdelayms = vdelayms;
-        }
-        if(p_para->astream_info.has_audio && get_audio_codec(p_para)){
-            codec_get_audio_cur_delay_ms(get_audio_codec(p_para),&adelayms);
-			avdelayms = adelayms;
-        }
-        if(vdelayms >=0 && adelayms >=0)
-            avdelayms=MIN(vdelayms,adelayms);
-        p_para->latest_lowlevel_av_delay_ms = avdelayms;
     }
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
