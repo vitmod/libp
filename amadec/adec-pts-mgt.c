@@ -251,6 +251,11 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
         adec_print("diff less than %d (ms), use slowsync repeate mode \n",sync_switch_ms);
         return 0;
     }
+//when start to play,may audio discontinue happens, in this case,not to do drop pcm operation	
+    else if(diff > APTS_DISCONTINUE_THRESHOLD){
+        adec_print("diff bigger than %d (ms), not to do drop \n",diff/APTS_DISCONTINUE_THRESHOLD*1000);
+        return 0;		
+    }
 
     // calculate ahead pcm size
     droppcm_prop_ctrl(&audio_ahead, &pts_ahead_val);
