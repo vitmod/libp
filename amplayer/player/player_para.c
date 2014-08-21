@@ -625,6 +625,7 @@ static void get_stream_info(play_para_t *p_para)
             astream_id[p_para->astream_num] = pStream->id;
             p_para->astream_num ++;
             p_para->astream_info.audio_index_tab[i] = p_para->astream_num;
+#if 0			
 	    //not support blueray stream,one PID has two audio track(truehd+ac3)
 	    if(strcmp(pFormat->iformat->name, "mpegts") == 0){
 	       if(pCodec->codec_id==CODEC_ID_TRUEHD){
@@ -635,6 +636,7 @@ static void get_stream_info(play_para_t *p_para)
 		  log_print("unsupport truehd and AC-3 with the same pid\n");
 	      }  
 	    } 
+#endif		
 				           
             if (temp_aidx == -1 && audio_format != AFORMAT_UNSUPPORT) {
                 if (strcmp(pFormat->iformat->name, "mpegts") == 0 && pStream->encrypt) {
@@ -1431,16 +1433,23 @@ int player_dec_init(play_para_t *p_para)
     dump_format(p_para->pFormatCtx, 0, p_para->file_name, 0);
 
     int t, is_hevc = 0;
+    int is_truehd = 0;
     for(t=0;t<p_para->pFormatCtx->nb_streams;t++){
         if(p_para->pFormatCtx->streams[t]->codec->codec_id == CODEC_ID_HEVC){
             is_hevc = 1;
             break;
-        }
+        }		
     }
-
+	//for ts file, ac3 & truehd share the same pid,our hw demux mix the two audio streams together which cause decoder pause
+    for(t=0;t<p_para->pFormatCtx->nb_streams;t++){
+        if(p_para->pFormatCtx->streams[t]->codec->codec_id == CODEC_ID_TRUEHD){
+            is_truehd = 1;
+            break;
+        }		
+    }		
     ret = set_file_type(p_para->pFormatCtx->iformat->name, &file_type, &stream_type);
     if(memcmp(p_para->pFormatCtx->iformat->name,"mpegts",6)==0){
-	   if(p_para->start_param->is_ts_soft_demux || is_hevc == 1){
+	   if(p_para->start_param->is_ts_soft_demux || is_hevc == 1 ||is_truehd == 1){
             log_print("Player config used soft demux,used soft demux now.\n");
             file_type=STREAM_FILE;
             stream_type=STREAM_ES;
