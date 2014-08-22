@@ -1048,10 +1048,14 @@ exit_decode_loop:
 	   sleeptime= 0;
           nCurrentReadCount=rlen;
           rlen += inlen;
-          while(package_add(audec,inbuf,rlen) && !audec->exit_decode_thread)
+	   ret = -1;	  
+          while((ret=package_add(audec,inbuf,rlen)) && !audec->exit_decode_thread)
           {
               amthreadpool_thread_usleep(1000);
-          }
+          }		  
+	   if(ret){
+	   	free(inbuf);
+	   } 	
           inbuf=NULL;
       }
 QUIT:
@@ -1109,6 +1113,10 @@ exit_decode_loop:
                    free(inbuf);
                    inbuf = NULL;
                }
+		  if(pRestData){
+		  	free(pRestData);
+			pRestData = NULL;
+		  }	
                audec->exit_decode_thread_success=1;
                break;
           }
