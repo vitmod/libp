@@ -2538,19 +2538,39 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
         if (track->type == MATROSKA_TRACK_TYPE_SUBTITLE
             && timecode < track->end_timecode)
             is_keyframe = 0;  /* overlapping subtitles are not key frame */
-        if (is_keyframe || track->type == MATROSKA_TRACK_TYPE_VIDEO) // no keyframe index in video track sometimes.
+        if (is_keyframe ||
+            // for some HEVC MKV files have no keyframe index available
+            ((track->type == MATROSKA_TRACK_TYPE_VIDEO) &&
+             (st->codec->codec_id == CODEC_ID_HEVC)))
             av_add_index_entry(st, cluster_pos, timecode, 0,0,is_keyframe);
     }
 
     if (matroska->skip_to_keyframe && track->type != MATROSKA_TRACK_TYPE_SUBTITLE) {
-        if (timecode < matroska->skip_to_timecode)
+        if (timecode < matroska->skip_to_timecode) {
+#ifdef DEBUG_SEEK
+            av_log(matroska->ctx, AV_LOG_ERROR,
+                   "skip_to_timecode = %"PRIu64", timecode = %"PRIu64" SKIP",
+                    matroska->skip_to_timecode, timecode);
+#endif
             return res;
+        }
+#ifdef DEBUG_SEEK
+        else {
+            av_log(matroska->ctx, AV_LOG_ERROR,
+                   "skip_to_timecode = %"PRIu64", timecode = %"PRIu64" , is_keyframe=%d, CONTINUE",
+                    matroska->skip_to_timecode, timecode, is_keyframe);
+        }
+#endif
         //if (!st->skip_to_keyframe) {
         //    av_log(matroska->ctx, AV_LOG_ERROR, "File is broken, keyframes not correctly marked!\n");
         //    matroska->skip_to_keyframe = 0;
         //}
-        if (is_keyframe)
+        if (is_keyframe) {
             matroska->skip_to_keyframe = 0;
+#ifdef DEBUG_SEEK
+            av_log(matroska->ctx, AV_LOG_ERROR, "skip_to_keyframe released");
+#endif
+        }
     }
 
     res = matroska_parse_laces(matroska, &data, &size, (flags & 0x06) >> 1,
@@ -2775,6 +2795,12 @@ static int matroska_read_seek(AVFormatContext *s, int stream_index,
         //st->skip_to_keyframe = 1;
         matroska->skip_to_timecode = st->index_entries[index].timestamp;
     }
+
+#ifdef DEBUG_SEEK
+    av_log(matroska->ctx, AV_LOG_ERROR,
+           "seek timestamp=%"PRIu64", index timestamp=%"PRIu64", skip_to_timecode=%"PRIu64"",
+           timestamp, st->index_entries[index].timestamp, matroska->skip_to_timecode);
+#endif
     matroska->skip_to_keyframe = 1;
     matroska->done = 0;
     matroska->num_levels = 0;
