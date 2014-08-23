@@ -1119,7 +1119,7 @@ void *player_thread(play_para_t *player)
     }
     player->play_start_systemtime_us = player_get_systemtime_ms();
     player->play_last_reset_systemtime_us = player->play_start_systemtime_us;
-    log_print("pid[%d]::playback loop...\n", player->player_id);
+    log_print("pid[%d]::playback loop... pb=%x\n", player->player_id, player->pFormatCtx->pb);
     //player loop
     do {
         if ((!(player->vstream_info.video_format == VFORMAT_SW)

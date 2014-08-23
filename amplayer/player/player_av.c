@@ -1026,14 +1026,18 @@ int read_av_packet(play_para_t *para)
     am_packet_t *pkt = para->p_pkt;
     char raw_mode = para->playctrl_info.raw_mode;
     int ret = PLAYER_SUCCESS;
+    int need_wake=1;
 
     if (para == NULL || pkt == NULL) {
         return PLAYER_RD_EMPTYP;
     }
 
+    if(!(para->pFormatCtx->iformat->flags & AVFMT_NOFILE) && para->pFormatCtx->pb !=NULL && para->pFormatCtx->pb->local_playback == 1)
+    	need_wake=0;
+
     if (raw_mode == 1) {
 
-        if(para->pFormatCtx->pb->local_playback == 0)
+        if(need_wake)
             player_mate_wake(para, 100 * 1000);
 
         ret = raw_read(para);
@@ -1043,7 +1047,7 @@ int read_av_packet(play_para_t *para)
                 para->pFormatCtx->pb->error=0;
             ret=0;
         }
-        if(para->pFormatCtx->pb->local_playback == 0)
+        if(need_wake)
             player_mate_sleep(para);
 
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
@@ -1052,7 +1056,7 @@ int read_av_packet(play_para_t *para)
         }
     } else if (raw_mode == 0) {
 
-        if(para->pFormatCtx->pb->local_playback == 0)
+        if(need_wake)
             player_mate_wake(para, 100 * 1000);
 
         ret = non_raw_read(para);
@@ -1063,7 +1067,7 @@ int read_av_packet(play_para_t *para)
             ret=0;
         }
 		
-        if(para->pFormatCtx->pb->local_playback == 0)
+        if(need_wake)
             player_mate_sleep(para);
 		
         if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
