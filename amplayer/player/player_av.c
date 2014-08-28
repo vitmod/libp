@@ -654,7 +654,11 @@ static int raw_read(play_para_t *para)
                         log_error("[%s:%d] seek key frame reached %lld bytes, use %lld us! \n", __FUNCTION__, __LINE__, cur_offset-old_offset, cur_time-start_time);
                         break;
                     }
-    
+
+                    if (pkt->avpkt) {
+                        av_free_packet(pkt->avpkt);
+                    }
+                    
                     rev_byte = av_read_frame(para->pFormatCtx, pkt->avpkt);
                     if (rev_byte < 0) {
                         log_error("[%s:%d] read data failed! ret=%d! \n", __FUNCTION__, __LINE__, rev_byte);
