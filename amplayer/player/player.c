@@ -1147,6 +1147,10 @@ void *player_thread(play_para_t *player)
                         player->playctrl_info.end_flag = 1;
                     }
                 }
+                if (pkt->avpkt) {           
+                    av_free_packet(pkt->avpkt);
+                    pkt->avpkt_isvalid = 0;
+                }                 
                 break;
             } else if (ret == CONTINUE_FLAG) {
 
