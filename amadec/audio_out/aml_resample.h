@@ -18,6 +18,7 @@
 #define RESAMPLE_TYPE_DOWN      1
 #define RESAMPLE_TYPE_UP        2
 
+#define RESAMPLE_DOWN_FORCE_PCR_SLOW 3
 
 typedef struct af_resampe_ctl_s{
   int   SampNumIn;
@@ -30,9 +31,13 @@ typedef struct af_resampe_ctl_s{
   short OutSampReserveLen;
   short InitFlag;
   short LastResamType;
+  int resample_type;
+  short enable_resample;
 }af_resampe_ctl_t;
 
-void af_resample_linear_init();
+void af_resample_linear_init(struct aml_audio_dec* audec);
+
+void af_resample_linear_stop(struct aml_audio_dec* audec);
 
 int af_get_resample_enable_flag();
 
@@ -58,6 +63,8 @@ void af_resample_api_normal(char *buffer, unsigned int *size,int Chnum, aml_audi
 void af_resample_api(char* buffer, unsigned int * size, int Chnum, aml_audio_dec_t* audec, int enable, int delta);
 
 int af_set_resample_type(int val);
+
+void  af_pcrmaster_resample_api(char *buffer, unsigned int *size, int Chnum, aml_audio_dec_t *audec/*, int enable, int delta*/);
 
 #endif
 

@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <sys/time.h>
 #ifndef WIN32
 #include <android/log.h>
 #endif
@@ -74,7 +75,7 @@
 //audio decoder buffer 6144 bytes
 #define AAC_INPUTBUF_SIZE   (2 * 768)	/* pick something big enough to hold a bunch of frames */
 
-#define ERROR_RESET_COUNT  1000
+#define ERROR_RESET_COUNT  40
 #define  RSYNC_SKIP_BYTES  1
 #define FRAME_RECORD_NUM   40
 #define FRAME_SIZE_MARGIN  300
@@ -95,9 +96,21 @@ typedef struct FaadContext {
 	int frame_length_his[FRAME_RECORD_NUM];
 	unsigned int muted_samples;
 	unsigned int muted_count;
+	unsigned init_cost; // summary init funciton cost bytes
+	unsigned init_start_flag; //start flag to summary data cost
+    	int64_t starttime;
+    	int64_t endtime;
 }FaadContext;
 
+typedef  (*findsyncfunc)(unsigned char *buf, int nBytes);
 static const int adts_sample_rates[] = {96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350,0,0,0};
+
+static int64_t gettime(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+}
 
 static long aacChannelConfig2wavexChannelMask(NeAACDecFrameInfo *hInfo)
 {
@@ -291,6 +304,24 @@ static int audio_decoder_init(
 		audio_codec_print(" input/output buffer null or input len is 0 \n");
    } 
 retry:
+//fixed to LATM aac frame header sync to speed up seek speed
+#if  1
+   if(adec_ops->nAudioDecoderType == ACODEC_FMT_AAC_LATM){
+	int nSeekNum = AACFindLATMSyncWord(in_buf,inbuf_size);
+	if(nSeekNum == (inbuf_size-2)){
+		audio_codec_print("[%s]%d bytes data not found latm sync header \n",__FUNCTION__,nSeekNum);	
+	}
+	else{
+		audio_codec_print("[%s]latm seek sync header cost %d,total %d,left %d \n",__FUNCTION__,nSeekNum,inbuf_size,inbuf_size - nSeekNum);
+	}
+	inbuf_size = inbuf_size - nSeekNum;
+	if(inbuf_size < (get_frame_size(gFaadCxt)+FRAME_SIZE_MARGIN)/*AAC_INPUTBUF_SIZE/2*/){
+		audio_codec_print("[%s]input size %d at least %d ,need more data \n",__FUNCTION__,inbuf_size,(get_frame_size(gFaadCxt)+FRAME_SIZE_MARGIN));
+		*inbuf_consumed = inlen-inbuf_size;
+		return AAC_ERROR_NO_ENOUGH_DATA; 
+	}		
+    }
+#endif
     gFaadCxt->hDecoder = NeAACDecOpen();
     config = NeAACDecGetCurrentConfiguration(gFaadCxt->hDecoder);
     config->defObjectType = LC;
@@ -323,7 +354,7 @@ retry:
     gFaadCxt->init_flag=1;
     gFaadCxt->gChannels=channels;
     gFaadCxt->gSampleRate=samplerate;
-    audio_codec_print("[%s]Init OK adif_present :%d adts_present:%d latm_present:%d,sr %d,ch %d\n",__FUNCTION__,hDecoder->adif_header_present,hDecoder->adts_header_present,hDecoder->latm_header_present,samplerate,channels);
+    audio_codec_print("[%s] Init OK adif_present :%d adts_present:%d latm_present:%d,sr %d,ch %d\n",__FUNCTION__,hDecoder->adif_header_present,hDecoder->adts_header_present,hDecoder->latm_header_present,samplerate,channels);
     return 0;
 }
 int audio_dec_decode(
@@ -350,22 +381,15 @@ int audio_dec_decode(
 		audio_codec_print("decoder parameter error,check \n");
 		goto exit;
 	}
-//TODO .fix to LATM aac decoder when ffmpeg parser return LATM aac  type		
-#if  0
-	if(adec_ops->nAudioDecoderType == 19 && !gFaadCxt->init_flag){
-		int nSeekNum = AACFindLATMSyncWord(dec_buf,dec_bufsize);
-		if(nSeekNum == (dec_bufsize-2)){
-			audio_codec_print("%d bytes data not found adts sync header \n",nSeekNum);	
-		}
-		dec_bufsize = dec_bufsize - nSeekNum;
-		if(dec_bufsize < (get_frame_size(gFaadCxt)+FRAME_SIZE_MARGIN)/*AAC_INPUTBUF_SIZE/2*/){
-			goto exit; 
-		}		
-	}
-#endif
+	if(gFaadCxt->init_start_flag == 0){
+		audio_codec_print("MyFaadDecoder init first in \n");
+		gFaadCxt->starttime = gettime();
+		gFaadCxt->init_start_flag = 1;
+	}		
 	if (!gFaadCxt->init_flag)
 	{
 		gFaadCxt->error_count= 0;
+		audio_codec_print("begin audio_decoder_init,buf size %d  \n",dec_bufsize);
 		ret = audio_decoder_init(adec_ops,outbuf,outlen,dec_buf,dec_bufsize,&inbuf_consumed);
 		if(ret ==  AAC_ERROR_NO_ENOUGH_DATA){
 			audio_codec_print("decoder buf size %d,cost %d byte input data ,but initiation failed.^_^ \n",inlen,inbuf_consumed);
@@ -375,14 +399,17 @@ int audio_dec_decode(
 		gFaadCxt->init_flag = 1;	
 		dec_buf += inbuf_consumed;
 		dec_bufsize -= inbuf_consumed;
-	        audio_codec_print("decoder init finished cost %d\n",inbuf_consumed);	
+		gFaadCxt->init_cost += inbuf_consumed;
+		gFaadCxt->endtime = gettime();
+	        audio_codec_print(" MyFaadDecoder decoder init finished total cost %d bytes,consumed time %lld ms \n",gFaadCxt->init_cost,(gFaadCxt->endtime-gFaadCxt->starttime)/1000);	
+	        gFaadCxt->init_cost = 0;
 		if(dec_bufsize < 0)
 			dec_bufsize = 0;
 	}
 	NeAACDecStruct* hDecoder = (NeAACDecStruct*)(gFaadCxt->hDecoder);
 //TODO .fix to LATM aac decoder when ffmpeg parser return LATM aac  type	
-#if 0	
-	if(adec_ops->nAudioDecoderType == 19)
+#if 0
+	if(adec_ops->nAudioDecoderType == ACODEC_FMT_AAC_LATM)
 		hDecoder->latm_header_present = 1;
 #endif	
 	if(hDecoder->adts_header_present)
@@ -399,7 +426,7 @@ int audio_dec_decode(
 	if(hDecoder->latm_header_present){
 		int nSeekNum = AACFindLATMSyncWord(dec_buf,dec_bufsize);
 		if(nSeekNum == (dec_bufsize-2)){
-			audio_codec_print("%d bytes data not found adts sync header \n",nSeekNum);	
+			audio_codec_print("%d bytes data not found latm sync header \n",nSeekNum);	
 		}
 		dec_bufsize = dec_bufsize - nSeekNum;
 		if(dec_bufsize < (get_frame_size(gFaadCxt)+FRAME_SIZE_MARGIN)/*AAC_INPUTBUF_SIZE/2*/){
@@ -441,22 +468,27 @@ int audio_dec_decode(
 		dec_bufsize -= RSYNC_SKIP_BYTES;
 		audio_codec_print( "Error: %s,inlen %d\n", NeAACDecGetErrorMessage(frameInfo.error),inlen);		
         }
-	  else{
+        // sr/ch changed info happened 5 times always,some times error maybe,skip bytes
+	else if(frameInfo.error == 34 && gFaadCxt->error_count > 5){
+		dec_bufsize -= RSYNC_SKIP_BYTES;
 	  	audio_codec_print("%s,,inlen %d\n", NeAACDecGetErrorMessage(frameInfo.error),inlen);
-	  }
-		gFaadCxt->error_count++;
+	}
+	gFaadCxt->error_count++;
 		//err 34,means aac profile changed , PS.SBR,LC ....,normally happens when switch audio source
-		if(gFaadCxt->error_count  >= ERROR_RESET_COUNT ||frameInfo.error == 34){
-			if( gFaadCxt->hDecoder){
-				NeAACDecClose(gFaadCxt->hDecoder);
-				gFaadCxt->hDecoder=NULL;
-			}
+	if(gFaadCxt->error_count  >= ERROR_RESET_COUNT ||frameInfo.error == 34){
+		if( gFaadCxt->hDecoder){
+			NeAACDecClose(gFaadCxt->hDecoder);
+			gFaadCxt->hDecoder=NULL;
+		}
 			gFaadCxt->init_flag = 0;
+			gFaadCxt->init_start_flag = 0;
 		}	
 	}
 exit:
     if(dec_bufsize < 0)
 		dec_bufsize = 0;
+    if(gFaadCxt->init_flag == 0)
+    	gFaadCxt->init_cost += 	(inlen - dec_bufsize);	
     return inlen - dec_bufsize;
 }
 

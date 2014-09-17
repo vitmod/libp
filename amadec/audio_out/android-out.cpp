@@ -28,6 +28,7 @@ extern "C" {
 #include <Amsysfsutils.h>
 #include <amthreadpool.h>
 }
+#include "adec-external-ctrl.h"
 namespace android
 {
 
@@ -36,6 +37,9 @@ static Mutex mLock;
 static Mutex mLock_raw;
 //get default output  sample rate which maybe changed by raw output
 static  int default_sr = 48000;
+static int fill_audiotrack_zero = 0;
+static int buffering_audio_data = 0;
+static int skip_unnormal_discontinue = 0;
 extern "C" int get_audio_decoder(void);
 static int get_digitalraw_mode(void)
 {
@@ -260,6 +264,20 @@ static sp<ExactLatencyAudioTrack> mpAudioTrack;
 static sp<AudioTrack> mpAudioTrack_raw;
 #endif
 
+struct buf_status {
+  int size;
+  int data_len;
+  int free_len;
+  unsigned int read_pointer;
+  unsigned int write_pointer;
+};
+
+struct am_io_param {
+  int data;
+  int len; //buffer size;
+  struct buf_status status;
+};
+
 void audioCallback(int event, void* user, void *info)
 {
     int len, i;
@@ -270,6 +288,7 @@ void audioCallback(int event, void* user, void *info)
     audio_out_operations_t *out_ops = &audec->aout_ops;
     dsp_operations_t *dsp_ops = &audec->adsp_ops;
     unsigned long apts, pcrscr;
+	struct am_io_param am_io;
 
     if (event != AudioTrack::EVENT_MORE_DATA) {
         adec_print(" ****************** audioCallback: event = %d \n", event);
@@ -336,23 +355,87 @@ void audioCallback(int event, void* user, void *info)
         adec_print("resample changed to %d, step=%d, diff = %d", resample, resample_step,diff_avr);
       }
     }
+#if 1
+    if (audec->tsync_mode == TSYNC_MODE_PCRMASTER && audec->pcrtsync_enable) {
+        if (audec->adis_flag <= 0) {
+            unsigned long apts, pcrscr;
+            int64_t apts64, pcrscr64;
 
-    if (audec->tsync_mode == TSYNC_MODE_PCRMASTER) {
-        int64_t apts64 = (int64_t)apts;
-        int64_t pcrscr64 = (int64_t)pcrscr;
-        if ((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)) {
-            af_set_resample_type(RESAMPLE_TYPE_DOWN);
-            //adec_print("down: pcrmaster apts=%x,,  pcr=%x, %d, %lld, %lld, %lld,  --------\n", apts, pcrscr, (int)(pcrscr-apts), apts64,pcrscr64,apts64-pcrscr64);
-       	} else if ((apts64 - pcrscr64) > (int64_t)(100*TIME_UNIT90K/1000)) {
-            af_set_resample_type(RESAMPLE_TYPE_UP);		
-            //adec_print("up: pcrmaster apts=%x,,  pcr=%x, %d,%lld, %lld, %lld, --------\n", apts, pcrscr,(int)(apts-pcrscr),apts64,pcrscr64,apts64-pcrscr64);
+            apts64 = audec->apts64;
+            pcrscr64 = audec->pcrscr64;
+ 
+            if (apts64 && pcrscr64 &&  (abs(apts64 - pcrscr64) <= 90000*60*10)) {
+				ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_AB_STATUS, (unsigned long)&am_io);
+				adec_print("ab_level=%x, ab_rd_ptr=%x", am_io.status.data_len, am_io.status.read_pointer);
+				
+                if (((apts64 - pcrscr64) > (int64_t)(audec->fill_trackzero_thrsh)) ||((apts64 > pcrscr64) && (am_io.status.data_len < 0x200))) {
+		      adec_print("[%s:%d] %d, thrsh:%d,   apts64:%lld, pcrscr64:%lld, diff:%lld, lastapts:%lx, pcmsize:%d, abuffer_lv:0x%x\n", 
+                            __FUNCTION__, __LINE__, fill_audiotrack_zero, audec->fill_trackzero_thrsh,apts64, pcrscr64, apts64-pcrscr64,audec->adsp_ops.last_audio_pts,buffer->size, am_io.status.data_len);
+                    if (skip_unnormal_discontinue++ > 10) {
+                        memset((char*)(buffer->i16), 0, buffer->size);
+                        if (!fill_audiotrack_zero) {
+                            adec_pts_pause();
+                        }
+                        fill_audiotrack_zero =  audec->fill_trackzero_thrsh/(20*90);
+                        adec_print("[%s:%d] %d, thrsh:%d,   apts64:%lld, pcrscr64:%lld, diff:%lld, lastapts:%lx, pcmsize:%d, abuffer_lv:0x%x\n", 
+                            __FUNCTION__, __LINE__, fill_audiotrack_zero, audec->fill_trackzero_thrsh,apts64, pcrscr64, apts64-pcrscr64,audec->adsp_ops.last_audio_pts,buffer->size, am_io.status.data_len);
+                        return;
+                    }      
+                } else {
+                       if (skip_unnormal_discontinue>0) {
+                          adec_print("[%s:%d], skip_unnormal_discontinue:%d, fill_audiotrack_zero:%d, apts-pcr:%lld, ---------------------------\n",__FUNCTION__, __LINE__, skip_unnormal_discontinue,fill_audiotrack_zero,apts64 - pcrscr64);
+                          skip_unnormal_discontinue = 0;
+                       }
+                }
+                if ((fill_audiotrack_zero > 0) && ((apts64 - pcrscr64) > (int64_t)(100*TIME_UNIT90K/1000))) {
+                    fill_audiotrack_zero--;
+          
+                    if (!fill_audiotrack_zero) {
+                        adec_pts_resume();
+                        skip_unnormal_discontinue = 0;
+                    }
+    
+                    memset((char*)(buffer->i16), 0, buffer->size);
+                    adec_print("## %d, %d, apts bigger than pcr, 2222 apts64:%lld, pcrscr64:%lld, diff:%lld, \n", fill_audiotrack_zero, buffering_audio_data, apts64, pcrscr64, apts64-pcrscr64);
+                    return;
+                } else {
+                    if (fill_audiotrack_zero > 0 && ((apts64 - pcrscr64) <= (int64_t)(100*TIME_UNIT90K/1000))
+                        && ((apts64 - pcrscr64) > 0)) {
+                        fill_audiotrack_zero = 0;
+                        adec_pts_resume();
+                        skip_unnormal_discontinue = 0;
+                        adec_print("[%s:%d], fill enough! ---------------------------\n",__FUNCTION__, __LINE__);
+                    }
+                }
+        
+                if (audec->apts64 - audec->last_apts64 > TIME_UNIT90K/10) {
+                    int64_t diff_discontinue = abs(pcrscr64 - apts64);
+			if (diff_discontinue > (int64_t)(TIME_UNIT90K*3)){
+			    adec_print("discontinue: #pcrmaster: %lld, %lld, %lld, %d,%d,--------\n", 
+                            apts64,pcrscr64,apts64-pcrscr64,(100*TIME_UNIT90K/1000),((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)));
+                        af_set_resample_type(RESAMPLE_TYPE_NONE);
+			}
+                    else if ((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)) {
+                        af_set_resample_type(RESAMPLE_TYPE_DOWN);
+                        adec_print("down: #pcrmaster enable:%d, %lld, %lld, %lld,  --------\n", af_get_resample_enable_flag(),apts64,pcrscr64,pcrscr64-apts64);
+                    } else if ((apts64 - pcrscr64) > (int64_t)(100*TIME_UNIT90K/1000)) {
+                        af_set_resample_type(RESAMPLE_TYPE_UP);
+                        adec_print("up: #pcrmaster enable:%d, %lld, %lld, %lld, --------\n", af_get_resample_enable_flag(), apts64,pcrscr64,apts64-pcrscr64);
+                    } else {
+                        adec_print("none: #pcrmaster: %lld, %lld, %lld, %d,%d,--------\n", 
+                            apts64,pcrscr64,apts64-pcrscr64,(100*TIME_UNIT90K/1000),((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)));
+                        af_set_resample_type(RESAMPLE_TYPE_NONE);
+                    }
+                    audec->last_apts64 = apts64;
+                }
+            }
         } else {
-            //adec_print("none: pcrmaster apts=%x,,  pcr=%x, %d,%lld, %lld, %lld, %d,%d,--------\n", 
-            //    apts, pcrscr, (int)(apts-pcrscr),apts64,pcrscr64,apts64-pcrscr64,(100*TIME_UNIT90K/1000),((pcrscr64 - apts64) > (int64_t)(100*TIME_UNIT90K/1000)));
-            af_set_resample_type(RESAMPLE_TYPE_NONE);
+            audec->adis_flag--;
+            adec_print("[%s:%d], pcr:%llx, apts:%llx, tsync_pcr_dispoint:%llx, adis_flag:%d,-------------\n",__FUNCTION__, __LINE__, 
+				audec->pcrscr64, audec->apts64, audec->tsync_pcr_dispoint,audec->adis_flag);
         }
     }
-	
+#endif
     if (audec->adsp_ops.dsp_on) {
         int channels;
         #if ANDROID_PLATFORM_SDK_VERSION >= 19
@@ -365,6 +448,8 @@ void audioCallback(int event, void* user, void *info)
         #endif
         if (wfd_enable) {
             af_resample_api((char*)(buffer->i16), &buffer->size, channels, audec, resample, resample_step);
+        } else if (audec->tsync_mode == TSYNC_MODE_PCRMASTER) {
+            af_pcrmaster_resample_api((char*)(buffer->i16), &buffer->size, channels, audec);
         } else {
             af_resample_api_normal((char*)(buffer->i16), &buffer->size, channels, audec);
         }
@@ -377,24 +462,10 @@ void audioCallback(int event, void* user, void *info)
       if (buffer->size==0) {
         adec_print("no sample from DSP !!! in: %d, out: %d, diff: %d, filtered: %d", last_checkin/90, last_checkout/90, (last_checkin-last_checkout)/90, diff_avr);
 
-      struct buf_status {
-        int size;
-        int data_len;
-        int free_len;
-        unsigned int read_pointer;
-        unsigned int write_pointer;
-      };
-
-      struct am_io_param {
-        int data;
-        int len; //buffer size;
-        struct buf_status status;
-      };
-
-      struct am_io_param am_io;
-
       ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_AB_STATUS, (unsigned long)&am_io);
-      adec_print("ab_level=%x, ab_rd_ptr=%x", am_io.status.data_len, am_io.status.read_pointer);
+      if (am_io.status.size > 0)
+      adec_print("ab_level=%x,ab_size=%x, alevel:%f, ab_rd_ptr=%x", 
+      am_io.status.data_len,  am_io.status.size, (float)(am_io.status.data_len)/(am_io.status.size), am_io.status.read_pointer);
       }
     }    
     return;
@@ -671,7 +742,9 @@ extern "C" int android_init(struct aml_audio_dec* audec)
 #endif
     audio_out_operations_t *out_ops = &audec->aout_ops;
     char wfd_prop[PROPERTY_VALUE_MAX];
-    
+    fill_audiotrack_zero = 0;
+    buffering_audio_data = 0;
+    skip_unnormal_discontinue = 0;
     ttt = 0;
     resample = 0;
     last_resample = 0;
@@ -864,7 +937,7 @@ extern "C" int android_init(struct aml_audio_dec* audec)
           return -1;
 
     }
-    af_resample_linear_init();
+    af_resample_linear_init(audec);
     out_ops->private_data = (void *)track;
     return 0;
 }

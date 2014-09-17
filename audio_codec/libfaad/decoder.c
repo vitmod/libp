@@ -898,7 +898,7 @@ NEXT_CHECK:
        /* Check if frame is valid and get frame info */	
 	i_frame_size = ((pbuffer[1] & 0x1f) << 8) + pbuffer[2];
 	LATM_LOG("i_frame_size  %d \n",i_frame_size);	   
-	if(i_frame_size <= 0){
+	if(i_frame_size <= 0 || i_frame_size > 6*768){
 		LATM_LOG("i_frame_size  error\n");
 		pbuffer++;
 		pbuffer_size--;		
@@ -1046,7 +1046,7 @@ exit_check:
                           hDecoder->last_ch_configure = adts.channel_configuration;
                       }
                       *samplerate = get_sample_rate(hDecoder->sf_index);
-                      if(*samplerate > 48000 || adts.channel_configuration > 6){
+                      if(*samplerate > 96000 || adts.channel_configuration > 6 || hDecoder->sf_index >= 12 ){
                            return -1;
                       }
                       *channels = (adts.channel_configuration > 6) ? 2 : adts.channel_configuration;
@@ -1735,10 +1735,21 @@ NEXT_CHECK:
             goto error;
 	if(adts.aac_frame_length > buffer_size)
 	{
-		hInfo->error = 35;
+		hInfo->error = 35; //more data needed 
 		audio_codec_print("decoder need more data for adts frame,frame len %d,have %d \n",adts.aac_frame_length,buffer_size);
+	        if(adts.aac_frame_length > 6*768){
+			audio_codec_print("adts frame len exceed aac spec \n");
+			hInfo->error = 36;//
+			
+		}
 		goto error;
 	}
+        if(adts.sf_index >= 12 ||adts.channel_configuration > 6) {
+		 	audio_codec_print("adts sf/ch error,sf %d,ch config %d \n",adts.sf_index,adts.channel_configuration);
+			hDecoder->sf_index = 3;	
+			hInfo->error = 12;
+			goto error;
+	}	
 	    hDecoder->sf_index = adts.sf_index;	
 	    if(adts.sf_index != hDecoder->last_sf_index && adts.channel_configuration != hDecoder->last_ch_configure){
 	        if(adts.sf_index>=0 && adts.sf_index<12 && adts.channel_configuration>0 && adts.channel_configuration<=8){

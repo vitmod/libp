@@ -170,6 +170,17 @@ struct aml_audio_dec {
     int tsync_mode;
     adec_thread_mgt_t thread_mgt;
     int dtshdll_flag;
+
+    //dvb pcr master
+    int fill_trackzero_thrsh;
+    int adis_flag;
+    int tsync_pcr_dispoint;
+    int pcrtsync_enable;
+    int pcrmaster_droppcm_thsh;
+    int64_t pcrscr64;
+    int64_t apts64;
+    int64_t last_apts64;    
+    int64_t last_pcrscr64;
 };
 
 //from amcodec

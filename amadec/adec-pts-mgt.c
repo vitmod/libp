@@ -110,6 +110,7 @@ int adec_pts_start(aml_audio_dec_t *audec)
     char buf[64];
     dsp_operations_t *dsp_ops;
 	char value[PROPERTY_VALUE_MAX]={0};
+    int tsync_mode;
 
     adec_print("adec_pts_start");
     dsp_ops = &audec->adsp_ops;
@@ -314,6 +315,7 @@ int adec_pts_resume(void)
  * \return 0 on success otherwise -1
  */
  static int apts_interrupt=0;
+static int pcrmaster_droppcm_flag=0;
 int adec_refresh_pts(aml_audio_dec_t *audec)
 {
     unsigned long pts;
@@ -350,30 +352,109 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     systime = audec->adsp_ops.get_cur_pcrscr(&audec->adsp_ops);
     if (systime == -1) {
         adec_print("unable to getsystime");
+        audec->pcrscr64 = 0;
         return -1;
     }
 
     /* get audio time stamp */
     pts = adec_calc_pts(audec);
-    if (pts == -1 || last_pts == pts) {
-        //close(fd);
-        //if (pts == -1) {
-        return -1;
-        //}
-    }
-    if(apts_start_flag != audec->apts_start_flag){   	
+    if(pts != -1 && (apts_start_flag != audec->apts_start_flag)){   	
 	    adec_print("audio pts start from 0x%lx", pts);
 	    sprintf(buf, "AUDIO_START:0x%lx", pts);
 	    if(amsysfs_set_sysfs_str(TSYNC_EVENT, buf) == -1)
 	    {
 	        return -1;
 	    }
+    }     
+    if (pts == -1 || last_pts == pts) {
+        //close(fd);
+        //if (pts == -1) {
+        audec->pcrscr64 = (int64_t)systime; 
+        return -1;
+        //}
     }	    
+#if 1
+    if (audec->tsync_mode == TSYNC_MODE_PCRMASTER  && audec->pcrtsync_enable
+        && ((((int64_t)pts) - audec->last_apts64 > TIME_UNIT90K/10) || ((int64_t)pts < audec->last_apts64))) {
+        //sysfs_get_int(TSYNC_PCRSCR, &pcrscr);
+
+        int64_t apts64 = (int64_t)pts;
+        int64_t pcrscr64 = (int64_t)systime;
+        audec->apts64 = apts64;
+        audec->pcrscr64 = pcrscr64;
+
+        if (audec->adis_flag && abs(audec->pcrscr64 - audec->last_apts64) > APTS_DISCONTINUE_THRESHOLD) {
+            audec->adis_flag = 0;
+            adec_print("[%s:%d] pcr discontinue: last_pcr:%llx, pcr:%llx, --\n", __FUNCTION__, __LINE__, audec->last_pcrscr64, audec->pcrscr64);
+        }
+        audec->last_pcrscr64 = pcrscr64;
+        if (apts64 < audec->last_apts64) {
+            audec->last_apts64 = apts64;
+        }
+        adec_print("## tsync_mode:%d, pcr:%llx,apts:%llx,lastapts:%llx, flag:%d,%d,---\n", 
+			audec->tsync_mode, pcrscr64,apts64,audec->last_apts64,pcrmaster_droppcm_flag,audec->adis_flag);
+  
+        // drop pcm
+        if (pcrscr64 - apts64 > audec->pcrmaster_droppcm_thsh) { 
+           if (pcrmaster_droppcm_flag++ >20) {
+               int drop_size, droppts;
+               droppts = pcrscr64 - apts64;
+               drop_size = (droppts/90)*(audec->samplerate/1000) * audec->channels *2;
+               pcrmaster_droppcm_flag = 0;
+                adec_print("## pcrmaster, droppcm pcr:%lx,apts:%lx,lastapts:%lx,---\n", systime,pts,last_pts);
+    
+                if (droppcm_use_size(audec, drop_size) == -1) {
+                     adec_print("[%s::%d] timeout! data not enough! \n",__FUNCTION__,__LINE__);
+                 }
+           }
+        } else {
+            pcrmaster_droppcm_flag = 0;
+        }
+    }
+#endif
     if ((abs(pts - last_pts) > APTS_DISCONTINUE_THRESHOLD) && (audec->adsp_ops.last_pts_valid)) {
         /* report audio time interruption */
         adec_print("pts = %lx, last pts = %lx\n", pts, last_pts);
 
         adec_print("audio time interrupt: 0x%lx->0x%lx, 0x%lx\n", last_pts, pts, abs(pts - last_pts));
+        if (audec->tsync_mode == TSYNC_MODE_PCRMASTER && audec->pcrtsync_enable) {
+            unsigned long tsync_pcr_dispoint = 0;
+            int count = 4;
+            audec->apts64 = (int64_t)pts;
+            audec->adis_flag = 0;
+
+            do {
+                if (sysfs_get_int(TSYNC_PCR_DISPOINT, &tsync_pcr_dispoint) == -1) {
+                    adec_print("## [%s::%d] unable to get TSYNC_PCR_DISPOINT! \n",__FUNCTION__,__LINE__);
+                    audec->adis_flag = 100;
+                    break;
+                } 
+                amthreadpool_thread_usleep(20);
+                count--;
+            } while (tsync_pcr_dispoint==0 && count>0);
+            
+            if (tsync_pcr_dispoint!=0) {
+                int64_t apts64 = (int64_t)pts;
+                int64_t pcrscr64 = (int64_t)tsync_pcr_dispoint;
+                audec->pcrscr64 = (int64_t)pcrscr64;
+                audec->tsync_pcr_dispoint = (int64_t)tsync_pcr_dispoint;
+                audec->adis_flag = 100;
+
+                adec_print("## pcrmaster, pcr:%lx,apts:%lx,lastapts:%lx,---\n", tsync_pcr_dispoint,pts,last_pts);
+                // drop pcm
+                if (pcrscr64 - apts64 > APTS_DISCONTINUE_THRESHOLD) { 
+                    int drop_size, droppts;
+                    droppts = pcrscr64 - apts64;
+
+                    drop_size = (droppts/90)*(audec->samplerate/1000) * audec->channels *2;
+                    adec_print("## pcrmaster, droppcm pcr:%lx,apts:%lx,lastapts:%lx,---\n", systime,pts,last_pts);
+        
+                    if (droppcm_use_size(audec, drop_size) == -1) {
+                        adec_print("[%s::%d] timeout! data not enough! \n",__FUNCTION__,__LINE__);
+                    }
+                }
+            }
+        }
 
         sprintf(buf, "AUDIO_TSTAMP_DISCONTINUITY:0x%lx", pts);
 
