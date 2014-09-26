@@ -497,6 +497,13 @@ int match_types(const char *filetypestr,const char *typesetting)
 	return 0;
 }
 
+/*
+digital_raw:
+0  2ch PCM 
+1  spdif passthrough ,for DTS,DD
+2  HDMI passthrough for DD,DTSHD,TrueHD
+3  Multi-channel PCM HDMI passthrough 
+*/
 static void set_multichs_prop()
 {
     char * infobuf;
@@ -516,7 +523,7 @@ static void set_multichs_prop()
              for(i = 0; i < nread; i++)
              {
                  if((infobuf[i] == 'P') && (infobuf[i+1] == 'C') && (infobuf[i+2] == 'M')){
-                     if(dgraw == 0){
+                     if(dgraw == 3){ // if configured mutli-channel output,check if the HDMI sink support multi-channel PCM output
                          if(infobuf[i+5] == '8'){
                              property_set(MULTICH_SUPPORT_PROPERTY,"hdmi8");
                              channel = channel < 8 ? 8 : channel;
@@ -554,7 +561,6 @@ static void set_multichs_prop()
             infobuf = NULL;
         }
     }
-                
 }
 
 static int set_audio_decoder(aml_audio_dec_t *audec)
