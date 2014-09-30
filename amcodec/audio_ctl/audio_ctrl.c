@@ -332,3 +332,7 @@ int audio_set_avsync_threshold(void *priv, int threshold)
 {
     return audio_set_av_sync_threshold(priv, threshold);
 }
+int codec_get_decoder_enable(codec_para_t *p)
+{
+	return audio_decoder_get_enable_status(p->adec_priv);
+}

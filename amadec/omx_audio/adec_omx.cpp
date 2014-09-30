@@ -170,10 +170,18 @@ status_t AmlOMXCodec::read(unsigned char *buf,unsigned *size,int *exit)
     return OK;
 }
 
-status_t AmlOMXCodec::start()
+status_t AmlOMXCodec::start(aml_audio_dec_t *audec)
 {
     LOGI("[%s %d] \n",__FUNCTION__,__LINE__);
     status_t status = m_codec->start();
+    if(omx_codec_type==OMX_ENABLE_CODEC_AC3 ||omx_codec_type==OMX_ENABLE_CODEC_EAC3  \
+	|| omx_codec_type==OMX_ENABLE_CODEC_DTSHD || omx_codec_type== OMX_ENABLE_CODEC_TRUEHD){
+            android::sp<android::MetaData> output_format=m_codec->getFormat();
+	      int enable_flag = 0;	
+            output_format->findInt32(android::kKeyAudioFlag, &enable_flag);
+	     LOGI("dts/dolby audio enable flag %d \n",enable_flag);
+	     audec->audio_decoder_enabled = enable_flag;
+    }
     if (status != OK)
     {
         LOGE("Err:OMX client can't start OMX decoder?! status=%d (0x%08x)\n", (int)status, (int)status);
@@ -279,7 +287,7 @@ void arm_omx_codec_start(aml_audio_dec_t *audec)
     android::AmlOMXCodec *arm_omx_codec=(android::AmlOMXCodec *)(audec->arm_omx_codec);
     if(arm_omx_codec!=NULL){
         arm_omx_codec->locked();
-        arm_omx_codec->start();
+        arm_omx_codec->start(audec);
         arm_omx_codec->unlocked();
     }else
         LOGE("arm_omx_codec==NULL arm_omx_codec->start failed! %s %d \n",__FUNCTION__,__LINE__);

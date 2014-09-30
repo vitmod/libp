@@ -1689,3 +1689,23 @@ char *player_value2str(char *key, int value)
      else
         return ("INVALID KEYWORDS");    
 }
+
+int audio_get_decoder_enable(int pid)
+{
+
+    int ret = -1;
+    play_para_t *player_para;
+    codec_para_t *p;
+
+    player_para = player_open_pid_data(pid);
+    if (player_para == NULL) {
+        return -1;    /*this data is 0 for default!*/
+    }
+    p = get_audio_codec(player_para);
+    if (p != NULL) {
+        ret = codec_get_decoder_enable(p);
+    }
+    player_close_pid_data(pid);
+
+    return ret;
+}

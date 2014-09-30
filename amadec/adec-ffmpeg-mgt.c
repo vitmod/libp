@@ -862,6 +862,7 @@ static void start_decode_thread(aml_audio_dec_t *audec)
         return ret;
     }
     audec->sn_threadid=tid;
+    audec->audio_decoder_enabled = 0x1;	
     pthread_setname_np(tid,"AmadecDecodeLP");
     adec_print("[%s]Create ffmpeg decode thread success! tid = %d\n",__FUNCTION__,tid);  
 }

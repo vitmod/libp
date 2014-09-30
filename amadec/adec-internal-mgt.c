@@ -694,6 +694,7 @@ int audiodec_init(aml_audio_dec_t *audec)
     int nCodecType=audec->format;
     set_audio_decoder(audec);
     audec->format_changed_flag=0;
+    audec->audio_decoder_enabled  = -1;//default set a invalid value
     if(am_getconfig_bool("media.libplayer.wfd"))  {
   	wfd = 1;
    }		
@@ -705,7 +706,8 @@ int audiodec_init(aml_audio_dec_t *audec)
     else if(wfd && (nCodecType == ACODEC_FMT_AAC ||nCodecType ==  ACODEC_FMT_WIFIDISPLAY)){
 		adec_print("using wfd audio decoder \n");
 		ret = amthreadpool_pthread_create(&tid, NULL, (void *)adec_wfddec_msg_loop, (void *)audec);
-		pthread_setname_np(tid,"AmadecWFDMsgloop");		
+		audec->audio_decoder_enabled = 0x1;
+		pthread_setname_np(tid,"AmadecWFDMsgloop");
     }
     else 
     {

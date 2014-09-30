@@ -77,6 +77,7 @@ int   wait_video_unreg();
 int   clear_video_buf();
 int64_t player_get_lpbufbuffedsize(int pid);
 int64_t player_get_streambufbuffedsize(int pid);
+int audio_get_decoder_enable(int pid);
 
 #ifdef  __cplusplus
 }

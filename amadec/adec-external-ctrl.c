@@ -636,3 +636,20 @@ int audio_get_pts(void* handle)
   }
   return audiodsp_get_pts(&audec->adsp_ops);
 }
+/*
+	@get the audio decoder enabled status ,special for dts/dolby audio ,
+	@note that :this should be called after audio_decode_start,
+	@because the status was got from decoder.
+	@default set a invalid value -1.so if got value -1,it means have not got the decoder status.try again.
+	@return  0:disable ; 1:enable ;
+
+*/
+int audio_decoder_get_enable_status(void* handle)
+{
+  aml_audio_dec_t* audec = (aml_audio_dec_t*)handle;
+  if(!handle){
+    adec_print("audio handle is NULL !\n");
+    return -1;
+  }
+  return audec->audio_decoder_enabled;
+}

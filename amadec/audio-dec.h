@@ -181,6 +181,8 @@ struct aml_audio_dec {
     int64_t apts64;
     int64_t last_apts64;    
     int64_t last_pcrscr64;
+    int first_apts_lookup_over;	
+    int  audio_decoder_enabled; // if the audio decoder is enabled. if not enabled, muted pcm are output
 };
 
 //from amcodec

@@ -45,7 +45,7 @@ public:
 	OMXClient 			  m_OMXClient;
 	sp<AudioMediaSource>  m_OMXMediaSource;
 	int                   read(unsigned char *buf,unsigned *size,int *exit);
-	virtual status_t      start();
+	virtual status_t      start(aml_audio_dec_t *audec);
 	void                  pause();
 	void                  stop();
 	int                   GetDecBytes();
