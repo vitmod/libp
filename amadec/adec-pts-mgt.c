@@ -395,7 +395,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
 			audec->tsync_mode, pcrscr64,apts64,audec->last_apts64,pcrmaster_droppcm_flag,audec->adis_flag);
   
         // drop pcm
-        if (pcrscr64 - apts64 > audec->pcrmaster_droppcm_thsh) { 
+        if (pcrscr64 - apts64 > audec->pcrmaster_droppcm_thsh && abs(pcrscr64 - apts64) < 3*90000 ) { 
            if (pcrmaster_droppcm_flag++ >20) {
                int drop_size, droppts;
                droppts = pcrscr64 - apts64;
