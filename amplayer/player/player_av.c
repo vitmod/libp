@@ -393,6 +393,7 @@ vdec_type_t video_codec_type_convert(unsigned int id)
 
     case CODEC_TAG_WVC1:
     case CODEC_ID_VC1:
+    case CODEC_ID_VC1_L3:		
     case CODEC_TAG_WMVA:
     case CODEC_TAG_VC_1:
         log_print("[video_codec_type_convert]VIDEO_DEC_FORMAT_WVC1(0x%x)\n", id);
