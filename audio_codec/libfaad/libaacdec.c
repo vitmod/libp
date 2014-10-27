@@ -73,7 +73,7 @@
 #define MAX_CHANNELS 6 /* make this higher to support files with more channels */
 
 //audio decoder buffer 6144 bytes
-#define AAC_INPUTBUF_SIZE   (2 * 768)	/* pick something big enough to hold a bunch of frames */
+#define AAC_INPUTBUF_SIZE   768	/* pick something big enough to hold a bunch of frames */
 
 #define ERROR_RESET_COUNT  40
 #define  RSYNC_SKIP_BYTES  1
