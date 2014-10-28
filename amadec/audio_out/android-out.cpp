@@ -368,7 +368,8 @@ void audioCallback(int event, void* user, void *info)
 				ioctl(audec->adsp_ops.amstream_fd, AMSTREAM_IOC_AB_STATUS, (unsigned long)&am_io);
 				adec_print("ab_level=%x, ab_rd_ptr=%x", am_io.status.data_len, am_io.status.read_pointer);
 				
-                if (((apts64 - pcrscr64) > (int64_t)(audec->fill_trackzero_thrsh)) ||((apts64 > pcrscr64) && (am_io.status.data_len < 0x200))) {
+                //if (((apts64 - pcrscr64) > (int64_t)(audec->fill_trackzero_thrsh)) ||((apts64 > pcrscr64) && (am_io.status.data_len < 0x200))) {
+                if ((apts64 - pcrscr64) > (int64_t)(audec->fill_trackzero_thrsh)) {
 		      adec_print("[%s:%d] %d, thrsh:%d,   apts64:%lld, pcrscr64:%lld, diff:%lld, lastapts:%lx, pcmsize:%d, abuffer_lv:0x%x\n", 
                             __FUNCTION__, __LINE__, fill_audiotrack_zero, audec->fill_trackzero_thrsh,apts64, pcrscr64, apts64-pcrscr64,audec->adsp_ops.last_audio_pts,buffer->size, am_io.status.data_len);
                     if (skip_unnormal_discontinue++ > 10) {
