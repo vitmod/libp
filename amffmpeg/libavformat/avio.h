@@ -191,6 +191,9 @@ typedef struct URLProtocol {
     int (*url_getinfo)(URLContext *h, int cmd,int flag,void*info);
 
  #define AVCMD_SET_CODEC_BUFFER_INFO		(3000+1)
+/* private commands */
+#define AVCMD_SET_PLAYBACK_RATE_PERMILLE       (9000+1)
+ 
     int (*url_setcmd)(URLContext *h, int cmd,int flag,unsigned long info);
 } URLProtocol;
 /*

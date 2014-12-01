@@ -84,6 +84,8 @@ void av_register_rtp_dynamic_payload_handlers(void)
     ff_register_dynamic_payload_handler(&ff_quicktime_rtp_vid_handler);
 
     ff_register_dynamic_payload_handler(&ff_ac3_dynamic_handler);
+    ff_register_dynamic_payload_handler(&ff_h265_dynamic_handler);
+    ff_register_dynamic_payload_handler(&ff_hevc_dynamic_handler);    
 }
 
 RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
@@ -710,7 +712,7 @@ static int rtp_parse_one_packet(RTPDemuxContext *s, AVPacket *pkt,
         int16_t diff = seq - s->seq;
         if (diff < 0) {
             /* Packet older than the previously emitted one, drop */
-            av_log(s->st ? s->st->codec : NULL, AV_LOG_WARNING,
+            av_log(s->st ? s->st->codec : NULL, AV_LOG_ERROR,
                    "RTP: dropping old packet received too late\n");
             return -1;
         } else if (diff <= 1) {

@@ -48,6 +48,7 @@ enum RTSPLowerTransport {
 enum RTSPTransport {
     RTSP_TRANSPORT_RTP, /**< Standards-compliant RTP */
     RTSP_TRANSPORT_RDT, /**< Realmedia Data Transport */
+    RTSP_TRANSPORT_RAW, /**< Raw data (over UDP) */
     RTSP_TRANSPORT_NB
 };
 
@@ -220,6 +221,11 @@ typedef struct RTSPState {
      * whenever we resume playback. Either way, the value is only used once,
      * see rtsp_read_play() and rtsp_read_seek(). */
     int64_t seek_timestamp;
+
+    /* 1000 (i.e. 1x) == RTSP Scale: 1.0 */
+    int playback_rate_permille;
+    int playback_rate_permille_next;
+
 
     /* XXX: currently we use unbuffered input */
     //    AVIOContext rtsp_gb;

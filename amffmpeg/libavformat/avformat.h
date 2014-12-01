@@ -783,6 +783,8 @@ typedef struct AVFormatContext {
 
 #define AVFMT_FLAG_PR_TVP 0x400000 ///< Playready TVP ;
 
+#define AVFMT_FLAG_RTSP_PROTOCOL 0x800000 ///< only use for rtsp protocol
+
     int loop_input;
 
     /**

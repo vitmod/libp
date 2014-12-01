@@ -269,7 +269,8 @@ OBJS-$(CONFIG_RTPDEC)                    += rdt.o         \
                                             rtpdec_svq3.o \
                                             rtpdec_vp8.o  \
                                             rtpdec_xiph.o \
-                                            rtpdec_ac3.o
+                                            rtpdec_ac3.o \
+                                            rtpdec_hevc.o
 OBJS-$(CONFIG_RTSP_DEMUXER)              += rtsp.o rtspdec.o httpauth.o
 OBJS-$(CONFIG_RTSP_MUXER)                += rtsp.o rtspenc.o httpauth.o \
                                             rtpenc_chain.o

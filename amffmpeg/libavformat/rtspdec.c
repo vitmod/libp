@@ -43,6 +43,7 @@ typedef struct RTSPRecvContext {
 }RTSPRecvContext;
 
 static int _rtsp_read_packet(AVFormatContext *s, AVPacket *pkt) ;
+static int rtsp_read_flush(AVFormatContext *s);
 
 static void *recv_buffer_task( void *_AVFormatContext)
 {
@@ -114,13 +115,57 @@ static int free_packet(void * apkt)
     return 0;
 }
 
+static int rtsp_read_flush(AVFormatContext *s)
+{
+    RTSPState *rt = s->priv_data;
+    RTSPRecvContext *lpRTSPCtx = rt->priv_data;
+    AVPacket *lpkt;
+    int ret;
+
+    if(NULL == rt)
+        return AVERROR(ENOMEM);
+
+    if(NULL == lpRTSPCtx)
+	return 0;
+    
+    /* delay for inbound packets */
+    //usleep (300000);
+
+    #if 0
+    /* fixme: long delay, 10 seconds timeout !!! */
+    /* empty the socket of the media stream */
+    lpkt = av_mallocz (sizeof(AVPacket)) ;
+    if (NULL == lpkt)
+        return AVERROR(ENOMEM);
+
+    /* flush socket data */
+    av_init_packet(lpkt);
+    while (1) {
+       if (url_interrupt_cb()) {
+                break;
+        }
+       ret = ff_rtsp_fetch_packet(s, lpkt);
+       if(ret == 0)
+               av_free_packet(lpkt);
+       else
+           break;
+    }
+    av_free(lpkt);
+    #endif
+
+    /* drop all received packets */
+    itemlist_clean(&lpRTSPCtx->bufferlist, free_packet);
+
+    return 0;
+}
+
 static int rtsp_read_play(AVFormatContext *s)
 {
     RTSPState *rt = s->priv_data;
     RTSPMessageHeader reply1, *reply = &reply1;
     int i;
     char cmd[1024];
-
+	 int length;
     av_log(s, AV_LOG_INFO, "hello state=%d\n", rt->state);
     rt->nb_byes = 0;
 
@@ -141,10 +186,37 @@ static int rtsp_read_play(AVFormatContext *s)
         if (rt->state == RTSP_STATE_PAUSED) {
             cmd[0] = 0;
         } else {
+#if 1
             snprintf(cmd, sizeof(cmd),
                      "Range: npt=%"PRId64".%03"PRId64"-\r\n",
                      rt->seek_timestamp / AV_TIME_BASE,
                      rt->seek_timestamp / (AV_TIME_BASE / 1000) % 1000);
+#else
+	       // time scale function
+               // seek, fast-forward/fast-rewind triggered seek 
+               if (rt->playback_rate_permille != rt->playback_rate_permille_next)
+                       rt->playback_rate_permille = rt->playback_rate_permille_next;
+
+               if (rt->playback_rate_permille >= 0) {
+                       // forward
+                       snprintf(cmd, sizeof(cmd),
+                               "Range: npt=%"PRId64".%03"PRId64"-\r\n",
+                               rt->seek_timestamp / AV_TIME_BASE,
+                               rt->seek_timestamp / (AV_TIME_BASE / 1000) % 1000);
+               } else {
+                       // backward
+                       snprintf(cmd, sizeof(cmd),
+                               "Range: npt=%"PRId64".%03"PRId64"-0\r\n",
+                               rt->seek_timestamp / AV_TIME_BASE,
+                               rt->seek_timestamp / (AV_TIME_BASE / 1000) % 1000);
+               }
+               length = strlen (cmd);
+               snprintf(&cmd [length], sizeof(cmd) - length,
+                               "Scale: %d.%d\r\n",
+                               rt->playback_rate_permille / 1000,
+                               rt->playback_rate_permille % 1000);
+               // length = strlen (cmd); 
+#endif
         }
         ff_rtsp_send_cmd(s, "PLAY", rt->control_uri, cmd, reply, NULL);
         if (reply->status_code != RTSP_STATUS_OK) {
@@ -167,18 +239,22 @@ static int rtsp_read_play(AVFormatContext *s)
     }
     rt->state = RTSP_STATE_STREAMING;
 
+    av_log(s, AV_LOG_INFO, "[%s]transport=%d\n",__FUNCTION__,rt->transport);
+
+    if(rt->priv_data!=NULL){
 #if HAVE_PTHREADS
-    RTSPRecvContext *lpRTSPCtx = rt->priv_data;
-    if(lpRTSPCtx != NULL){
-    	lpRTSPCtx->brunning = 1;
-    	if (amthreadpool_pthread_create_name(&lpRTSPCtx->recv_buffer_thread, NULL, recv_buffer_task, s,"rtsp demuxor thread")) {
-    		av_log(s, AV_LOG_ERROR, "pthread_create failed\n");
-    		av_free(lpRTSPCtx);
-       	return -1 ;
-    	}
-    }
+	    RTSPRecvContext *lpRTSPCtx = rt->priv_data;
+	    if(lpRTSPCtx != NULL){
+	    	av_log(NULL, AV_LOG_INFO, "[%s:%d]start the rtsp demux thread\n", __FUNCTION__, __LINE__);
+	    	lpRTSPCtx->brunning = 1;
+	    	if (amthreadpool_pthread_create_name(&lpRTSPCtx->recv_buffer_thread, NULL, recv_buffer_task, s,"rtsp demuxor thread")) {
+	    		av_log(s, AV_LOG_ERROR, "pthread_create failed\n");
+	    		av_free(lpRTSPCtx);
+	       	return -1 ;
+	    	}
+	    }
 #endif
-    
+    }
     return 0;
 }
 
@@ -188,15 +264,20 @@ static int rtsp_read_pause(AVFormatContext *s)
     RTSPState *rt = s->priv_data;
     RTSPMessageHeader reply1, *reply = &reply1;
     
+    if(rt->priv_data!=NULL){    
 #if HAVE_PTHREADS
-    RTSPRecvContext *lpRTSPCtx = rt->priv_data;
-    if(lpRTSPCtx != NULL){
-    	lpRTSPCtx->brunning = 0;
-	amthreadpool_pthread_join(lpRTSPCtx->recv_buffer_thread, NULL);
-	lpRTSPCtx->recv_buffer_thread = 0;
-	itemlist_clean(&lpRTSPCtx->bufferlist, free_packet);
-    }	
+	RTSPRecvContext *lpRTSPCtx = rt->priv_data;
+	if(lpRTSPCtx != NULL){
+		lpRTSPCtx->brunning = 0;
+		amthreadpool_pthread_join(lpRTSPCtx->recv_buffer_thread, NULL);
+		lpRTSPCtx->recv_buffer_thread = 0;
+		#if 0
+		/* do'nt flush media packets in 'play->pause->play' use case */
+		itemlist_clean(&lpRTSPCtx->bufferlist, free_packet);
+		#endif
+	}	
 #endif 
+    }
 
     if (rt->state != RTSP_STATE_STREAMING)
         return 0;
@@ -279,22 +360,29 @@ static int rtsp_read_header(AVFormatContext *s,
         rt->initial_pause = ap->initial_pause;
 #endif
 
+    if(!(s->flags&AVFMT_FLAG_RTSP_PROTOCOL)){
 #if HAVE_PTHREADS
-    RTSPRecvContext *lpRTSPCtx = rt->priv_data;
-    if(NULL == lpRTSPCtx){
-    	lpRTSPCtx = av_mallocz(sizeof(RTSPRecvContext)) ;
-    	if(NULL == lpRTSPCtx)
+	av_log(NULL, AV_LOG_INFO, "[%s:%d]init non-protocol mode\n", __FUNCTION__, __LINE__);
+	RTSPRecvContext *lpRTSPCtx = rt->priv_data;
+	if(NULL == lpRTSPCtx){
+		lpRTSPCtx = av_mallocz(sizeof(RTSPRecvContext)) ;
+		if(NULL == lpRTSPCtx)
 		return -1;
 
-    	lpRTSPCtx->bufferlist.max_items = 0;
-    	lpRTSPCtx->bufferlist.item_ext_buf_size = 0;   
-    	lpRTSPCtx->bufferlist.muti_threads_access = 1;
-    	lpRTSPCtx->bufferlist.reject_same_item_data = 1;  
-    	itemlist_init(&lpRTSPCtx->bufferlist) ;
-    	rt->priv_data = lpRTSPCtx;
+		lpRTSPCtx->bufferlist.max_items = 0;
+		lpRTSPCtx->bufferlist.item_ext_buf_size = 0;   
+		lpRTSPCtx->bufferlist.muti_threads_access = 1;
+		lpRTSPCtx->bufferlist.reject_same_item_data = 1;  
+		itemlist_init(&lpRTSPCtx->bufferlist) ;
+		rt->priv_data = lpRTSPCtx;
+	}
+#endif
     }
-#endif   
-
+    else{
+    	av_log(NULL, AV_LOG_INFO, "[%s:%d]init non-protocol mode\n", __FUNCTION__, __LINE__);
+    	rt->priv_data=NULL;
+    }
+    
     if (rt->initial_pause) {
          /* do not start immediately */
     } else {
@@ -497,6 +585,10 @@ retry:
         }
     }
 
+    if(rt->state == RTSP_STATE_PAUSED){
+	ret=AVERROR(EAGAIN);
+	goto END_READ;
+    }
     ret = ff_rtsp_fetch_packet(s, pkt);
     if (ret < 0) {
         if (ret == AVERROR(ETIMEDOUT) && !rt->packets) {
@@ -525,6 +617,9 @@ retry:
     }
     rt->packets++;
 
+    ret =0;
+END_READ:
+    
     /* send dummy request to keep TCP connection alive */
     if ((av_gettime() - rt->last_cmd_time) / 1000000 >= rt->timeout / 2) {
         if (rt->server_type == RTSP_SERVER_WMS ||
@@ -536,7 +631,7 @@ retry:
         }
     }
 
-    return 0;
+    return ret;
 }
 
 static int rtsp_read_packet(AVFormatContext *s, AVPacket *pkt)
@@ -546,9 +641,6 @@ static int rtsp_read_packet(AVFormatContext *s, AVPacket *pkt)
 		return -1;
 	
     	RTSPRecvContext *lpRTSPCtx = rt->priv_data;
-    	if(NULL == rt)
-    		return -1;
-	
 	if(lpRTSPCtx == NULL)
 		return _rtsp_read_packet(s, pkt);
 	
@@ -566,7 +658,7 @@ static int rtsp_read_packet(AVFormatContext *s, AVPacket *pkt)
 		if(lpRTSPCtx->recv_buffer_error != 0){
 			return lpRTSPCtx->recv_buffer_error;
 		}		
-		return -1;
+		 return AVERROR(EAGAIN);
 	}
 
 	AVPacket *lpkt = (AVPacket *)ldata;
@@ -581,9 +673,18 @@ static int rtsp_read_seek(AVFormatContext *s, int stream_index,
 {
     RTSPState *rt = s->priv_data;
 
-    rt->seek_timestamp = av_rescale_q(timestamp,
+    if(NULL == rt) 
+    	return AVERROR(ENOMEM);
+    if(stream_index>=0&&s->streams[stream_index]!=NULL){
+       rt->seek_timestamp = av_rescale_q(timestamp,
                                       s->streams[stream_index]->time_base,
                                       AV_TIME_BASE_Q);
+    }
+    else{
+       rt->seek_timestamp = timestamp;
+    }
+
+    av_log(NULL, AV_LOG_INFO, "[%s:%d]seek_timestamp=%lld\n",__FUNCTION__,__LINE__,rt->seek_timestamp);
     switch(rt->state) {
     default:
     case RTSP_STATE_IDLE:
@@ -591,12 +692,28 @@ static int rtsp_read_seek(AVFormatContext *s, int stream_index,
     case RTSP_STATE_STREAMING:
         if (rtsp_read_pause(s) != 0)
             return -1;
+       /* flush inbound media packets */
+       rtsp_read_flush(s);
+
         rt->state = RTSP_STATE_SEEKING;
-        if (rtsp_read_play(s) != 0)
+        if (rtsp_read_play(s) != 0){
+	    av_log(NULL, AV_LOG_ERROR, "[%s:%d]rtsp_read_play failed\n",__FUNCTION__,__LINE__);
             return -1;
+        }
         break;
     case RTSP_STATE_PAUSED:
-        rt->state = RTSP_STATE_IDLE;
+        if (rt->playback_rate_permille == rt->playback_rate_permille_next) {
+               rt->state = RTSP_STATE_IDLE;
+       } else {
+               /* trick mode */
+               /* flush inbound media packets */
+                rtsp_read_flush(s);
+               rt->state = RTSP_STATE_SEEKING;
+               if (rtsp_read_play(s) != 0) {
+                       return -1;
+               }
+       }
+
         break;
     }
     return 0;
@@ -616,19 +733,20 @@ static int rtsp_read_close(AVFormatContext *s)
     //ff_rtsp_send_cmd_async(s, "TEARDOWN", rt->control_uri, NULL);
 	ff_rtsp_send_cmd(s, "TEARDOWN", rt->control_uri, NULL,
                                      reply, NULL);
+    if(rt->priv_data!=NULL){
 #if HAVE_PTHREADS
-    RTSPRecvContext *lpRTSPCtx = rt->priv_data;
-    if(lpRTSPCtx != NULL){
-    	lpRTSPCtx->brunning = 0;
-	amthreadpool_pthread_join(lpRTSPCtx->recv_buffer_thread, NULL);
-	lpRTSPCtx->recv_buffer_thread = 0;
-	
-	itemlist_clean(&lpRTSPCtx->bufferlist, free_packet);
-	av_free(lpRTSPCtx);
-    }	
-    rt->priv_data = NULL;
-#endif 
+	RTSPRecvContext *lpRTSPCtx = rt->priv_data;
+	if(lpRTSPCtx != NULL){
+		lpRTSPCtx->brunning = 0;
+		amthreadpool_pthread_join(lpRTSPCtx->recv_buffer_thread, NULL);
+		lpRTSPCtx->recv_buffer_thread = 0;
 
+		itemlist_clean(&lpRTSPCtx->bufferlist, free_packet);
+		av_free(lpRTSPCtx);
+	}	
+	rt->priv_data = NULL;
+#endif 
+    }
     ff_rtsp_close_streams(s);
     ff_rtsp_close_connections(s);
     ff_network_close();
@@ -676,14 +794,16 @@ typedef struct RTSPProtocolContext {
     struct itemlist bufferlist;
     AVFormatContext *ctx;
 
+    int dumpmode;
     volatile int brunning;
+    volatile int pausing;
     int recv_prot_buffer_error;
 #if HAVE_PTHREADS
     pthread_t recv_prot_buffer_thread;
 #endif   
 }RTSPProtocolContext;
 
-//#define RTSP_PROT_DUMP
+#define RTSP_PROT_DUMP
 
 #ifdef RTSP_PROT_DUMP
 static FILE *g_dumpFile=NULL;
@@ -695,7 +815,8 @@ static void *recv_prot_buffer_task( void *_rtspCtx)
     if(NULL == rtspCtx)
 	return AVERROR(ENOMEM);    
 
-    av_log(NULL, AV_LOG_ERROR, "[%s:%d] Thread start!\n", __FUNCTION__, __LINE__);
+    av_log(NULL, AV_LOG_ERROR, "[%s:%d] Thread start!brunning=%d pausing=%d\n", 
+    			__FUNCTION__, __LINE__,rtspCtx->brunning,rtspCtx->pausing);
     AVPacket *wpkt=NULL;
     int ret=0;
     while(rtspCtx->brunning){
@@ -714,6 +835,8 @@ static void *recv_prot_buffer_task( void *_rtspCtx)
 	    	av_free(wpkt);
 	    	wpkt=NULL;
 	   	if(ret == AVERROR(EAGAIN)) {
+	   		if(rtspCtx->pausing == 1)
+	   			amthreadpool_thread_usleep(10);
 	   		continue;
 	   	}
 	   	else if(ret == AVERROR_EXIT)
@@ -731,9 +854,7 @@ static void *recv_prot_buffer_task( void *_rtspCtx)
 	    }
 	    
 #ifdef RTSP_PROT_DUMP
-	    if(NULL==g_dumpFile)
-	    	g_dumpFile=fopen("/data/tmp/rtspdump.ts","wb");
-	    else
+	    if(rtspCtx->dumpmode==1&&g_dumpFile!=NULL)
 	    	fwrite(wpkt->data,1,wpkt->size,g_dumpFile);
 #endif
 
@@ -742,7 +863,7 @@ static void *recv_prot_buffer_task( void *_rtspCtx)
 	    wpkt=NULL;
     }
 
-    av_log(NULL, AV_LOG_ERROR, "[%s:%d] Thread end brunning=%d!\n", __FUNCTION__, __LINE__,rtspCtx->brunning);
+	av_log(NULL, AV_LOG_ERROR, "[%s:%d] Thread end brunning=%d ret = %d!\n", __FUNCTION__, __LINE__,rtspCtx->brunning,ret);
     if(rtspCtx->brunning==0)
     	ret=AVERROR_EXIT;
     
@@ -791,6 +912,7 @@ static int rtsp_protocol_open(URLContext *h, const char *uri, int flags)
     AVFormatParameters ap = { 0 };
     RTSPState *rt = rtspCtx->ctx->priv_data;
     rt->use_protocol_mode=1;
+    rtspCtx->ctx->flags |= AVFMT_FLAG_RTSP_PROTOCOL;
     av_strlcpy(rtspCtx->ctx->filename, uri+1, 1024);
     if ((ret = rtspCtx->ctx->iformat->read_header(rtspCtx->ctx, &ap)) < 0){
     	av_log(NULL, AV_LOG_ERROR, "[%s:%d\n]read_header failed ret=%d,filename=%s", __FUNCTION__, __LINE__,ret,rtspCtx->ctx->filename);
@@ -803,14 +925,27 @@ static int rtsp_protocol_open(URLContext *h, const char *uri, int flags)
     rtspCtx->bufferlist.reject_same_item_data = 0;  
     itemlist_init(&rtspCtx->bufferlist) ;
     
-    h->support_time_seek = 0;
+    h->support_time_seek = 1;
     h->seekflags=0;
     h->is_slowmedia = 1;			
     h->is_streamed = 1;
     h->priv_data = rtspCtx;
 
+    rtspCtx->dumpmode=0;
+#ifdef RTSP_PROT_DUMP
+    float value=0;
+    if(am_getconfig_float("libplayer.rtsp.dumpmode", &value)==0){
+	rtspCtx->dumpmode=value;
+	if(rtspCtx->dumpmode>0){
+	    	g_dumpFile=fopen("/data/tmp/rtspdump.ts","wb");
+	    	if(NULL==g_dumpFile)
+	    		av_log(NULL, AV_LOG_ERROR, "[%s:%d]g_dumpFile create null\n",__FUNCTION__,__LINE__);
+	}
+    }
+#endif
  #if HAVE_PTHREADS
     rtspCtx->brunning = 1;
+    rtspCtx->pausing=0;
     if (amthreadpool_pthread_create_name(&rtspCtx->recv_prot_buffer_thread, NULL, recv_prot_buffer_task, rtspCtx, "rtsp protocol thread")) {
 	av_log(NULL, AV_LOG_ERROR, "pthread_create failed\n");
 	goto fail;
@@ -891,11 +1026,80 @@ static int rtsp_protocol_read(URLContext *h, uint8_t *buf, int size)
        rpkt=NULL;
     }
 
+#ifdef RTSP_PROT_DUMP
+    if(rtspCtx->dumpmode==2&&g_dumpFile!=NULL)
+    	fwrite(buf,1,readsize,g_dumpFile);
+#endif
     if(readsize>0)
     	return readsize;
 
     return rtspCtx->recv_prot_buffer_error;
 }
+static int64_t rtsp_protocol_exseek (URLContext *h, int64_t pos, int whence)
+{
+       RTSPProtocolContext* rtspCtx = (RTSPProtocolContext*)h->priv_data;
+       struct AVInputFormat *iformat;
+       int64_t ret = AVERROR(EPIPE);
+
+       rtspCtx = (RTSPProtocolContext*)h->priv_data;
+       if((NULL == rtspCtx) || (NULL == rtspCtx->ctx) || (NULL == rtspCtx->ctx->iformat))
+               return AVERROR(ENOMEM);
+
+       iformat = rtspCtx->ctx->iformat;
+       switch (whence) {
+       case AVSEEK_FULLTIME:   	
+		if(rtspCtx->ctx->duration>0){
+			av_log(NULL, AV_LOG_INFO, "[%s:%d] duration in millis =%lld",__FILE__,__LINE__,rtspCtx->ctx->duration);
+			return  (int64_t)(rtspCtx->ctx->duration/AV_TIME_BASE);   
+		}
+        	av_log(NULL, AV_LOG_ERROR, "[%s:%d] can't fetch duration",__FILE__,__LINE__);       	
+       case AVSEEK_TO_TIME:
+               if (iformat->read_seek) {
+#if HAVE_PTHREADS
+                       rtspCtx->brunning = 0;
+                       amthreadpool_pthread_join(rtspCtx->recv_prot_buffer_thread, NULL);
+                       rtspCtx->recv_prot_buffer_thread = 0;
+                       rtspCtx->recv_prot_buffer_error=AVERROR(EAGAIN);
+#endif
+
+#ifdef RTSP_PROT_DUMP
+	    		if(g_dumpFile!=NULL){
+	    			fclose(g_dumpFile);
+				g_dumpFile=NULL;
+	    		}
+#endif
+		       av_log(NULL, AV_LOG_INFO, "[%s:%d]read_seek pos=%lld\n",__FUNCTION__,__LINE__,pos);
+	               if (!iformat->read_seek (rtspCtx->ctx, -1, (pos*AV_TIME_BASE), NULL))
+                       		ret = pos;
+
+#ifdef RTSP_PROT_DUMP
+			if(rtspCtx->dumpmode>0){
+			    	g_dumpFile=fopen("/data/tmp/rtspdump.ts","wb");
+			    	if(NULL==g_dumpFile)
+			    		av_log(NULL, AV_LOG_ERROR, "[%s:%d]g_dumpFile create null\n",__FUNCTION__,__LINE__);
+			}
+#endif
+
+#if HAVE_PTHREADS
+                       rtspCtx->recv_prot_buffer_thread = 0;
+                       rtspCtx->recv_prot_buffer_error=0;
+                       rtspCtx->brunning = 1;
+                       rtspCtx->pausing=0;
+                       if (amthreadpool_pthread_create_name(&rtspCtx->recv_prot_buffer_thread, NULL, recv_prot_buffer_task, rtspCtx, "rtsp protocol thread")) {
+                               av_log(NULL, AV_LOG_ERROR, "pthread_create failed\n");
+                               return AVERROR(ENOMEM);
+                       }
+#endif
+               }
+               break;
+       case AVSEEK_BUFFERED_TIME:
+       		return 0;
+       default:
+               break;
+       }
+       return ret;
+}
+
 static int rtsp_protocol_close(URLContext *h)
 {
     RTSPProtocolContext* rtspCtx = (RTSPProtocolContext*)h->priv_data;
@@ -908,6 +1112,7 @@ static int rtsp_protocol_close(URLContext *h)
     amthreadpool_pthread_join(rtspCtx->recv_prot_buffer_thread, NULL);
     rtspCtx->recv_prot_buffer_thread = 0;
     rtspCtx->recv_prot_buffer_error=0;
+    rtspCtx->pausing=0;
 #endif 
 
 #ifdef RTSP_PROT_DUMP
@@ -925,12 +1130,143 @@ static int rtsp_protocol_close(URLContext *h)
 
     return 0;
 }
+static int rtsp_protocol_read_pause (URLContext *h, int pause)
+{
+    RTSPProtocolContext* rtspCtx;
+    struct AVInputFormat *iformat;
+
+    rtspCtx = (RTSPProtocolContext*)h->priv_data;
+    if((NULL == rtspCtx) || (NULL == rtspCtx->ctx) || (NULL == rtspCtx->ctx->iformat))
+       return AVERROR(ENOMEM);
+
+    iformat = rtspCtx->ctx->iformat;
+    if (iformat->read_pause) {
+       av_log(NULL, AV_LOG_INFO, "[%s:%d]pause=%d\n", __FUNCTION__, __LINE__,pause);
+       if (pause){
+#if HAVE_PTHREADS
+	   rtspCtx->pausing=1;
+           rtspCtx->brunning = 0;
+           amthreadpool_pthread_join(rtspCtx->recv_prot_buffer_thread, NULL);
+           rtspCtx->recv_prot_buffer_thread = 0;
+           rtspCtx->recv_prot_buffer_error=AVERROR(EAGAIN);
+#endif
+           iformat->read_pause (rtspCtx->ctx);
+
+ #if HAVE_PTHREADS
+ 	   rtspCtx->pausing=0;
+           rtspCtx->recv_prot_buffer_thread = 0;
+           rtspCtx->recv_prot_buffer_error=0;
+           rtspCtx->brunning = 1;
+           if (amthreadpool_pthread_create_name(&rtspCtx->recv_prot_buffer_thread, NULL, recv_prot_buffer_task, rtspCtx, "rtsp protocol thread")) {
+               av_log(NULL, AV_LOG_ERROR, "pthread_create failed\n");
+               return AVERROR(ENOMEM);
+           }
+#endif
+       }
+       else{
+           iformat->read_play (rtspCtx->ctx);
+       }
+
+    }
+    return 0;
+}
+
+static int64_t rtsp_protocol_read_seek (URLContext *h, int stream_index, int64_t timestamp, int flags)
+{
+    RTSPProtocolContext* rtspCtx;
+    struct AVInputFormat *iformat;
+
+    rtspCtx = (RTSPProtocolContext*)h->priv_data;
+    if((NULL == rtspCtx) || (NULL == rtspCtx->ctx) || (NULL == rtspCtx->ctx->iformat))
+       return AVERROR(ENOMEM);
+
+    iformat = rtspCtx->ctx->iformat;
+    if (iformat->read_seek){
+#if HAVE_PTHREADS
+       rtspCtx->brunning = 0;
+       amthreadpool_pthread_join(rtspCtx->recv_prot_buffer_thread, NULL);
+       rtspCtx->recv_prot_buffer_thread = 0;
+       rtspCtx->recv_prot_buffer_error=AVERROR(EAGAIN);
+#endif
+       iformat->read_seek (rtspCtx->ctx, stream_index, timestamp, flags);
+ #if HAVE_PTHREADS
+       rtspCtx->recv_prot_buffer_thread = 0;
+       rtspCtx->recv_prot_buffer_error=0;
+       rtspCtx->brunning = 1;
+       rtspCtx->pausing=0;
+       if (amthreadpool_pthread_create_name(&rtspCtx->recv_prot_buffer_thread, NULL, recv_prot_buffer_task, rtspCtx, "rtsp protocol thread")) {
+               av_log(NULL, AV_LOG_ERROR, "pthread_create failed\n");
+               return AVERROR(ENOMEM);
+       }
+#endif
+
+    }
+
+    return 0;
+}
+static int rtsp_protocol_getinfo (URLContext *h, int cmd, int flag, void *info)
+{
+    RTSPProtocolContext *rtspCtx;
+
+    rtspCtx = (RTSPProtocolContext *)h->priv_data;
+    if(NULL == rtspCtx)
+       return AVERROR(ENOMEM);
+
+    switch (cmd) {
+    case AVCMD_TOTAL_DURATION:
+       *(int64_t *)info = rtspCtx->ctx->duration;
+       av_log(NULL, AV_LOG_INFO, "[%s:%d] duration in millis =%lld",__FILE__,__LINE__,rtspCtx->ctx->duration);
+       break;
+    default:
+       break;
+    }
+    return 0;
+}
+static int rtsp_protocol_setcmd (URLContext *h, int cmd, int flag, unsigned long info)
+{
+    RTSPProtocolContext *rtspCtx;
+    RTSPState *rt;
+
+    rtspCtx = (RTSPProtocolContext *)h->priv_data;
+    if(NULL == rtspCtx)
+               return AVERROR(ENOMEM);
+
+    rt = rtspCtx->ctx->priv_data;
+    if(NULL == rt)
+       return AVERROR(ENOMEM);
+
+    switch (cmd) {
+    case AVCMD_SET_PLAYBACK_RATE_PERMILLE:
+        /* flag: 1= fast-forward, 0: fast-rewind */
+        if (flag)
+            rt->playback_rate_permille_next = (int)info;
+        else
+            rt->playback_rate_permille_next = 0 - (int)info;
+
+       break;
+    default:
+       break;
+    }
+
+    return 0;
+}
+
+
+
+
+
 
 URLProtocol ff_rtsp_protocol = {
     .name                = "rtsp",
     .url_open            = rtsp_protocol_open,
     .url_read            = rtsp_protocol_read,
     .url_write           = NULL,
+    .url_seek            = NULL,
+    .url_exseek          = rtsp_protocol_exseek,
     .url_close           = rtsp_protocol_close,
+    .url_read_pause      = rtsp_protocol_read_pause,
+    //.url_read_seek       = rtsp_protocol_read_seek,
     .url_get_file_handle = NULL,
+    .url_getinfo         = rtsp_protocol_getinfo,
+    .url_setcmd                 = rtsp_protocol_setcmd,
 };
