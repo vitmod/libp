@@ -770,10 +770,15 @@ static void stop_adec(aml_audio_dec_t *audec)
     audio_out_operations_t *aout_ops = &audec->aout_ops;
     adec_print("[%s %d]audec->state/%d\n",__FUNCTION__,__LINE__,audec->state);
     if (audec->state > INITING) {
+        char buf[64];
+        
         audec->state = STOPPED;
         aout_ops->mute(audec, 1); //mute output, some repeat sound in audioflinger after stop
         aout_ops->stop(audec);
         audio_codec_release(audec);
+
+        sprintf(buf, "0x%lx", 0);
+        amsysfs_set_sysfs_str(TSYNC_FIRSTAPTS, buf);
     }
 }
 

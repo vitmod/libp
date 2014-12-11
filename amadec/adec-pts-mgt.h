@@ -37,6 +37,7 @@ typedef enum {
 #define TSYNC_LAST_CHECKIN_APTS "/sys/class/tsync/last_checkin_apts"
 #define TSYNC_MODE   "/sys/class/tsync/mode"
 #define TSYNC_FIRSTVPTS "/sys/class/tsync/firstvpts"
+#define TSYNC_FIRSTAPTS "/sys/class/tsync/firstapts"
 
 #define SYSTIME_CORRECTION_THRESHOLD        (90000*6/100)//modified for amlogic-pd-91949
 #define APTS_DISCONTINUE_THRESHOLD          (90000*3)
