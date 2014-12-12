@@ -254,7 +254,37 @@ int adec_pts_droppcm(aml_audio_dec_t *audec)
             }
         }
     }
+    
+    // pre drop, according to first check in vpts
 
+    adec_print("[%s::%d] start pre drop !  \n",__FUNCTION__,__LINE__);
+    if(am_getconfig_bool("media.amplayer.pre_droppcm")){
+        unsigned long checkin_firstvpts = 0;
+        apts = adec_calc_pts(audec);
+        while (!checkin_firstvpts){
+            if (sysfs_get_int(TSYNC_CHECKIN_FIRSTVPTS, &checkin_firstvpts) == -1) {
+                adec_print("## [%s::%d] unable to get TSYNC_CHECKIN_FIRSTVPTS! \n",__FUNCTION__,__LINE__);
+                return -1;
+            }
+        }
+        diff = (apts > checkin_firstvpts)?(apts-checkin_firstvpts):(checkin_firstvpts-apts);
+        adec_print("before drop pre --apts 0x%x,checkin_firstvpts 0x%x,apts %s, diff 0x%x\n",apts,checkin_firstvpts,(apts>checkin_firstvpts)?"big":"small",diff);
+        if ((apts < checkin_firstvpts) && (diff < DROP_PCM_PTS_DIFF_THRESHHOLD)){
+            droppts = checkin_firstvpts - apts;
+            drop_size = (droppts/90) * (audec->samplerate/1000) * audec->channels *2;    
+            adec_print("[%s::%d]pre audec->samplerated = %d, audec->channels = %d! \n",__FUNCTION__,__LINE__, audec->samplerate, audec->channels);
+            adec_print("[%s::%d]pre droppts:0x%x, drop_size=%d,  audio ahead %d,ahead pts value %d \n",	__FUNCTION__,__LINE__, 
+                droppts, drop_size, audio_ahead,pts_ahead_val);
+            if (droppcm_use_size(audec, drop_size) == -1) {
+                adec_print("[%s::%d] timeout! data not enough! \n",__FUNCTION__,__LINE__);
+            }            
+            oldapts = apts;
+            apts = adec_calc_pts(audec);
+            diff = (apts > checkin_firstvpts)?(apts-checkin_firstvpts):(checkin_firstvpts-apts);
+            adec_print("after drop pre:--apts 0x%x,droped:0x%x, checkin_firstvpts 0x%x,apts %s, diff 0x%x\n",apts, apts-oldapts, checkin_firstvpts,(apts>checkin_firstvpts)?"big":"small",diff);
+        }
+    }
+    
     if (droppcm_get_refpts(audec, &refpts) == -1) {
         adec_print("[%s::%d] get refpts failed! \n",__FUNCTION__,__LINE__);
         return -1;
@@ -688,7 +718,7 @@ int droppcm_use_size(aml_audio_dec_t *audec, int drop_size)
         }
         if(ret==0)//no data in pcm buf
         {
-            if(nDropCount>=100) {
+            if(nDropCount>=40) {
                 ret = -1;
                 break;
             } else 
