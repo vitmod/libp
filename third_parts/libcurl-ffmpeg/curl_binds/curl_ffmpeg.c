@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-
+#include "amconfigutils.h"
 #include "libavformat/avformat.h"
 #include "libavformat/internal.h"
 #include "libavformat/url.h"
@@ -30,9 +30,9 @@
 
 typedef struct _CURLFFContext {
     char uri[MAX_CURL_URI_SIZE];
+    int read_retry;
+    int64_t read_waittime_s;
     CFContext * cfc_h;
-    //pthread_t monitor_pid;
-    //int monitor_quited;
 } CURLFFContext;
 
 static const AVOption options[] = {{NULL}};
@@ -43,7 +43,33 @@ static const AVClass curlffmpeg_class = {
     .version            = LIBAVUTIL_VERSION_INT,
 };
 
-//static void * curl_ffmpeg_interrupt_monitor_thread(void *_handle);
+static int force_interrupt = 0;
+static int curl_interrupt_call_cb(void) {
+    if (url_interrupt_cb() || force_interrupt == 1) {
+        return 1;
+    }
+    return 0;
+}
+
+// add exception case in this function when need retry.
+static int curl_ffmpeg_need_retry(int arg)
+{
+    int ret = -1;
+    switch(arg) {
+    case CURLERROR(56 + C_ERROR_PERFORM_BASE_ERROR):  // recv failure
+    case CURLERROR(18 + C_ERROR_PERFORM_BASE_ERROR):  // partial file
+    case CURLERROR(C_ERROR_PERFORM_SELECT_ERROR):
+        ret = 0;
+        break;
+    case CURLERROR(7 + C_ERROR_PERFORM_BASE_ERROR): // couldn't connect
+    case CURLERROR(6 + C_ERROR_PERFORM_BASE_ERROR): // couldn't resolve host
+        ret = 1;
+        break;
+    default:
+        break;
+    }
+    return ret;
+}
 
 static void curl_ffmpeg_register_interrupt(CURLFFContext *h, interruptcallback pfunc)
 {
@@ -79,12 +105,9 @@ static int curl_ffmpeg_open(URLContext *h, const char *uri, int flags)
         CLOGE("curl_fetch_init failed\n");
         return ret;
     }
-    curl_ffmpeg_register_interrupt(handle, url_interrupt_cb);
-    /*
-    handle->monitor_quited = 0;
-    ffmpeg_pthread_create(&handle->monitor_pid, NULL, curl_ffmpeg_interrupt_monitor_thread, handle);
-    pthread_setname_np(handle->monitor_pid, "curlffmpeg-monitor");
-    */
+
+    curl_ffmpeg_register_interrupt(handle, curl_interrupt_call_cb);
+    force_interrupt = 0;
     ret = curl_fetch_open(handle->cfc_h);
     if(ret) {
         curl_fetch_close(handle->cfc_h);
@@ -92,10 +115,8 @@ static int curl_ffmpeg_open(URLContext *h, const char *uri, int flags)
         handle = NULL;
         return ret;
     }
-    /*
-    handle->monitor_quited = 1;
-    ffmpeg_pthread_join(handle->monitor_pid, NULL);
-    */
+    handle->read_retry = (int)am_getconfig_float_def("libplayer.curl.readretry", 10);
+    handle->read_waittime_s = (int64_t)am_getconfig_float_def("libplayer.curl.readwaitS", 3600);
     h->http_code = handle->cfc_h->http_code;
     h->is_slowmedia = 1;
     h->is_streamed = handle->cfc_h->seekable ? 0 : 1;
@@ -112,13 +133,16 @@ static int curl_ffmpeg_read(URLContext *h, uint8_t *buf, int size)
         CLOGE("CURLFFContext invalid\n");
         return ret;
     }
-    int counts = 200;
+    int counts = 200, retries = 0;
+    int wait_flag = 0;
+    int64_t start_watitime_s = 0;
 #if 1
     do {
         if (url_interrupt_cb()) {
             return AVERROR(EINTR);
         }
         ret = curl_fetch_read(s->cfc_h, buf, size);
+
         if (ret == C_ERROR_EAGAIN) {
             usleep(10 * 1000);
         }
@@ -127,8 +151,27 @@ static int curl_ffmpeg_read(URLContext *h, uint8_t *buf, int size)
         }
         /* just temporary, need to modify later */
         if (ret < C_ERROR_EAGAIN) {
-            ret = AVERROR(ENETRESET);
-            break;
+            if(!curl_ffmpeg_need_retry(ret)) {
+                CLOGI("curl_ffmpeg_read need retry! retries=%d, ret=%d\n", retries, ret);
+                if(retries++ < s->read_retry) {
+                    curl_fetch_seek(s->cfc_h, s->cfc_h->cwd->size, SEEK_SET);
+                    counts = 200;
+                }
+            } else if(curl_ffmpeg_need_retry(ret) == 1) {
+                if(!wait_flag) {
+                    start_watitime_s = av_gettime()/1000000;
+                    wait_flag = 1;
+                }
+                CLOGI("curl_ffmpeg_read need wait to reconnect!\n");
+                if(av_gettime()/1000000 - start_watitime_s <= s->read_waittime_s) {
+                    curl_fetch_seek(s->cfc_h, s->cfc_h->cwd->size, SEEK_SET);
+                    usleep(100 * 1000);
+                    counts = 200;
+                }
+            } else {
+                ret = AVERROR(ENETRESET);
+                break;
+            }
         }
     } while (counts-- > 0);
 #else
@@ -151,7 +194,7 @@ static int curl_ffmpeg_read(URLContext *h, uint8_t *buf, int size)
 static int64_t curl_ffmpeg_seek(URLContext *h, int64_t off, int whence)
 {
     CLOGI("curl_ffmpeg_seek enter\n");
-    int ret = -1;
+    int64_t ret = -1;
     CURLFFContext * s = (CURLFFContext *)h->priv_data;
     if (!s) {
         CLOGE("CURLFFContext invalid\n");
@@ -161,20 +204,17 @@ static int64_t curl_ffmpeg_seek(URLContext *h, int64_t off, int whence)
         CLOGE("CURLFFContext invalid CFContext handle\n");
         return ret;
     }
+    if (off > 0) {
+        force_interrupt = 1;
+    }
     if (whence == AVSEEK_CURL_HTTP_KEEPALIVE) {
-        /*
-        s->monitor_quited = 0;
-        ffmpeg_pthread_create(&s->monitor_pid, NULL, curl_ffmpeg_interrupt_monitor_thread, s);
-        pthread_setname_np(s->monitor_pid, "curlffmpeg-monitor");
-        */
         ret = curl_fetch_http_keepalive_open(s->cfc_h, NULL);
-        //s->monitor_quited = 1;
-        //ffmpeg_pthread_join(s->monitor_pid, NULL);
     } else if (whence == AVSEEK_SIZE) {
         ret = s->cfc_h->filesize;
     } else {
         ret = curl_fetch_seek(s->cfc_h, off, whence);
     }
+    force_interrupt = 0;
     return ret;
 }
 
@@ -185,6 +225,7 @@ static int curl_ffmpeg_close(URLContext *h)
     if (!s) {
         return -1;
     }
+    force_interrupt = 1;
     curl_fetch_close(s->cfc_h);
     av_free(s);
     s = NULL;

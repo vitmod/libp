@@ -16,6 +16,9 @@ static void response_process(char * line, Curl_Data * buf)
     if (line[0] == '\0') {
         return;
     }
+    if (!buf->ctx->connected) {
+        buf->ctx->connected = 1;
+    }
     CLOGI("[response]: %s", line);
     char * ptr = line;
     if (!strncasecmp(line, "HTTP", 4)) {
@@ -30,10 +33,18 @@ static void response_process(char * line, Curl_Data * buf)
             while (!isspace(*ptr) && *ptr != '\0') {
                 ptr++;
             }
-            buf->handle->chunk_size = strtol(ptr, NULL, 10);
-            buf->handle->open_quited = 1;
+            buf->handle->chunk_size = atoll(ptr);
         }
-        if (c_stristr(line, "Transfer-Encoding: chunked")) {
+        if (!strncasecmp(line, "Content-Range", 13)) {
+            const char * slash = NULL;
+            if ((slash = strchr(ptr, '/')) && strlen(slash) > 0) {
+                buf->handle->chunk_size = atoll(slash + 1);
+            }
+        }
+        if (!strncasecmp(line, "Transfer-Encoding", 17) && strstr(line, "chunked")) {
+            buf->ctx->chunked = 1;
+        }
+        if (!strncasecmp(line, "\r\n", 2)) {
             buf->handle->open_quited = 1;
         }
         return;
@@ -70,6 +81,7 @@ static void response_process(char * line, Curl_Data * buf)
                 }
                 tmp++;
             }
+            strcpy(buf->handle->uri, buf->handle->relocation);
         }
         return;
     }
@@ -116,62 +128,26 @@ static size_t curl_dl_chunkdata_callback(void *ptr, size_t size, size_t nmemb, v
         CLOGI("curl_dl_chunkdata_callback quited\n");
         return -1;
     }
+
     pthread_mutex_lock(&mem->handle->fifo_mutex);
     int left = curl_fifo_space(mem->handle->cfifo);
-    //left = CURLMIN(left, mem->handle->cfifo->end - mem->handle->cfifo->wptr);
-    //if(mem->handle->cfifo->wptr + realsize >= mem->handle->cfifo->end && mem->handle->cfifo->buffer + realsize < mem->handle->cfifo->rptr) {
-    //  mem->handle->cfifo->wptr = mem->handle->cfifo->buffer;
-    //}
-
-    struct timeval now;
-    struct timespec timeout;
-    int retcode = 0;
-    gettimeofday(&now, NULL);
-    timeout.tv_sec = now.tv_sec + (5000000 + now.tv_usec) / 1000000;
-    timeout.tv_nsec = now.tv_usec * 1000;
-    while ((left <= 0 || left < realsize) && retcode != ETIMEDOUT) {
+    while(left <= 0 || left < realsize) {
         if (mem->handle->quited) {
-            CLOGI("curl_dl_chunkdata_callback quited\n");
+            CLOGI("curl_dl_chunkdata_callback quited loop\n");
             pthread_mutex_unlock(&mem->handle->fifo_mutex);
             return -1;
         }
         if(mem->handle->interrupt) {
             if((*(mem->handle->interrupt))()) {
                 CLOGI("curl_dl_chunkdata_callback interrupted\n");
-                return -1;
-            }
-        }
-        retcode = pthread_cond_timedwait(&mem->handle->pthread_cond, &mem->handle->fifo_mutex, &timeout);
-        if (retcode == ETIMEDOUT && mem->handle->quited) {
-            CLOGI("curl_dl_chunkdata_callback wait for fifo too long, left=%d, realsize=%d\n", left, realsize);
-            pthread_mutex_unlock(&mem->handle->fifo_mutex);
-            return -1;
-        }
-        left = curl_fifo_space(mem->handle->cfifo);
-        //left = CURLMIN(left, mem->handle->cfifo->end - mem->handle->cfifo->wptr);
-    }
-    if (mem->handle->cfifo->wptr + realsize >= mem->handle->cfifo->end) {
-        int preval = mem->handle->cfifo->wptr + realsize - mem->handle->cfifo->end;
-        if (mem->handle->cfifo->buffer + preval >= mem->handle->cfifo->rptr) {
-            retcode = pthread_cond_timedwait(&mem->handle->pthread_cond, &mem->handle->fifo_mutex, &timeout);
-            if (retcode == ETIMEDOUT) {
-                CLOGI("curl_dl_chunkdata_callback fifo not enough\n");
                 pthread_mutex_unlock(&mem->handle->fifo_mutex);
                 return -1;
             }
         }
-        memcpy(mem->handle->cfifo->wptr, ptr, realsize - preval);
-        mem->handle->cfifo->wptr = mem->handle->cfifo->buffer;
-        if (preval) {
-            memcpy(mem->handle->cfifo->wptr, ptr + realsize - preval, preval);
-            mem->handle->cfifo->wptr += preval;
-        }
-        mem->handle->cfifo->wndx += realsize;
-    } else {
-        memcpy(mem->handle->cfifo->wptr, ptr, realsize);
-        mem->handle->cfifo->wptr += realsize;
-        mem->handle->cfifo->wndx += realsize;
+        pthread_cond_wait(&mem->handle->pthread_cond, &mem->handle->fifo_mutex);
+        left = curl_fifo_space(mem->handle->cfifo);
     }
+    curl_fifo_generic_write(mem->handle->cfifo, ptr, realsize, NULL);
     pthread_mutex_unlock(&mem->handle->fifo_mutex);
     mem->size += realsize;
     return realsize;
@@ -520,12 +496,15 @@ static int curl_wrapper_open_cnx(CURLWContext *con, CURLWHandle *h, Curl_Data *b
     }
     curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_ACCEPT_ENCODING, "gzip"));
     con->quited = 0;
+    con->chunked = 0;
+    con->connected = 0;
     h->quited = 0;
     h->open_quited = 0;
     h->seekable = 0;
     h->perform_error_code = 0;
     h->dl_speed = 0.0f;
     buf->handle = h;
+    buf->ctx = con;
     buf->size = off ? off : 0;
     ret = 0;
     return ret;
@@ -540,6 +519,8 @@ int curl_wrapper_http_keepalive_open(CURLWContext *con, CURLWHandle *h, const ch
         return ret;
     }
     con->quited = 0;
+    con->chunked = 0;
+    con->connected = 0;
     h->quited = 0;
     h->open_quited = 0;
     h->seekable = 0;
@@ -582,9 +563,12 @@ int curl_wrapper_perform(CURLWContext *con)
 
     long multi_timeout = 100;
     int running_handle_cnt = 0;
+    int select_zero_cnt = 0;
+    int select_breakout_flag = 0;
     curl_multi_timeout(con->multi_curl, &multi_timeout);
     curl_multi_perform(con->multi_curl, &running_handle_cnt);
 
+RETRY:
     while (running_handle_cnt) {
         struct timeval tv;
         tv.tv_sec = 0;
@@ -617,12 +601,25 @@ int curl_wrapper_perform(CURLWContext *con)
             CLOGE("curl_wrapper_perform select error\n");
             break;
         case 0:
+            select_zero_cnt++;
+            CLOGE("curl_wrapper_perform select retrun 0, cnt=%d!\n", select_zero_cnt);
+            break;
         default:
+            select_zero_cnt = 0;
             while (CURLM_CALL_MULTI_PERFORM == curl_multi_perform(con->multi_curl, &running_handle_cnt)) {
                 CLOGI("curl_wrapper_perform runing_handle_count : %d \n", running_handle_cnt);
             }
             break;
         }
+        if (con->connected && !con->chunked && select_zero_cnt == SELECT_RETRY_TIMES) {
+            select_breakout_flag = 1;
+            break;
+        }
+    }
+
+    // select() returns 0 for a long time sometimes, need to breakout.
+    if (select_breakout_flag == 1) {
+        return CURLERROR(C_ERROR_PERFORM_SELECT_ERROR);
     }
 
     int msgs_left;
@@ -642,6 +639,10 @@ int curl_wrapper_perform(CURLWContext *con)
                 CLOGI("curl_multi_info_read curl not found\n");
             } else {
                 CLOGI("[perform done]: completed with status: [%d]\n", msg->data.result);
+                if(con->chunked == 1 && msg->data.result == 18) {
+                    running_handle_cnt = 1;
+                    goto RETRY;
+                }
                 if(CURLE_OK != msg->data.result) {
                     tmp_h->perform_error_code = CURLERROR(msg->data.result + C_ERROR_PERFORM_BASE_ERROR);
                     ret = tmp_h->perform_error_code;
@@ -687,6 +688,7 @@ int curl_wrapper_perform(CURLWContext *con)
             }
         }
     }
+    CLOGI("Multi perform return : %d", ret);
     return ret;
 }
 
@@ -774,7 +776,9 @@ int curl_wrapper_seek(CURLWContext * con, CURLWHandle * h, int64_t off, Curl_Dat
             return -1;
         }
 #else
-        ret = curl_easy_setopt(h->curl, CURLOPT_RESUME_FROM, (long)off);
+        if (h->chunk_size > 0) {  // not support this when transfer in trunk mode.
+            ret = curl_easy_setopt(h->curl, CURLOPT_RESUME_FROM_LARGE, (curl_off_t)off);
+        }
 #endif
     }
     return ret;

@@ -50,6 +50,7 @@ typedef enum {
     C_ERROR_UNKNOW              = -1,
     C_ERROR_EAGAIN              = -11, // consider for ffmpeg compatibility
     C_ERROR_PERFORM_BASE_ERROR    = 1000,
+    C_ERROR_PERFORM_SELECT_ERROR = 10000,
 } curl_error_code;
 
 #endif

@@ -49,6 +49,8 @@ typedef struct _CURLWHandle {
 typedef struct _CURLWContext {
     int quited;
     int curl_h_num;
+    int chunked;
+    int connected;
     int (*interrupt)(void);
     CURLM *multi_curl;
     CURLWHandle * curl_handle;
@@ -57,6 +59,7 @@ typedef struct _CURLWContext {
 typedef struct _Curl_Data {
     int64_t size;
     CURLWHandle * handle;
+    CURLWContext * ctx;
 } Curl_Data;
 
 CURLWContext * curl_wrapper_init(int flags);

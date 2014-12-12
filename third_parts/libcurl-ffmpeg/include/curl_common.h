@@ -11,6 +11,7 @@
 /* base time unit is us */
 #define SLEEP_TIME_UNIT 10*1000
 #define CONNECT_TIMEOUT_THRESHOLD 15*1000*1000
+#define SELECT_RETRY_TIMES 5
 
 #if EDOM > 0
 #define CURLERROR(e) (-(e))   ///< Returns a negative error code from a POSIX error code, to return from library functions.
