@@ -190,8 +190,9 @@ static int set_display_axis(int recovery)
             axis[1], axis[2], axis[3], axis[4], axis[5], axis[6], axis[7]);
 			      write(fd1, "1", strlen("1"));
             write(fd2, "1", strlen("1"));
-            write(fd_freescale_fb0, "0x10001", strlen("0x10001"));
             write(fd_freescale_fb1, "0", strlen("0"));
+            write(fd_freescale_fb0, "0x10001", strlen("0x10001"));
+
 			      write(fd, str, strlen(str));
         }
         
