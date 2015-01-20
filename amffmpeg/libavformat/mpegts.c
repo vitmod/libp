@@ -35,6 +35,7 @@
 #include "mpeg.h"
 #include "isom.h"
 
+#include <amthreadpool.h>
 #include <dlfcn.h>
 #include <stdio.h>
 
@@ -2067,16 +2068,41 @@ static int mpegts_resync(AVFormatContext *s)
 }
 
 /* return -1 if error or EOF. Return 0 if OK. */
+#define RETRY_MAX 10000 //retry 10s
 static int read_packet(AVFormatContext *s, uint8_t *buf, int raw_packet_size)
 {
     AVIOContext *pb = s->pb;
     int skip, len;
 	int ret;
+    int pkt_size;
+    int total;
+    int retry_count = 0;
 
     for(;;) {
-        len = avio_read(pb, buf, TS_PACKET_SIZE);
-        if (len != TS_PACKET_SIZE)
+        pkt_size = TS_PACKET_SIZE;
+        total = 0;
+RETRY:
+        len = avio_read(pb, buf, pkt_size);
+        if ((len == AVERROR_EOF) || (len == AVERROR_EXIT) || (retry_count >= RETRY_MAX)) {
+            av_log(s, AV_LOG_ERROR, "avio read error, retry_cout = %d!, len = %x\n", retry_count, len);
             return len < 0 ? len : AVERROR_EOF;
+        }
+        else if (len < 0){
+            av_log(s, AV_LOG_ERROR, "avio read error, len = %x, retry_cout = %d \n", len, retry_count);
+            len = 0;
+        }
+        total += len;
+        if (total != TS_PACKET_SIZE && len >= 0) { // need retry
+            retry_count++;
+            amthreadpool_thread_usleep(1000);
+            pkt_size = TS_PACKET_SIZE-len;
+            if (retry_count%100==1)
+                av_log(s, AV_LOG_ERROR, "avio reading , retry_cout = %d, read total size = %d, pkt_size = %d, len = %x !\n", retry_count, total, pkt_size, len);
+            goto RETRY;
+        }
+
+        retry_count = 0;
+
         /* check paquet sync byte */
         if (buf[0] != 0x47) {
             /* find a new packet start */
