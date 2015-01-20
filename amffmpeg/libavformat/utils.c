@@ -3227,7 +3227,7 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
     if (WFD_PARSE_MODE == fastmode) {
         return val != 0;
     } else {
-        if(fastmode){
+        if(fastmode>(PARSE_MODE_BASE + 1)){	// only ts stream have pmt, can use the skip mode. add by le.yang@amlogic.com
            if(enc->codec_type == AVMEDIA_TYPE_DATA || 
               enc->codec_type == AVMEDIA_TYPE_ATTACHMENT){
                return 1;
@@ -3577,7 +3577,10 @@ int av_find_stream_info(AVFormatContext *ic)
             st = ic->streams[i];
             int parse_mode = fast_switch;
             if(ic->pb && ic->pb->is_streamed ==1&&!strcmp(ic->iformat->name, "mpegts")){
-                parse_mode = PARSE_MODE_BASE + fast_switch;
+            	if(ic->iformat!=NULL&&(ic->iformat->flags&AVFMT_TS_HASPMT))
+                	parse_mode = PARSE_MODE_BASE + 1 + fast_switch;
+            	else
+            		parse_mode = PARSE_MODE_BASE + fast_switch;
             }
 	   if(!strcmp(ic->iformat->name, "asf")){
 	        parse_mode = ASF_PARSE_MODE ;
