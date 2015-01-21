@@ -943,7 +943,6 @@ static int rm_read_packet(AVFormatContext *s, AVPacket *pkt)
     int i, len, res, seq = 1;
     int64_t timestamp, pos;
     int flags;
-
     for (;;) {
         if (rm->audio_pkt_cnt) {
             // If there are queued audio packet return them first
@@ -969,7 +968,7 @@ static int rm_read_packet(AVFormatContext *s, AVPacket *pkt)
 
             if(len<0 || url_feof(s->pb)){
                 if(len<0){
-                    return 0;
+                    return AVERROR_EOF;
                 }
                 return AVERROR(EIO);
             }
@@ -987,7 +986,6 @@ static int rm_read_packet(AVFormatContext *s, AVPacket *pkt)
         } else
             break;
     }
-
     return 0;
 }
 

@@ -45,6 +45,11 @@ static int get_digitalraw_mode(void)
 {
 	return amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
 }
+#define DTSETC_DECODE_VERSION_CORE  350
+#define DTSETC_DECODE_VERSION_M6_M8 380
+#define DTSHD_IEC958_PKTTYPE_CORE      0 //common feature for DTSETC_DECODE_VERSION 350/380,so set it to 0 by default 
+#define DTSHD_IEC958_PKTTYPE_SINGLEI2S 1
+#define DTSHD_IEC958_PKTTYPE_FOURI2S   2
 void restore_system_samplerate(struct aml_audio_dec* audec)
 {
 #if defined(ANDROID_VERSION_JBMR2_UP)
@@ -52,9 +57,11 @@ void restore_system_samplerate(struct aml_audio_dec* audec)
 #else
     int sr = 0;
 #endif 
-    if(audec->format == ACODEC_FMT_TRUEHD)
+    if( audec->format == ACODEC_FMT_TRUEHD ||
+       (audec->format==ACODEC_FMT_DTS && audec->VersionNum==DTSETC_DECODE_VERSION_M6_M8 && audec->DTSHDIEC958_FS>192000 && amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw")==2))
+    {
         ;//do nothing
-    else if(audec->samplerate == 48000 || (audec->format != ACODEC_FMT_DTS && \
+    }else if(audec->samplerate == 48000 || (audec->format != ACODEC_FMT_DTS && \
             audec->format != ACODEC_FMT_AC3 && audec->format != ACODEC_FMT_EAC3 && 
             audec->format != ACODEC_FMT_TRUEHD))
         return ;
@@ -96,6 +103,8 @@ void restore_system_samplerate(struct aml_audio_dec* audec)
 			sprintf(str,"sampling_rate=%d",default_sr);
 			AudioSystem::setParameters(handle, String8(str));
 			AudioSystem::releaseOutput(handle);			
+		}else{
+			adec_print("WARNIN: handle/%d resetore sysFs failed!\n",handle);
 		}
 #endif
 }
@@ -161,10 +170,13 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 	3)44.1k eac3 when hdmi passthrough
 	4)32k,44k eac3 when spdif pasthrough 
 	*/
-	adec_print("format %d,sr %d \n",audec->format ,audec->samplerate );
+    adec_print("[%s %d]format %d,audec->samplerate%d DTSHDIEC958_FS/%d\n",__FUNCTION__,__LINE__,audec->format ,audec->samplerate,audec->DTSHDIEC958_FS );
     int Samplerate=audec->samplerate;
     int dts_raw_reset_sysFS=0;
-    if(audec->format == ACODEC_FMT_DTS && digital_raw)
+    if( (audec->format  == ACODEC_FMT_DTS && digital_raw==1)
+       ||(audec->format == ACODEC_FMT_DTS && digital_raw==2 && audec->VersionNum!=DTSETC_DECODE_VERSION_M6_M8)
+       ||(audec->format == ACODEC_FMT_DTS && digital_raw==2 && audec->VersionNum==DTSETC_DECODE_VERSION_M6_M8 && audec->DTSHDIEC958_PktType==DTSHD_IEC958_PKTTYPE_CORE)
+       )
     {    //DTS raw_stream Directoutput
          if(audec->samplerate%48000!=0)
              dts_raw_reset_sysFS=1;
@@ -174,9 +186,42 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
              Samplerate=audec->samplerate/2;
          else if(audec->samplerate==176400 || audec->samplerate==192000)
              Samplerate=audec->samplerate/4;
-    }else if(audec->format == ACODEC_FMT_DTS&& audec->samplerate>48000){
-         //DTS HD_PCM(FS>48000) Directoutput
+         else{ 
+             adec_print("[%s %d] Unvalid samplerate/%d for DTSCore Rawoutput\n",__FUNCTION__,__LINE__,audec->samplerate); 
+             return;
+         }
+    }else if(audec->format == ACODEC_FMT_DTS && digital_raw==2 && audec->VersionNum==DTSETC_DECODE_VERSION_M6_M8 && audec->DTSHDIEC958_PktType==DTSHD_IEC958_PKTTYPE_SINGLEI2S){
+         //DTSHD SingleI2s raw_stream Directoutput
+         if(audec->DTSHDIEC958_FS==48000||audec->DTSHDIEC958_FS==44100)
+         {
+             Samplerate=audec->DTSHDIEC958_FS;
+         }else if(audec->DTSHDIEC958_FS==192000||audec->DTSHDIEC958_FS==1764000){
+             Samplerate =audec->DTSHDIEC958_FS/4;
+         }else{
+             adec_print("[%s %d] Unvalid DTSHDIEC958_FS/%d for DTSHD RawOutput\n",__FUNCTION__,__LINE__,audec->DTSHDIEC958_FS);
+             return;
+         }
+         if(Samplerate%48000!=0)
+             dts_raw_reset_sysFS=1;
+    }else if(audec->format==ACODEC_FMT_DTS && digital_raw==2&& audec->VersionNum==DTSETC_DECODE_VERSION_M6_M8&& audec->DTSHDIEC958_PktType==DTSHD_IEC958_PKTTYPE_FOURI2S){
+         //DTSLL FourI2s raw_stream Directoutput
+         if(audec->DTSHDIEC958_FS==192000||audec->DTSHDIEC958_FS==384000 || audec->DTSHDIEC958_FS==768000 ||
+            audec->DTSHDIEC958_FS==176400||audec->DTSHDIEC958_FS==352800 || audec->DTSHDIEC958_FS==705600)
+         {
+              Samplerate=audec->DTSHDIEC958_FS/4;
+         }else{
+              adec_print("[%s %d] Unvalid DTSHDIEC958_FS/%d for DTSLL RawOutput\n",__FUNCTION__,__LINE__,audec->DTSHDIEC958_FS);
+              return;
+         }
+         if(Samplerate!=48000)
+              dts_raw_reset_sysFS=1;
+    }else if(audec->format == ACODEC_FMT_DTS&& (audec->samplerate>48000|| (audec->channels==8&&audec->samplerate!=48000))){
+         //DTS HD_PCM(FS>48000) Directoutput/8ch DTS_PCM output
          dts_raw_reset_sysFS=1;
+         Samplerate=audec->samplerate;
+    }else if(audec->format == ACODEC_FMT_TRUEHD && (digital_raw == 1 || digital_raw == 2)){
+         //Dobly TrueHD RawOutput
+         Samplerate = 192000;
     }
     if(   (audec->format == ACODEC_FMT_AC3  && (audec->samplerate == 32000 || audec->samplerate == 44100))
         ||(audec->format == ACODEC_FMT_EAC3 && digital_raw == 2 && audec->samplerate == 44100) 
@@ -186,9 +231,7 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 		(audec->samplerate == 192000 || audec->samplerate == 96000)*/))
 		
 	{
-	    if(audec->format == ACODEC_FMT_TRUEHD && (digital_raw == 1 || digital_raw == 2)){ 
-		    Samplerate = 192000;
-        }
+		adec_print("[%s %d]Change AudioSysFS to/%d\n",__FUNCTION__,__LINE__,Samplerate);
 		int sr = 0;
 		if(/*sr*/48000 != Samplerate){
 #ifndef USE_ARM_AUDIO_DEC
@@ -227,6 +270,8 @@ void reset_system_samplerate(struct aml_audio_dec* audec)
 					sprintf(str,"sampling_rate=%d",Samplerate);
 					AudioSystem::setParameters(handle, String8(str));
 					AudioSystem::releaseOutput(handle);			
+				}else{
+					adec_print("WARNIN:handle/%d reset sysFs failed!\n",handle);
 				}
 #endif
 
@@ -278,6 +323,26 @@ struct am_io_param {
   struct buf_status status;
 };
 
+static int  mix_lr_channel_enable=0;
+static void momo2_mode_mix(short*buf, int nsamps, int channels)
+{
+    int i;
+    int step=4;//assume deffault pcm format: bitwidth/2bytes channels/2
+    short tmpL,tmpR;
+    int tmpSum;
+    short *p16tmp=(short*)buf;
+    if(channels!=2)
+        return;
+    for(i=0;i<nsamps;i+=2)
+    {
+       tmpSum=(p16tmp[i]*3/4)+(p16tmp[i+1]*3/4);
+       tmpSum=tmpSum>32767 ?32767 : tmpSum;
+       tmpSum=tmpSum<-32768?-32768: tmpSum;
+       p16tmp[i]=(tmpSum&0x0000ffff);
+       p16tmp[i+1]=(tmpSum&0x0000ffff);
+    }
+}
+
 void audioCallback(int event, void* user, void *info)
 {
     int len, i;
@@ -291,7 +356,7 @@ void audioCallback(int event, void* user, void *info)
 	struct am_io_param am_io;
 
     if (event != AudioTrack::EVENT_MORE_DATA) {
-        adec_print(" ****************** audioCallback: event = %d \n", event);
+        adec_print(" ****************** audioCallback: event = %d g_bst->buf_level/%d g_bst_raw->buf_level/%d [-1:mean unknown] \n", event,audec->g_bst==NULL?-1:audec->g_bst->buf_level,audec->g_bst_raw==NULL?-1:audec->g_bst_raw->buf_level);
         return;
     }
 
@@ -454,6 +519,12 @@ void audioCallback(int event, void* user, void *info)
         } else {
             af_resample_api_normal((char*)(buffer->i16), &buffer->size, channels, audec);
         }
+        if(audec->mix_lr_channel_enable>=0)
+            mix_lr_channel_enable=audec->mix_lr_channel_enable;
+        if(mix_lr_channel_enable && channels==2)
+        {
+             momo2_mode_mix((short*)(buffer->i16), buffer->size/2,channels);
+        }
      } else {
         adec_print("audioCallback: dsp not work!\n");
     }
@@ -525,7 +596,7 @@ void audioCallback_raw(int event, void* user, void *info)
         adec_print("[%s %d]audioCallback: Wrong buffer\n",__FUNCTION__,__LINE__);
         return;
     }
-    if(audec->format != ACODEC_FMT_TRUEHD ){
+
     if(audec->i2s_iec958_sync_flag && audec->raw_bytes_readed< audec->i2s_iec958_sync_gate)
     {    char tmp[4096];
          int readed_bytes=0;
@@ -540,8 +611,10 @@ void audioCallback_raw(int event, void* user, void *info)
      
          bytes_readed_diff=audec->raw_bytes_readed-audec->pcm_bytes_readed*audec->codec_type;
          if(bytes_readed_diff>0){//iec958 was faster than i2s:
-             //adec_print("iec958 was faster than i2s:bytes_readed_diff/%d\n",bytes_readed_diff);
-             buffer->size =buffer->size/16;
+             //adec_print("Iec958 faster than I2s: bytes_readed_diff/%d (SyncGate/%d RawBytesReaded/%lld PcmBytesReaded/%lld codec_type/%f)\n",
+             //            bytes_readed_diff,audec->i2s_iec958_sync_gate,audec->raw_bytes_readed,audec->pcm_bytes_readed,audec->codec_type);
+             buffer->size /=8;
+             buffer->size-= (buffer->size%audec->raw_frame_size);
              memset((char*)(buffer->i16),0,buffer->size);
              return;
          }else if(bytes_readed_diff<0){//iec958 was slower than i2s:
@@ -551,7 +624,7 @@ void audioCallback_raw(int event, void* user, void *info)
                   )
              {  
                   bytes_readed_diff=audec->pcm_bytes_readed*audec->codec_type-audec->raw_bytes_readed;
-                  adec_print("iec958 was slower than i2s:bytes_readed_diff/%d\n",-bytes_readed_diff);
+                  //adec_print("iec958 was slower than i2s:bytes_readed_diff/%d\n",-bytes_readed_diff);
                   while(bytes_readed_diff && !audec->need_stop){
                      readed_bytes=audec->adsp_ops.dsp_read_raw(&audec->adsp_ops,tmp,bytes_readed_diff>4096?4096: bytes_readed_diff); 
                      audec->raw_bytes_readed+=readed_bytes;
@@ -563,7 +636,7 @@ void audioCallback_raw(int event, void* user, void *info)
              //audec->i2s_iec958_sync_flag=0;
          }
     }
-    }
+
     if (audec->adsp_ops.dsp_on) {
          int bytes_cnt=0;
          while(bytes_cnt<buffer->size && !audec->need_stop){
@@ -592,6 +665,7 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
     status_t status;
     AudioTrack *track;
     audio_out_operations_t *out_ops = &audec->aout_ops;
+    int SampleRate=audec->samplerate;
     out_ops->private_data_raw=NULL;
     if((audec->format!=ACODEC_FMT_DTS) &&
        (audec->format != ACODEC_FMT_AC3) &&
@@ -608,7 +682,7 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
     
     if(audec->format == ACODEC_FMT_TRUEHD){
         amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",7);
-        audec->codec_type=7;
+        audec->codec_type=16;
     }
 	
     int dgraw = amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw");
@@ -621,8 +695,10 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
             amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",3);
             if(audec->samplerate==88200 || audec->samplerate==96000){
                audec->codec_type=0.50;
+               SampleRate=audec->samplerate/2;
             }else if(audec->samplerate==176400 || audec->samplerate==192000){
                audec->codec_type=0.25;
+               SampleRate=audec->samplerate/4;
             }else if(audec->samplerate==352800 || audec->samplerate==384000){
                amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);
                adec_print("[%s %d]NOTE:Current FS/%d was support! ",__FUNCTION__,__LINE__,audec->samplerate);
@@ -638,11 +714,13 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
         }else if(audec->format == ACODEC_FMT_EAC3){
             amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",4);
             audec->codec_type=4;
-        }else if(audec->format==ACODEC_FMT_DTS){
+        }else if(audec->format==ACODEC_FMT_DTS &&(audec->VersionNum!=DTSETC_DECODE_VERSION_M6_M8 ||audec->DTSHDIEC958_PktType==DTSHD_IEC958_PKTTYPE_CORE)){
             if(audec->samplerate==88200 || audec->samplerate==96000){
                audec->codec_type=0.50;
+               SampleRate=SampleRate/2;
             }else if(audec->samplerate==176400 || audec->samplerate==192000){
                audec->codec_type=0.25;
+               SampleRate=SampleRate/4;
             }else if(audec->samplerate==352800 || audec->samplerate==384000){
                amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",0);
                adec_print("[%s %d]NOTE:Current FS/%d was support! ",__FUNCTION__,__LINE__,audec->samplerate);
@@ -651,8 +729,44 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
                audec->codec_type=1;
             }
             amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",3);
+        }else if(audec->format==ACODEC_FMT_DTS && audec->VersionNum==DTSETC_DECODE_VERSION_M6_M8){
+            int unvalidpara=0;
+            if(audec->DTSHDIEC958_PktType==DTSHD_IEC958_PKTTYPE_SINGLEI2S){
+                if(audec->DTSHDIEC958_FS==48000||audec->DTSHDIEC958_FS==44100)
+                {
+                    amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",3);
+                    SampleRate=audec->DTSHDIEC958_FS;
+                }else if(audec->DTSHDIEC958_FS==192000||audec->DTSHDIEC958_FS==176400){// clock need Mutiple 4
+                    amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",5);
+                    SampleRate=audec->DTSHDIEC958_FS/4;
+                }else{
+                    unvalidpara=1;
+                }
+            }else if(audec->DTSHDIEC958_PktType==DTSHD_IEC958_PKTTYPE_FOURI2S){// clock need Mutiple 4
+                if(audec->DTSHDIEC958_FS==192000||audec->DTSHDIEC958_FS==384000 || audec->DTSHDIEC958_FS==768000 ||
+                   audec->DTSHDIEC958_FS==176400||audec->DTSHDIEC958_FS==352800 || audec->DTSHDIEC958_FS==705600)
+                {
+                    amsysfs_set_sysfs_int("/sys/class/audiodsp/digital_codec",8);
+                    SampleRate=audec->DTSHDIEC958_FS/4;
+                }else{
+                    unvalidpara=2;
+                }
+            }else{
+                unvalidpara=3;
+            }
+            if(unvalidpara){
+               adec_print("[%s %d]NOTE:Unvalid Paras/%d for RawOutput:PCM_FS/%d IEC958_FS/%d PCMSamsInFrm/%d IEC958PktFrmSize/%d ",
+                                __FUNCTION__,__LINE__,unvalidpara,audec->samplerate,audec->DTSHDIEC958_FS,audec->DTSHDPCM_SamsInFrmAtMaxSR,audec->DTSHDIEC958_PktFrmSize);
+               return 0;
+            }
+            audec->codec_type=audec->DTSHDIEC958_FS/audec->samplerate;
         }
     }
+
+    if(audec->format == ACODEC_FMT_TRUEHD){
+        SampleRate=192000;
+    }
+    adec_print("[%s %d]SampleRate used for init rawoutput:%d\n",__FUNCTION__,__LINE__,SampleRate);
 
 #if ANDROID_PLATFORM_SDK_VERSION < 19
     track = new AudioTrack();
@@ -677,19 +791,6 @@ extern "C" int android_init_raw(struct aml_audio_dec* audec)
     else if(audec->format == ACODEC_FMT_TRUEHD)
         aformat = AUDIO_FORMAT_TRUEHD;
         
-    int SampleRate=audec->samplerate;
-    if(audec->format == ACODEC_FMT_DTS)
-    {
-       if(SampleRate==88200 || SampleRate==96000){
-           SampleRate=SampleRate/2;
-       }else if(SampleRate==176400 || SampleRate==192000){
-           SampleRate=SampleRate/4;
-       }
-    }else if(audec->format == ACODEC_FMT_TRUEHD){
-       SampleRate=192000;
-    }
-    adec_print("[%s %d]SampleRate used for init rawoutput:%d\n",__FUNCTION__,__LINE__,SampleRate);
-
    status = track->set(AUDIO_STREAM_MUSIC,
         SampleRate,
         aformat,

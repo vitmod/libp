@@ -47,6 +47,8 @@ int find_omx_lib(aml_audio_dec_t *audec)
         audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_VORBIS;
     }else if(audec->format == ACODEC_FMT_TRUEHD){
         audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_TRUEHD;
+    }else if(audec->format == ACODEC_FMT_WMAVOI){
+        audec->StageFrightCodecEnableType=OMX_ENABLE_CODEC_WMAVOI;
     }
     
     adec_print("%s %d audec->format=%d \n",__FUNCTION__,__LINE__,audec->format);
@@ -154,6 +156,7 @@ exit_decode_loop:
                  (audec->StageFrightCodecEnableType== OMX_ENABLE_CODEC_EAC3))
          {
              #ifndef DOLBY_DS1_UDC
+             #ifdef USE_ARM_AUDIO_DEC
              if(outlen>8) {
                   memcpy(&outlen,outbuf,4);
                   outbuf+=4;
@@ -163,6 +166,7 @@ exit_decode_loop:
              }else{
                   outlen=0;
              }
+             #endif
              #endif
          }
          if(outlen>0){
@@ -185,8 +189,8 @@ exit_decode_loop:
                            if(!audec->exit_decode_thread){
                                adec_print("Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d \n",
                                           g_bst->samplerate,g_bst->channels,g_AudioInfo.samplerate,g_AudioInfo.channels);
-                               g_bst->channels=audec->channels=g_AudioInfo.channels;
-                               g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
+                               g_bst->channels=g_AudioInfo.channels;
+                               g_bst->samplerate=g_AudioInfo.samplerate;
                                aout_ops->pause(audec);
                                audec->format_changed_flag = 1;  
                            }

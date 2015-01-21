@@ -22,7 +22,7 @@ static int taskflag = 1;
 #define MAX_URL_SIZE 4096
 #endif
 
-#define BACK_FILE_PATH "/cached/"
+#define BACK_FILE_PATH "/cached"
 static FILE* mBackupFile = NULL;
 void* merge_data_task(void* argv){
     unsigned char buf[1024*32];
@@ -70,7 +70,7 @@ int main(int argc,char** argv){
     LOGV("input file:%s\n",argv[1]);
 
     void* session = NULL;
-    int ret = m3u_session_open(argv[1],NULL,&session);
+    int ret = m3u_session_open(argv[1],NULL,&session, NULL);
     
     if(ret<0){
         LOGE("Failed to open session\n");

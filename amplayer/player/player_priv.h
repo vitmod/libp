@@ -146,7 +146,6 @@ typedef struct play_para {
     int    discontinue_point;     
     unsigned int    discontinue_time;
     unsigned int    discontinue_flag;
-    unsigned int    karaok_flag;
     check_end_info_t check_end;
 
     read_write_size read_size;
@@ -200,6 +199,7 @@ typedef struct play_para {
 	int buffering_time_s_changed; 
     float buffering_enter_time_s;
     int latest_lowlevel_av_delay_ms;
+    int last_buffering_av_delay_ms;
     // used for dynimically adjust buffering_enter_time_s, 
     // first time enter buffering thres<buffer_enter_s/div_buf_time
     // enter buffering one more time, div_buf_time--, promote buffer level
@@ -216,6 +216,7 @@ typedef struct play_para {
 	char off_init;
 
 	int retry_cnt;	// -1: means retry forever; >0 mean the retry cnt
+    int force_enter_buffering;
 } play_para_t;
 
 typedef struct media_type_t {

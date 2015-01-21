@@ -31,7 +31,7 @@ static snd_pcm_sframes_t (*writei_func)(snd_pcm_t *handle, const void *buffer, s
 static snd_pcm_sframes_t (*readn_func)(snd_pcm_t *handle, void **bufs, snd_pcm_uframes_t size);
 static snd_pcm_sframes_t (*writen_func)(snd_pcm_t *handle, void **bufs, snd_pcm_uframes_t size);
 
-
+static int hdmi_out = 0;
 static int fragcount = 16;
 static snd_pcm_uframes_t chunk_size = 1024;
 static char output_buffer[64 * 1024];
@@ -565,6 +565,29 @@ static int alsa_play(alsa_param_t * alsa_param, char * data, unsigned len)
     return r ;
 }
 
+static int alsa_swtich_port(alsa_param_t *alsa_params, int card, int port)
+{
+    char dev[10] = {0};
+    adec_print("card = %d, port = %d\n", card, port);
+    sprintf(dev, "hw:%d,%d", (card>=0)?card:0, (port>=0)?port:0);
+    pthread_mutex_lock(&alsa_params->playback_mutex);
+    snd_pcm_drop(alsa_params->handle);
+    snd_pcm_close(alsa_params->handle);
+    alsa_params->handle = NULL;
+    int err = snd_pcm_open(&alsa_params->handle, dev, SND_PCM_STREAM_PLAYBACK, 0);
+    
+    if (err < 0) {
+        adec_print("audio open error: %s", snd_strerror(err));
+        pthread_mutex_unlock(&alsa_params->playback_mutex);
+        return -1;
+    }
+    
+    set_params(alsa_params);
+    pthread_mutex_unlock(&alsa_params->playback_mutex);
+
+    return 0;
+}
+
 static void *alsa_playback_loop(void *args)
 {
     int len = 0;
@@ -593,6 +616,27 @@ static void *alsa_playback_loop(void *args)
     adec_print("alsa playback loop start to run !\n");
 
     while (!alsa_params->stop_flag) {
+        if(hdmi_out == 0){
+            adec_print("===dynmiac get hdmi plugin state===\n");
+            if(alsa_get_hdmi_state())
+            {
+                if(alsa_swtich_port(alsa_params, alsa_get_aml_card(), alsa_get_spdif_port()) == -1){
+                    adec_print("switch to hdmi port failed.\n");
+                    goto exit;
+                }
+				
+                hdmi_out = 1;
+                adec_print("[%s,%d]get hdmi device, use hdmi device \n", __FUNCTION__, __LINE__);
+            }
+        }else if(alsa_get_hdmi_state() == 0){
+            if(alsa_swtich_port(alsa_params, alsa_get_aml_card(), 0) == -1){
+                adec_print("switch to default port failed.\n");
+                goto exit;
+            }
+
+            hdmi_out = 0;
+            adec_print("[%s,%d]get default device, use default device \n", __FUNCTION__, __LINE__);
+        }
         while ((len < (128 * 2)) && (!alsa_params->stop_flag)) {
             if (offset > 0) {
                 memcpy(buffer, buffer + offset, len);
@@ -731,13 +775,14 @@ int alsa_init(struct aml_audio_dec* audec)
     if(alsa_get_hdmi_state())
     {
         sound_dev_id = alsa_get_spdif_port();
+        if(sound_dev_id < 0)
+        {
+            sound_dev_id = 0;
+            adec_print("get aml card device fail, use default \n");
+        }else{
+            hdmi_out = 1;
+        }
         adec_print("get hdmi device, use hdmi device \n");
-    }
-    
-    if(sound_dev_id < 0)
-    {
-    	sound_dev_id = 0;
-	    adec_print("get aml card device fail, use default \n");
     }
     
     sprintf(sound_card_dev, "hw:%d,%d", sound_card_id, sound_dev_id);

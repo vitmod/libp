@@ -605,7 +605,8 @@ static int64_t ogg_read_timestamp(AVFormatContext *s, int stream_index,
     struct ogg *ogg = s->priv_data;
     struct ogg_stream *os = ogg->streams + stream_index;
     AVIOContext *bc = s->pb;
-    int64_t pts = AV_NOPTS_VALUE;
+    int64_t pts     = AV_NOPTS_VALUE;
+    int64_t keypos  = -1;
     int i;
     avio_seek(bc, *pos_arg, SEEK_SET);
     ogg_reset(ogg);
@@ -613,8 +614,16 @@ static int64_t ogg_read_timestamp(AVFormatContext *s, int stream_index,
     while (avio_tell(bc) < pos_limit && !ogg_packet(s, &i, NULL, NULL, pos_arg)) {
         if (i == stream_index) {
             pts = ogg_calc_pts(s, i, NULL);
-            if (os->keyframe_seek && !(os->pflags & AV_PKT_FLAG_KEY))
-                pts = AV_NOPTS_VALUE;
+            if (os->pflags & AV_PKT_FLAG_KEY) {
+                keypos = *pos_arg;
+            } else if (os->keyframe_seek) {
+                // if we had a previous keyframe but no pts for it,
+                // return that keyframe with this pts value.
+                if (keypos >= 0)
+                    *pos_arg = keypos;
+             //   else
+                 //   pts = AV_NOPTS_VALUE;
+            }
         }
         if (pts != AV_NOPTS_VALUE)
             break;

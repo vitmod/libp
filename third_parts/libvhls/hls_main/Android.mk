@@ -18,8 +18,14 @@ LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/../common\
     $(LOCAL_PATH)/../downloader\
     $(LIBPLAYER_PATH)/amffmpeg \
-    $(LIBPLAYER_PATH)/amavutils/include/
+    $(LIBPLAYER_PATH)/amavutils/include 
 
+
+
+ifeq ($(BUILD_WITH_VIEWRIGHT_WEB), true)
+ LOCAL_CFLAGS += -DENABLE_VIEWRIGHT_WEB
+ LOCAL_SHARED_LIBRARIES +=libdl
+endif
 
 LOCAL_MODULE := libhls
 

@@ -87,6 +87,8 @@ static int adts_aac_read_header(AVFormatContext *s,
 	//LCM of all possible ADTS sample rates
 	av_set_pts_info(st, 64, 1, 28224000);
     ff_id3v2_read(s,"ID3");
+
+    /*  FFT: inlegal address "buf"  
     //add by xh,2010-08-24
     if (buf[0]=='A' && buf[1]=='D' && buf[2]=='I' && buf[3]=='F')
     {
@@ -101,6 +103,7 @@ static int adts_aac_read_header(AVFormatContext *s,
 		}
     }  
     //end of add
+    */
     return 0;
 }
     

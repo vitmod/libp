@@ -178,7 +178,7 @@ int DDP_MediaSource::Get_ChNum_DD(void *buf)//at least need:56bit(=7 bytes)
 	{
 		//ALOGI("Active Endpoint not defined - using default");
 	}
-	
+	ChNumOriginal=numch;
 	if(DDP_OUTMIX_STREAM == (ddp_downmix_config_t)EndpointConfig[activeEndpoint][0])
 	{
        	if(numch >= 3)  numch = 8;
@@ -259,7 +259,7 @@ int DDP_MediaSource::Get_ChNum_DDP(void *buf)//at least need:40bit(=5 bytes)
 	{
 		//ALOGI("Active Endpoint not defined - using default");
 	}
-	
+	ChNumOriginal=numch;
 	if(DDP_OUTMIX_STREAM == (ddp_downmix_config_t)EndpointConfig[activeEndpoint][0])
 	{
        	if(numch >= 3)  numch = 8;
@@ -370,8 +370,9 @@ DDP_MediaSource::DDP_MediaSource(void *read_buffer)
 	frame_size=0;
 	bytes_readed_sum_pre=0;
 	bytes_readed_sum=0;
-	
-	
+	memset(frame.rawbuf, 0, 6144);
+	frame.len = 0;
+	ChNumOriginal=0;
 }
 
 DDP_MediaSource::~DDP_MediaSource() 
@@ -386,7 +387,11 @@ int DDP_MediaSource::GetSampleRate()
 {	
 	return sample_rate;
 }
+int DDP_MediaSource::GetChNumOriginal()
+{
+    return ChNumOriginal;
 
+}
 int DDP_MediaSource::GetChNum()
 {
 	return ChNum;
@@ -495,106 +500,80 @@ int DDP_MediaSource::MediaSourceRead_buffer(unsigned char *buffer,int size)
 
 status_t DDP_MediaSource::read(MediaBuffer **out, const ReadOptions *options)
 {
-	*out = NULL;
-	uint8_t ptr_head[PTR_HEAD_SIZE]={0};
-    int readedbytes;
-	int SyncFlag=0;
-	
-resync:	
-	
-	frame_size=0;
-	SyncFlag=0;
-    //----------------------------------
-    if(MediaSourceRead_buffer(&ptr_head[0], 6)<6)
-	{
-	    readedbytes=6;
-		ALOGI("WARNING: fpread_buffer read %d bytes failed [%s %d]!\n",readedbytes,__FUNCTION__,__LINE__);
-		return ERROR_END_OF_STREAM;
-    }
-	
-	if (*pStop_ReadBuf_Flag==1){
-		 ALOGI("Stop_ReadBuf_Flag==1 stop read_buf [%s %d]",__FUNCTION__,__LINE__);
-         return ERROR_END_OF_STREAM;
-	}
+    *out = NULL;
+    
+    while(1){
+        frame_size = 0;
+        frame.len += MediaSourceRead_buffer(frame.rawbuf + frame.len, 6144 - frame.len);
 
-	while(!SyncFlag)
-	{
-	 	 int i;
-		 for(i=0;i<=4;i++)
-		 {
-	         if((ptr_head[i]==0x0b && ptr_head[i+1]==0x77 )||(ptr_head[i]==0x77 && ptr_head[i+1]==0x0b ))
-	         {
-                memcpy(&ptr_head[0],&ptr_head[i],6-i);
-			    if(MediaSourceRead_buffer(&ptr_head[6-i],i)<i){
-					readedbytes=i;
-					ALOGI("WARNING: fpread_buffer read %d bytes failed [%s %d]!\n",readedbytes,__FUNCTION__,__LINE__);
-					return ERROR_END_OF_STREAM;
-			    }
-				
-				if (*pStop_ReadBuf_Flag==1){
-		              ALOGI("Stop_ReadBuf_Flag==1 stop read_buf [%s %d]",__FUNCTION__,__LINE__);
-                      return ERROR_END_OF_STREAM;
-	            }
+        if(frame.len < PTR_HEAD_SIZE){
+            ALOGI("WARNING: fpread_buffer read failed [%s %d]!\n",__FUNCTION__,__LINE__);
+            return ERROR_END_OF_STREAM;
+        }
+        
+        if (*pStop_ReadBuf_Flag==1){
+            ALOGI("Stop_ReadBuf_Flag==1 stop read_buf [%s %d]",__FUNCTION__,__LINE__);
+            return ERROR_END_OF_STREAM;
+        }
 
-				SyncFlag=1;
-				break;
-	         }
-		 }
-		 
-		 if(SyncFlag==0)
-		 {
-		 	 ptr_head[0]=ptr_head[5];
-			 if(MediaSourceRead_buffer(&ptr_head[1],5)<5)
-			 {
-                ALOGI("WARNING: fpread_buffer read %d bytes failed [%s %d]!\n",readedbytes,__FUNCTION__,__LINE__);
+        unsigned short head;
+        head = frame.rawbuf[0] << 8 | frame.rawbuf[1];
+
+        if(head == 0x0b77 || head == 0x770b){
+            Get_ChNum_AC3_Frame(frame.rawbuf);
+            frame_size=frame_size*2;
+
+            if((frame_size==0)||(frame_size<PTR_HEAD_SIZE))
+            {  
+                ALOGI("frame_size failed\n");
+                memcpy((char*)(frame.rawbuf),(char *)(frame.rawbuf+1), frame.len-1);
+                frame.len -= 1;
+                continue;
+            }
+
+            if(frame_size > frame.len - 2){
+                ALOGI("frame_size:%d, len:%d\n", frame_size, frame.len);
+                ALOGI("WARNING: fpread_buffer read failed [%s %d]!\n",__FUNCTION__,__LINE__);
                 return ERROR_END_OF_STREAM;
-			 }
-			 
-			 if (*pStop_ReadBuf_Flag==1){
-		         ALOGI("Stop_ReadBuf_Flag==1 stop read_buf [%s %d]",__FUNCTION__,__LINE__);
-                 return ERROR_END_OF_STREAM;
-	         }
-		 }
-	}
-	
-	//----------------------------------
-	if(MediaSourceRead_buffer(&ptr_head[6], PTR_HEAD_SIZE-6)<(PTR_HEAD_SIZE-6))
-	{
-	    readedbytes=PTR_HEAD_SIZE-6;
-		ALOGI("WARNING: fpread_buffer read %d bytes failed [%s %d]!\n",readedbytes,__FUNCTION__,__LINE__);
-		return ERROR_END_OF_STREAM;
+            }else{
+                if(frame_size == frame.len){
+                    break;
+                }
+            }
+        
+            head = (frame.rawbuf[frame_size] << 8) | frame.rawbuf[frame_size + 1];
+
+            if(head == 0x0b77 || head == 0x770b){
+                ALOGI("next frame is ok\n");
+                break;
+            }else{
+                ALOGI("=====next frame faile=====\n");
+                memcpy((char*)(frame.rawbuf),(char *)(frame.rawbuf+1), frame.len-1);
+                frame.len -= 1;
+            }
+        }else{
+            memcpy((char*)(frame.rawbuf),(char *)(frame.rawbuf+1), frame.len-1);
+            frame.len -= 1;
+        }
     }
-	
+    
+    MediaBuffer *buffer;
+    status_t err = mGroup->acquire_buffer(&buffer);
 
-    Get_ChNum_AC3_Frame(ptr_head);
-	frame_size=frame_size*2;
-	
+    if (err != OK) {
+        return err;
+    }
 
-	if((frame_size==0)|| (frame_size<PTR_HEAD_SIZE)/*||(ChNum==0)||(sample_rate==0)*/)
-	{  
-	   goto resync;
-	}
-
-		
-	MediaBuffer *buffer;
-	status_t err = mGroup->acquire_buffer(&buffer);
-	if (err != OK) {
-		return err;
-	}
-	memcpy((unsigned char*)(buffer->data()),ptr_head,PTR_HEAD_SIZE);
-	if (MediaSourceRead_buffer((unsigned char*)(buffer->data())+PTR_HEAD_SIZE,frame_size-PTR_HEAD_SIZE) != (frame_size-PTR_HEAD_SIZE)) {
-		ALOGI("[%s %d]stream read failed:bytes_req/%d\n",__FUNCTION__,__LINE__,(frame_size-PTR_HEAD_SIZE)); 
-		buffer->release();
-		buffer = NULL;
-		return ERROR_END_OF_STREAM;
-	}
-
-	buffer->set_range(0, frame_size);
-	buffer->meta_data()->setInt64(kKeyTime, mCurrentTimeUs);
-	buffer->meta_data()->setInt32(kKeyIsSyncFrame, 1);
-	
-	*out = buffer;
-	 return OK;
+    memcpy((unsigned char*)(buffer->data()), (unsigned char*)frame.rawbuf, frame_size);
+    memcpy((unsigned char*)frame.rawbuf, (unsigned char*)(frame.rawbuf+frame_size), frame.len - frame_size);
+    frame.len -= frame_size;
+    
+    buffer->set_range(0, frame_size);
+    buffer->meta_data()->setInt64(kKeyTime, mCurrentTimeUs);
+    buffer->meta_data()->setInt32(kKeyIsSyncFrame, 1);
+    
+    *out = buffer;
+    return OK;
 }
 
 }  // namespace android

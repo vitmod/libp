@@ -58,6 +58,7 @@ static int curl_ffmpeg_need_retry(int arg)
     switch(arg) {
     case CURLERROR(56 + C_ERROR_PERFORM_BASE_ERROR):  // recv failure
     case CURLERROR(18 + C_ERROR_PERFORM_BASE_ERROR):  // partial file
+    case CURLERROR(28 + C_ERROR_PERFORM_BASE_ERROR):  // operation timeout
     case CURLERROR(C_ERROR_PERFORM_SELECT_ERROR):
         ret = 0;
         break;
@@ -89,6 +90,8 @@ static int curl_ffmpeg_open(URLContext *h, const char *uri, int flags)
         CLOGE("Invalid curl-ffmpeg uri\n");
         return ret;
     }
+    int retries = 0;
+RETRY:
     handle = (CURLFFContext *)av_mallocz(sizeof(CURLFFContext));
     if (!handle) {
         CLOGE("Failed to allocate memory for CURLFFContext handle\n");
@@ -113,6 +116,9 @@ static int curl_ffmpeg_open(URLContext *h, const char *uri, int flags)
         curl_fetch_close(handle->cfc_h);
         av_free(handle);
         handle = NULL;
+        if(++retries < 3) {
+            goto RETRY;
+        }
         return ret;
     }
     handle->read_retry = (int)am_getconfig_float_def("libplayer.curl.readretry", 10);
@@ -204,7 +210,7 @@ static int64_t curl_ffmpeg_seek(URLContext *h, int64_t off, int whence)
         CLOGE("CURLFFContext invalid CFContext handle\n");
         return ret;
     }
-    if (off > 0) {
+    if (whence != SEEK_CUR || off != 0) {
         force_interrupt = 1;
     }
     if (whence == AVSEEK_CURL_HTTP_KEEPALIVE) {
@@ -231,24 +237,6 @@ static int curl_ffmpeg_close(URLContext *h)
     s = NULL;
     return 0;
 }
-
-#if 0
-static void * curl_ffmpeg_interrupt_monitor_thread(void *_handle)
-{
-    CURLFFContext * h = (CURLFFContext *)_handle;
-    if(!h) {
-        return NULL;
-    }
-    while(!h->monitor_quited) {
-        if(url_interrupt_cb()) {
-            curl_fetch_interrupt(h->cfc_h);
-            return NULL;
-        }
-        usleep(SLEEP_TIME_UNIT);
-    }
-    return NULL;
-}
-#endif
 
 static int curl_ffmpeg_get_info(URLContext *h, uint32_t  cmd, uint32_t flag, int64_t *info)
 {

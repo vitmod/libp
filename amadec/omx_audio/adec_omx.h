@@ -35,6 +35,7 @@ static const char *MEDIA_MIMETYPE_AUDIO_WMA = "audio/wma";
 static const char *MEDIA_MIMETYPE_AUDIO_WMAPRO = "audio/wmapro";
 static const char *MEDIA_MIMETYPE_AUDIO_DTSHD = "audio/dtshd";
 static const char *MEDIA_MIMETYPE_AUDIO_TRUEHD = "audio/truehd";
+static const char *MEDIA_MIMETYPE_AUDIO_FFMPEG = "audio/ffmpeg";
 
 class AmlOMXCodec
 {

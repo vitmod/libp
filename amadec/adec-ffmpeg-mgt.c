@@ -12,12 +12,7 @@
 #include <Amsysfsutils.h>
 #include <audio-dec.h>
 #include <amthreadpool.h>
-
-
-
-
-
-
+#include <cutils/properties.h>
 
 extern int read_buffer(unsigned char *buffer,int size);
 void *audio_decode_loop(void *args);
@@ -247,17 +242,38 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
 			channels = 2;
     }
     offset=audec->decode_offset;
-
     if(dsp_ops->dsp_file_fd>=0){
-        if(audec->g_bst->format != ACODEC_FMT_COOK && audec->g_bst->format != ACODEC_FMT_RAAC)
-            ioctl(dsp_ops->dsp_file_fd,AMSTREAM_IOC_APTS_LOOKUP,&offset);
+        if(audec->g_bst->format != ACODEC_FMT_COOK && audec->g_bst->format != ACODEC_FMT_RAAC){
+	//when first  look up apts,set offset 0	
+	     if(!audec->first_apts_lookup_over){
+		 	offset = 0;
+	    }				
+            ioctl(dsp_ops->dsp_file_fd,AMSTREAM_IOC_APTS_LOOKUP,&offset);			
+        }
+//for cook/raac should wait to get first apts from decoder		
+	 else{
+	 	int wait_count = 10;
+	 	while(offset == 0xffffffff && wait_count-- > 0){
+			amthreadpool_thread_usleep(10000);
+	 	}
+		offset = audec->decode_offset;
+		if(offset == 0xffffffff)
+			adec_print(" cook/raac get apts 100 ms timeout \n");
+		
+	 }
     }else{
         adec_print("====abuf have not open!\n",val);
     }
+    	
     if(am_getconfig_bool("media.arm.audio.apts_add"))
        offset=0;
-
     pts=offset;
+    if(!audec->first_apts_lookup_over)
+    {
+        audec->last_valid_pts = pts;
+	 audec->first_apts_lookup_over = 1;	
+        return pts;
+    }	
     if(pts==0){
         if (audec->last_valid_pts)
            pts = audec->last_valid_pts;
@@ -266,7 +282,6 @@ unsigned long  armdec_get_pts(dsp_operations_t *dsp_ops)
         //adec_print("decode_offset:%d out_pcm:%d   pts:%d \n",decode_offset,out_len_after_last_valid_pts,pts);
         return pts; 
     }
-
     int len = audec->g_bst->buf_level+audec->pcm_cache_size;
     frame_nums = (len * 8 / (data_width * channels));
     delay_pts = (frame_nums*90000/samplerate);
@@ -417,7 +432,8 @@ static int OutBufferInit_raw(aml_audio_dec_t *audec)
 
     if(audec->adec_ops->nOutBufSize<=0) //set default if not set
            audec->adec_ops->nOutBufSize=DEFAULT_PCM_BUFFER_SIZE;
-
+    if(audec->format==ACODEC_FMT_DTS && amsysfs_get_sysfs_int("/sys/class/audiodsp/digital_raw")==2)
+          audec->adec_ops->nOutBufSize *=2;
     int ret=init_buff(audec->g_bst_raw,audec->adec_ops->nOutBufSize);
     if(ret==-1){
         adec_print("[%s %d]raw_buf init failed !\n",__FUNCTION__,__LINE__);
@@ -505,15 +521,16 @@ static int audio_codec_init(aml_audio_dec_t *audec)
              audec->format==ACODEC_FMT_WIFIDISPLAY|| audec->format==ACODEC_FMT_ALAW       ||
              audec->format==ACODEC_FMT_MULAW      || audec->format==ACODEC_FMT_ADPCM)
                  audec->adec_ops->channels=NumChSave;
-      }else{
-          audec->adec_ops->channels=audec->channels=2;
       }
-
+//for raac/cook audio pts are updated from audio decoder,so set a invalid pts default.	  
+	else if(audec->format == ACODEC_FMT_RAAC ||audec->format == ACODEC_FMT_COOK){
+                 audec->decode_offset = 0xffffffff; 
+	}
       if(audec->samplerate>0)
           audec->adec_ops->samplerate=audec->samplerate;
-      else
-          audec->adec_ops->samplerate=audec->samplerate=48000;
-
+      else{
+       //   audec->adec_ops->samplerate=audec->samplerate=48000;
+      } 
       switch(audec->data_width)
       {
           case AV_SAMPLE_FMT_U8:
@@ -679,13 +696,26 @@ static int start_adec(aml_audio_dec_t *audec)
     audec->no_first_apts = 0;
     audec->apts_start_flag=0;
     audec->first_apts=0;
+
+    char value[PROPERTY_VALUE_MAX]={0};
+    int wait_count = 100;
+    if(property_get("media.amadec.wait_count",value,NULL) > 0){
+        wait_count = atoi(value);
+    }
+    adec_print("wait first apts count :%d \n",wait_count);
+
     if (audec->state == INITTED) {
          //get info from the audiodsp == can get from amstreamer
          while ((!get_first_apts_flag(dsp_ops)) && (!audec->need_stop) && (!audec->no_first_apts)) 
          {
              adec_print("wait first pts checkin complete !");
+             if(amthreadpool_on_requare_exit(pthread_self()))
+             {
+                 adec_print("[%s:%d] quick interrupt \n",__FUNCTION__,__LINE__);
+                 break;
+             }
              times++;
-             if (times>=5) // 0.5s 
+             if (times>=wait_count)
              {
                  amsysfs_get_sysfs_str(TSYNC_VPTS, buf, sizeof(buf));// read vpts
                  if (sscanf(buf, "0x%lx", &vpts) < 1) {
@@ -962,19 +992,27 @@ static void check_audio_info_changed(aml_audio_dec_t *audec)
 	if(g_AudioInfo.channels!=0&&g_AudioInfo.samplerate!=0)
 	{
 		if((g_AudioInfo.channels !=g_bst->channels)||(g_AudioInfo.samplerate!=g_bst->samplerate))
-		{    //experienc value:0.2 Secs      
-			BufLevelAllowDoFmtChg=audec->samplerate*audec->channels*(audec->adec_ops->bps>>3)/5;
-			while((audec->format_changed_flag|| g_bst->buf_level>BufLevelAllowDoFmtChg) && !audec->exit_decode_thread ){
-				amthreadpool_thread_usleep(20000);
-			}				
-			if(!audec->exit_decode_thread){
-				adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",				
-                __FUNCTION__,audec->samplerate,audec->channels,g_AudioInfo.samplerate,g_AudioInfo.channels,g_bst->buf_level);				
+		{
+			// the first time we get sample rate/channel num info,we use that to set audio track.
+			if(audec->channels == 0 || audec->samplerate == 0){
 				g_bst->channels=audec->channels=g_AudioInfo.channels;
-				g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;
-				audec->aout_ops.pause(audec);
-				audec->format_changed_flag = 1;
+				g_bst->samplerate=audec->samplerate=g_AudioInfo.samplerate;				
 			}
+			else{
+			    //experienc value:0.2 Secs      
+				BufLevelAllowDoFmtChg=audec->samplerate*audec->channels*(audec->adec_ops->bps>>3)/5;
+				while((audec->format_changed_flag|| g_bst->buf_level>BufLevelAllowDoFmtChg) && !audec->exit_decode_thread ){
+					amthreadpool_thread_usleep(20000);
+				}				
+				if(!audec->exit_decode_thread){
+					adec_print("[%s]Info Changed: src:sample:%d  channel:%d dest sample:%d  channel:%d PCMBufLevel:%d\n",				
+	                		__FUNCTION__,audec->samplerate,audec->channels,g_AudioInfo.samplerate,g_AudioInfo.channels,g_bst->buf_level);				
+				    g_bst->channels=g_AudioInfo.channels;
+				    g_bst->samplerate=g_AudioInfo.samplerate;
+					audec->aout_ops.pause(audec);
+					audec->format_changed_flag = 1;
+				}
+			}	
 		}
 	}	
 }
@@ -1100,7 +1138,7 @@ void *audio_decode_loop(void *args)
     struct package *p_Package;
     buffer_stream_t *g_bst;
     AudioInfo g_AudioInfo;
-    adec_print("\n\n[%s]adec_armdec_loop start!\n",__FUNCTION__);
+    adec_print("[%s]adec_armdec_loop start!\n",__FUNCTION__);
     audec = (aml_audio_dec_t *)args;
     aout_ops = &audec->aout_ops;
     adec_ops=audec->adec_ops;
@@ -1301,6 +1339,12 @@ void *adec_armdec_loop(void *args)
             //no need to call release, will do it in stop_adec
             goto MSG_LOOP;
         }
+        //wait the audio sr/ch ready to set audio track.
+        adec_print("wait audio sr/channel begin \n");
+        while ( ((!audec->channels)|| (!audec->samplerate)) && !audec->need_stop){
+            amthreadpool_thread_usleep(10000);		
+        }
+        adec_print("wait audio sr/channel done \n");
         ret = aout_ops->init(audec);
         if (ret) 
         {

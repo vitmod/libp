@@ -35,7 +35,7 @@ typedef struct _HLSHttpContext{
     int error_code;     
     char* redirect_url;    
 #ifdef SAVE_BACKUP    
-#define BACK_FILE_PATH "/cached/"
+#define BACK_FILE_PATH "/cached"
     FILE* mBackupFile;
 #endif
 }HLSHttpContext;
@@ -186,8 +186,8 @@ int hls_http_open(const char* url,const char* _headers,void* key,void** handle){
         ctx->open_flag = -1;        
         *handle = ctx;        
         LOGE("Failed to open http file,error:%d,reason:%d\n",ret,reason_code);
-        return -1; 
-
+        //return -1; 
+	 return ret > 0 ? (-ret) : ret;
     }
     
     ctx->error_code = 0;
@@ -387,7 +387,7 @@ int hls_http_close(void* handle){
 
 //#define _DEBUG_NO_LIBPLAYER 1
 
-int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* length,char** redirectUrl){
+int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* length,char** redirectUrl,char** cookies){
     if(url==NULL){
         return -1;
     }
@@ -407,13 +407,20 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
             hls_http_close(handle);
             handle = NULL;
         }
-        return -1;
+        //return -1;
+	return ret;
+    }
+    if (handle) {
+        HLSHttpContext *hlsctx = (HLSHttpContext *)handle;
+        URLContext *h = (URLContext *)(hlsctx->h);
+        av_opt_get(h->priv_data, "cookies", 0, (uint8_t **)cookies);
     }
     int64_t flen = hls_http_get_fsize(handle);
     int64_t rsize = 0;
     unsigned char* buffer = NULL;
     const int def_buf_size = 1024*1024;
-    int buf_len = 0;
+    int64_t buf_len = 0;
+    int64_t read_len = 0;
     int err_code = 0;
 #if 0
     if(flen>0){
@@ -427,14 +434,23 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
     }
 #else
     // for gzip, filesize cannot recognized as real buf size
+    flen=0;
     buffer = (unsigned char* )malloc(def_buf_size);
     buf_len = def_buf_size;
+    read_len = def_buf_size/10;
 #endif
     memset(buffer,0,buf_len);
     int isize = 0;
 
     do{
-        ret = hls_http_read(handle,buffer+isize,buf_len);
+        if(flen<=0 && buf_len-isize < read_len) {
+            LOGW("in case of overflow, it is better to realloc buffer, buf_len : %lld, isize : %lld\n", buf_len, isize);
+            if(buf_len >= 8*1024*1024)//exception protect
+                break;
+            buffer = (unsigned char* )realloc(buffer, buf_len+def_buf_size);
+            buf_len = buf_len+def_buf_size;
+        }
+        ret = hls_http_read(handle,buffer+isize,flen>0?read_len-isize:read_len);
         if(ret<=0){
             if (ret!= HLSERROR(EAGAIN)) {
                 if(ret!=0 && ret != HLSERROR(ERROR_END_OF_STREAM)){
@@ -447,6 +463,8 @@ int fetchHttpSmallFile(const char* url,const char* headers,void** buf,int* lengt
             }
         }else{
             isize+=ret;
+            if(isize > buf_len)
+                LOGE("buffer overflow\n");           
         }
     }while(isize<buf_len);
 

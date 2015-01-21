@@ -17,6 +17,7 @@ extern "C" {
     int am_dumpallconfigs(void);
     int am_getconfig_bool(const char * path);
     int am_getconfig_bool_def(const char * path,int def);
+    int am_getconfig_int_def(const char * path, int def);
     float am_getconfig_float_def(const char * path,float defvalue);
 #ifdef  __cplusplus
 }

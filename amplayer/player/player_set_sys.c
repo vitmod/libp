@@ -121,11 +121,6 @@ int check_audio_output()
     return get_sysfs_int("/sys/class/amaudio/output_enable") & 3;
 }
 
-int get_karaok_flag()
-{
-    return get_sysfs_int("/sys/class/amstream/karaok") & 1;
-}
-
 int set_tsync_enable(int enable)
 {
     return set_sysfs_int("/sys/class/tsync/enable", enable);
@@ -1088,7 +1083,7 @@ int wait_video_unreg()
     char buf[32]={0};
 	ret = amsysfs_get_sysfs_str("/sys/module/amvideo/parameters/new_frame_count", buf, 32);
 	log_print("[wait_di_bypass] ret %d buf %s\n",ret,buf);
-	while((ret>=0)&&(!strstr(buf, "0")))
+	while((ret>=0)&&(strcmp(buf, "0")!=0))
     {
         log_print("[wait_di_bypass] wait count %d\n",waitcount);
 		if(waitcount > 500)
@@ -1097,12 +1092,25 @@ int wait_video_unreg()
 	    }
 
 		waitcount++;
-        amthreadpool_thread_usleep(500);
+                usleep(500);
         memset(buf,0,sizeof(buf));
 	    ret = amsysfs_get_sysfs_str("/sys/module/amvideo/parameters/new_frame_count", buf, 32);       
 	}
 	return 0;
 
+}
+
+int freescale_is_enable()
+{
+    char buf[32]={0};
+    int ret = 0;
+    ret = amsysfs_get_sysfs_str("/sys/class/graphics/fb0/free_scale", buf, 32);
+    log_print("[wait_di_bypass] ret %d buf %s\n",ret,buf);
+    if(strstr(buf, "1"))
+    {
+        return 1;
+    }
+    return 0;
 }
 
 int disable_2X_2XYscale()
@@ -1608,4 +1616,9 @@ int get_pcmend_flag()
     //return val;
     log_print("get_pcmnum=%d %s \n", val, bcmd);
     return (val > 1024) ? 0 : 1; // 1 pcm end 0 pcm not end
+}
+
+int set_poweron_clock_level(int level)
+{
+    return set_sysfs_int("/sys/class/vdec/poweron_clock_level", level);
 }

@@ -114,8 +114,10 @@ int av_fifo_generic_read(AVFifoBuffer *f, void *dest, int buf_size, void (*func)
         int len = FFMIN(f->end - f->rptr, buf_size);
         if(func) func(dest, f->rptr, len);
         else{
-            memcpy(dest, f->rptr, len);
-            dest = (uint8_t*)dest + len;
+            if(dest){///dest ==NULL for drop data only
+                memcpy(dest, f->rptr, len);
+                dest = (uint8_t*)dest + len;
+            }
         }
 // memory barrier needed for SMP here in theory
         av_fifo_drain(f, len);

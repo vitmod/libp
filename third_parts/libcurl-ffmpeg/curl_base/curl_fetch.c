@@ -178,6 +178,9 @@ int curl_fetch_open(CFContext * h)
                 return -1;  // consider for seek interrupt
             }
         }
+        if(h->cwc_h->open_fail) {
+            return -1;
+        }
         usleep(SLEEP_TIME_UNIT);
         timeout += SLEEP_TIME_UNIT;
     }
@@ -288,6 +291,9 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
                 CLOGE("***** CURL INTERRUPTED *****");
                 return -1;  // consider for seek interrupt
             }
+        }
+        if(h->cwc_h->open_fail) {
+            return -1;
         }
         usleep(SLEEP_TIME_UNIT);
         timeout += SLEEP_TIME_UNIT;

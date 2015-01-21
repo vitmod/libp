@@ -88,6 +88,44 @@ static M3uBaseNode* get_node_by_index(M3UParser* var,int index){
     return NULL;
 }
 
+static M3uBaseNode* get_node_by_url(M3UParser* var,char *srcurl){
+    M3uBaseNode* pos = NULL;
+    M3uBaseNode* tmp = NULL;
+    char * start = NULL;
+    char * slash = NULL;
+    start = strstr(srcurl, "://");
+    if(start){ // just compare relative url.
+        slash = strchr(start+3, '/');
+        if(slash){
+            srcurl = slash;
+        }
+    }
+    char * tmp_url = srcurl;
+    int len = strlen(srcurl);
+    char * is_wasu = strstr(srcurl, "&owsid="); // wasu server differ the same ts segment.
+    if(is_wasu){
+        len -= strlen(is_wasu);
+        tmp_url = (char*)malloc(len+1);
+        strncpy(tmp_url, srcurl, len);
+        tmp_url[len] = '\0';
+    }
+    pthread_mutex_lock(&var->parser_lock);
+    list_for_each_entry_safe(pos, tmp, &var->head,list){
+        if(strstr(pos->fileUrl,tmp_url)){
+            pthread_mutex_unlock(&var->parser_lock);
+            if(is_wasu){
+                free(tmp_url);
+            }
+            return pos;
+        }
+    }
+    pthread_mutex_unlock(&var->parser_lock);
+    if(is_wasu){
+        free(tmp_url);
+    }
+    return NULL;
+}
+
 static int dump_all_nodes(M3UParser* var){
     M3uBaseNode* pos = NULL;
     M3uBaseNode* tmp = NULL;
@@ -251,7 +289,10 @@ static int64_t parseMetaDataDurationUs(const char* line) {
     if (err != 0) {
         return err;
     }
-   
+
+    if(x < 0)
+        x = 0;
+
     return ((int64_t)(x * 1E6));
     
 }
@@ -449,11 +490,28 @@ static void makeUrl(char *buf, int size, const char *base,const char *rel)
     }
 
     if (!strncasecmp("http://", rel, 7) || !strncasecmp("https://", rel, 8)) {
+        if((sep=strstr(rel,"127.0.0.1"))!=NULL && strstr(base, "://")!=NULL){
+           /*rel url is get from http://127.0.0.1
+                   we need changed the 127.0.0.1 to real IP address,for server;
+                   for http://127.0.0.1:1234 to http://221.1.1.1:1234 
+                   as sample
+                   */
+            char server_address[128];
+		    int port;
+			char *s;
+			server_address[0]='\0';
+            av_url_split(NULL, 0, NULL, 0, server_address, sizeof(server_address), &port, NULL, 0, base);
+		    strncpy(buf,rel,sep-rel);/*get the rel protol header,maybe not same as base.*/
+			strlcat(buf, server_address,size-strlen(buf));
+			strlcat(buf, sep+(strlen("127.0.0.1")),size-strlen(buf));
+			LOGI("base:'%s', url:'%s' => '%s'", base, rel, buf);
+			return ;
+		}
+
         // "url" is already an absolute URL, ignore base URL.
         strncpy(buf,rel,size);
 
         //LOGV("base:'%s', url:'%s' => '%s'", base, rel, buf);
-
         return;
     }
 
@@ -579,7 +637,7 @@ static int fast_parse(M3UParser* var,const void *_data, int size){
     memset(&tmpNode,0,sizeof(M3uBaseNode));
     tmpNode.media_sequence = -1;
     tmpNode.range_length = -1;
-    tmpNode.range_offset = 0;
+    tmpNode.range_offset = -1;
     tmpNode.durationUs = -1;
 
      //cut BOM header
@@ -744,6 +802,7 @@ static int fast_parse(M3UParser* var,const void *_data, int size){
             add_node_to_head(var,node);            
             ++index;  
             memset(&tmpNode,0,sizeof(M3uBaseNode));
+            tmpNode.range_offset = -1;
 
         }
     	
@@ -766,7 +825,6 @@ static int fast_parse(M3UParser* var,const void *_data, int size){
     return 0;
     
 }
-
 
 int m3u_parse(const char *baseUrl,const void *data, size_t size,void** hParse){
     M3UParser* p = (M3UParser*)malloc(sizeof(M3UParser));
@@ -859,6 +917,15 @@ M3uBaseNode* m3u_get_node_by_time(void* hParse,int64_t timeUs){
     node = get_node_by_time(p,timeUs);
     return node;
 
+}
+M3uBaseNode* m3u_get_node_by_url(void* hParse,char *srcurl){
+    if(NULL ==hParse|| srcurl==NULL){
+        return NULL;
+    }
+    M3UParser* p = (M3UParser*)hParse;
+    M3uBaseNode* node = NULL;
+    node = get_node_by_url(p,srcurl);
+    return node;
 }
 int64_t m3u_get_node_span_size(void* hParse,int start_index,int end_index){
     if(NULL ==hParse||start_index<0||end_index<0||end_index<start_index){

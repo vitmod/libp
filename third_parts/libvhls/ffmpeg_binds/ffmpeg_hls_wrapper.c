@@ -73,13 +73,13 @@ static int interrupt_call_cb(void){
     
 }
 static int ffmpeg_hls_open(URLContext *h, const char *filename, int flags){
-    if(h == NULL|| filename == NULL||strstr(filename,"vhls:")==NULL){
+    if(h == NULL|| filename == NULL||(strstr(filename,"vhls:")==NULL&&strstr(filename,"vrwc:")==NULL)){
         return -1;
     }
     int ret = -1;
     void* session = NULL;
     int prop_prefix_size = strlen("vhls:"); 
-    ret = m3u_session_open(filename+prop_prefix_size,h->headers,&session);
+    ret = m3u_session_open(filename+prop_prefix_size,h->headers,&session, h);
     if(ret<0){
         RLOG("Failed to open session\n");
         return ret;
@@ -129,7 +129,7 @@ static int ffmpeg_hls_read(URLContext *h, unsigned char *buf, int size){
     do {
         if (url_interrupt_cb()>0) {
             RLOG("url_interrupt_cb\n");
-            len = 0;
+            len = AVERROR(EIO);
             break;
         }
         len = m3u_session_read_data(hSession, buf,size); //wait read.
@@ -472,3 +472,16 @@ URLProtocol vhls_protocol = {
     .url_setcmd             = ffmpeg_hls_setopt,
     .url_getinfo            = ffmpeg_hls_getopt,
 };
+
+URLProtocol vrwc_protocol = {//for verimatrix drm link
+    .name                   = "vrwc",
+    .url_open               = ffmpeg_hls_open,
+    .url_read               = ffmpeg_hls_read,
+    .url_seek               = ffmpeg_hls_seek,
+    .url_close              = ffmpeg_hls_close,
+    .url_exseek             = ffmpeg_hls_exseek, /*same as seek is ok*/
+    .url_get_file_handle    = ffmpeg_hls_get_handle,
+    .url_setcmd             = ffmpeg_hls_setopt,
+    .url_getinfo            = ffmpeg_hls_getopt,
+};
+

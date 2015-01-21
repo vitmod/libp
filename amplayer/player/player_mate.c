@@ -196,7 +196,9 @@ static int player_mate_thread_cmd_proxy(play_para_t *player, struct player_mate 
         ffmpeg_interrupt_light(player->thread_mgt.pthread_id);
         codec_resume(player->codec);  /*auto resume on*/
     }
-
+    if (p_para->playctrl_info.search_flag) {
+        set_black_policy(0);
+    }
     if (p_para->playctrl_info.end_flag) {
         log_print("player_mate: end_flag! \n");
         update_playing_info(p_para);

@@ -278,6 +278,26 @@ int codec_stereo(codec_para_t *p)
     return ret;
 }
 
+/* @brief  codec_lr_mix 
+* @param[in]  p  Pointer of codec parameter structure
+*
+* @return     Command result
+*/
+/* --------------------------------------------------------------------------*/
+int codec_lr_mix_set(codec_para_t *p,int enable)
+{
+    int ret;
+    ret = audio_channel_lrmix_flag_set(p->adec_priv,enable);
+    return ret;
+}
+
+int codec_pcmpara_Applied_get(codec_para_t *p,int *pfs,int *pch)
+{
+    int ret;
+    ret = audio_decpara_get(p->adec_priv,pfs,pch);
+    return ret;
+}
+
 /* --------------------------------------------------------------------------*/
 /**
 * @brief  codec_audio_automute  Set decoder to automute mode

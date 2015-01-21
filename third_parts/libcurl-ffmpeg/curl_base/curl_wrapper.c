@@ -16,9 +16,6 @@ static void response_process(char * line, Curl_Data * buf)
     if (line[0] == '\0') {
         return;
     }
-    if (!buf->ctx->connected) {
-        buf->ctx->connected = 1;
-    }
     CLOGI("[response]: %s", line);
     char * ptr = line;
     if (!strncasecmp(line, "HTTP", 4)) {
@@ -29,6 +26,9 @@ static void response_process(char * line, Curl_Data * buf)
         return;
     }
     if (200 == buf->handle->http_code) {
+        if (!buf->ctx->connected) {
+            buf->ctx->connected = 1;
+        }
         if (!strncasecmp(line, "Content-Length", 14)) {
             while (!isspace(*ptr) && *ptr != '\0') {
                 ptr++;
@@ -50,6 +50,9 @@ static void response_process(char * line, Curl_Data * buf)
         return;
     }
     if (206 == buf->handle->http_code) {
+        if (!buf->ctx->connected) {
+            buf->ctx->connected = 1;
+        }
         if (!strncasecmp(line, "Content-Range", 13)) {
             const char * slash = NULL;
             if ((slash = strchr(ptr, '/')) && strlen(slash) > 0) {
@@ -379,12 +382,12 @@ static int curl_wrapper_easy_setopt_http_basic(CURLWHandle *h, Curl_Data *buf)
     if ((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_BUFFERSIZE, h->c_buffersize))) != 0) {
         goto CRET;
     }
-    /*
-    if((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_FORBID_REUSE, 1L))) != 0)
+    if((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_FORBID_REUSE, 1L))) != 0) {
         goto CRET;
-    if((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_FRESH_CONNECT, 1L))) != 0)
+    }
+    if((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_FRESH_CONNECT, 1L))) != 0) {
         goto CRET;
-    */
+    }
     if ((ret = curl_wrapper_setopt_error(h, curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L))) != 0) {
         goto CRET;
     }
@@ -498,6 +501,7 @@ static int curl_wrapper_open_cnx(CURLWContext *con, CURLWHandle *h, Curl_Data *b
     con->quited = 0;
     con->chunked = 0;
     con->connected = 0;
+    con->open_fail = 0;
     h->quited = 0;
     h->open_quited = 0;
     h->seekable = 0;
@@ -521,6 +525,7 @@ int curl_wrapper_http_keepalive_open(CURLWContext *con, CURLWHandle *h, const ch
     con->quited = 0;
     con->chunked = 0;
     con->connected = 0;
+    con->open_fail = 0;
     h->quited = 0;
     h->open_quited = 0;
     h->seekable = 0;
@@ -557,7 +562,7 @@ int curl_wrapper_perform(CURLWContext *con)
     if(con->interrupt) {
         if((*(con->interrupt))()) {
             CLOGI("curl_wrapper_perform interrupted when multi perform\n");
-            return C_ERROR_UNKNOW;
+            return C_ERROR_OK; // prevent read fail.
         }
     }
 
@@ -612,6 +617,11 @@ RETRY:
             break;
         }
         if (con->connected && !con->chunked && select_zero_cnt == SELECT_RETRY_TIMES) {
+            select_breakout_flag = 1;
+            break;
+        }
+        if (!con->connected && select_zero_cnt == SELECT_RETRY_WHEN_CONNECTING) {
+            con->open_fail = 1;
             select_breakout_flag = 1;
             break;
         }

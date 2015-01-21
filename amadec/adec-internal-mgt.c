@@ -65,6 +65,7 @@ audio_type_t audio_type[] = {
     {ACODEC_FMT_MULAW,"pcm"},
 
     {ACODEC_FMT_ADPCM,"adpcm"},
+    {ACODEC_FMT_WMAVOI,"wmavoi"},
     {ACODEC_FMT_NULL, "null"},
    
 };
@@ -132,7 +133,6 @@ static void start_adec(aml_audio_dec_t *audec)
 	
     audec->no_first_apts = 0;
     if (audec->state == INITTED) {
-        audec->state = ACTIVE;
 
         while ((!audiodsp_get_first_pts_flag(dsp_ops)) && (!audec->need_stop) && (!audec->no_first_apts)) {
             adec_print("wait first pts checkin complete times=%d,!\n",times);
@@ -185,6 +185,7 @@ static void start_adec(aml_audio_dec_t *audec)
         }
 
         aout_ops->resume(audec);
+        audec->state = ACTIVE;
 
     }
 }
@@ -583,12 +584,13 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
         }
     }
 
-    if(match_types(t->type, "thd")){
-        adec_print("audio format is truehd, so chose AUDIO_ARM_DECODER");
+    if(match_types(t->type, "thd")||match_types(t->type, "wmavoi")){
+        adec_print("audio format is %s, so chose AUDIO_ARM_DECODER",t->type);
         audio_decoder = AUDIO_ARM_DECODER;
         goto exit;
     }
-	
+
+
 	ret = property_get("media.arm.audio.decoder",value,NULL);
 	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
 	if (ret>0 && match_types(t->type,value))
@@ -598,17 +600,29 @@ static int set_audio_decoder(aml_audio_dec_t *audec)
 		if(match_types(t->type,type_value))
 		{   
             #ifdef DOLBY_USE_ARMDEC
-			adec_print("DOLBY_USE_ARMDEC=%d",DOLBY_USE_ARMDEC);
-			audio_decoder = AUDIO_ARM_DECODER;					  
-            #else
-			audio_decoder = AUDIO_ARC_DECODER;
-            adec_print("<DOLBY_USE_ARMDEC> is not DEFINED,use ARC_Decoder\n!");
-			#endif
-		}else{
+            adec_print("DOLBY_USE_ARMDEC=%d",DOLBY_USE_ARMDEC);
             audio_decoder = AUDIO_ARM_DECODER;
-         }
-		goto exit;		
-	} 
+            #else
+            audio_decoder = AUDIO_ARC_DECODER;
+            adec_print("<DOLBY_USE_ARMDEC> is not DEFINED,use ARC_Decoder\n!");
+            #endif
+        }
+        #ifndef USE_ARM_AUDIO_DEC
+        else if(match_types(t->type, "dts")){
+            if(access("/system/etc/firmware/audiodsp_codec_dtshd.bin",F_OK)){
+                adec_print("using no license dts component");
+                audio_decoder = AUDIO_ARM_DECODER;
+            }else{
+                adec_print("using audiodsp dts decoder");
+                audio_decoder = AUDIO_ARC_DECODER;
+            }
+        }
+        #endif
+        else{
+            audio_decoder = AUDIO_ARM_DECODER;
+        }
+        goto exit;
+    }
 	
 	ret = property_get("media.arc.audio.decoder",value,NULL);
 	adec_print("media.amplayer.audiocodec = %s, t->type = %s\n", value, t->type);
@@ -695,6 +709,8 @@ int audiodec_init(aml_audio_dec_t *audec)
     set_audio_decoder(audec);
     audec->format_changed_flag=0;
     audec->audio_decoder_enabled  = -1;//default set a invalid value
+    audec->mix_lr_channel_enable  = -1;
+    audec->VersionNum=-1;
     if(am_getconfig_bool("media.libplayer.wfd"))  {
   	wfd = 1;
    }		

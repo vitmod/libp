@@ -877,8 +877,9 @@ static int mpegts_add_header(play_para_t *para)
     am_packet_t *pkt = para->p_pkt;
     AVFormatContext *s = para->pFormatCtx;
     int ret = PLAYER_FAILED;
-    if(s->ts_hevc_csd_valid == 1) {
-        MEMCPY(pkt->hdr->data, s->ts_hevc_csd_packet, 188);
+    if(s->ts_video_header_valid  == 1)
+    {
+        MEMCPY(pkt->hdr->data, s->ts_video_header_packet, 188);
         pkt->hdr->size = 188;
         pkt->type = CODEC_COMPLEX;
         ret = PLAYER_SUCCESS;
@@ -893,7 +894,7 @@ static int mpegts_add_header(play_para_t *para)
 
         pkt->avpkt_newflag = 1;
         ret = write_av_packet(para);
-        log_print("[mpegts_add_header]write ts header for hevc!\n");
+        log_print("[mpegts_add_header]write ts header!\n");
     }
     return ret;
 }
@@ -1296,8 +1297,9 @@ int pre_header_feeding(play_para_t *para)
             pkt->hdr = NULL;
         }
     }
-    /*else if (para->stream_type == STREAM_TS && para->vstream_info.has_video && VFORMAT_HEVC == para->vstream_info.video_format && para->playctrl_info.time_point > 0) {
-        if (pkt->hdr == NULL) {
+    else if (am_getconfig_bool("media.amplayer.tsaddheader") && para->stream_type == STREAM_TS &&para->vstream_info.has_video &&( VFORMAT_MPEG12 == para->vstream_info.video_format  || VFORMAT_H264== para->vstream_info.video_format )) {
+   
+         if (pkt->hdr == NULL) {
             pkt->hdr = MALLOC(sizeof(hdr_buf_t));
             pkt->hdr->data = (char *)MALLOC(HDR_BUF_SIZE);
             if (!pkt->hdr->data) {
@@ -1308,6 +1310,7 @@ int pre_header_feeding(play_para_t *para)
         }
         ret = mpegts_add_header(para);
         if(ret != PLAYER_SUCCESS) {
+ 	        log_print("mpegts add header failed  %x \n",ret);
             return ret;
         }
         if (pkt->hdr) {
@@ -1318,7 +1321,7 @@ int pre_header_feeding(play_para_t *para)
             FREE(pkt->hdr);
             pkt->hdr = NULL;
         }
-    }*/
+    }
     return PLAYER_SUCCESS;
 }
 

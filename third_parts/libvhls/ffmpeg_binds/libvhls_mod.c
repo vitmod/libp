@@ -20,11 +20,14 @@ ammodule_t AMPLAYER_MODULE_INFO_SYM = {
     reserved : {0},
 };
 
-extern URLProtocol vhls_protocol;	
+extern URLProtocol vhls_protocol;
+extern URLProtocol vrwc_protocol;
+
 int libvhls_mod_init(const struct ammodule_t* module, int flags)
 {
     LOGI("libvhls module init\n");
     av_register_protocol(&vhls_protocol);
+    av_register_protocol(&vrwc_protocol);//add for verimatrix drm link
     return 0;
 }
 

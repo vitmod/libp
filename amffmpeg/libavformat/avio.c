@@ -117,6 +117,7 @@ static int url_alloc_for_protocol (URLContext **puc, struct URLProtocol *up,
     uc->is_streamed = 0; /* default = not streamed */
     uc->http_code = -1;
     uc->max_packet_size = 0; /* default: stream file */
+    uc->notify_id= -1;
     if (up->priv_data_size) {
         uc->priv_data = av_mallocz(up->priv_data_size);
         if (up->priv_data_class) {
@@ -257,10 +258,26 @@ int ffurl_alloc(URLContext **puc, const char *filename, int flags)
     return AVERROR(ENOENT);
 }
 
+static int is_use_androidhttp(const char *filename)
+{
+    char prop[PATH_MAX];
+    const char default_prop[] = "beinsport";
+    if(am_getconfig("media.libplayer.apklist", prop, NULL)){
+        if(strstr(filename, prop)){
+            return 1;
+        }
+    }
+    if(strstr(filename, default_prop)){
+        return 1;
+    }
+    return 0;
+}
+
 int ffurl_open(URLContext **puc, const char *filename, int flags)
 {
 	int ret;
-	if(am_getconfig_bool("media.libplayer.curlenable") && (!strncmp(filename, "https", strlen("https")) || !strncmp(filename, "shttps", strlen("shttps")))) {
+	if(am_getconfig_bool("media.libplayer.curlenable") && (!strncmp(filename, "https", strlen("https")) || !strncmp(filename, "shttps", strlen("shttps")))
+        && !is_use_androidhttp(filename)) {
 		char * file = (char *)av_malloc(strlen(filename) + 10);
 		int num = snprintf(file, strlen(filename) + 10, "curl:%s", filename);
 		ret = ffurl_alloc(puc, file, flags);
@@ -281,7 +298,8 @@ int ffurl_open(URLContext **puc, const char *filename, int flags)
 int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *headers, int * http_error_flag)
 {
 	int ret;
-	if(am_getconfig_bool("media.libplayer.curlenable")  && (!strncmp(filename, "https", strlen("https")) || !strncmp(filename, "shttps", strlen("shttps")))) {
+	if(am_getconfig_bool("media.libplayer.curlenable")  && (!strncmp(filename, "https", strlen("https")) || !strncmp(filename, "shttps", strlen("shttps")))
+        && !is_use_androidhttp(filename)) {
 		char * file = (char *)av_malloc(strlen(filename) + 10);
 		int num = snprintf(file, strlen(filename) + 10, "curl:%s", filename);
 		ret = ffurl_alloc(puc, file, flags);
@@ -295,10 +313,10 @@ int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *h
 	if(headers){
 		(*puc)->headers=av_strdup(headers);
 	}
-    if(flags&URL_SEGMENT_MEDIA){	 
+    if(flags&URL_SEGMENT_MEDIA){
         (*puc)->is_segment_media = 1;
-    }else{       
-	 (*puc)->is_segment_media = 0;
+    }else{
+        (*puc)->is_segment_media = 0;
     }
     ret = ffurl_connect(*puc);
     if(http_error_flag) {
@@ -309,6 +327,58 @@ int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *h
             *http_error_flag = -503;
         if(500 == (*puc)->http_code)
             *http_error_flag = -500;
+        if(408 == (*puc)->http_code)
+            *http_error_flag = -408;
+    }
+    if (!ret)
+        return 0;
+    ffurl_close(*puc);
+    *puc = NULL;
+    return ret;
+}
+int ffurl_open_h2(URLContext **puc, const char *filename, int flags,const char *headers, int * http_error_flag, const unsigned long options)
+{
+    if (!options && !(*(AVDictionary **)options))
+        return ffurl_open_h(puc, filename, flags, headers, http_error_flag);
+
+    int ret;
+    if(am_getconfig_bool("media.libplayer.curlenable")  && (!strncmp(filename, "http", strlen("http")) || !strncmp(filename, "shttp", strlen("shttp")))
+        && !is_use_androidhttp(filename)) {
+        char * file = (char *)av_malloc(strlen(filename) + 10);
+        int num = snprintf(file, strlen(filename) + 10, "curl:%s", filename);
+        ret = ffurl_alloc(puc, file, flags);
+        av_free(file);
+        file = NULL;
+    } else {
+        ret = ffurl_alloc(puc, filename, flags);
+    }
+    if (ret)
+        return ret;
+    if(headers){
+        (*puc)->headers=av_strdup(headers);
+    }
+    if(flags&URL_SEGMENT_MEDIA){	 
+        (*puc)->is_segment_media = 1;
+    }else{       
+        (*puc)->is_segment_media = 0;
+    }
+    AVDictionary **opt = (AVDictionary **)options;
+    int notify_id = -1;
+    AVDictionaryEntry *tag = av_dict_get(*opt, "pid", NULL, 0);
+    if (tag)
+        notify_id = atoi(tag->value);
+    (*puc)->notify_id = notify_id;
+    ret = ffurl_connect(*puc);
+    if(http_error_flag) {
+        *http_error_flag = 0;
+        if(404 == (*puc)->http_code)
+            *http_error_flag = -404;
+        if(503 == (*puc)->http_code)
+            *http_error_flag = -503;
+        if(500 == (*puc)->http_code)
+            *http_error_flag = -500;
+        if(408 == (*puc)->http_code)
+            *http_error_flag = -408;
     }
     if (!ret)
         return 0;

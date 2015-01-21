@@ -36,6 +36,7 @@ player_status 	player_get_state(int pid);
 unsigned int 	player_get_extern_priv(int pid);
 int     player_enable_autobuffer(int pid, int enable);
 int     player_set_autobuffer_level(int pid, float min, float middle, float max);
+int     player_set_disp_lastframe(int pid, int disp);
 
 int 	audio_set_mute(int pid,int mute);
 int 	audio_get_volume_range(int pid,float *min,float *max);
@@ -50,6 +51,9 @@ int 	audio_swap_left_right(int pid);
 int 	audio_left_mono(int pid);
 int 	audio_right_mono(int pid);
 int 	audio_stereo(int pid);
+int     audio_lr_mix_set(int pid,int enable);
+int     audio_cur_pcmpara_Applied_get(int pid,int *pfs,int *pch);
+
 int 	audio_set_spectrum_switch(int pid,int isStart,int interval);
 int 	player_register_update_callback(callback_t *cb,update_state_fun_t up_fn,int interval_s);
 char *player_status2str(player_status status);
@@ -75,9 +79,11 @@ int   GL_2X_scale(int mSwitch);
 int   wait_play_end();
 int   wait_video_unreg();
 int   clear_video_buf();
+int   freescale_is_enable();
 int64_t player_get_lpbufbuffedsize(int pid);
 int64_t player_get_streambufbuffedsize(int pid);
 int audio_get_decoder_enable(int pid);
+int player_closeCodec(int pid);
 
 #ifdef  __cplusplus
 }

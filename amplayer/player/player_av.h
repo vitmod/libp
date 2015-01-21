@@ -72,6 +72,7 @@ int get_cntl_state(am_packet_t *pkt);
 int time_search(struct play_para *para,int flags);
 int player_reset(play_para_t *p_para);
 int	check_avbuffer_enough(play_para_t *para);
+int64_t gettime(void);
 
 
 #ifdef DEBUG_VARIABLE_DUR

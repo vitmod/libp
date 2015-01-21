@@ -52,7 +52,7 @@ extern "C"{
  *----------------------------------------------*/
 
 
-int m3u_session_open(const char* baseUrl,const char* headers,void** hSession);
+int m3u_session_open(const char* baseUrl,const char* headers,void** hSession, void *urlcontext);
 int m3u_session_is_seekable(void* hSession);
 int64_t m3u_session_seekUs(void* hSession,int64_t posUs,int (*interupt_func_cb)());
 int64_t m3u_session_seekUs_offset(void* hSession,int64_t posUs, int64_t *streamoffset);

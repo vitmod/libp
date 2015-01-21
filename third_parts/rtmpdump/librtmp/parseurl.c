@@ -33,7 +33,7 @@
 int RTMP_ParseURL(const char *url, int *protocol, AVal *host, unsigned int *port,
 	AVal *playpath, AVal *app)
 {
-	char *p, *end, *col, *ques, *slash;
+	char *p, *end, *col, *ques, *slash,*space;
 
 	RTMP_Log(RTMP_LOGDEBUG, "Parsing...");
 
@@ -92,6 +92,11 @@ parsehost:
 	ques  = strchr(p, '?');
 	slash = strchr(p, '/');
 
+	space = strchr(p, ' ');
+	if(space) {
+		end = space;
+	}
+	
 	{
 	int hostlen;
 	if(slash)
@@ -158,11 +163,11 @@ parsehost:
                 appnamelen = 8;
         }
 	else { /* app!=ondemand, so app is app[/appinstance] */
-		if(slash4)
+		if(slash4 && slash4 < end)
 			appnamelen = slash4-p;
-		else if(slash3)
+		else if(slash3 && slash3 < end)
 			appnamelen = slash3-p;
-		else if(slash2)
+		else if(slash2 && slash2 < end)
 			appnamelen = slash2-p;
 
 		applen = appnamelen;

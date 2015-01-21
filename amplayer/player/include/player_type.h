@@ -6,7 +6,7 @@
 
 #define MSG_SIZE                    64
 #define MAX_VIDEO_STREAMS           10
-#define MAX_AUDIO_STREAMS           15
+#define MAX_AUDIO_STREAMS           16
 #define MAX_SUB_INTERNAL            64
 #define MAX_SUB_EXTERNAL            24
 #define MAX_SUB_STREAMS             (MAX_SUB_INTERNAL + MAX_SUB_EXTERNAL)
@@ -192,8 +192,8 @@ typedef struct player_info
 	int current_ms;	/*ms*/
 	int last_time;		
 	int error_no;  
-	int start_time;
-	int first_time;
+	int64_t start_time;
+	int64_t first_time;
 	int pts_video;
 	//int pts_pcrscr;
 	unsigned int current_pts;
@@ -321,6 +321,7 @@ typedef struct
 	int is_ts_soft_demux;
 	int reserved [56];					//reserved  for furthur used,some one add more ,can del reserved num
 	int SessionID;
+    int t_duration_ms;                  //duration parsed from url
  }play_control_t; 
 
 #endif

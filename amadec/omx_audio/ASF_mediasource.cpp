@@ -35,7 +35,7 @@ int Asf_MediaSource::set_Asf_MetaData(aml_audio_dec_t *audec)
     mMeta->setInt32(kKeyExtraDataSize, paudio_info->extradata_size);
     mMeta->setInt32(kKeyBlockAlign,paudio_info->block_align);
     
-    ALOGI("ASF-->channels/%d samplerate/%d bitrate/%d  codec_ID/%d extradata_size/%d block_align/%d\n",ChNum,sample_rate,
+    ALOGI("ASF-->channels/%d samplerate/%d bitrate/%d  codec_ID/0x%x extradata_size/%d block_align/%d\n",ChNum,sample_rate,
     paudio_info->bitrate,paudio_info->codec_id,paudio_info->extradata_size,block_align);
 
     if(ChNum==1 && paudio_info->codec_id==CODEC_ID_WMAV2){

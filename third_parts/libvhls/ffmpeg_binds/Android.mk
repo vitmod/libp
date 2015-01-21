@@ -23,6 +23,12 @@ LOCAL_STATIC_LIBRARIES := libhls libhls_http libhls_common libhls_cmf
 LOCAL_SHARED_LIBRARIES :=libamplayer libcutils libssl libamavutils libcrypto
 
 
+
+ifeq ($(BUILD_WITH_VIEWRIGHT_WEB), true)
+ LOCAL_CFLAGS += -DENABLE_VIEWRIGHT_WEB
+ LOCAL_SHARED_LIBRARIES +=libdl 
+endif
+
 LOCAL_MODULE := libvhls_mod
 LOCAL_MODULE_PATH:=$(TARGET_OUT_SHARED_LIBRARIES)/amplayer
 include $(BUILD_SHARED_LIBRARY)

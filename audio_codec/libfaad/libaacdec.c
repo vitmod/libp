@@ -277,7 +277,7 @@ int audio_dec_init(
     gFaadCxt = (FaadContext*)adec_ops->pdecoder;
     memset(gFaadCxt,0,sizeof(FaadContext));
     adec_ops->nInBufSize= AAC_INPUTBUF_SIZE;  //4608 bytes input buffer size
-    adec_ops->nOutBufSize= 3 * adec_ops->channels * adec_ops->samplerate * 16/8; // 3s
+    adec_ops->nOutBufSize= 64*1024;//3 * adec_ops->channels * adec_ops->samplerate * 16/8; // 3s
     gFaadCxt->gChannels=adec_ops->channels;
     gFaadCxt->gSampleRate=adec_ops->samplerate;
     gFaadCxt->init_flag = 0;
@@ -445,7 +445,7 @@ int audio_dec_decode(
 		gFaadCxt->gSampleRate=frameInfo.samplerate;
 		gFaadCxt->gChannels=frameInfo.channels;
 		//code to mute first 1 s  ???
-		#define  MUTE_S  0
+		#define  MUTE_S  0.2
 		if(gFaadCxt->muted_samples == 0){
 			gFaadCxt->muted_samples  = gFaadCxt->gSampleRate*gFaadCxt->gChannels*MUTE_S;
 		}
@@ -512,6 +512,8 @@ int audio_dec_release(
 int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *pAudioInfo)
 {
 	FaadContext *gFaadCxt =	(FaadContext*)adec_ops->pdecoder;
+	NeAACDecStruct* hDecoder = (NeAACDecStruct*)gFaadCxt->hDecoder;
+	adec_ops->NchOriginal=hDecoder->fr_channels;
 	((AudioInfo *)pAudioInfo)->channels = gFaadCxt->gChannels;
 	((AudioInfo *)pAudioInfo)->samplerate =gFaadCxt->gSampleRate;
 	return 0;

@@ -135,7 +135,7 @@ int fetchFile(const char *url, unsigned char **out,int *size){
     if(!strncmp(url,"http",strlen("http"))){
         void* bp = NULL;
         char* redirectUrl = NULL;
-        fetchHttpSmallFile(url,NULL,&bp,size,&redirectUrl);
+        fetchHttpSmallFile(url,NULL,&bp,size,&redirectUrl,NULL);
         if(redirectUrl){
             LOGV("RedirectUrl :%s\n",redirectUrl);
             free(redirectUrl);
@@ -193,7 +193,7 @@ int main(int argc,char** argv){
 #endif
 #ifdef TEST2
 
-    m3u_session_open(argv[1],NULL,&session);
+    m3u_session_open(argv[1],NULL,&session, NULL);
 
 
     int ret = -1;

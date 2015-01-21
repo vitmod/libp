@@ -40,6 +40,8 @@ extern "C"
     int audio_get_soundtrack(void *, int* );	
 	int get_audio_decoder(void);
 	int get_decoder_status(void *p,struct adec_status *adec);
+    int audio_channel_lrmix_flag_set(void *,int enable);
+    int audio_decpara_get(void *handle,int *pfs,int *pch);
 
 #ifdef  __cplusplus
 }

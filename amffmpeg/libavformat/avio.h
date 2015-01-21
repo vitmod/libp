@@ -142,6 +142,7 @@ typedef struct URLContext {
 	int is_segment_media;
     int priv_flags;	
     int64_t priv_info;	
+    int notify_id;
 } URLContext;
 
 #define FLAGS_ISCMF	1<<0 
@@ -149,6 +150,10 @@ typedef struct URLContext {
 
 
 #define URL_PROTOCOL_FLAG_NESTED_SCHEME 1 /*< The protocol name can be the first part of a nested protocol scheme */
+
+#define MEDIA_INFO_DOWNLOAD_START           (10086)
+#define MEDIA_INFO_DOWNLOAD_END             (10087)
+#define MEDIA_INFO_DOWNLOAD_ERROR           (10088)
 
 /**
  * @deprecated This struct is to be made private. Use the higher-level
@@ -684,6 +689,7 @@ int avio_open(AVIOContext **s, const char *url, int flags);
  * @return 0 on success, an AVERROR < 0 on error.
  */
 int avio_open_h(AVIOContext **s, const char *filename, int flags,const char * headers);
+int avio_open_h2(AVIOContext **s, const char *filename, int flags,const char * headers, const unsigned long options);
 
 /**
  * Close the resource accessed by the AVIOContext s and free it.

@@ -53,6 +53,7 @@
 #include <bzlib.h>
 #endif
 
+#define EBML_READ_RETRY_TIME_S 10
 
 #define FF_API_ASS_SSA 1
 
@@ -724,10 +725,17 @@ static int ebml_read_num(MatroskaDemuxContext *matroska, AVIOContext *pb,
     /* The first byte tells us the length in bytes - avio_r8() can normally
      * return 0, but since that's not a valid first ebmlID byte, we can
      * use it safely here to catch EOS. */
-   
+
+    int64_t starttime_s = av_gettime()/1000000;
+RETRY:
     if (!(total = avio_r8(pb))) {
         /* we might encounter EOS here */
         if (!url_feof(pb)) {
+            if(pb->is_slowmedia == 1 && !url_interrupt_cb()) {
+                if(av_gettime()/1000000-starttime_s < EBML_READ_RETRY_TIME_S){
+                    goto RETRY;
+                }
+            }
             int64_t pos = avio_tell(pb);
             av_log(matroska->ctx, AV_LOG_ERROR,
                    "Read error at pos. %"PRIu64" (0x%"PRIx64")\n",

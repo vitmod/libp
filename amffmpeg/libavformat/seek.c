@@ -310,8 +310,12 @@ int64_t ff_gen_syncpoint_search(AVFormatContext *s,
 
     // Find keyframes in all active streams with timestamp/position just before
     // and just after requested timestamp/position.
-    step = s->pb->buffer_size;
-    curpos = FFMAX(pos - step / 2, 0);
+    if(s->bit_rate > 0) { // use bitrate as step size, prevent more search loop.
+        step = s->bit_rate * 10 / 8;
+    } else {
+        step = s->pb->buffer_size;
+    }
+    curpos = FFMAX(pos - step, 0);
     for (;;) {
         avio_seek(s->pb, curpos, SEEK_SET);
         search_hi_lo_keyframes(s,
@@ -329,7 +333,7 @@ int64_t ff_gen_syncpoint_search(AVFormatContext *s,
         curpos = pos - step;
         if (curpos < 0)
             curpos = 0;
-        step *= 2;
+        step *= 4;
 
         // switch termination positions
         for (i = 0; i < s->nb_streams; ++i) {

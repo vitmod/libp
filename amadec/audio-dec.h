@@ -170,6 +170,8 @@ struct aml_audio_dec {
     int tsync_mode;
     adec_thread_mgt_t thread_mgt;
     int dtshdll_flag;
+    int first_apts_lookup_over;	
+    int  audio_decoder_enabled; // if the audio decoder is enabled. if not enabled, muted pcm are output
 
     //dvb pcr master
     int fill_trackzero_thrsh;
@@ -181,8 +183,18 @@ struct aml_audio_dec {
     int64_t apts64;
     int64_t last_apts64;    
     int64_t last_pcrscr64;
-    int first_apts_lookup_over;	
-    int  audio_decoder_enabled; // if the audio decoder is enabled. if not enabled, muted pcm are output
+    int mix_lr_channel_enable;
+
+//code to handle small pts discontinue (1s < diff < 3s )
+    int last_discontinue_apts;//the apts when audio has little discontinue
+    int apts_reset_scr_delay_ms; 
+    int64_t last_discontinue_time;  //the time when littile discontinue happens	
+	
+    int VersionNum;
+    int DTSHDIEC958_FS;
+    int DTSHDIEC958_PktFrmSize;
+    int DTSHDIEC958_PktType;
+    int DTSHDPCM_SamsInFrmAtMaxSR;
 };
 
 //from amcodec
@@ -256,6 +268,7 @@ struct adec_status {
 #define    ACODEC_FMT_TRUEHD 25
 #define    ACODEC_FMT_MPEG1  26  //AFORMAT_MPEG-->mp3,AFORMAT_MPEG1-->mp1,AFROMAT_MPEG2-->mp2
 #define    ACODEC_FMT_MPEG2  27
+#define    ACODEC_FMT_WMAVOI 28
 
 
 

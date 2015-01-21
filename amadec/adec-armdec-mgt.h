@@ -41,6 +41,7 @@ struct audio_decoder_operations
            int bps;
 	    int extradata_size;      ///< extra data size
            char extradata[AUDIO_EXTRA_DATA_SIZE];
+	    int NchOriginal;
 };
 
 enum AVSampleFormat {

@@ -118,7 +118,7 @@ struct MpegTSContext {
     /** raw packet size, including FEC if present            */
     int raw_packet_size;
 
-    int first_hevc_packet;
+    int first_packet;
     int is_hevc;
 
     int pos47;
@@ -630,6 +630,12 @@ static const StreamType DESC_types[] = {
     { 0 },
 };
 
+// pes private data
+static const StreamType PRIV_types[] = {
+    { 0x06, AVMEDIA_TYPE_AUDIO,   CODEC_ID_DTS }, // used for some streams, maybe need to change
+    { 0 },
+};
+
 static void mpegts_find_stream_type(AVStream *st,
                                     uint32_t stream_type, const StreamType *types)
 {
@@ -698,6 +704,30 @@ static int mpegts_set_stream_info(AVStream *st, PESContext *pes,
                 sub_st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
                 sub_st->codec->codec_id   = CODEC_ID_AC3;
                 sub_st->need_parsing = AVSTREAM_PARSE_FULL;
+                sub_pes->sub_st = pes->sub_st = sub_st;
+            }
+            if (pes->stream_type == 0x81) {
+                // HDMV AC3 streams also contain an TRUEHD coded version of the
+                // audio track - add a second stream for this
+                AVStream *sub_st;
+                // priv_data cannot be shared between streams
+                PESContext *sub_pes = av_malloc(sizeof(*sub_pes));
+                if (!sub_pes)
+                    return AVERROR(ENOMEM);
+                memcpy(sub_pes, pes, sizeof(*sub_pes));
+
+                sub_st = av_new_stream(pes->stream, pes->pid);
+                if (!sub_st) {
+                    av_free(sub_pes);
+                    return AVERROR(ENOMEM);
+                }
+
+                av_set_pts_info(sub_st, 33, 1, 90000);
+                sub_st->priv_data = sub_pes;
+                sub_st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
+                sub_st->codec->codec_id   = CODEC_ID_TRUEHD;
+                sub_st->need_parsing = AVSTREAM_PARSE_FULL;
+                sub_st->discard = AVDISCARD_ALL;
                 sub_pes->sub_st = pes->sub_st = sub_st;
             }
         } 
@@ -809,6 +839,8 @@ static void new_pes_packet(PESContext *pes, AVPacket *pkt)
 
     // Separate out the AC3 substream from an HDMV combined TrueHD/AC3 PID
     if (pes->sub_st && pes->stream_type == 0x83 && pes->extended_stream_id == 0x76)
+        pkt->stream_index = pes->sub_st->index;
+    else if (pes->sub_st && pes->stream_type == 0x81 && pes->extended_stream_id == 0x72)
         pkt->stream_index = pes->sub_st->index;
     else
         pkt->stream_index = pes->st->index;
@@ -1339,12 +1371,17 @@ static void pmt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
                 mp4_dec_config_descr_len, mp4_es_id, pid, mp4_dec_config_descr) < 0)
                 break;
 
-            if (prog_reg_desc == AV_RL32("HDMV") && stream_type == 0x83 && pes->sub_st) {
+            if (prog_reg_desc == AV_RL32("HDMV") && (stream_type == 0x83||stream_type == 0x81) && pes->sub_st) {
                 ff_program_add_stream_index(ts->stream, h->id, pes->sub_st->index);
                 pes->sub_st->codec->codec_tag = st->codec->codec_tag;
             }
         }
         p = desc_list_end;
+
+        // prevent conflicting with DTS
+        if(stream_type == STREAM_TYPE_PRIVATE_DATA && st && st->codec->codec_id == CODEC_ID_NONE) {
+            mpegts_find_stream_type(st, stream_type, PRIV_types);
+        }
     }
 
  out:
@@ -1707,6 +1744,58 @@ static int get_hevc_csd_packet(AVFormatContext *s, AVStream * st, const uint8_t 
 }
 #endif
 
+static int   get_mpeg_seq_packet(AVFormatContext *s, const uint8_t *packet)
+{
+    uint32_t  i,j;
+    uint8_t * p = packet;
+    uint8_t * dst = s->ts_video_header_packet;
+      s->ts_video_header_valid = 0;		
+       memset(dst,0,TS_PACKET_SIZE);	  
+	for(i = 0;i < TS_PACKET_SIZE -4; i++){
+		if(p[i] == 0 && p[i+1] == 0 && p[i+2] == 1 && p[i+3] == 0xb3)
+		 break;  
+	 }	 
+	if(i == (TS_PACKET_SIZE-4)) 
+	return -1;	  //not found seq start code 
+   	 
+	 for(j=i;j < TS_PACKET_SIZE -4; j++){
+		 if(p[j] == 0 && p[j+1] == 0 && p[j+2] == 1 && p[j+3] == 0xb8)   
+		  break;  
+	  }   
+	     if(j == (TS_PACKET_SIZE-4)) 
+	   	 return -1;    //not found GOP start code 
+      av_log(NULL,AV_LOG_INFO,"get mpeg seq data , size %d \n",j-i);	   	
+     memcpy(dst, p, j); 
+     s->ts_video_header_valid = 1;	 
+  return 0;
+}	
+static int   Get_H264_Header_Packet(AVFormatContext *s, const uint8_t *packet)
+{
+    uint32_t  i,j;
+    uint8_t * p = packet;
+    uint8_t * dst = s->ts_video_header_packet;
+      s->ts_video_header_valid = 0;		
+       memset(dst,0,TS_PACKET_SIZE);	  
+	for(i = 0;i < TS_PACKET_SIZE -5; i++){
+		if(p[i] == 0 && p[i+1] == 0 && p[i+2] == 0 && p[i+3] == 1&& p[i+4] == 0x67)
+		 break;  
+	 }	 
+	if(i == (TS_PACKET_SIZE-5)) 
+	return -1;	  //not found sps 
+   	 
+	 for(j=i;j < TS_PACKET_SIZE -5; j++){
+		 if(p[j] == 0 && p[j+1] == 0 && p[j+2] == 0 && p[j+3] == 1&& p[j+4] == 0x68)   
+		  break;  
+	  }   
+	     if(j == (TS_PACKET_SIZE-5)) 
+	   	 return -1;    //not found pps 
+      av_log(NULL,AV_LOG_INFO,"get h264 header data , size %d \n",j-i);	   	
+     memcpy(dst, p,TS_PACKET_SIZE); 
+     s->ts_video_header_valid = 1;	 
+  return 0;
+}	
+
+
 static int get_hevc_csd_packet(AVFormatContext *s, AVStream * st, const uint8_t *packet)
 {
     uint8_t * p = packet;
@@ -1913,10 +2002,30 @@ static int handle_packet(MpegTSContext *ts, const uint8_t *packet)
         if(pc) {
             AVStream * st = pc->st;
             if(st) {
-                if(ts->first_hevc_packet == 1 && st->codec->codec_id == CODEC_ID_HEVC) {
-                    get_hevc_csd_packet(s, st, packet);
-                    ts->first_hevc_packet = 0;
-                    ts->is_hevc = 1;
+                if(ts->first_packet == 1 && (st->codec->codec_id == CODEC_ID_MPEG2VIDEO || st->codec->codec_id == CODEC_ID_H264 || st->codec->codec_id == CODEC_ID_HEVC )) {
+					
+                  
+                 if(st->codec->codec_id == CODEC_ID_MPEG2VIDEO)
+                 	{
+                      if(get_mpeg_seq_packet(s, packet) < 0)
+ 		               { 
+ 		                av_log(s, AV_LOG_INFO, "get  mpeg seq packet fail ! \n");	
+			             return 0;	  
+                      	}	  
+                 	} else if(st->codec->codec_id == CODEC_ID_H264)
+                 	{
+                      if(Get_H264_Header_Packet(s, packet) < 0)
+ 		                {
+ 		                    ///av_log(s, AV_LOG_INFO, "get  h264 header packet fail ! \n");	
+			                return 0;
+                      	} 
+		 			  
+                 	} else         	 {
+                 	   get_hevc_csd_packet(s, st, packet);
+		              ts->is_hevc = 1;
+                 	}			  
+	       	 ts->first_packet = 0;		   
+                
                 }
             }
         }
@@ -2252,7 +2361,7 @@ reget_packet_size:
                 st->start_time / 1000000.0, pcrs[0] / 27e6, ts->pcr_incr);
     }
 
-    ts->first_hevc_packet = 1;
+    ts->first_packet = 1;
     check_ac3_dts(s);
     avio_seek(pb, pos, SEEK_SET);
     return 0;
@@ -2516,10 +2625,27 @@ static int read_seek(AVFormatContext *s, int stream_index, int64_t target_ts, in
 	  we need del the diffs;otherwise,we don't seek to the need time;
 	*/
 		if(ts->first_pcrscr==AV_NOPTS_VALUE){/*get the first pcrscr*/
+  			int64_t pos1=0;
+            int64_t temp_pcr1, temp_pcr2, temp_pcr3;
 			pos= avio_tell(s->pb);
-			int64_t pos=0;
-			ts->first_pcrscr=mpegts_get_pcr(s,stream_index,&pos,INT64_MAX);
-			avio_seek(s->pb, pos, SEEK_SET);
+            temp_pcr1 = mpegts_get_pcr(s,stream_index,&pos1,INT64_MAX);
+            av_log(NULL, AV_LOG_INFO, "[%s:%d]pcr1 %lld, pos1 %lld\n", __FUNCTION__, __LINE__, temp_pcr1, pos1);
+            pos1 += ts->raw_packet_size;
+            temp_pcr2 = mpegts_get_pcr(s,stream_index,&pos1,INT64_MAX);
+            av_log(NULL, AV_LOG_INFO, "[%s:%d]pcr2 %lld, pos1 %lld\n", __FUNCTION__, __LINE__, temp_pcr2, pos1);
+            if (temp_pcr2 - temp_pcr1 > 90000) {
+                pos1 += ts->raw_packet_size;
+                temp_pcr3 = mpegts_get_pcr(s,stream_index,&pos1,INT64_MAX);
+                av_log(NULL, AV_LOG_INFO, "[%s:%d]pcr3 %lld\n", __FUNCTION__, __LINE__, temp_pcr3);
+                if (temp_pcr3 - temp_pcr2 < 90000) {
+                    ts->first_pcrscr=temp_pcr2;
+                } else {
+                    ts->first_pcrscr=temp_pcr3;
+                }
+            } else {
+			    ts->first_pcrscr=temp_pcr1;
+			}
+            avio_seek(s->pb, pos, SEEK_SET);
 		}
 		if(ts->first_pcrscr!=AV_NOPTS_VALUE){
 			int64_t pcr_starttimediff;
@@ -2563,7 +2689,7 @@ static int mpegts_read_seek(AVFormatContext *s, int stream_index, int64_t target
     if(!flags) {
         flags = AVSEEK_FLAG_BACKWARD;
     }
-    if(ts->is_hevc == 1){
+    if(!s->pb->is_slowmedia && ts->is_hevc == 1){ // only local h625 playback
         return read_seek2(s, stream_index, target_ts, flags);
     }
     return read_seek(s, stream_index, target_ts, flags);

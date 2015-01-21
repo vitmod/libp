@@ -69,7 +69,7 @@ static int set_stream_info(play_para_t *p_para)
         return -4;
     }
     info->cur_video_index   = p_para->vstream_info.video_index;
-    info->cur_audio_index   = p_para->astream_info.audio_index_tab[p_para->astream_info.audio_index];
+    info->cur_audio_index   = p_para->astream_info.audio_index;
     log_print("set stream info,current audio id:%d\n", p_para->media_info.stream_info.cur_audio_index);
     info->cur_sub_index     = p_para->sstream_info.sub_index;
     info->drm_check         = 0;//(p_para->pFormatCtx->drm.drm_check_value > 0) ? 1 : 0;
@@ -282,8 +282,8 @@ static int set_sstream_info(play_para_t *p_para)
         for (i = 0; i < pCtx->nb_streams; i ++) {
             pStream = pCtx->streams[i];
 
-            if (pStream->no_program) {
-                log_print("[%s:%d]stream %d is no_program\n", __FUNCTION__, __LINE__, i);
+            if (pStream->no_program|| !pStream->stream_valid) {
+                log_print("[%s:%d]stream %d is no_program %d,stream_valid:%d\n", __FUNCTION__, __LINE__, i, pStream->no_program, pStream->stream_valid);
                 continue;
             }
             
@@ -765,7 +765,7 @@ static unsigned int get_current_time(play_para_t *p_para)
     	    {
                 p_para->discontinue_point = p_para->state.current_time;
                 set_discontinue = 1;
-                p_para->discontinue_flag = 0;
+                p_para->discontinue_flag = 1;
                 log_info("vpts discontinue, point=%d\n", p_para->discontinue_point);
                 //discontinue handled, remove audio discontinue flag
                 if (p_para->astream_info.has_audio&&codec)
@@ -801,7 +801,7 @@ static unsigned int get_current_time(play_para_t *p_para)
 		  {
               p_para->discontinue_point = p_para->state.current_time;
               set_discontinue = 1;
-              p_para->discontinue_flag = 0;
+              p_para->discontinue_flag = 1;
               log_info("apts discontinue, point=%d\n", p_para->discontinue_point);
               if (p_para->vstream_info.has_video&&codec) {
                   codec_set_sync_video_discont(codec, 0);
@@ -874,10 +874,19 @@ static void update_current_time(play_para_t *p_para)
                 } else if (p_para->astream_info.start_time != -1) {
                     p_para->state.start_time = p_para->astream_info.start_time;
                 }
+                //choose smaller one, if av start time both exist
+                if(p_para->vstream_info.start_time >= 0 && p_para->astream_info.start_time >= 0)
+                {
+                    if(p_para->astream_info.start_time > p_para->vstream_info.start_time)
+                        p_para->state.start_time = p_para->astream_info.start_time;
+                    else
+                        p_para->state.start_time = p_para->vstream_info.start_time;
+                }
+
             }
             log_debug("[update_current_time]time=%d astart_time=%d  vstart_time=%d last_time=%d\n", time / PTS_FREQ, ((unsigned int)p_para->astream_info.start_time / PTS_FREQ), ((unsigned int)p_para->vstream_info.start_time / PTS_FREQ), p_para->state.last_time);
             if (p_para->state.first_time == -1) {
-                p_para->state.first_time = time;
+                p_para->state.first_time = (int64_t)time;
             }
 
             if ((unsigned int)p_para->state.first_time > 0) {
@@ -893,7 +902,7 @@ static void update_current_time(play_para_t *p_para)
             if ((unsigned int)time > 0 && (unsigned int)p_para->state.start_time > 0) {
                 if ((unsigned int)p_para->state.start_time <= (unsigned int)time) {
                     log_debug("[update_current_time:%d]time=0x%x start_time=0x%x\n", __LINE__, time, p_para->state.start_time);
-                    time -= p_para->state.start_time;
+                    time -= (unsigned int)p_para->state.start_time;
                     log_debug("[update_current_time:%d]time=0x%x (%d)\n", __LINE__, time, time / PTS_FREQ);
                 }
             }
@@ -1027,12 +1036,14 @@ static void check_avbuf_end(play_para_t *p_para, struct buf_status *vbuf, struct
         (!p_para->playctrl_info.end_flag)) {
         //p_para->state.vdec_buf_rp = vbuf->read_pointer;
         //p_para->state.adec_buf_rp = abuf->read_pointer;
+       
+ /* //FFT: do not disable sync for video low level case
         if (p_para->playctrl_info.avsync_enable && p_para->state.current_time >= 3) {
             set_tsync_enable(0);
             p_para->playctrl_info.avsync_enable = 0;
             log_print("[%s:%d]audio or video low buffer ,close av sync!\n", __FUNCTION__, __LINE__);
         }
-
+*/
         if (p_para->playctrl_info.video_low_buffer && p_para->playctrl_info.audio_low_buffer) {
             p_para->playctrl_info.end_flag = 1;
             player_thread_wait(p_para, 1000 * 1000);  // wait 1s for display out all frame
@@ -1164,6 +1175,8 @@ static int  update_buffering_states(play_para_t *p_para,
     float minlevel, maxlevel;
     float avlevel;
     int adelayms= -1,vdelayms= -1,avdelayms=0;
+
+
     if (abuf->size > 0) {
         alevel = (float)abuf->data_len / abuf->size;
 	  ffmepg_seturl_codec_buf_info(p_para,2,abuf->size);	
@@ -1207,61 +1220,6 @@ static int  update_buffering_states(play_para_t *p_para,
     if(vdelayms >=0 && adelayms >=0)
         avdelayms=MIN(vdelayms,adelayms);
     p_para->latest_lowlevel_av_delay_ms = avdelayms;
-    if (p_para->buffering_enable && p_para->buffering_time_s_changed && !p_para->buffering_bitrate_finished) {
-        /*reset  buffering parameters for  frame rate*/
-        int bitrate = 0;
-        int buftime = p_para->buffering_exit_time_s;
-        int vbitrate=0,abitrate=0;
-		
-        if (p_para->pFormatCtx) {
-            bitrate = p_para->pFormatCtx->bit_rate;
-            if (bitrate <= 0 && p_para->pFormatCtx->file_size > 0 && p_para->pFormatCtx->duration > 0) { /*caculate is better */
-                bitrate = (p_para->pFormatCtx->file_size * 8) / (p_para->pFormatCtx->duration / AV_TIME_BASE);
-            }
-        }
-        if(bitrate<=0){
-            bitrate = get_playing_bandwidth(p_para);
-        }
-        if(p_para->vstream_info.has_video && bitrate<1000 || bitrate<10)/*maybe not get real bitrate*/
-        {
-            if(p_para->vstream_info.has_video && get_video_codec(p_para)){
-                codec_get_video_cur_bitrate(get_video_codec(p_para),&vbitrate);
-            }
-            if(p_para->astream_info.has_audio && get_audio_codec(p_para)){
-               codec_get_audio_cur_bitrate(get_audio_codec(p_para),&abitrate);
-            }
-            if(abitrate+vbitrate>bitrate*5){
-                bitrate=abitrate+vbitrate;
-            }
-        }
-        if (bitrate > 0 && (vbuf->size > 0 || abuf->size > 0)) {
-            /*===time * bitrate/8/bufsize=buflevel =====*/
-            p_para->buffering_threshhold_middle = ((float)buftime * bitrate / 8) / (vbuf->size + abuf->size); //for tmp start.we will reset after playing
-            p_para->buffering_threshhold_min = p_para->buffering_threshhold_middle/20;
-            p_para->buffering_threshhold_max = 0.8;
-            if(p_para->buffering_threshhold_min<0.00001)
-                p_para->buffering_threshhold_min=0.00001;
-            if (p_para->buffering_threshhold_middle >= p_para->buffering_threshhold_min * 5) {
-                p_para->buffering_threshhold_middle = p_para->buffering_threshhold_min * 5;
-            }
-            if (p_para->buffering_threshhold_middle >= p_para->buffering_threshhold_max * 9 / 10) {
-                p_para->buffering_threshhold_middle = p_para->buffering_threshhold_max * 9 / 10;
-            }
-            p_para->buffering_bitrate_finished=1;
-        } else {
-            p_para->buffering_threshhold_min = 0.0001;
-            p_para->buffering_threshhold_middle = 0.02; /*used default value*/
-            p_para->buffering_threshhold_max = 0.8;
-            p_para->buffering_bitrate_finished=0;
-        }
-        log_print("buffering threadhold  changed by bufering time(must min=%f<middle=%f<max=%f),buftime=%dS,bitrate=%d\n",
-                  p_para->buffering_threshhold_min,
-                  p_para->buffering_threshhold_middle,
-                  p_para->buffering_threshhold_max,
-                  buftime,
-                  bitrate);
-        /*seted,clear the value,we can changed later,and reset here again*/
-    }
 
     p_para->state.audio_bufferlevel = alevel;
     p_para->state.video_bufferlevel = vlevel;
@@ -1301,47 +1259,70 @@ static int  update_buffering_states(play_para_t *p_para,
         }
         p_para->buffering_force_delay_s = 0;
     }
+
+
+    // discontineu bypass code
+    unsigned long audio_pts_discontinue = 0;
+    unsigned long video_pts_discontinue = 0;
+    int discontinue_flag = 0;
+    codec_para_t *codec = NULL;
+
+    if (p_para->vstream_info.has_video) {
+        if (p_para->vcodec) {
+            codec = p_para->vcodec;
+        } else if (p_para->codec) {
+            codec = p_para->codec;
+        }
+    }
+    if (codec) {
+        audio_pts_discontinue = codec_get_sync_audio_discont(codec);
+        video_pts_discontinue = codec_get_sync_video_discont(codec);
+        if(audio_pts_discontinue > 0 || video_pts_discontinue > 0)
+            discontinue_flag = 1;
+    }
+
     //if (!p_para->playctrl_info.read_end_flag){
     if (p_para->buffering_enable && get_player_state(p_para) != PLAYER_PAUSE) {
+        //log_print(" buffering!!!,avdelayms=%d mS \n",avdelayms);
+        
         if ((get_player_state(p_para) == PLAYER_RUNNING) &&
-            (avdelayms>=0 && avdelayms < (p_para->buffering_enter_time_s*1000/p_para->div_buf_time))  &&
-            (maxlevel < p_para->buffering_threshhold_max * 3 / 4) &&
-            !p_para->playctrl_info.read_end_flag) {
+            ((((avdelayms > 0 && avdelayms < (p_para->buffering_enter_time_s*1000/p_para->div_buf_time)))  &&
+            (maxlevel < p_para->buffering_threshhold_max) &&
+            !p_para->playctrl_info.read_end_flag) ))
+        {
+            p_para->last_buffering_av_delay_ms = avdelayms;
             codec_pause(p_para->codec);
             set_player_state(p_para, PLAYER_BUFFERING);
             update_player_states(p_para, 1);
-            log_print("enter buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS\n",avdelayms,adelayms,vdelayms);
+            log_print("enter buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS, discontinue_flag:%d, \n",avdelayms,adelayms,vdelayms, discontinue_flag);
+            log_print("enter buffering!!!,minlevel(%f,%f), maxlevel(%f,%f), div:%d\n", minlevel, p_para->buffering_threshhold_min, maxlevel, p_para->buffering_threshhold_max, p_para->div_buf_time);
+
             if(p_para->div_buf_time > 1)
                 p_para->div_buf_time--;
         } else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
-                   ((avdelayms > p_para->buffering_exit_time_s*1000/((p_para->div_buf_time>2)?(p_para->div_buf_time>>1):1))  ||
-                    (avdelayms<=0 && minlevel > p_para->buffering_threshhold_middle)  ||
+                (discontinue_flag || (!discontinue_flag && (avdelayms - p_para->last_buffering_av_delay_ms > 5000))) && //buffering at least 5s for iptv
+                   ((!discontinue_flag && (avdelayms > p_para->buffering_exit_time_s*1000/((p_para->div_buf_time>2)?(p_para->div_buf_time>>1):1)) && minlevel > p_para->buffering_threshhold_middle*2/3 )  ||
+                    (minlevel > p_para->buffering_threshhold_middle)  ||
+                    (p_para->force_enter_buffering == 1)  ||
                     (maxlevel > p_para->buffering_threshhold_max) ||
                     p_para->playctrl_info.read_end_flag)) {
             codec_resume(p_para->codec);
             set_player_state(p_para, PLAYER_BUFFER_OK);
             update_player_states(p_para, 1);
-            log_print("leave buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS\n",avdelayms,adelayms,vdelayms);
+            //FFT 
+            amthreadpool_thread_usleep(1000);
+            log_print("leave buffering!!!,avdelayms=%d mS,adelayms %d mS,vdelayms %d mS, p_para->last_buffering_av_delay_ms = %d\n",avdelayms,adelayms,vdelayms,p_para->last_buffering_av_delay_ms);
+            log_print("leave buffering!!!,p_para->buffering_exit_time_s=%f  ,p_para->div_buf_time=%d, discontinue_flag %d \n",p_para->buffering_exit_time_s,p_para->div_buf_time,discontinue_flag);
+            log_print("leave buffering!!!,minlevel=%f ,p_para->buffering_threshhold_middle=%f ,p_para->force_enter_buffering %d \n",minlevel,p_para->buffering_threshhold_middle,p_para->force_enter_buffering);
+            log_print("leave buffering!!!,p_para->buffering_threshhold_max=%f, p_para->playctrl_info.read_end_flag %d \n",p_para->buffering_threshhold_max,p_para->playctrl_info.read_end_flag);
+            p_para->last_buffering_av_delay_ms = 0;
             set_player_state(p_para, PLAYER_RUNNING);
             update_player_states(p_para, 1);
             if(p_para->div_buf_time > 1)
                 p_para->div_buf_time--;
+            p_para->force_enter_buffering = 0;
         }
     }
-
-	/*
-	if running and buffering div_buf_time is>1.
-	we need dec div_buf_time ..
-	if >20 div not valied.
-	*/
-	if(get_player_state(p_para) == PLAYER_RUNNING && p_para->div_buf_time > 1){
-		if(player_get_systemtime_ms()-p_para->play_start_systemtime_us > 20*1000){
-			p_para->div_buf_time= 1;
-		}else if(player_get_systemtime_ms()-p_para->play_start_systemtime_us > 5*1000){
-			p_para->div_buf_time--;
-		}
-	}
-    //}
     return 0;
 }
 
@@ -1403,7 +1384,8 @@ static void update_av_sync_for_audio(play_para_t *p_para)
         }
         if (p_para->playctrl_info.avsync_enable &&
             p_para->abuffer.check_rp_change_cnt <= 0) {
-            set_tsync_enable(0);
+            //FFT:  do not disable sync for audio low level case
+            //set_tsync_enable(0);
             p_para->playctrl_info.avsync_enable = 0;
             if (p_para->abuffer.buf_empty == CHECK_AUDIO_HALT_CNT && p_para->playctrl_info.pts_valid == 0) {
                 p_para->playctrl_info.pts_valid = 1;
@@ -1611,6 +1593,9 @@ int update_playing_info(play_para_t *p_para)
             p_para->state.current_time = p_para->state.seek_point;
             p_para->state.current_ms = p_para->state.current_time * 1000;
         }
+        if(get_player_state(p_para) == PLAYER_PLAYEND && p_para->state.current_time == p_para->state.full_time){
+            p_para->state.current_ms = p_para->state.current_time * 1000;
+        }
         p_para->state.pts_video = get_pts_video(p_para);
     }
 
@@ -1633,10 +1618,15 @@ int check_time_interrupt(long *old_msecond, int interval_ms)
     long new_time_mseconds;
     gettimeofday(&new_time, NULL);
     new_time_mseconds = (new_time.tv_usec / 1000 + new_time.tv_sec * 1000);
-    if (new_time_mseconds > (*old_msecond + interval_ms) || (new_time_mseconds < *old_msecond)) {
+    if (new_time_mseconds > (*old_msecond + interval_ms))
+    {
         ret = 1;
         *old_msecond = new_time_mseconds;
     }
+	else if(new_time_mseconds < *old_msecond)
+	{
+	    *old_msecond = new_time_mseconds; /*update time only.*/
+	}
     return ret;
 }
 

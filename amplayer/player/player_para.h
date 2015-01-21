@@ -50,7 +50,6 @@ typedef struct {
     int             resume_audio;
     aformat_t       audio_format;
     signed short    audio_index;
-    signed short    audio_index_tab[ASTREAM_MAX_NUM]; // some audio stream is unvalid, convert the stream.index to display num.
     unsigned short  audio_pid;
     int             audio_channel;
     int             audio_samplerate;
@@ -116,7 +115,7 @@ typedef  struct {
     int f_step;
     int read_max_retry_cnt;
 	int audio_ready;		
-    int check_lowlevel_eagain_cnt;
+    long check_lowlevel_eagain_time;
     int check_audio_ready_ms;
     int last_seek_time_point;
     int64_t last_seek_offset;
@@ -140,6 +139,12 @@ typedef  struct {
 
     int write_end_header_flag;
     int seek_keyframe;
+    int64_t trick_start_sysus;
+    int64_t trick_wait_time;
+    int64_t trick_start_us;
+    int last_f_step;
+    int trick_wait_flag;
+    int duration_url;         //duration parsed from url, ms
 } p_ctrl_info_t;
 
 int player_dec_init(struct play_para *p_para);
@@ -148,5 +153,4 @@ void player_para_reset(struct play_para *para);
 int player_dec_reset(struct play_para *p_para);
 void player_clear_ctrl_flags(p_ctrl_info_t *cflag);
 int player_offset_init(struct play_para *p_para);
-int player_seek_init(struct play_para *p_para);
 #endif

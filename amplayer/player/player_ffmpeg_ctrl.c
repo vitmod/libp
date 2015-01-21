@@ -183,6 +183,14 @@ int ffmpeg_close_file(play_para_t *am_p)
     am_p->pFormatCtx = NULL;
     return 0;
 }
+int player_notify_callback(int pid, int msg, unsigned long ext1, unsigned long ext2)
+{
+    play_para_t *player_para = NULL;
+    player_para = player_open_pid_data(pid);
+    send_event(player_para, msg, ext1, ext2);
+    player_close_pid_data(pid);
+    return 0;
+}
 int ffmpeg_open_file(play_para_t *am_p)
 {
     AVFormatContext *pFCtx ;
@@ -200,7 +208,14 @@ int ffmpeg_open_file(play_para_t *am_p)
     if (am_p->file_name != NULL) {
 Retry_open:
         //ret = av_open_input_file(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, am_p->start_param ? am_p->start_param->headers : NULL);
-        ret = av_open_input_file_header(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, header);
+        ffmpeg_register_notify(player_notify_callback);
+        AVDictionary *opts = NULL;
+        char player_id[8];
+        snprintf(player_id, sizeof(player_id), "%d", am_p->player_id);
+        av_dict_set(&opts, "pid", player_id, 0);
+        ret = avformat_open_input_header(&pFCtx, am_p->file_name, NULL, &opts, header);
+        av_dict_free(&opts);
+        // ret = av_open_input_file_header(&pFCtx, am_p->file_name, NULL, byteiosize, NULL, header);
         if(am_getconfig_bool_def("media.amplayer.disp_url",1)>0){ 
             log_print("[ffmpeg_open_file] file=%s,header=%s\n", am_p->file_name, header);
         }
@@ -231,6 +246,7 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
         int vpx_flag = 0;
         int flv_flag = 0;
         int hevc_flag = 0;
+		int wmv1_flag = 0;
         int wmv2_flag = 0;
         int rm_flag = 0;
 
@@ -287,6 +303,13 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
 						sprintf(vpx_string, "%s", "wmv2");
 					}
 				}
+				
+				if(st->codec->codec_id == CODEC_ID_WMV1){
+					if(wmv1_flag == 0){
+						wmv1_flag = 1; 					
+						sprintf(vpx_string, "%s", "wmv1");
+					}
+				}
 
 				if(st->codec->codec_id == CODEC_ID_RV40 && (st->codec->width*st->codec->height > 1280*720)){
 					if(rm_flag == 0){
@@ -322,10 +345,27 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
 			      log_print("NOTE: change type->fmt_string=%s to flac\n", type->fmt_string);
 			      type->fmt_string = format_string;
 		  	  }
+			  
+			  if((strstr(type->fmt_string,"rm")!=NULL) && (sttmp->codec->codec_id==CODEC_ID_AAC))
+		 	  {
+			      memset(format_string, 0, sizeof(format_string));
+			      sprintf(format_string, "%s","aac");
+			      log_print("NOTE: change type->fmt_string=%s to aac\n", type->fmt_string);
+			      type->fmt_string = format_string;
+		  	  }
+			  
+			  if((strstr(type->fmt_string,"matroska")!=NULL) && (sttmp->codec->codec_id==CODEC_ID_DTS))
+		 	  {
+			      memset(format_string, 0, sizeof(format_string));
+			      sprintf(format_string, "%s","dts");
+			      log_print("NOTE: change type->fmt_string=%s to dts\n", type->fmt_string);
+			      type->fmt_string = format_string;
+                              matroska_flag = 0;
+		  	  }
 		 }
 	   //-----------------------------------------------------
         // special process for webm/vpx, flv/vp6, hevc/h.265
-		if (matroska_flag || flv_flag || vpx_flag || hevc_flag || wmv2_flag || rm_flag) {
+		if (matroska_flag || flv_flag || vpx_flag || hevc_flag || wmv2_flag || rm_flag || wmv1_flag) {
             int length = 0;
 
             memset(format_string, 0, sizeof(format_string));
@@ -336,7 +376,7 @@ int ffmpeg_parse_file_type(play_para_t *am_p, player_file_type_t *type)
                 length = sprintf(format_string, "%s", type->fmt_string);
             }
 
-            if (vpx_flag == 1 || hevc_flag == 1 || wmv2_flag == 1 || rm_flag == 1) {
+            if (vpx_flag == 1 || hevc_flag == 1 || wmv2_flag == 1 || rm_flag == 1 || wmv1_flag == 1) {
                 sprintf(&format_string[length], ",%s", vpx_string);
                 memset(vpx_string, 0, sizeof(vpx_string));
             }

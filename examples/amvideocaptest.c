@@ -54,9 +54,20 @@ int main(int argc,char **argv)
 	int ret;
 	int fd;
 	int ret_size;
+       int fmt = 2;
+       int byte_per_pix;
+       int format;
 	if(argc<2){
-		printf("usage:%s {file} <width> <height> <end>\n",argv[1]);
+		printf("usage:%s {file} <width> <height> <end> <format>\n",argv[1]);
 		printf("          width&height=0 means used video own size\n");
+              printf("          format:0 :S16_RGB565\n");
+              printf("                     1 :S24_BGR\n");
+              printf("                     2 :S24_RGB\n");
+              printf("                     3 :S32_ARGB\n");
+              printf("                     4 :S32_ABGR\n");
+              printf("                     5 :S32_BGRA\n");
+              printf("                     6 :S32_RGBA\n");
+              printf("          format default S24_RGB\n");
 		return 0;
 	}
 	w=h=needend=0;
@@ -68,25 +79,65 @@ int main(int argc,char **argv)
 	if(argc>=5){
 		sscanf(argv[4],"%d",&needend);
 	}
-    if(w > CAP_WIDTH_MAX || h > CAP_HEIGHT_MAX) {
-        printf("\nERROR (The width must smaller then %d, and the height must smaller then %d\n", CAP_WIDTH_MAX, CAP_HEIGHT_MAX);
-        return -2;
-    }
+    	if(argc>=6){
+		sscanf(argv[5],"%d",&fmt);
+	}
+        if(w > CAP_WIDTH_MAX || h > CAP_HEIGHT_MAX) {
+            printf("\nERROR (The width must smaller then %d, and the height must smaller then %d\n", CAP_WIDTH_MAX, CAP_HEIGHT_MAX);
+            return -2;
+        }
+        if(fmt == 0) {
+            byte_per_pix = 2;
+        }else if(fmt < 3 && fmt > 0) {
+            byte_per_pix = 3;
+        }else if(fmt <= 6 && fmt >= 3) {
+            byte_per_pix = 4;
+        }else if(fmt > 6 || fmt < 0) {
+            fmt = 2;
+            byte_per_pix = 3;
+        }
 	if(w*h==0){
-		bufsize=1920*1088*3;
-		buf=malloc(1920*1088*3);
+		bufsize=1920*1088*byte_per_pix;
+		buf=malloc(1920*1088*byte_per_pix);
 		w=h=0;
 		
 	}else{
-		bufsize=w*h*3;
-		buf=malloc(w*h*3);
+		bufsize=w*h*byte_per_pix;
+		buf=malloc(w*h*byte_per_pix);
 	}
 	if(!buf){
 		printf("malloc bufsize %d failed\n",bufsize);
 		return -2;
 	}
-	printf("start capture %d w=%d h=%d capendfram=%d\n",bufsize,w,h,needend);
-	ret=amvideocap_capframe(buf,bufsize,&w,&h,0,needend,&ret_size);
+
+       switch(fmt) {
+            case 0:
+                format = FORMAT_S16_RGB_565;
+                break;
+            case 1:
+                format = FORMAT_S24_BGR;
+                break;
+            case 2:
+                format = FORMAT_S24_RGB;
+                break;
+            case 3:
+                format = FORMAT_S32_ARGB;
+                break;
+            case 4:
+                format = FORMAT_S32_ABGR;
+                break;
+            case 5:
+                format = FORMAT_S32_BGRA;
+                break;
+            case 6:
+                format = FORMAT_S32_RGBA;
+                break;
+             default:
+                format = FORMAT_S24_RGB;
+                break;
+        }
+	printf("start capture %d w=%d h=%d capendfram=%d,fmt=%d\n",bufsize,w,h,needend,fmt);
+	ret=amvideocap_capframe(buf,bufsize,&w,&h,0,needend,&ret_size, format);
 	printf("finished capture %d,w=%d,h=%d\n",ret_size,w,h);
 	if(ret<0 || ret_size < 0) {
         printf("[ERROR] captrue failed\n");

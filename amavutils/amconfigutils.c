@@ -192,11 +192,27 @@ int am_getconfig_float(const char * path, float *value)
     return ret > 0 ? 0 : -2;
 }
 
+int am_getconfig_int_def(const char * path, int def)
+{
+    char buf[CONFIG_VALUE_MAX];
+    int ret = -1;
+    int value = 0;
+
+    ret = am_getconfig(path, buf,NULL);
+    if (ret > 0) {
+        ret = sscanf(buf, "%d", &value);
+    }
+
+    if(ret<=0)
+        value=def;
+    return value;
+}
+
 float am_getconfig_float_def(const char * path,float defvalue)
 {
     char buf[CONFIG_VALUE_MAX];
     int ret = -1;
-    float value;
+    float value = defvalue;
     ret = am_getconfig(path, buf,NULL);
     if (ret > 0) {
         ret = sscanf(buf, "%f", &value);

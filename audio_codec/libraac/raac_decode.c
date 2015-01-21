@@ -790,14 +790,14 @@ int audio_dec_init(audio_decoder_operations_t *adec_ops)
 	//fmt->valid=CHANNEL_VALID | SAMPLE_RATE_VALID | DATA_WIDTH_VALID;
 	//fmt->channel_num = raac_info.pRaInfo->usNumChannels;
 	//fmt->data_width = 16;
-#ifdef AAC_ENABLE_SBR
+#if 0//def AAC_ENABLE_SBR
 	//fmt->sample_rate = raac_info.pRaInfo->ulActualRate;
 #else
 	//fmt->sample_rate = raac_info.pRaInfo->ulSampleRate;
 	aac_decode  *pdec =   (aac_decode *)raac_dec_info.pDecode->pDecode;
-	if(pdec && pdec->ulSampleRateCore){
+	if(pdec /*&& pdec->ulSampleRateCore*/){
 		//fmt->sample_rate = pdec->ulSampleRateCore;
-		raac_print("ac sr %d, sr %d,sbr %d,core sr %d,aac sr %d \n",raac_info.pRaInfo->ulActualRate, \
+		raac_print("actual  sr %d, sr %d,sbr %d,core sr %d,dec aac sr %d \n",raac_info.pRaInfo->ulActualRate, \
 			raac_info.pRaInfo->ulSampleRate,pdec->bSBR,\
 		      pdec->ulSampleRateCore,pdec->ulSampleRateOut);	
 	}
@@ -857,6 +857,11 @@ int audio_dec_release(audio_decoder_operations_t *adec_ops)
 
 int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *pAudioInfo)
 {
+    aac_decode  *pdec =   (aac_decode *)raac_dec_info.pDecode->pDecode;
+    if(pdec){
+    	((AudioInfo *)pAudioInfo)->channels = pdec->ulNumChannels;
+    	((AudioInfo *)pAudioInfo)->samplerate =pdec->ulSampleRateOut;    
+    }
     return 0;
 }
 

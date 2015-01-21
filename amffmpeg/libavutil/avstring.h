@@ -22,6 +22,7 @@
 #define AVUTIL_AVSTRING_H
 
 #include <stddef.h>
+#include "attributes.h"
 
 /**
  * Return non-zero if pfx is a prefix of str. If it is, *ptr is set to
@@ -129,5 +130,51 @@ char *av_d2str(double d);
  * the user, NULL in case of allocation failure
  */
 char *av_get_token(const char **buf, const char *term);
+
+/**
+ * Split the string into several tokens which can be accessed by
+ * successive calls to av_strtok().
+ *
+ * A token is defined as a sequence of characters not belonging to the
+ * set specified in delim.
+ *
+ * On the first call to av_strtok(), s should point to the string to
+ * parse, and the value of saveptr is ignored. In subsequent calls, s
+ * should be NULL, and saveptr should be unchanged since the previous
+ * call.
+ *
+ * This function is similar to strtok_r() defined in POSIX.1.
+ *
+ * @param s the string to parse, may be NULL
+ * @param delim 0-terminated list of token delimiters, must be non-NULL
+ * @param saveptr user-provided pointer which points to stored
+ * information necessary for av_strtok() to continue scanning the same
+ * string. saveptr is updated to point to the next character after the
+ * first delimiter found, or to NULL if the string was terminated
+ * @return the found token, or NULL when no token is found
+ */
+char *av_strtok(char *s, const char *delim, char **saveptr);
+
+/**
+ * Locale-independent conversion of ASCII characters to lowercase.
+ */
+static inline av_const int av_tolower(int c)
+{
+    if (c >= 'A' && c <= 'Z')
+        c ^= 0x20;
+    return c;
+}
+
+/**
+ * Locale-independent case-insensitive compare.
+ * @note This means only ASCII-range characters are case-insensitive
+ */
+int av_strcasecmp(const char *a, const char *b);
+
+/**
+ * Locale-independent case-insensitive compare.
+ * @note This means only ASCII-range characters are case-insensitive
+ */
+int av_strncasecmp(const char *a, const char *b, size_t n);
 
 #endif /* AVUTIL_AVSTRING_H */

@@ -82,49 +82,49 @@ int PlayerGetVFilterFormat(play_para_t*am_p)
 	
     if (GetSystemSettingString("media.amplayer.disable-vcodecs", value, NULL) > 0) {
 		log_print("[%s:%d]disable_vdec=%s\n", __FUNCTION__, __LINE__, value);
-		if (strstr(value,"MPEG12") != NULL || strstr(value,"mpeg12") != NULL) {
+		if (match_types(value,"MPEG12") != NULL || match_types(value,"mpeg12") != NULL) {
 			filter_fmt |= FILTER_VFMT_MPEG12;
 		} 
-		if (strstr(value,"MPEG4") != NULL || strstr(value,"mpeg4") != NULL) {
+		if (match_types(value,"MPEG4") != NULL || match_types(value,"mpeg4") != NULL) {
 			filter_fmt |= FILTER_VFMT_MPEG4;
 		} 
-		if (strstr(value,"H264") != NULL || strstr(value,"h264") != NULL) {
+		if (match_types(value,"H264") != NULL || match_types(value,"h264") != NULL) {
 			filter_fmt |= FILTER_VFMT_H264;
 		}
-		if (strstr(value,"HEVC") != NULL || strstr(value,"hevc") != NULL) {
+		if (match_types(value,"HEVC") != NULL || match_types(value,"hevc") != NULL) {
 			filter_fmt |= FILTER_VFMT_HEVC;
 		} 
-		if (strstr(value,"MJPEG") != NULL || strstr(value,"mjpeg") != NULL) {
+		if (match_types(value,"MJPEG") != NULL || match_types(value,"mjpeg") != NULL) {
 			filter_fmt |= FILTER_VFMT_MJPEG;
 		} 
-		if (strstr(value,"REAL") != NULL || strstr(value,"real") != NULL) {
+		if (match_types(value,"REAL") != NULL || match_types(value,"real") != NULL) {
 			filter_fmt |= FILTER_VFMT_REAL;
 		} 
-		if (strstr(value,"JPEG") != NULL || strstr(value,"jpeg") != NULL) {
+		if (match_types(value,"JPEG") != NULL || match_types(value,"jpeg") != NULL) {
 			filter_fmt |= FILTER_VFMT_JPEG;
 		} 
-		if (strstr(value,"VC1") != NULL || strstr(value,"vc1") != NULL) {
+		if (match_types(value,"VC1") != NULL || match_types(value,"vc1") != NULL) {
 			filter_fmt |= FILTER_VFMT_VC1;
 		} 
-		if (strstr(value,"AVS") != NULL || strstr(value,"avs") != NULL) {
+		if (match_types(value,"AVS") != NULL || match_types(value,"avs") != NULL) {
 			filter_fmt |= FILTER_VFMT_AVS;
 		} 
-		if (strstr(value,"SW") != NULL || strstr(value,"sw") != NULL) {
+		if (match_types(value,"SW") != NULL || match_types(value,"sw") != NULL) {
 			filter_fmt |= FILTER_VFMT_SW;
 		}
-		if (strstr(value,"HMVC") != NULL || strstr(value,"hmvc") != NULL){
+		if (match_types(value,"HMVC") != NULL || match_types(value,"hmvc") != NULL){
 			filter_fmt |= FILTER_VFMT_HMVC;
 		}
 		/*filter by codec id*/
-		if (strstr(value,"DIVX3") != NULL || strstr(value,"divx3") != NULL){
+		if (match_types(value,"DIVX3") != NULL || match_types(value,"divx3") != NULL){
 			if (codec_id == CODEC_TAG_DIV3)
 				filter_fmt |= FILTER_VFMT_MPEG4;
 		}
-		if (strstr(value,"DIVX4") != NULL || strstr(value,"divx4") != NULL){
+		if (match_types(value,"DIVX4") != NULL || match_types(value,"divx4") != NULL){
 			if (codec_id == CODEC_TAG_DIV4)
 				filter_fmt |= FILTER_VFMT_MPEG4;
 		}
-		if (strstr(value,"DIVX5") != NULL || strstr(value,"divx5") != NULL){
+		if (match_types(value,"DIVX5") != NULL || match_types(value,"divx5") != NULL){
 			if (codec_id == CODEC_TAG_DIV5)
 				filter_fmt |= FILTER_VFMT_MPEG4;
 		}
@@ -162,12 +162,14 @@ int PlayerGetAFilterFormat(const char *prop)
 #ifndef 	USE_ARM_AUDIO_DEC
     /* check the dts/ac3 firmware status */
     if(access("/system/etc/firmware/audiodsp_codec_ddp_dcv.bin",F_OK)){
-#ifndef DOLBY_DAP_EN
-		filter_fmt |= (FILTER_AFMT_AC3|FILTER_AFMT_EAC3);
-#endif
+//#ifndef DOLBY_DAP_EN
+        if(access("/system/lib/libstagefright_soft_ddpdec.so",F_OK))
+            filter_fmt |= (FILTER_AFMT_AC3|FILTER_AFMT_EAC3);
+//#endif
     }
     if(access("/system/etc/firmware/audiodsp_codec_dtshd.bin",F_OK) ){
-		filter_fmt  |= FILTER_AFMT_DTS;
+        if(access("/system/lib/libstagefright_soft_dtshd.so",F_OK))
+            filter_fmt  |= FILTER_AFMT_DTS;
     }
 #else
     if(access("/system/lib/libstagefright_soft_dcvdec.so",F_OK)){
@@ -181,70 +183,70 @@ int PlayerGetAFilterFormat(const char *prop)
 #endif	
     if (GetSystemSettingString(prop, value, NULL) > 0) {
 		log_print("[%s:%d]disable_adec=%s\n", __FUNCTION__, __LINE__, value);
-		if (strstr(value,"mpeg") != NULL || strstr(value,"MPEG") != NULL) {
+		if (match_types(value,"mpeg") != NULL || match_types(value,"MPEG") != NULL) {
 			filter_fmt |= FILTER_AFMT_MPEG;
 		} 
-		if (strstr(value,"pcms16l") != NULL || strstr(value,"PCMS16L") != NULL) {
+		if (match_types(value,"pcms16l") != NULL || match_types(value,"PCMS16L") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMS16L;
 		} 
-		if (strstr(value,"aac") != NULL || strstr(value,"AAC") != NULL) {
+		if (match_types(value,"aac") != NULL || match_types(value,"AAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_AAC;
 		} 
-		if (strstr(value,"ac3") != NULL || strstr(value,"AC#") != NULL) {
+		if (match_types(value,"ac3") != NULL || match_types(value,"AC3") != NULL) {
 			filter_fmt |= FILTER_AFMT_AC3;
 		}		
-		if (strstr(value,"alaw") != NULL || strstr(value,"ALAW") != NULL) {
+		if (match_types(value,"alaw") != NULL || match_types(value,"ALAW") != NULL) {
 			filter_fmt |= FILTER_AFMT_ALAW;
 		} 
-		if (strstr(value,"mulaw") != NULL || strstr(value,"MULAW") != NULL) {
+		if (match_types(value,"mulaw") != NULL || match_types(value,"MULAW") != NULL) {
 			filter_fmt |= FILTER_AFMT_MULAW;
 		} 
-		if (strstr(value,"dts") != NULL || strstr(value,"DTS") != NULL) {
+		if (match_types(value,"dts") != NULL || match_types(value,"DTS") != NULL) {
 			filter_fmt |= FILTER_AFMT_DTS;
 		} 
-		if (strstr(value,"pcms16b") != NULL || strstr(value,"PCMS16B") != NULL) {
+		if (match_types(value,"pcms16b") != NULL || match_types(value,"PCMS16B") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMS16B;
 		} 
-		if (strstr(value,"flac") != NULL || strstr(value,"FLAC") != NULL) {
+		if (match_types(value,"flac") != NULL || match_types(value,"FLAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_FLAC;
 		}
-		if (strstr(value,"cook") != NULL || strstr(value,"COOK") != NULL) {
+		if (match_types(value,"cook") != NULL || match_types(value,"COOK") != NULL) {
 			filter_fmt |= FILTER_AFMT_COOK;
 		} 
-		if (strstr(value,"pcmu8") != NULL || strstr(value,"PCMU8") != NULL) {
+		if (match_types(value,"pcmu8") != NULL || match_types(value,"PCMU8") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMU8;
 		} 
-		if (strstr(value,"adpcm") != NULL || strstr(value,"ADPCM") != NULL) {
+		if (match_types(value,"adpcm") != NULL || match_types(value,"ADPCM") != NULL) {
 			filter_fmt |= FILTER_AFMT_ADPCM;
 		} 
-		if (strstr(value,"amr") != NULL || strstr(value,"AMR") != NULL) {
+		if (match_types(value,"amr") != NULL || match_types(value,"AMR") != NULL) {
 			filter_fmt |= FILTER_AFMT_AMR;
 		} 
-		if (strstr(value,"raac") != NULL || strstr(value,"RAAC") != NULL) {
+		if (match_types(value,"raac") != NULL || match_types(value,"RAAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_RAAC;
 		}
-		if (strstr(value,"wma") != NULL || strstr(value,"WMA") != NULL) {
+		if (match_types(value,"wma") != NULL || match_types(value,"WMA") != NULL) {
 			filter_fmt |= FILTER_AFMT_WMA;
 		} 
-		if (strstr(value,"wmapro") != NULL || strstr(value,"WMAPRO") != NULL) {
+		if (match_types(value,"wmapro") != NULL || match_types(value,"WMAPRO") != NULL) {
 			filter_fmt |= FILTER_AFMT_WMAPRO;
 		} 
-		if (strstr(value,"pcmblueray") != NULL || strstr(value,"PCMBLUERAY") != NULL) {
+		if (match_types(value,"pcmblueray") != NULL || match_types(value,"PCMBLUERAY") != NULL) {
 			filter_fmt |= FILTER_AFMT_PCMBLU;
 		} 
-		if (strstr(value,"alac") != NULL || strstr(value,"ALAC") != NULL) {
+		if (match_types(value,"alac") != NULL || match_types(value,"ALAC") != NULL) {
 			filter_fmt |= FILTER_AFMT_ALAC;
 		} 
-		if (strstr(value,"vorbis") != NULL || strstr(value,"VORBIS") != NULL) {
+		if (match_types(value,"vorbis") != NULL || match_types(value,"VORBIS") != NULL) {
 			filter_fmt |= FILTER_AFMT_VORBIS;
 		}
-		if (strstr(value,"aac_latm") != NULL || strstr(value,"AAC_LATM") != NULL) {
+		if (match_types(value,"aac_latm") != NULL || match_types(value,"AAC_LATM") != NULL) {
 			filter_fmt |= FILTER_AFMT_AAC_LATM;
 		} 
-		if (strstr(value,"ape") != NULL || strstr(value,"APE") != NULL) {
+		if (match_types(value,"ape") != NULL || match_types(value,"APE") != NULL) {
 			filter_fmt |= FILTER_AFMT_APE;
 		} 		
-		if (strstr(value,"eac3") != NULL || strstr(value,"EAC3") != NULL) {
+		if (match_types(value,"eac3") != NULL || match_types(value,"EAC3") != NULL) {
 			filter_fmt |= FILTER_AFMT_EAC3;
 		} 		
     }

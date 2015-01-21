@@ -132,14 +132,14 @@ int tcppool_close_tcplink(URLContext *h)
 	tcppool_close_itemlink(item);
 	return 0;
 }
-int tcppool_refresh_link_and_check(void)
+int tcppool_refresh_link_and_check(int close_all)
 {
 	struct tcppool_link *link;
 	struct item *item;
 	int64_t curtime = av_gettime();
 	FOR_EACH_ITEM_IN_ITEMLIST(&tcppool_list_free, item) {
 		link = (struct tcppool_link *)&item->extdata[0];
-	    if((int)(curtime - link->lastreleasetime_us) > 10*1000*1000){/*10S for default timeout*/
+	    if(close_all || (int)(curtime - link->lastreleasetime_us) > 10*1000*1000){/*10S for default timeout*/
 			av_log(NULL,AV_LOG_INFO,"tcppool:deled timeout link :%s:outtime:%d\n",link->uri,(int)(curtime-link->lastreleasetime_us));
 			itemlist_del_item_locked(&tcppool_list_free,item);
 			tcppool_close_itemlink(item);

@@ -164,7 +164,7 @@ static int check_decoder_worksta(play_para_t *para)
                     log_error("pid:[%d]:: decoder error vdec.status: %x\n", para->player_id, vdec.status);
                     int is_decoder_fatal_error=vdec.status & (DECODER_FATAL_ERROR_SIZE_OVERFLOW | DECODER_FATAL_ERROR_UNKNOW);
                     if (!para->vbuffer.rp_is_changed) {
-                        if (check_time_interrupt(&para->playctrl_info.vbuf_rpchanged_Old_time, 20)) {
+                        if (check_time_interrupt(&para->playctrl_info.vbuf_rpchanged_Old_time, 100)) {
                             para->vbuffer.check_rp_change_cnt --;
                         }
                     } else {
@@ -184,7 +184,7 @@ static int check_decoder_worksta(play_para_t *para)
                           para->playctrl_info.reset_flag = 1;
                           set_black_policy(0);
                           para->playctrl_info.end_flag = 1;
-                          log_print("[%s]time=%d cnt=%d vlevel=%.03f vdec err, need reset\n", __FUNCTION__, para->playctrl_info.time_point, para->vbuffer.check_rp_change_cnt, para->state.video_bufferlevel);
+                          log_print("[%s]time=%f cnt=%d vlevel=%.03f vdec err, need reset\n", __FUNCTION__, para->playctrl_info.time_point, para->vbuffer.check_rp_change_cnt, para->state.video_bufferlevel);
                     }
                 }
             }
@@ -203,7 +203,7 @@ static int check_decoder_worksta(play_para_t *para)
                 setsysfs("/sys/class/audiodsp/codec_fatal_err", "0");
             }
             set_black_policy(0);
-            log_print("adec err::[%s:%d]time=%d ret=%d, need reset\n", __FUNCTION__, __LINE__, para->playctrl_info.time_point, ret);
+            log_print("adec err::[%s:%d]time=%f ret=%d, need reset\n", __FUNCTION__, __LINE__, para->playctrl_info.time_point, ret);
         }
     }
     return PLAYER_SUCCESS;
@@ -312,22 +312,14 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
             para->playctrl_info.fast_forward = 0;
             para->playctrl_info.fast_backward = 0;
             para->playctrl_info.f_step = 0;
+            para->playctrl_info.trick_start_us = 0;
             para->astream_info.has_audio = para->astream_info.resume_audio;
 			para->playctrl_info.reset_drop_buffered_data=0;
             set_cntl_mode(para, TRICKMODE_NONE);
             log_print("seek durint searching, clear ff/fb first\n");
         }
 
-        if ((msg->f_param == para->state.full_time) || (msg->f_param >= para->state.full_time-1)) {
-            para->playctrl_info.end_flag = 1;
-            para->playctrl_info.search_flag = 0;
-            para->playctrl_info.reset_drop_buffered_data=0;
-            set_player_state(para, PLAYER_SEARCHOK);
-            update_player_states(para, 1);
-            set_player_state(para, PLAYER_PLAYEND);
-            update_playing_info(para);
-            update_player_states(para, 1);
-        } else if ((para->start_param->is_livemode == 1) || (msg->f_param < para->state.full_time && msg->f_param >= 0)) {
+        if ((para->start_param->is_livemode == 1) || (msg->f_param < para->state.full_time && msg->f_param >= 0)) {
             para->playctrl_info.search_flag = 1;
             para->playctrl_info.time_point = msg->f_param;
             para->playctrl_info.end_flag = 1;
@@ -337,11 +329,26 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
             para->state.seek_delay = 1000;
         } else if(msg->f_param < 0){
             log_print("pid[%d]::seek reset\n", para->player_id);
-            para->playctrl_info.reset_flag= 1;
+	     para->playctrl_info.reset_flag= 1;
             para->playctrl_info.time_point = -1;
             para->playctrl_info.end_flag = 1;
             para->playctrl_info.reset_drop_buffered_data=1;
-         } else {
+            if (para->stream_type == STREAM_TS &&para->vstream_info.has_video &&( VFORMAT_MPEG12 == para->vstream_info.video_format  || VFORMAT_H264== para->vstream_info.video_format  ))			
+      	    para->playctrl_info.seek_keyframe = 1;            
+	 }else if (msg->f_param == para->state.full_time) {
+            para->playctrl_info.end_flag = 1;
+            para->playctrl_info.search_flag = 0;
+            para->playctrl_info.reset_drop_buffered_data=0;
+            set_player_state(para, PLAYER_SEARCHOK);
+            update_player_states(para, 1);
+            set_player_state(para, PLAYER_PLAYEND);
+            update_playing_info(para);
+            update_player_states(para, 1);
+        } else {
+            if (para->state.full_time == -1 && msg->f_param == 0) {
+			    log_print("not support seek when fulltime is -1\n", para->player_id);
+                return;
+            }
 		    para->playctrl_info.reset_drop_buffered_data=0;
             log_print("pid[%d]::seek time out of range!\n", para->player_id);
             set_player_error_no(para, PLAYER_SEEK_OVERSPILL);
@@ -363,10 +370,17 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
     } else if (msg->ctrl_cmd & CMD_FF) {         
         if (para->vstream_info.has_video) {
             para->playctrl_info.init_ff_fr = 0;
+            para->playctrl_info.last_f_step = para->playctrl_info.f_step;
+            log_print("[%s:%d]f_step %d, last %d\n", __FUNCTION__, __LINE__, para->playctrl_info.f_step, para->playctrl_info.last_f_step);
             if (msg->param == 0) {
                 para->playctrl_info.f_step = 0;
             } else {
                 para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
+                if (para->playctrl_info.fast_backward || (para->playctrl_info.last_f_step != para->playctrl_info.f_step)) {
+                    log_print("[%s:%d]ff/fb change, reset start\n", __FUNCTION__, __LINE__);
+                    para->playctrl_info.trick_start_us = 0;
+                }
+
                 para->playctrl_info.fast_forward = 1;
                 para->playctrl_info.fast_backward = 0;
 					        
@@ -388,10 +402,16 @@ void check_msg(play_para_t *para, player_cmd_t *msg)
     } else if (msg->ctrl_cmd & CMD_FB) {         
         if (para->vstream_info.has_video) {
             para->playctrl_info.init_ff_fr = 0;
+            para->playctrl_info.last_f_step = para->playctrl_info.f_step;
+            log_print("[%s:%d]f_step %d, last %d\n", __FUNCTION__, __LINE__, para->playctrl_info.f_step, para->playctrl_info.last_f_step);
             if (msg->param == 0) {
                 para->playctrl_info.f_step = 0;
             } else {
                 para->playctrl_info.f_step = msg->param * FF_FB_BASE_STEP;
+                if (para->playctrl_info.fast_forward || (para->playctrl_info.last_f_step != para->playctrl_info.f_step)) {
+                    log_print("[%s:%d]ff/fb change, reset start\n", __FUNCTION__, __LINE__);
+                    para->playctrl_info.trick_start_us = 0;
+                }
                 para->playctrl_info.fast_backward = 1;
                 para->playctrl_info.fast_forward = 0;					        
                 if (para->playctrl_info.pause_flag) {
@@ -529,6 +549,7 @@ int check_flag(play_para_t *p_para)
         p_para->oldcmd = *msg;
         p_para->oldcmdtime = player_get_systemtime_ms();
         log_print("pid[%d]:: [check_flag:%d]cmd=%x set_mode=%x info=%x param=%d fparam=%f\n", p_para->player_id, __LINE__, msg->ctrl_cmd, msg->set_mode, msg->info_cmd, msg->param, msg->f_param);
+        log_print("[check_flag:%d]endflag %d\n", __LINE__, p_para->playctrl_info.end_flag);
         if (msg->ctrl_cmd != CMD_SEARCH && p_para->avsynctmpchanged > 0) {
             /*not search now,resore the sync states...*/
             set_tsync_enable(p_para->oldavsyncstate);
@@ -557,7 +578,10 @@ int check_flag(play_para_t *p_para)
         } else if (p_para->playctrl_info.search_flag) {
             set_black_policy(0);
         }
-        return BREAK_FLAG;
+
+        if (!p_para->playctrl_info.fast_forward && !p_para->playctrl_info.fast_backward) {
+            return BREAK_FLAG;
+        }
     }
 
     if ((p_para->playctrl_info.fast_forward ||
@@ -573,13 +597,18 @@ int check_flag(play_para_t *p_para)
             p_para->playctrl_info.fast_forward = 0;
             p_para->playctrl_info.fast_backward = 0;
             p_para->playctrl_info.search_flag = 1;
+            p_para->playctrl_info.trick_start_us = 0;
             p_para->astream_info.has_audio = p_para->astream_info.resume_audio;
             set_cntl_mode(p_para, TRICKMODE_NONE);
         }
-        log_print("pid[%d]::[%s:%d]ff=%d fb=%d step=%d curtime=%d timepoint=%d\n", p_para->player_id, __FUNCTION__, __LINE__,
+        log_print("pid[%d]::[%s:%d]ff=%d fb=%d step=%d curtime=%d timepoint=%f\n", p_para->player_id, __FUNCTION__, __LINE__,
                   p_para->playctrl_info.fast_forward, p_para->playctrl_info.fast_backward,
                   p_para->playctrl_info.f_step, p_para->state.current_time, p_para->playctrl_info.time_point);
-        return BREAK_FLAG;
+        log_print("[%s:%d]last step %d\n", __FUNCTION__, __LINE__, p_para->playctrl_info.last_f_step);
+        if (p_para->playctrl_info.last_f_step && (p_para->playctrl_info.f_step != 0))
+            return NONO_FLAG;
+        else
+            return BREAK_FLAG;
     }
 
     if (p_para->playctrl_info.pause_flag) {
@@ -688,7 +717,8 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
     p_para->playctrl_info.has_sub_flag  = c_para->hassub;
     p_para->playctrl_info.loop_flag     = c_para->loop_mode;
     p_para->playctrl_info.time_point    = c_para->t_pos;
-    log_print("hassub %x\n",c_para->hassub);
+    p_para->playctrl_info.duration_url  = c_para->t_duration_ms;
+    log_print("hassub %x starttime:%f(ms) duration_url:%d(ms) \n",c_para->hassub,c_para->t_pos,c_para->t_duration_ms);
     if (am_getconfig_bool("media.amplayer.noaudio")) {
         p_para->playctrl_info.no_audio_flag = 1;
     }
@@ -721,8 +751,8 @@ void update_player_start_paras(play_para_t *p_para, play_control_t *c_para)
             p_para->buffering_exit_time_s = c_para->buffing_starttime_s;
         }
 		p_para->buffering_time_s_changed = 1;
-		p_para->buffering_enter_time_s = am_getconfig_float_def("media.amplayer.onbuffering.S",1.0); //1S
-        p_para->div_buf_time = 10;
+		p_para->buffering_enter_time_s = am_getconfig_float_def("media.amplayer.onbuffering.S",0.120); //120ms
+        p_para->div_buf_time = (int)am_getconfig_float_def("media.amplayer.divtime",10);
         log_print("set buffering exit time to %f S,enter time t %f S\n", p_para->buffering_exit_time_s,p_para->buffering_enter_time_s);
         if (c_para->buffing_starttime_s > 0 && c_para->buffing_middle <= 0) {
             c_para->buffing_middle = 0.02;    //for tmp start.we will reset after start.
@@ -782,9 +812,8 @@ static int check_start_cmd(play_para_t *player)
         if (msg->ctrl_cmd & CMD_SEARCH) {
             if (msg->f_param < player->state.full_time && msg->f_param >= 0) {
                 player->playctrl_info.time_point = msg->f_param;
-                check_msg(player, msg);
+                log_print("pid[%d]::seek before start, set time_point to %f\n", player->player_id, player->playctrl_info.time_point);
                 player->playctrl_info.end_flag = 0;
-                log_print("pid[%d]::seek before start, set time_point to %f search_flag=%d\n", player->player_id, player->playctrl_info.time_point,player->playctrl_info.search_flag);
                 message_free(msg);
                 msg = NULL;
                 return 0;
@@ -838,7 +867,6 @@ static void player_para_init(play_para_t *para)
     para->discontinue_point = 0;
     para->discontinue_flag = 0;
     para->first_index = -1;
-    para->karaok_flag = get_karaok_flag();
     para->state.seek_point = 0;
     para->state.seek_delay = 0;
 }
@@ -987,21 +1015,6 @@ void *player_thread(play_para_t *player)
                 update_player_states(player, 1);
                 goto release0;
             }
-	     else{
-                if (player->playctrl_info.time_point >= 0) {
-                	log_print("pid[%d]::do the init seek search_flag=%d\n", player->player_id,player->playctrl_info.search_flag);
-                	ret=player_seek_init(player);
-		     	if(ret==PLAYER_SUCCESS&&player->playctrl_info.search_flag){
-		     		log_print("pid[%d]::update PLAYER_SEARCHOK status\n", player->player_id);
-		            	set_player_state(player, PLAYER_SEARCHOK);
-		            	update_playing_info(player);
-		            	update_player_states(player, 1);
-		     	}
-		     	else
-		     		player->playctrl_info.time_point=-1;
-			player->playctrl_info.search_flag=0;
-            	  }
-	     }
             
             if (ffmpeg_buffering_data(player) < 0) {
                 player_thread_wait(player, 100 * 1000);
@@ -1126,18 +1139,15 @@ void *player_thread(play_para_t *player)
              && !(player->vstream_info.video_format == VFORMAT_VC1 && player->vstream_info.video_codec_type == VIDEO_DEC_FORMAT_WMV3)) || \
             (IS_AUIDO_NEED_PREFEED_HEADER(player->astream_info.audio_format) && player->astream_info.has_audio) ||
             (IS_SUB_NEED_PREFEED_HEADER(player->sstream_info.sub_type) && player->sstream_info.has_sub)) {
-            pre_header_feeding(player);
+            if (!player->playctrl_info.trick_wait_flag) {
+                pre_header_feeding(player);
+            }
         }
         do {
-            /* if is karaok play, we slow down the player thread*/
-            if (player->karaok_flag) {
-                player_thread_wait(player, 200 * 1000);
-            }
-
             ret = check_flag(player);
             if (ret == BREAK_FLAG) {
-                log_print("pid[%d]::[player_thread:%d]end=%d valid=%d new=%d pktsize=%d\n", player->player_id,
-                          __LINE__, player->playctrl_info.end_flag, pkt->avpkt_isvalid, pkt->avpkt_newflag, pkt->data_size);
+                //log_print("pid[%d]::[player_thread:%d]end=%d valid=%d new=%d pktsize=%d ff %d gettime %lld\n", player->player_id,
+                //          __LINE__, player->playctrl_info.end_flag, pkt->avpkt_isvalid, pkt->avpkt_newflag, pkt->data_size, player->playctrl_info.fast_forward, gettime());
 
                 if (!player->playctrl_info.end_flag) {
                     if (pkt->avpkt_isvalid) {
@@ -1156,6 +1166,12 @@ void *player_thread(play_para_t *player)
 
 
             }
+            if (player->playctrl_info.trick_wait_time > gettime()) {
+                continue;
+            } else if (player->playctrl_info.trick_wait_flag) {
+                break;
+            }
+            
             if (!pkt->avpkt_isvalid) {
                 ret = read_av_packet(player);
                 if (ret != PLAYER_SUCCESS && ret != PLAYER_RD_AGAIN) {
@@ -1294,10 +1310,60 @@ write_packet:
                         log_error("pid[%d]::get state exception\n", player->player_id);
                         continue;
                     } else {
+                        unsigned int curvpts = get_cntl_vpts(pkt);
+                        int64_t cur_us = (int64_t)curvpts * 1000 / 90;
+                        int wait_time;
                         player->playctrl_info.end_flag = 1;
                         update_playing_info(player);
                         update_player_states(player, 1);
-                        player_thread_wait(player, (32 >> player->playctrl_info.f_step) * 10 * 1000); //(32 >> player->playctrl_info.f_step)*10 ms
+                        int64_t start_time = player->pFormatCtx->start_time;
+                        /*
+                            If the start_time is longer the 32bit, we use first_time.
+                        */
+                        if(start_time > 0xffffffff) {
+                            if (player->state.first_time > 0) {
+                                start_time = (int64_t)player->state.first_time * 1000 / 90;
+                            } else {
+                                log_print("[%s:%d]get first_time error\n", __FUNCTION__, __LINE__);
+                                start_time = start_time&0xffffffff;
+                            }
+                        }
+
+                        if ((curvpts == 0) || (curvpts == 1)) {
+                            log_print("[%s:%d]curvpts is 0, use timepoint\n", __FUNCTION__, __LINE__);
+                            cur_us = player->playctrl_info.time_point * 1000 * 1000 + start_time;
+                        }
+                        if (0 == player->playctrl_info.trick_start_us) {
+                            log_print("[%s:%d]current_ms %d, start_time %lld\n", __FUNCTION__, __LINE__, player->state.current_ms, start_time);
+                            player->playctrl_info.trick_start_us = (int64_t)player->state.current_ms * 1000 + start_time;
+                            /*
+                                If the difference of cur_us and trick_start_us is longer then 20s or negative value, we are sure that the start time is not right.
+                                So we assign trick_start_us to cur_us, and the first wait time after ff/fb is 0s.
+                            */
+                            if((player->playctrl_info.fast_forward
+                                && (((cur_us - player->playctrl_info.trick_start_us) > 20000000) || ((cur_us - player->playctrl_info.trick_start_us) < 0)))
+                                || (player->playctrl_info.fast_backward
+                                && (((player->playctrl_info.trick_start_us - cur_us) > 20000000) || ((player->playctrl_info.trick_start_us - cur_us) < 0)))) {
+                                player->playctrl_info.trick_start_us = cur_us;
+                            }
+                            player->playctrl_info.trick_start_sysus = gettime();
+                        }
+                        if (0 == player->playctrl_info.f_step) {
+                            wait_time = 0;
+                        } else {
+                            if (cur_us > player->playctrl_info.trick_start_us) {
+                                wait_time = (cur_us - player->playctrl_info.trick_start_us) / player->playctrl_info.f_step;
+                            } else {
+                                wait_time = (player->playctrl_info.trick_start_us - cur_us) / player->playctrl_info.f_step;
+                            }
+                        }
+                        //player->playctrl_info.last_trick_us = cur_us;
+                        player->playctrl_info.trick_wait_time = wait_time + player->playctrl_info.trick_start_sysus;
+                        player->playctrl_info.trick_wait_flag = 1;
+                        log_print("[%s:%d]f_step %d, curvpts 0x%x, cur %lld, start %lld, wait %d, trickwait %lld\n", 
+                            __FUNCTION__, __LINE__, player->playctrl_info.f_step, curvpts, cur_us, player->playctrl_info.trick_start_us, wait_time, player->playctrl_info.trick_wait_time);
+                        //player_thread_wait(player, wait_time); 
+                        //player_thread_wait(player, (32 >> player->playctrl_info.f_step) * 10 * 1000); //(32 >> player->playctrl_info.f_step)*10 ms
                         break;
                     }
                 }
@@ -1307,6 +1373,10 @@ write_packet:
             check_avdiff_status(player);
         #endif
         } while (!player->playctrl_info.end_flag);
+
+        if ((player->playctrl_info.trick_wait_time > gettime())  && (player->playctrl_info.f_step != 0)) {
+            continue;
+        }
 
         log_print("wait for play end...(sta:0x%x)\n", get_player_state(player));
 
@@ -1371,8 +1441,22 @@ write_packet:
                 set_player_state(player, PLAYER_SEARCHOK);
                 update_playing_info(player);
                 update_player_states(player, 1);
-                player->div_buf_time = 10;
-                player->play_last_reset_systemtime_us = player_get_systemtime_ms();
+                //reset thes contrl var
+                player->div_buf_time = (int)am_getconfig_float_def("media.amplayer.divtime",10);
+                int force_buf_enable =  am_getconfig_bool_def("media.amplayer.force_buf_enable", 1);
+                if(player->pFormatCtx->pb == NULL || player->pFormatCtx->pb->local_playback == 0)
+                {
+                    player->force_enter_buffering = force_buf_enable;
+                    // enter buffering here, for quick pause
+                    if(force_buf_enable)
+                    {
+                        codec_pause(player->codec);
+                        set_player_state(player, PLAYER_BUFFERING);
+                        update_player_states(player, 1);
+                        log_print("Force enter buffering!!!\n");
+                    }
+                }
+				player->play_last_reset_systemtime_us = player_get_systemtime_ms();
                 if (player->playctrl_info.f_step == 0) {
                     // set_black_policy(player->playctrl_info.black_out);
                 }

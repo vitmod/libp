@@ -104,6 +104,18 @@ static int rtmp_setupURL(RTMP *r, const char *uri)
     #endif
      
     {
+        {
+            char *pagerurl,*space;
+            pagerurl = strstr(uri, "pageUrl=");
+            space = strchr(pagerurl + 1, ' ');
+            if(pagerurl) {
+                pageUrl.av_val = pagerurl + 8;
+                if(space)
+                    pageUrl.av_len = space - pageUrl.av_val;                    
+                else                    
+                    pageUrl.av_len = uri + strlen(uri) - pageUrl.av_val;
+            }
+        }
         AVal parsedHost, parsedApp, parsedPlaypath;
         unsigned int parsedPort = 0;
         int parsedProtocol = RTMP_PROTOCOL_UNDEFINED;

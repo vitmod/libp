@@ -507,6 +507,36 @@ int audio_channel_stereo(void *handle)
     return ret;
 }
 
+int audio_channel_lrmix_flag_set(void *handle,int enable)
+{
+    int ret=0;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
+    if (!handle) {
+        adec_print("audio handle is NULL !\n");
+        ret=-1;
+    }else{
+        audec->mix_lr_channel_enable=enable;
+        adec_print("[%s] set audec->mix_lr_channel_enable/%d \n",__FUNCTION__,audec->mix_lr_channel_enable);  
+    }
+    return ret;
+}
+
+int audio_decpara_get(void *handle,int *pfs,int *pch)
+{
+    int ret=0;
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
+    if (!handle) {
+        adec_print("audio handle is NULL !\n");
+        ret=-1;
+    }else if(pfs!=NULL && pch!=NULL){
+        if(audec->adec_ops!=NULL)//armdecoder case
+           *pch=audec->adec_ops->NchOriginal;
+        else//DSP case
+           *pch=audec->channels;
+        *pfs=audec->samplerate;
+    }
+    return ret;
+}
 /**
  * \brief check output mute or not
  * \param handle pointer to player private data
@@ -653,3 +683,26 @@ int audio_decoder_get_enable_status(void* handle)
   }
   return audec->audio_decoder_enabled;
 }
+
+/**
+ * \brief get audio decoder cached latency 
+ * \param handle pointer to player private data
+ * \return n = audio decoder cached latency ms, -1 = error
+ */
+int audio_get_decoded_pcm_delay(void *handle)
+{
+    aml_audio_dec_t *audec = (aml_audio_dec_t *)handle;
+    buffer_stream_t  *g_bst = audec->g_bst;
+    if (!handle) {
+        adec_print("audio handle is NULL !\n");
+        return -1;
+    }
+    if(!g_bst)
+                return 0;
+   else if(audec->samplerate && audec->channels){
+        return g_bst->buf_level*1000/(audec->samplerate*audec->channels*2);
+   }
+   else
+        return 0;
+}
+

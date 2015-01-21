@@ -218,6 +218,7 @@ int64_t avio_seek(AVIOContext *s, int64_t offset, int whence)
                offset1 <= s->buf_end + SHORT_SEEK_THRESHOLD - s->buffer) &&
                !s->write_flag && offset1 >= 0 &&
               (whence != SEEK_END || force)) {
+        s->error = 0; // clear errors
         while(s->pos < offset && !s->eof_reached && !s->error) {
             fill_buffer(s);
         }
@@ -717,7 +718,7 @@ static void fill_buffer(AVIOContext *s)
     int max_buffer_size = s->max_packet_size ? s->max_packet_size : IO_BUFFER_SIZE;
 
     /* no need to do anything if EOF already reached */
-    if (s->eof_reached || s->error)
+    if (s->eof_reached)
         return;
 
     if(s->update_checksum && dst == s->buffer){
@@ -790,7 +791,7 @@ int avio_r8(AVIOContext *s)
 	if (s->buf_ptr < s->buf_end)
 		return *s->buf_ptr++;
 
-    av_log(NULL, AV_LOG_WARNING, "[%s:%d]retry timeout, fill buffer failed\n", __FUNCTION__, __LINE__);
+    ////av_log(NULL, AV_LOG_WARNING, "[%s:%d]retry timeout, fill buffer failed\n", __FUNCTION__, __LINE__);
 	return 0;
 
 }
@@ -1279,6 +1280,30 @@ int avio_open_h(AVIOContext **s, const char *filename, int flags,const char * he
         return err;
     }
 
+    if (av_strstart(filename, "rtp:", NULL))
+        h->priv_flags = 1;
+
+    return 0;
+}
+
+int avio_open_h2(AVIOContext **s, const char *filename, int flags,const char * headers, const unsigned long options)
+{
+    if (!options && !(*(AVDictionary **)options))
+        return avio_open_h(s, filename, flags, headers);
+
+    URLContext *h;
+    int err;
+
+    err = ffurl_open_h2(&h, filename, flags,headers, NULL, options);
+    if (err < 0)
+        return err;
+    err = ffio_fdopen(s, h);
+    if (err < 0) {
+        ffurl_close(h);
+        return err;
+    }
+    if (av_strstart(filename, "rtp:", NULL))
+        h->priv_flags = 1 ;
     return 0;
 }
 

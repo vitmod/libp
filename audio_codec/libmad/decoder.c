@@ -937,7 +937,7 @@ int audio_dec_init(
     
 #ifndef _WIN32
     adec_ops->nInBufSize = 5*1024;
-    adec_ops->nOutBufSize = 500*1024;
+    adec_ops->nOutBufSize = 64*1024;
 #endif
 	audio_codec_print("libmad init ok!\n");
 
@@ -951,6 +951,7 @@ int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *pAudioInfo)
 		return 0;
     ((AudioInfo *)pAudioInfo)->channels = last_ch_num;
     ((AudioInfo *)pAudioInfo)->samplerate = last_sr;
+    adec_ops->NchOriginal=last_ch_num;
     return 0;
 }
 #endif

@@ -19,6 +19,7 @@ public:
 	virtual int  GetReadedBytes()=0;
 	virtual int GetSampleRate()=0;
 	virtual int GetChNum()=0;
+	virtual int GetChNumOriginal(){return 0;};
 	virtual int* Get_pStop_ReadBuf_Flag()=0;
 	virtual int Set_pStop_ReadBuf_Flag(int *pStop)=0;
 	

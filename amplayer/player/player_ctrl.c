@@ -1053,6 +1053,38 @@ int player_video_overlay_en(unsigned enable)
     return PLAYER_FAILED;
 }
 
+
+/* --------------------------------------------------------------------------*/
+/**
+ * @function    player_set_disp_lastframe
+ *
+ * @brief       set  display lastframe
+ *
+ * @param[in]   pid     player tag which get from player_start return value
+ * @param[in]   enable  display lastframe
+ *
+ * @return      PLAYER_SUCCESS  success
+ *              PLAYER_FAILED   failed
+ *
+ * @details
+ */
+/* --------------------------------------------------------------------------*/
+int player_set_disp_lastframe(int pid, int disp)
+{
+    log_print("[player_set_disp_lastframe]disp=%d", disp);
+
+    play_para_t *player_para;
+
+    player_para = player_open_pid_data(pid);
+    if (player_para == NULL) {
+        return PLAYER_NOT_VALID_PID;    /*this data is 0 for default!*/
+    }
+    player_para->playctrl_info.black_out = !disp;
+    //set_black_policy(player_para->playctrl_info.black_out);
+    player_close_pid_data(pid);
+    return PLAYER_SUCCESS;
+}
+
 /* --------------------------------------------------------------------------*/
 /**
  * @function    audio_set_mute
@@ -1352,6 +1384,59 @@ int audio_stereo(int pid)
 
     return ret;
 }
+
+/* --------------------------------------------------------------------------*/
+/**
++ * @function    audio_lr_mix
++ *
++ * @brief
++ *
++ * @param[in]   pid player tag which get from player_start return value
++ *
++ * @return      PLAYER_SUCCESS  success
++ *              PLAYER_FAILED   failed+ * @details+
+*/
+/* --------------------------------------------------------------------------*/
+int audio_lr_mix_set(int pid,int enable)
+{
+    int ret = -1;
+    play_para_t *player_para;
+    codec_para_t *p;
+    player_para = player_open_pid_data(pid);
+    if (player_para == NULL) {
+      log_print("[%s %d] player_para==NULL,set fail audio_lr_mix!!",__FUNCTION__,__LINE__);
+        return -1;    /*this data is 0 for default!*/
+    }
+    p = get_audio_codec(player_para);
+    if (p != NULL) {
+        ret = codec_lr_mix_set(p,enable);
+    }else{
+        log_print("[%s %d] p==NULL,set fail audio_lr_mix!!",__FUNCTION__,__LINE__);    
+    }
+    player_close_pid_data(pid);
+    return ret;
+}
+
+int audio_cur_pcmpara_Applied_get(int pid,int *pfs,int *pch)
+{
+    int ret = -1;
+    play_para_t *player_para;
+    codec_para_t *p;
+    player_para = player_open_pid_data(pid);
+    if (player_para == NULL) {
+        log_print("[%s %d] player_para==NULL,set fail audio_FsNch_get!!",__FUNCTION__,__LINE__);
+        return -1;    /*this data is 0 for default!*/
+    }
+    p = get_audio_codec(player_para);
+    if (p != NULL) {
+        ret = codec_pcmpara_Applied_get(p,pfs,pch);
+    }else{
+        log_print("[%s %d] p==NULL,set fail audio_FsNch_get!!",__FUNCTION__,__LINE__);
+    }
+    player_close_pid_data(pid);
+    return ret;
+}
+
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -1656,6 +1741,8 @@ static char* player_aformat2str(aformat_t value)
             return "AFORMAT_EAC3";       
         case AFORMAT_TRUEHD:
 			return "AFORMAT_TRUEHD";
+        case AFORMAT_WMAVOI:
+            return "AFORMAT_WMAVOI";
         default:
             return "NOT_SUPPORT AFORMAT";
     } 
@@ -1708,4 +1795,18 @@ int audio_get_decoder_enable(int pid)
     player_close_pid_data(pid);
 
     return ret;
+}
+
+int player_closeCodec(int pid)
+{
+    int ret = -1;
+    play_para_t *player_para;
+    codec_para_t *p;
+
+    player_para = player_open_pid_data(pid);
+    if (player_para == NULL) {
+        return -1;    /*this data is 0 for default!*/
+    }
+    codec_pause(player_para);
+    return codec_close(player_para);
 }

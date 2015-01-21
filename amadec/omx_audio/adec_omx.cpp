@@ -89,6 +89,9 @@ AmlOMXCodec::AmlOMXCodec(int codec_type,void *read_buffer,int *exit,aml_audio_de
         }else if(codec_type == OMX_ENABLE_CODEC_TRUEHD){
             mine_type = MEDIA_MIMETYPE_AUDIO_TRUEHD;
             m_OMXMediaSource = new THD_MediaSource(read_buffer);
+        }else if(codec_type==OMX_ENABLE_CODEC_WMAVOI){
+            mine_type=MEDIA_MIMETYPE_AUDIO_FFMPEG;
+            m_OMXMediaSource = new Asf_MediaSource(read_buffer,audec);
         }
         omx_codec_type=codec_type;
         LOGI("mine_type=%s %s %d \n",mine_type,__FUNCTION__,__LINE__);
@@ -364,6 +367,14 @@ int arm_omx_codec_get_FS(aml_audio_dec_t *audec)
           int sampleRate=0;
           android::sp<android::MetaData> output_format=arm_omx_codec->m_codec->getFormat();
           output_format->findInt32(android::kKeySampleRate, &sampleRate);
+          if(audec->VersionNum==-1)
+          {
+              output_format->findInt32(android::kKeyDtsDecoderVer,&audec->VersionNum);
+              output_format->findInt32(android::kKeyDts958Fs,&audec->DTSHDIEC958_FS);
+              output_format->findInt32(android::kKeyDts958PktSize,&audec->DTSHDIEC958_PktFrmSize);
+              output_format->findInt32(android::kKeyDts958PktType,&audec->DTSHDIEC958_PktType);
+              output_format->findInt32(android::kKeyDtsPcmSampsInFrmMaxFs,&audec->DTSHDPCM_SamsInFrmAtMaxSR);
+          }
           arm_omx_codec->unlocked();
           return sampleRate;
       }else{
@@ -389,6 +400,7 @@ int arm_omx_codec_get_Nch(aml_audio_dec_t *audec)
             return numChannels;
         }else{
             arm_omx_codec->unlocked();
+            audec->adec_ops->NchOriginal =arm_omx_codec->m_OMXMediaSource->GetChNumOriginal();
             return arm_omx_codec->m_OMXMediaSource->GetChNum();
         }
     }else{

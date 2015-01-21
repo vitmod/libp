@@ -38,7 +38,6 @@ int get_sysfs_int(const char *path);
 
 int set_black_policy(int blackout);
 int get_black_policy();
-int get_karaok_flag();
 int set_tsync_enable(int enable);
 int get_tsync_enable(void);
 int set_tsync_discontinue(int enable);
@@ -72,7 +71,7 @@ int set_amutils_enable(int isOn);
 int set_amutils_cmd(const char* cmd);
 int get_amutils_cmd(char* cmd);
 int check_audio_output();
-
+int set_poweron_clock_level(int level);
 
 #ifdef  __cplusplus
 }

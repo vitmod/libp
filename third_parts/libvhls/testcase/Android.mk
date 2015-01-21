@@ -17,6 +17,10 @@ LOCAL_MODULE := m3uparser_test
 LOCAL_STATIC_LIBRARIES := libhls libhls_http libhls_common 
 
 LOCAL_SHARED_LIBRARIES :=libamplayer libcutils libssl libamavutils libcrypto
+ifeq ($(BUILD_WITH_VIEWRIGHT_WEB), true)
+ LOCAL_CFLAGS += -DENABLE_VIEWRIGHT_WEB
+ LOCAL_SHARED_LIBRARIES +=libdl 
+endif
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
@@ -34,5 +38,12 @@ LOCAL_MODULE := hls_merge_tool
 LOCAL_STATIC_LIBRARIES := libhls libhls_http libhls_common 
 
 LOCAL_SHARED_LIBRARIES :=libamplayer libcutils libssl libamavutils libcrypto
+
+
+ifeq ($(BUILD_WITH_VIEWRIGHT_WEB), true)
+ LOCAL_CFLAGS += -DENABLE_VIEWRIGHT_WEB
+ LOCAL_SHARED_LIBRARIES +=libdl 
+endif
+
 include $(BUILD_EXECUTABLE)
 

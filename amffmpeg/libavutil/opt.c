@@ -45,6 +45,19 @@ const AVOption *av_find_opt(void *v, const char *name, const char *unit, int mas
 }
 #endif
 
+const AVOption *av_opt_next(void *obj, const AVOption *last)
+{
+    const AVClass *class;
+    if (!obj)
+        return NULL;
+    class = *(const AVClass**)obj;
+    if (!last && class && class->option && class->option[0].name)
+        return class->option;
+    if (last && last[1].name)
+        return ++last;
+    return NULL;
+}
+
 const AVOption *av_next_option(void *obj, const AVOption *last)
 {
     if (last && last[1].name) return ++last;
@@ -580,6 +593,88 @@ const AVOption *av_opt_find(void *obj, const char *name, const char *unit,
             return o;
     }
     return NULL;
+}
+
+const AVOption *av_opt_find2(void *obj, const char *name, const char *unit,
+                             int opt_flags, int search_flags, void **target_obj)
+{
+    const AVClass  *c;
+    const AVOption *o = NULL;
+
+    if(!obj)
+        return NULL;
+
+    c= *(AVClass**)obj;
+
+    if (!c)
+        return NULL;
+
+    while (o = av_opt_next(obj, o)) {
+        if (!strcmp(o->name, name) && (o->flags & opt_flags) == opt_flags &&
+            ((!unit && o->type != FF_OPT_TYPE_CONST) ||
+             (unit  && o->type == FF_OPT_TYPE_CONST && o->unit && !strcmp(o->unit, unit)))) {
+            if (target_obj) {
+                if (!(search_flags & AV_OPT_SEARCH_FAKE_OBJ))
+                    *target_obj = obj;
+                else
+                    *target_obj = NULL;
+            }
+            return o;
+        }
+    }
+    return NULL;
+}
+
+int av_opt_get(void *obj, const char *name, int search_flags, uint8_t **out_val)
+{
+    void *dst, *target_obj;
+    const AVOption *o = av_opt_find2(obj, name, NULL, 0, search_flags, &target_obj);
+    uint8_t *bin, buf[128];
+    int len, i, ret;
+    int64_t i64;
+
+    if (!o || !target_obj || (o->offset<=0 && o->type != FF_OPT_TYPE_CONST))
+        return AVERROR_OPTION_NOT_FOUND;
+
+    dst = (uint8_t*)target_obj + o->offset;
+
+    buf[0] = 0;
+    switch (o->type) {
+    case FF_OPT_TYPE_FLAGS:     ret = snprintf(buf, sizeof(buf), "0x%08X",  *(int    *)dst);break;
+    case FF_OPT_TYPE_INT:       ret = snprintf(buf, sizeof(buf), "%d" ,     *(int    *)dst);break;
+    case FF_OPT_TYPE_INT64:     ret = snprintf(buf, sizeof(buf), "%"PRId64, *(int64_t*)dst);break;
+    case FF_OPT_TYPE_FLOAT:     ret = snprintf(buf, sizeof(buf), "%f" ,     *(float  *)dst);break;
+    case FF_OPT_TYPE_DOUBLE:    ret = snprintf(buf, sizeof(buf), "%f" ,     *(double *)dst);break;
+    case FF_OPT_TYPE_RATIONAL:  ret = snprintf(buf, sizeof(buf), "%d/%d",   ((AVRational*)dst)->num, ((AVRational*)dst)->den);break;
+    case FF_OPT_TYPE_CONST:     ret = snprintf(buf, sizeof(buf), "%f" ,     o->default_val.dbl);break;
+    case FF_OPT_TYPE_STRING:
+        if (*(uint8_t**)dst)
+            *out_val = av_strdup(*(uint8_t**)dst);
+        else
+            *out_val = av_strdup("");
+        return *out_val ? 0 : AVERROR(ENOMEM);
+    case FF_OPT_TYPE_BINARY:
+        len = *(int*)(((uint8_t *)dst) + sizeof(uint8_t *));
+        if ((uint64_t)len*2 + 1 > INT_MAX)
+            return AVERROR(EINVAL);
+        if (!(*out_val = av_malloc(len*2 + 1)))
+            return AVERROR(ENOMEM);
+        if (!len) {
+            *out_val[0] = '\0';
+            return 0;
+        }
+        bin = *(uint8_t**)dst;
+        for (i = 0; i < len; i++)
+            snprintf(*out_val + i*2, 3, "%02X", bin[i]);
+        return 0;
+    default:
+        return AVERROR(EINVAL);
+    }
+
+    if (ret >= sizeof(buf))
+        return AVERROR(EINVAL);
+    *out_val = av_strdup(buf);
+    return *out_val ? 0 : AVERROR(ENOMEM);
 }
 
 #ifdef TEST

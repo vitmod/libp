@@ -38,6 +38,10 @@ typedef struct
 #endif /* defined(DEBUG) */
 } BSOD_BSTRM;
 
+typedef struct{
+    unsigned char rawbuf[6144];
+    int len;
+} BUF_T; 
 
 const DSPshort gbl_chanary[GBL_MAXCHANCFGS] = { 2, 1, 2, 3, 3, 4, 4, 5 };
 /* audio coding modes */
@@ -91,6 +95,7 @@ public:
 	int GetReadedBytes();
 	int GetSampleRate();
 	int GetChNum();
+	virtual int GetChNumOriginal();
 	int* Get_pStop_ReadBuf_Flag();
 	int Set_pStop_ReadBuf_Flag(int *pStop);
 
@@ -112,9 +117,11 @@ public:
 	int sample_rate;
 	int ChNum;
 	int frame_size;
+	BUF_T frame;
 	int64_t bytes_readed_sum_pre;
 	int64_t bytes_readed_sum;
 	int* pStop_ReadBuf_Flag;
+	int ChNumOriginal;
 	
 protected:
     virtual ~DDP_MediaSource();

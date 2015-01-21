@@ -38,7 +38,7 @@
 //#define LOG_FUNCTION_NAME LOGI("%s-%d\n",__FUNCTION__,__LINE__);
 #define LOG_FUNCTION_NAME
 
-void get_display_mode(char *mode)
+static void get_display_mode(char *mode)
 {
     int fd;
     char *path = "/sys/class/display/mode";

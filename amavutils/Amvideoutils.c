@@ -548,7 +548,8 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
     if (((disp_w != dev_w) || (disp_h / 2 != dev_h)) &&
         (video_global_offset == 0)) {
         char val[256];
-
+        char freescale_mode[50] = {0};
+        char *p;
         memset(val, 0, sizeof(val));
         if (video_on_vpp2) {
             if (amsysfs_get_sysfs_str(FREE_SCALE_PATH_FB2, val, sizeof(val)) == 0) {
@@ -576,7 +577,12 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
         memset(val, 0, sizeof(val));
         if (amsysfs_get_sysfs_str(FREE_SCALE_MODE_PATH, val, sizeof(val)) == 0) {
             /* the returned string should be "free_scale_mode:new/default" */
-            freescale_mode_enable = (val[16] == 'd') ? 0 : 1;
+            p = strstr(val,"current");
+            if(p)
+                strcpy(freescale_mode,p);
+            else
+                freescale_mode[0]='\0';
+            freescale_mode_enable = (strstr(freescale_mode,"0")==NULL) ? 1 : 0;
         }
     }
 
@@ -699,14 +705,17 @@ int amvideo_utils_set_virtual_position(int32_t x, int32_t y, int32_t w, int32_t 
 				&& (is_panel_mode() == 0)) {
                 /* the returned string should be "window axis is [a b c d]" */
                 if (sscanf(val + 15, "[%d %d %d %d]", &left, &top, &right, &bottom) == 4) {
-                    x = left;
-                    y = top;
-                    w = right - left + 1;
-                    h = bottom - top + 1;
+                    if((right > 0)&&(bottom > 0))
+                    {
+                        x = left;
+                        y = top;
+                        w = right - left + 1;
+                        h = bottom - top + 1;
 					
-                    dst_x = dst_x * w / dev_w + x;
-                    dst_y = dst_y * h / dev_h + y;
-                    LOGI("after scaled, screen position1: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+                        dst_x = dst_x * w / dev_w + x;
+                        dst_y = dst_y * h / dev_h + y;
+                        LOGI("after scaled, screen position1: %d %d %d %d", dst_x, dst_y, dst_w, dst_h);
+                    }
                 }
             }
         } else {

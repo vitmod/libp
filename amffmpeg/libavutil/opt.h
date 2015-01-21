@@ -216,6 +216,13 @@ int av_opt_set_dict(void *obj, struct AVDictionary **options);
 
 #define AV_OPT_SEARCH_CHILDREN   0x0001 /**< Search in possible children of the
                                              given object first. */
+/**
+ *  The obj passed to av_opt_find() is fake -- only a double pointer to AVClass
+ *  instead of a required pointer to a struct containing AVClass. This is
+ *  useful for searching for options without needing to allocate the corresponding
+ *  object.
+ */
+#define AV_OPT_SEARCH_FAKE_OBJ   0x0002
 
 /**
  * Look for an option in an object. Consider only options which
@@ -239,5 +246,57 @@ int av_opt_set_dict(void *obj, struct AVDictionary **options);
  */
 const AVOption *av_opt_find(void *obj, const char *name, const char *unit,
                             int opt_flags, int search_flags);
+
+/**
+ * Look for an option in an object. Consider only options which
+ * have all the specified flags set.
+ *
+ * @param[in] obj A pointer to a struct whose first element is a
+ *                pointer to an AVClass.
+ *                Alternatively a double pointer to an AVClass, if
+ *                AV_OPT_SEARCH_FAKE_OBJ search flag is set.
+ * @param[in] name The name of the option to look for.
+ * @param[in] unit When searching for named constants, name of the unit
+ *                 it belongs to.
+ * @param opt_flags Find only options with all the specified flags set (AV_OPT_FLAG).
+ * @param search_flags A combination of AV_OPT_SEARCH_*.
+ * @param[out] target_obj if non-NULL, an object to which the option belongs will be
+ * written here. It may be different from obj if AV_OPT_SEARCH_CHILDREN is present
+ * in search_flags. This parameter is ignored if search_flags contain
+ * AV_OPT_SEARCH_FAKE_OBJ.
+ *
+ * @return A pointer to the option found, or NULL if no option
+ *         was found.
+ */
+const AVOption *av_opt_find2(void *obj, const char *name, const char *unit,
+                             int opt_flags, int search_flags, void **target_obj);
+
+/**
+ * Iterate over all AVOptions belonging to obj.
+ *
+ * @param obj an AVOptions-enabled struct or a double pointer to an
+ *            AVClass describing it.
+ * @param prev result of the previous call to av_opt_next() on this object
+ *             or NULL
+ * @return next AVOption or NULL
+ */
+const AVOption *av_opt_next(void *obj, const AVOption *prev);
+
+/**
+ * @defgroup opt_get_funcs Option getting functions
+ * @{
+ * Those functions get a value of the option with the given name from an object.
+ *
+ * @param[in] obj a struct whose first element is a pointer to an AVClass.
+ * @param[in] name name of the option to get.
+ * @param[in] search_flags flags passed to av_opt_find2. I.e. if AV_OPT_SEARCH_CHILDREN
+ * is passed here, then the option may be found in a child of obj.
+ * @param[out] out_val value of the option will be written here
+ * @return >=0 on success, a negative error code otherwise
+ */
+/**
+ * @note the returned string will be av_malloc()ed and must be av_free()ed by the caller
+ */
+int av_opt_get         (void *obj, const char *name, int search_flags, uint8_t   **out_val);
 
 #endif /* AVUTIL_OPT_H */

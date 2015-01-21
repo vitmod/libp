@@ -48,7 +48,7 @@
 #define OPEN_RETRY_MAX 2
 #define READ_RETRY_MAX 3
 #define MAX_CONNECT_LINKS 1
-#define READ_SEEK_TIMES 10
+#define READ_SEEK_TIMES 50
 
 #define READ_RETRY_MAX_TIME_MS (120*1000) 
 /*60 seconds no data get,we will reset it*/
@@ -89,11 +89,15 @@ typedef struct {
     int keep_alive;
     int keep_alive_timeout;
     int flags;
+    int use_old_tcphandle;
+    char *cookies;          ///< holds newline (\n) delimited Set-Cookie header field values (without the "Set-Cookie: " field name)
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
+#define D AV_OPT_FLAG_DECODING_PARAM
 static const AVOption options[] = {
 {"chunksize", "use chunked transfer-encoding for posts, -1 disables it, 0 enables it", OFFSET(chunksize), FF_OPT_TYPE_INT64, {.dbl = 0}, -1, 0 }, /* Default to 0, for chunked POSTs */
+{ "cookies", "set cookies to be sent in applicable future requests, use newline delimited Set-Cookie HTTP field value syntax", OFFSET(cookies), FF_OPT_TYPE_STRING, { 0 }, 0, 0, D },
 {NULL}
 };
 static const AVClass httpcontext_class = {
@@ -111,9 +115,11 @@ static const AVClass shttpcontext_class = {
 
 
 static int fastnetworkmode = 1;
-static int config_rettry =2;
-static int config_read_wait_time_max_ms =120*1000;
+static int config_rettry =10; //FFT: try more times. default == 2;
+static int config_read_wait_time_max_ms =3*1000;	
+static int config_eos_wait_time_max_ms =2*1000;	
 static int enable_http_keepalive = 1;
+static int open_wait_time = 0;
 
 
 static int init_def_settings()
@@ -124,10 +130,13 @@ static int init_def_settings()
 	inited++;
 	fastnetworkmode = (int)am_getconfig_bool_def("media.player.fastnetwork",1);
 	config_rettry=(int)am_getconfig_float_def("libplayer.http.openretry",2);
-	config_read_wait_time_max_ms=(int)am_getconfig_float_def("libplayer.http.readwaitmx.ms",120000);
+	config_read_wait_time_max_ms=(int)am_getconfig_float_def("libplayer.http.readwaitmx.ms",3000);
+	config_eos_wait_time_max_ms=(int)am_getconfig_float_def("libplayer.http.eoswaitmx.ms",2000);
 	enable_http_keepalive = (int)am_getconfig_bool_def("media.player.httpkeepalive",1);
-	av_log(NULL, AV_LOG_ERROR, "http config:\nfastnetworkmode=%d,config_rettry=%d,config_read_wait_time_max_ms=%d,enable_http_keepalive=%d\n",
-	       fastnetworkmode,config_rettry,config_read_wait_time_max_ms,enable_http_keepalive);
+	open_wait_time = (int)am_getconfig_float_def("media.player.openwaittime", 0);
+	
+	av_log(NULL, AV_LOG_ERROR, "http config:\nfastnetworkmode=%d,config_rettry=%d,config_read_wait_time_max_ms=%d,config_eos_wait_time_max_ms=%d,enable_http_keepalive=%d\n",
+	       fastnetworkmode,config_rettry,config_read_wait_time_max_ms,config_eos_wait_time_max_ms,enable_http_keepalive);
 	return 0;
 }
 static int http_connect(URLContext *h, const char *path, const char *hoststr,
@@ -147,9 +156,13 @@ void ff_http_set_headers(URLContext *h, const char *headers)
 static int http_close_and_keep(HTTPContext *s,int close)
 {
 	int ret = 0;
-    char footer[] = "0\r\n\r\n";
+       char footer[] = "0\r\n\r\n";
 	int needclose=close || s->willclose || !s->keep_alive;
-
+	//av_log(NULL, AV_LOG_INFO, "http_close_and_keep location=%s,needclose=%d\n",s->location,needclose);
+	if(!needclose&&s->filesize>0&&s->off < s->filesize){
+		needclose=1;
+		av_log(NULL, AV_LOG_INFO, "need close.s->off =%lld, s->filesize=%lld\n",s->off, s->filesize);
+	}
 	if(!s->hd)
 		return 0;
 	if(needclose){
@@ -158,9 +171,9 @@ static int http_close_and_keep(HTTPContext *s,int close)
 	        ret = ffurl_write(s->hd, footer, sizeof(footer) - 1);
 	        ret = ret > 0 ? 0 : ret;
 	    }
-		tcppool_close_tcplink(s->hd);
+	    tcppool_close_tcplink(s->hd);
 	}else{
-        tcppool_release_tcplink(s->hd);
+           tcppool_release_tcplink(s->hd);
 	}
 	s->hd=NULL;
 	return 0;
@@ -190,16 +203,20 @@ static int http_open_cnx(URLContext *h)
     HTTPAuthType cur_auth_type;
     HTTPContext *s = h->priv_data;
     URLContext *hd =  s->hd;
-	int flags =AVIO_FLAG_READ_WRITE;
-	int ret;
+    int flags =AVIO_FLAG_READ_WRITE;
+    int ret;
+    int redo_open_cnt=-1;
 	flags |= fastnetworkmode!=0 ?URL_LESS_WAIT:0;
     proxy_path = getenv("http_proxy");
     use_proxy = (proxy_path != NULL) && !getenv("no_proxy") &&
     av_strstart(proxy_path, "http://", NULL);
-
+	int64_t open_enter_time = av_gettime();
+    int curr_wait;
+	
 	s->latest_get_time_ms=0;
     /* fill the dest addr */
  redo:
+    redo_open_cnt++;
     if (url_interrupt_cb()) {
         av_log(h, AV_LOG_INFO, "http_open_cnx interrupt, err :-%d\n", AVERROR(EIO));
         return AVERROR(EIO);
@@ -218,17 +235,33 @@ static int http_open_cnx(URLContext *h)
         else
             path = path1;
     }
-    if (port < 0)
+    if (port < 0){
         port = 80;
+    }else{
+        /*only saved the port get from url*/
+        s->port=port;
+    }  
     
     ff_url_join(buf, sizeof(buf), "tcp", NULL, hostname, port, NULL);
     strcpy(s->hosname, hostname);
     av_log(h, AV_LOG_INFO, "s->hostname ,%s\n",s->hosname);
+
     tcppool_find_free_tcplink(&s->hd,buf,flags);
     if (!s->hd) {      
         err = ffurl_open(&hd, buf, flags);
         if (err < 0){
-    	     av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
+    	    av_log(h, AV_LOG_INFO, "http_open_cnx:ffurl_open failed ,%d\n",err);
+			int64_t open_curr_time = av_gettime();
+			curr_wait = (open_curr_time - open_enter_time)/1000000;
+			
+			av_log(h, AV_LOG_ERROR, "open_wait_time:%d curr_wait:%d\n",open_wait_time, curr_wait);
+			
+			if((err == -5 || err == -101)&& curr_wait < open_wait_time)
+			{
+			    usleep(1000*1000);
+				goto redo;
+			}
+				
             goto fail;
         }	
         s->hd = hd;
@@ -239,11 +272,11 @@ static int http_open_cnx(URLContext *h)
     cur_auth_type = s->auth_state.auth_type;
 	
     if ((ret=http_connect(h, path, hoststr, auth, &location_changed) ) < 0){
-        av_log(h, AV_LOG_ERROR, "http_open_cnx:http_connect failed\n");
-		if(ret == -101){
-			http_close_and_keep(s,1);//link problem closed it.
-			goto redo;/*link error ,reconnect it.*/
-			}
+        av_log(h, AV_LOG_ERROR, "http_open_cnx:http_connect failed ret=%d, s->http_code=%d\n",ret,s->http_code);
+	 if(redo_open_cnt <= OPEN_RETRY_MAX){
+		http_close_and_keep(s,1);//link problem closed it.
+		goto redo;//link error ,reconnect it.
+	 }
 
         goto fail;
     }
@@ -293,7 +326,7 @@ static int http_reopen_cnx(URLContext *h,int64_t off)
     int64_t old_chunksize=s->chunksize ;	
 	int old_buf_size=0;
 	char old_buf[BUFFER_SIZE];
-	av_log(h, AV_LOG_INFO, "[%s]off=%lld s->off=%lld\n", __FUNCTION__, off, s->off);
+	av_log(h, AV_LOG_INFO, "[%s]off=%lld s->off=%lld filezie=%lld\n", __FUNCTION__, off, s->off,s->filesize);
     if(off>=0)
 		s->off = off;	
     	/* if it fails, continue on old connection */
@@ -359,11 +392,19 @@ static int http_open(URLContext *h, const char *uri, int flags)
     s->canseek=1;
     s->is_broadcast = 0;
     s->read_seek_count = 0;
+    s->use_old_tcphandle=0;
     char* tmp = strstr(uri, "livemode=1");
     if(tmp){
         s->is_livemode = 1;
     }
-    s->keep_alive = enable_http_keepalive;
+
+    /*tmp=strstr(uri,".m3u8");
+    if(tmp){
+	s->keep_alive = 0;
+    }
+    else{
+    	s->keep_alive = enable_http_keepalive;
+    }*/
     s->flags = flags;
     av_strlcpy(s->location, uri, sizeof(s->location));
     s->max_connects=MAX_CONNECT_LINKS;
@@ -382,7 +423,7 @@ static int http_open(URLContext *h, const char *uri, int flags)
 
     s->bandwidth_measure=bandwidth_measure_alloc(100,0); 	
 	ret = http_open_cnx(h);
-	while(ret<0 && ++open_retry<retry_times && !url_interrupt_cb() && (s->http_code != 404 ||s->http_code != 503 || s->http_code != 500)){
+	while(ret<0 && ++open_retry<retry_times && !url_interrupt_cb() && s->http_code != 404 /*&& s->http_code != 503 && s->http_code != 500*/){
 		s->is_seek=0;
 		s->canseek=0;
     	ret = http_open_cnx(h);
@@ -390,7 +431,9 @@ static int http_open(URLContext *h, const char *uri, int flags)
 	s->is_seek=0;
     if(ret < 0){
         bandwidth_measure_free(s->bandwidth_measure);
+        inflateEnd(&s->b_inflate.stream);
     }  
+	s->port=-1;
     av_log(h, AV_LOG_INFO,"http  connect used %d ms\n",(int)(av_gettime()-http_starttime));	
     return ret;
 }
@@ -412,11 +455,19 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
     s->canseek=1;
     s->is_broadcast = 0;
     s->read_seek_count = 0;
+    s->use_old_tcphandle=0;
     char* tmp = strstr(uri, "livemode=1");
     if(tmp){
         s->is_livemode = 1;
     }
+    /*
+	tmp=strstr(uri,".m3u8");
+	if(tmp){
+		s->keep_alive = 0;
+	}
+	else{
     s->keep_alive = enable_http_keepalive;
+	}*/
     s->flags = flags;
     av_strlcpy(s->location, uri+1, sizeof(s->location));	
     s->max_connects=MAX_CONNECT_LINKS;
@@ -444,8 +495,10 @@ static int shttp_open(URLContext *h, const char *uri, int flags)
 	s->is_seek = 0;
         if(ret < 0){
             bandwidth_measure_free(s->bandwidth_measure);
+            inflateEnd(&s->b_inflate.stream);
         }
 	h->is_slowmedia=1;	
+	s->port=-1;
 	av_log(h, AV_LOG_INFO,"http  connect used %d ms\n",(int)(av_gettime()-http_starttime)); 
 	return ret;
 }
@@ -557,6 +610,11 @@ static int process_line(URLContext *h, char *line, int line_count,
            else{
               strcpy(s->location,"http://");
               av_strlcat(s->location, s->hosname,sizeof(s->location));
+              if(s->port > 0){
+                  char port[32];
+                  snprintf(port,31, ":%d",s->port);
+                  av_strlcat(s->location, port,sizeof(s->location));
+              }
               av_strlcat(s->location, p,sizeof(s->location));
            }
             av_log(h, AV_LOG_ERROR, "s->location=%s\n",s->location);
@@ -567,18 +625,26 @@ static int process_line(URLContext *h, char *line, int line_count,
         } else if (!strcasecmp (tag, "Content-Range")) {
             /* "bytes $from-$to/$document_size" */
             const char *slash;
+	     const char *endoffptr;
+	     int64_t endoff=0;
             if (!strncmp (p, "bytes ", 5)) {
                 p += 5;
-		   while((*p) == ' ' ) {//eat blank
+		  while((*p) == ' ' ) {//eat blank
 			p++;
-		   }		
+		  }		
                 s->off = atoll(p);
+
                 if ((slash = strchr(p, '/')) && strlen(slash) > 0)
                     s->filesize = atoll(slash+1);
             }
             /* seek when we get real file size */
             if(s->filesize>0)
                 h->is_streamed = 0; /* we _can_ in fact seek */
+        }else if(!strcasecmp (tag, "Accept-Ranges")) {
+            if (!strncmp (p, "bytes ", 5) && s->filesize>0)
+                h->is_streamed = 0;
+            else if(!strncmp (p, "none ", 4))
+                h->is_streamed = 1;
         }
          /*----------  for gzip -----------*/
         else if (!strcasecmp (tag, "Content-Encoding")) {
@@ -628,9 +694,120 @@ static int process_line(URLContext *h, char *line, int line_count,
                 }
             }
 
+        } else if (!strcasecmp(tag, "Set-Cookie")) {
+            if (!s->cookies) {
+                if (!(s->cookies = av_strdup(p)))
+                    return AVERROR(ENOMEM);
+            } else {
+                char *tmp = s->cookies;
+                size_t str_size = strlen(tmp) + strlen(p) + 2;
+                if (!(s->cookies = av_malloc(str_size))) {
+                    s->cookies = tmp;
+                    return AVERROR(ENOMEM);
+                }
+                snprintf(s->cookies, str_size, "%s\n%s", tmp, p);
+                av_free(tmp);
+            }
         }
     }
     return 1;
+}
+
+/**
+ * Create a string containing cookie values for use as a HTTP cookie header
+ * field value for a particular path and domain from the cookie values stored in
+ * the HTTP protocol context. The cookie string is stored in *cookies.
+ *
+ * @return a negative value if an error condition occurred, 0 otherwise
+ */
+static int get_cookies(HTTPContext *s, char **cookies, const char *path,
+                       const char *domain)
+{
+    // cookie strings will look like Set-Cookie header field values.  Multiple
+    // Set-Cookie fields will result in multiple values delimited by a newline
+    int ret = 0;
+    char *next, *cookie, *set_cookies = av_strdup(s->cookies), *cset_cookies = set_cookies;
+
+    if (!set_cookies) return AVERROR(EINVAL);
+
+    *cookies = NULL;
+    while ((cookie = av_strtok(set_cookies, "\n", &next))) {
+        int domain_offset = 0;
+        char *param, *next_param, *cdomain = NULL, *cpath = NULL, *cvalue = NULL;
+        set_cookies = NULL;
+
+        while ((param = av_strtok(cookie, "; ", &next_param))) {
+            if (cookie) {
+                // first key-value pair is the actual cookie value
+                cvalue = av_strdup(param);
+                cookie = NULL;
+            } else if (!av_strncasecmp("path=",   param, 5)) {
+                av_free(cpath);
+                cpath = av_strdup(&param[5]);
+            } else if (!av_strncasecmp("domain=", param, 7)) {
+                // if the cookie specifies a sub-domain, skip the leading dot thereby
+                // supporting URLs that point to sub-domains and the master domain
+                int leading_dot = (param[7] == '.');
+                av_free(cdomain);
+                cdomain = av_strdup(&param[7+leading_dot]);
+            } else {
+                // ignore unknown attributes
+            }
+        }
+        if (!cdomain)
+            cdomain = av_strdup(domain);
+
+        // ensure all of the necessary values are valid
+        if (!cdomain || !cpath || !cvalue) {
+            av_log(s, AV_LOG_WARNING,
+                   "Invalid cookie found, no value, path or domain specified\n");
+            goto done_cookie;
+        }
+
+        // check if the request path matches the cookie path
+        if (av_strncasecmp(path, cpath, strlen(cpath)))
+            goto done_cookie;
+
+        // the domain should be at least the size of our cookie domain
+        domain_offset = strlen(domain) - strlen(cdomain);
+        if (domain_offset < 0)
+            goto done_cookie;
+
+        // match the cookie domain
+        if (av_strcasecmp(&domain[domain_offset], cdomain))
+            goto done_cookie;
+
+        // cookie parameters match, so copy the value
+        if (!*cookies) {
+            if (!(*cookies = av_strdup(cvalue))) {
+                ret = AVERROR(ENOMEM);
+                goto done_cookie;
+            }
+        } else {
+            char *tmp = *cookies;
+            size_t str_size = strlen(cvalue) + strlen(*cookies) + 3;
+            if (!(*cookies = av_malloc(str_size))) {
+                ret = AVERROR(ENOMEM);
+                goto done_cookie;
+            }
+            snprintf(*cookies, str_size, "%s; %s", tmp, cvalue);
+            av_free(tmp);
+        }
+
+        done_cookie:
+        av_freep(&cdomain);
+        av_freep(&cpath);
+        av_freep(&cvalue);
+        if (ret < 0) {
+            if (*cookies) av_freep(cookies);
+            av_free(cset_cookies);
+            return ret;
+        }
+    }
+
+    av_free(cset_cookies);
+
+    return 0;
 }
 
 static inline int has_header(const char *str, const char *header)
@@ -654,6 +831,40 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     authstr = ff_http_auth_create_response(&s->auth_state, auth, path,
                                         post ? "POST" : "GET");
 
+    if (h->headers) {
+        if (strlen(h->headers) > 0) {
+            char *index = strstr(h->headers, "Cookie");
+            if (index) {
+                if (s->cookies)
+                    av_free(s->cookies);
+                char *pos = strchr(index + 8, ':');
+                if (!pos) {
+                    if (s->cookies = av_malloc(strlen(index + 8))) {
+                        av_strlcpy(s->cookies, index + 8, strlen(index + 8));
+                        s->cookies[strlen(index + 8) - 1] = '\0';
+                    }
+                    *index = '\0';
+                } else {
+                    char *pos1 = strrchr(pos, '\n');
+                    if (pos1) {
+                        if (s->cookies = av_malloc(pos1 - index - 7)) {
+                            av_strlcpy(s->cookies, index + 8, pos1 - index - 7);
+                            s->cookies[pos1 - index - 7 - 1] = '\0';
+                        }
+                        size_t str_size = strlen(h->headers) - (pos1 - h->headers) - 1;
+                        av_strlcpy(index, pos1 + 1, str_size);
+                        *(index + str_size) = '\0';
+                    } else {
+                        if (s->cookies = av_malloc(strlen(index + 8))) {
+                            av_strlcpy(s->cookies, index + 8, strlen(index + 8));
+                            s->cookies[strlen(index + 8) - 1] = '\0';
+                        }
+                        *index = '\0';
+                    }
+                }
+            }
+        }
+    }
     /* set default headers if needed */
     if (!has_header(s->headers, "\r\nUser-Agent: "))
        len += av_strlcatf(headers + len, sizeof(headers) - len,
@@ -665,12 +876,11 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
 
     }
 
-	
     if (!has_header(s->headers, "\r\nAccept: "))
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);	
-    if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 || s->is_seek)
-        &&!has_header(headers, "\r\nRange: ")&&!h->is_segment_media/*&&!s->hd->is_streamed*/)
+    if (!has_header(s->headers, "\r\nRange: ") && (s->off>0 && s->is_seek)
+        &&!has_header(headers, "\r\nRange: ")/*&&!h->is_segment_media&&!s->hd->is_streamed*/)
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Range: bytes=%"PRId64"-\r\n", s->off);
     if (!has_header(s->headers, "\r\nConnection: ")&&!has_header(headers, "\r\nConnection: "))
@@ -685,6 +895,14 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
     if (!has_header(s->headers, "\r\nHost: "))
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Host: %s\r\n", hoststr);
+    if (!has_header(s->headers, "\r\nCookie: ") && s->cookies) {
+        char *cookies = NULL;
+        if (!get_cookies(s, &cookies, path, hoststr) && cookies) {
+            len += av_strlcatf(headers + len, sizeof(headers) - len,
+                               "Cookie: %s\r\n", cookies);
+            av_free(cookies);
+        }
+    }
 
     /* now add in custom headers */
     if (s->headers)
@@ -732,20 +950,20 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
             return AVERROR(EIO);
         ///av_dlog(NULL, "header='%s'\n", line);	
         err = process_line(h, line, s->line_count, new_location);
-		if(err <0){
-			if( s->http_code == -1 || s->line_count ==0 ){
-				av_log(h, AV_LOG_INFO, "http return NULL,or not valid http_code = %d at line %d\n",s->http_code,s->line_count);
-				return -101;/*read end and not get http valid response*/
-				}
-		    return err;
-        }
-		if (err == 0){
-		   if( s->http_code == -1 || s->line_count ==0 ){
-		   	   av_log(h, AV_LOG_INFO, "http return NULL,or not valid http_code = %d at line %d\n",s->http_code,s->line_count);
-               return -101;/*read end and not get http valid response*/
-		   }
-           break;
+	 if(err <0){
+	 	if( s->http_code == -1 || s->line_count ==0 ){
+			av_log(h, AV_LOG_INFO, "http return NULL,or not valid http_code = %d at line %d\n",s->http_code,s->line_count);
+			return -101;//read end and not get http valid response
 		}
+		return err;
+        }
+	 if (err == 0){
+	   	if( s->http_code == -1 || s->line_count ==0 ){
+		   	av_log(h, AV_LOG_INFO, "http return NULL,or not valid http_code = %d at line %d\n",s->http_code,s->line_count);
+              	return -101;//read end and not get http valid response
+		}
+           	break;
+	 }
         s->line_count++;
     }
 
@@ -771,8 +989,8 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
     int retry_times=config_rettry;
     float value=0.0;
     int err_retry=retry_times;
-    if(s->filesize>0&&s->off == s->filesize){
-        av_log(h, AV_LOG_INFO, "http_read maybe reach EOS,force to exit,current: %lld,file size:%lld\n",s->off,s->filesize);        
+    if((s->filesize>0&&s->off == s->filesize) || (s->http_code == 416 && s->filesize<=0)){
+        av_log(h, AV_LOG_INFO, "http_read maybe reach EOS,force to exit,current: %lld,file size:%lld http_code=%d\n",s->off,s->filesize,s->http_code);        
         return 0;
     }
     bandwidth_measure_start_read(s->bandwidth_measure);	
@@ -843,16 +1061,22 @@ retry:
 		float value=0.0;
 		long max_wait_time=config_read_wait_time_max_ms;
 		if(!s->canseek) max_wait_time=max_wait_time*2;/*if can't support seek,we wait more time*/
-    	clock_gettime(CLOCK_MONOTONIC, &new_time);
+    		clock_gettime(CLOCK_MONOTONIC, &new_time);
 		av_log(h, AV_LOG_INFO, "clock_gettime sec=%u nsec=%u\n", new_time.tv_sec, new_time.tv_nsec);
 		new_time_mseconds = (new_time.tv_nsec / 1000000 + new_time.tv_sec * MILLION);
 		if(s->latest_get_time_ms<=0)
 			s->latest_get_time_ms=new_time_mseconds;
-		av_log(h, AV_LOG_INFO, "new_time_mseconds=%u,latest_get_time_ms=%u diff=%u max_wait_time=%u\n", new_time_mseconds,s->latest_get_time_ms,(new_time_mseconds-s->latest_get_time_ms),max_wait_time);
+		av_log(h, AV_LOG_INFO, "new_time_mseconds=%u,latest_get_time_ms=%u diff=%u max_wait_time=%u,s->off=%lld,s->filesize=%lld \n", 
+			new_time_mseconds,s->latest_get_time_ms,(new_time_mseconds-s->latest_get_time_ms),max_wait_time,s->off, s->filesize);
 		if(new_time_mseconds-s->latest_get_time_ms>max_wait_time){
 			av_log(h, AV_LOG_INFO, "new_time_mseconds=%u,latest_get_time_ms=%u  TIMEOUT\n", new_time_mseconds,s->latest_get_time_ms);
 			len=-1;/*force it goto reopen */
 		}
+		else if(s->is_livemode && new_time_mseconds-s->latest_get_time_ms>config_eos_wait_time_max_ms && s->filesize>0 && (s->off*100/s->filesize) > 99){
+			av_log(h, AV_LOG_INFO, "Live mode:new_time_mseconds=%u,latest_get_time_ms=%u,EOS wait TIMEOUT\n", new_time_mseconds,s->latest_get_time_ms);
+			bandwidth_measure_finish_read(s->bandwidth_measure,0);
+			return 0;
+		}	
 	}else{
 		s->latest_get_time_ms=0;/*0 means have  just get data*/
 	}
@@ -876,9 +1100,14 @@ errors:
 	}
 	if(len<0 && len!=AVERROR(EAGAIN)/*&&!h->is_segment_media*/&&err_retry-->0 /*&& !url_interrupt_cb()*/)
 	{		
-		av_log(h, AV_LOG_INFO, "http_read failed err try=%d\n", err_retry);
+		av_log(h, AV_LOG_INFO, "http_read failed err try=%d, s->off=%lld, s->filesize=%lld\n", err_retry,s->off,s->filesize);
 		http_reopen_cnx(h,-1);
-		goto retry;
+		if(s->http_code == 416 && s->filesize<=0){
+			av_log(h, AV_LOG_INFO, "http_read failed http_code=%d filezie=%lld\n", s->http_code,s->filesize);
+			return 0;
+		}	
+		else
+			goto retry;
 	}
 	if(s->do_readseek_size>0 && len >0){
 		/*we have do seek failed,the offset is not  same as uper level need drop data here now.*/
@@ -980,6 +1209,8 @@ static int http_close(URLContext *h)
 	HTTPContext *s = h->priv_data;
     http_close_and_keep(s,0);
     bandwidth_measure_free(s->bandwidth_measure);	
+    if (s->cookies)
+        av_free(s->cookies);
 
     /*----------  for gzip -----------*/
     inflateEnd(&s->b_inflate.stream);

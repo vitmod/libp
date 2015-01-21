@@ -48,6 +48,7 @@ typedef struct _CURLWHandle {
 
 typedef struct _CURLWContext {
     int quited;
+    int open_fail;
     int curl_h_num;
     int chunked;
     int connected;

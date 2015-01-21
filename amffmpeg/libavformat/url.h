@@ -42,6 +42,7 @@ typedef struct URLContext {
     int max_packet_size;        /**< if non zero, the stream is packetized with this max packet size */
     int is_streamed;            /**< true if streamed (no seek possible), default = false */
     int is_connected;
+    int notify_id;
 } URLContext;
 
 typedef struct URLProtocol {
@@ -104,6 +105,7 @@ int ffurl_open(URLContext **h, const char *url, int flags);
  * resource (except if the value of the size argument is also zero).
  */
 int ffurl_open_h(URLContext **puc, const char *filename, int flags,const char *headers, int * http_error_flag);
+int ffurl_open_h2(URLContext **puc, const char *filename, int flags,const char *headers, int * http_error_flag, const unsigned long options);
 /**
  * Read up to size bytes from the resource accessed by h, and store
  * the read bytes in buf.

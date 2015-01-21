@@ -92,11 +92,17 @@ static int audiodsp_set_pcm_resample_enable(unsigned long enable)
 void adec_reset_track(aml_audio_dec_t *audec)
 {
 	if(audec->format_changed_flag && audec->state >= INITTED && !audec->need_stop){
-		adec_print("reset audio_track: samplerate=%d channels=%d\n", audec->samplerate,audec->channels);
+        buffer_stream_t *g_bst=audec->g_bst;
+        adec_print("reset audio_track: samplerate=%d channels=%d\n", (g_bst==NULL)?audec->samplerate:g_bst->samplerate,(g_bst==NULL)?audec->channels:g_bst->channels);
         audio_out_operations_t *out_ops = &audec->aout_ops;
 		out_ops->mute(audec, 1);
 		out_ops->pause(audec);
         out_ops->stop(audec);
+        if(g_bst!=NULL){
+          //4.4 code maybe run on 4.2 hardware platform: g_bst==NULL on 4.2,so add this condition 
+          audec->channels  =g_bst->channels;
+          audec->samplerate=g_bst->samplerate;
+        }
         out_ops->init(audec);
 		if(audec->state == ACTIVE)
         	out_ops->start(audec);

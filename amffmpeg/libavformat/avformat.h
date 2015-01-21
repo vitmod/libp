@@ -633,6 +633,14 @@ typedef struct AVStream {
         int64_t last_duration;
         double duration_error[MAX_STD_TIMEBASES];
         int64_t codec_info_duration;
+
+        /**
+         * Those are used for average framerate estimation.
+         */
+        int64_t fps_first_dts;
+        int     fps_first_dts_idx;
+        int64_t fps_last_dts;
+        int     fps_last_dts_idx;
     } *info;
 
     /**
@@ -927,10 +935,13 @@ typedef struct AVFormatContext {
     /* added by Z.C for DRM content */
     int drmcontent;
 	int skip_extradata;
+	
+    // ts header packet for mpeg seq, 264/hevc sps/pps/vps 
+       int ts_video_header_valid; 
+       uint8_t ts_video_header_packet[188];
 
-    // insert vps/sps/pps before stream
-    int ts_hevc_csd_valid;
-    uint8_t ts_hevc_csd_packet[188];
+	int64_t seek_pos_max;
+	int64_t seek_timestamp_max;
 } AVFormatContext;
 
 typedef struct AVPacketList {
@@ -1160,6 +1171,9 @@ attribute_deprecated int av_open_input_file_header(AVFormatContext **ic_ptr, con
                        int buf_size,
                        AVFormatParameters *ap,
                        const char *headers);
+typedef int (*player_notify_t)(int pid, int msg, unsigned long ext1, unsigned long ext2);
+int ffmpeg_register_notify(const player_notify_t notify_fn);
+int ffmpeg_notify(URLContext *h, int msg, unsigned long ext1, unsigned long ext2);
 
 #endif
 

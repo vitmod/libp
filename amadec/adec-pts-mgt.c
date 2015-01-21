@@ -53,7 +53,30 @@ int sysfs_get_int(char *path, unsigned long *val)
 
     return 0;
 }
-
+/*
+get vpts when refresh apts,  do not use sys write servie as it is too slow sometimes.
+*/
+static int mysysfs_get_sysfs_int16(const char *path)
+{
+    int fd;
+    char valstr[64];	
+    int val;	
+    fd = open(path, O_RDONLY);
+    if (fd >= 0) {
+	  memset(valstr,0,64);
+        read(fd, valstr, 64 - 1);
+        valstr[strlen(valstr)] = '\0';
+        close(fd);
+    } else {
+        adec_print("unable to open file %s\n", path);
+        return -1;
+    }
+    if (sscanf(valstr, "0x%lx", &val) < 1) {
+        adec_print("unable to get pts from: %s", valstr);
+        return -1;
+    }	
+    return val;
+}
 static int set_tsync_enable(int enable)
 {
     char *path = "/sys/class/tsync/enable";
@@ -128,7 +151,7 @@ int adec_pts_start(aml_audio_dec_t *audec)
             adec_print("use default av sync threshold!\n");
         }
     }
-
+    
     first_apts = adec_calc_pts(audec);
     if (sysfs_get_int(TSYNC_FIRSTAPTS, &audec->first_apts) == -1) {
         adec_print("## [%s::%d] unable to get first_apts! \n",__FUNCTION__,__LINE__);
@@ -139,6 +162,7 @@ int adec_pts_start(aml_audio_dec_t *audec)
     
 
     dsp_ops->last_pts_valid = 0;
+
     //default enable drop pcm
     int enable_drop_pcm = 1;
     if(property_get("sys.amplayer.drop_pcm",value,NULL) > 0)
@@ -550,7 +574,7 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
         audec->adsp_ops.last_pts_valid = 1;
         adec_print("[%s:%d]set automute orig %d!\n", __FUNCTION__, __LINE__, audec->auto_mute);
         audec->auto_mute = 0;
-        apts_interrupt=10;
+        apts_interrupt=5;
         return 0;
     }
 
@@ -573,6 +597,32 @@ int adec_refresh_pts(aml_audio_dec_t *audec)
     /* report apts-system time difference */
     if(!apts_start_flag)
       return 0;
+#if 0
+     if(audec->apts_reset_scr_delay_ms > 0){
+		unsigned long vpts = 0;
+		if ((vpts = mysysfs_get_sysfs_int16(TSYNC_VPTS)) < 0) {
+			adec_print("## [%s::%d] unable to get vpts! \n",__FUNCTION__,__LINE__);
+			return -1;
+		}
+		//adec_print("vpts %x,last apts %x \n,diff %x \n",vpts,audec->last_checkout_apts,abs(vpts-audec->last_discontinue_apts));
+		if((gettime() - audec->last_discontinue_time) < audec->apts_reset_scr_delay_ms*1000 && (abs(vpts-audec->last_discontinue_apts) > audec->avsync_threshold))
+			return 0;
+		else{
+			adec_print("after %lld ms,apts reset scr delay time out \n",(gettime() - audec->last_discontinue_time)/1000);
+			audec->apts_reset_scr_delay_ms = 0;
+		}	
+    }		
+    else 
+    if( abs(pts - last_pts) >= 90000 && abs(pts - last_pts) < APTS_DISCONTINUE_THRESHOLD){
+		audec->last_discontinue_time  = gettime();
+		audec->last_discontinue_apts = pts;
+		audec->apts_reset_scr_delay_ms = audio_get_decoded_pcm_delay(audec)/*+audec->aout_ops.latency(audec)+100*/;
+		adec_print("apts reset time delay %d ms,pts diff 0x%x,timestamp %d ms \n",audec->apts_reset_scr_delay_ms,abs(pts - last_pts),
+			abs(pts - last_pts)/90);
+		return 0;
+    }
+#endif
+
     if(audec->adsp_ops.set_cur_apts){
         ret_val = audec->adsp_ops.set_cur_apts(&audec->adsp_ops,pts);
     }

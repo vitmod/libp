@@ -8,7 +8,7 @@ LOCAL_SRC_FILES += sbrcov.s\
                    sbrqmfak.s\
                    sbrqmfsk.s
 
-LOCAL_CFLAGS := -DHAVE_NEON=1 -DHAVE_CONFIG -DOPT_NEON -DREAL_IS_FLOAT -mfloat-abi=softfp -mfpu=neon
+LOCAL_CFLAGS := -DHAVE_NEON=1 -DHAVE_CONFIG -DOPT_NEON -DREAL_IS_FLOAT -mfloat-abi=softfp -mfpu=neon   -DAAC_ENABLE_SBR
 
 LOCAL_ARM_MODE := arm 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)\
@@ -27,7 +27,7 @@ LOCAL_SRC_FILES += sbrcov.s\
                    sbrqmfak.s\
                    sbrqmfsk.s
 
-LOCAL_CFLAGS := -DHAVE_NEON=1 -DHAVE_CONFIG -DOPT_NEON -DREAL_IS_FLOAT -mfloat-abi=softfp -mfpu=neon
+LOCAL_CFLAGS := -DHAVE_NEON=1 -DHAVE_CONFIG -DOPT_NEON -DREAL_IS_FLOAT -mfloat-abi=softfp -mfpu=neon  -DAAC_ENABLE_SBR
 
 LOCAL_ARM_MODE := arm
 LOCAL_MODULE_TAGS := optional

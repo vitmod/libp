@@ -11,7 +11,7 @@
 
 
 #define VIDEOCAPDEV "/dev/amvideocap0"              
-int amvideocap_capframe(char *buf,int size,int *w,int *h,int fmt_ignored,int at_end, int* ret_size)
+int amvideocap_capframe(char *buf,int size,int *w,int *h,int fmt_ignored,int at_end, int* ret_size, int fmt)
 {
 	int fd=open(VIDEOCAPDEV,O_RDWR);
 	int ret = 0;
@@ -25,6 +25,8 @@ int amvideocap_capframe(char *buf,int size,int *w,int *h,int fmt_ignored,int at_
 	if(h!= NULL && *h>0){
 		ret=ioctl(fd,AMVIDEOCAP_IOW_SET_WANTFRAME_HEIGHT,*h);
 	}
+       if(fmt)
+            ret = ioctl(fd,AMVIDEOCAP_IOW_SET_WANTFRAME_FORMAT, fmt);
 	if(at_end){
 		ret=ioctl(fd,AMVIDEOCAP_IOW_SET_WANTFRAME_AT_FLAGS,CAP_FLAG_AT_END);
 	}

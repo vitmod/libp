@@ -89,7 +89,7 @@ static inline int ff_network_wait_fd_wait_max(int fd, int write,int realwaitMS,i
     struct pollfd p = { .fd = fd, .events = ev, .revents = 0 };
     int ret=0;
 	#define POLL_WAIT_MS 30 ///ms
-	int maxwait_ms=1000;//100*10=1S,low level READ.
+	int maxwait_ms=10000;//100*10=1S,low level READ.
 	int64_t starttime=ff_network_gettime();
 	int64_t curtime;
     int retry = 0;
@@ -100,7 +100,7 @@ static inline int ff_network_wait_fd_wait_max(int fd, int write,int realwaitMS,i
 		if(url_interrupt_cb() && realwaitMS<=0){
 			return AVERROR_EXIT;
 		}
-                ret = poll(&p, 1, POLL_WAIT_MS);/*10ms*/
+                ret = poll(&p, 1, POLL_WAIT_MS);/*30ms*/
 		if(ret!=0){
 			break;/*fd ready or errors*/
 		}

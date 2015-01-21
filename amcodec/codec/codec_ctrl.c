@@ -24,6 +24,7 @@
 #include <audio_priv.h>
 #include "codec_h_ctrl.h"
 #include <adec-external-ctrl.h>
+#include <Amvideoutils.h>
 
 #define SUBTITLE_EVENT
 #define TS_PACKET_SIZE 188
@@ -703,7 +704,7 @@ int codec_init(codec_para_t *pcodec)
         a_ainfo.automute   =pcodec->automute_flag;
         if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type))
         {
-            if(pcodec->audio_type!=AFORMAT_WMA && pcodec->audio_type!=AFORMAT_WMAPRO)
+            if(pcodec->audio_type!=AFORMAT_WMA && pcodec->audio_type!=AFORMAT_WMAPRO && pcodec->audio_type!=AFORMAT_WMAVOI)
             {
                  a_ainfo.extradata_size=pcodec->audio_info.extradata_size;
                  if(a_ainfo.extradata_size>0&&a_ainfo.extradata_size<=AUDIO_EXTRA_DATA_SIZE)
@@ -859,7 +860,7 @@ void codec_resume_audio(codec_para_t *pcodec, unsigned int orig)
 		}
         if(IS_AUIDO_NEED_EXT_INFO(pcodec->audio_type))
         {
-            if(pcodec->audio_type!=AFORMAT_WMA && pcodec->audio_type!=AFORMAT_WMAPRO)
+            if(pcodec->audio_type!=AFORMAT_WMA && pcodec->audio_type!=AFORMAT_WMAPRO && pcodec->audio_type!=AFORMAT_WMAVOI)
             {
                  a_ainfo.extradata_size=pcodec->audio_info.extradata_size;
                  if(a_ainfo.extradata_size>0&&a_ainfo.extradata_size<=AUDIO_EXTRA_DATA_SIZE)
@@ -1397,7 +1398,6 @@ int codec_close_cntl(codec_para_t *pcodec)
 
     if (pcodec) {
         if (pcodec->cntl_handle) {
-            res = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_CLEAR_VIDEO, 0);
             res = codec_h_close(pcodec->cntl_handle);
         }
     }
@@ -1468,6 +1468,10 @@ int codec_set_cntl_mode(codec_para_t *pcodec, unsigned int mode)
     return codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_TRICKMODE, (unsigned long)mode);
 }
 
+int codec_set_mode(codec_para_t *pcodec, unsigned int mode)
+{
+    return codec_h_control(pcodec->handle, AMSTREAM_IOC_TRICKMODE, (unsigned long)mode);
+}
 /* --------------------------------------------------------------------------*/
 /**
 * @brief  codec_set_cntl_avthresh  Set the AV sync threshold which defines the max time difference between A/V
@@ -2191,8 +2195,23 @@ int codec_get_audio_delay_limited_ms(codec_para_t *pcodec,int *delay_ms)
 /* --------------------------------------------------------------------------*/
 int codec_get_audio_cur_delay_ms(codec_para_t *pcodec,int *delay_ms)
 {
-    return codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_AUDIO_CUR_DELAY_MS, delay_ms);
-}
+    int abuf_delay = 0;
+    int adec_delay = 0;	
+    int ret = 0;	
+    ret = codec_h_control(pcodec->handle, AMSTREAM_IOC_GET_AUDIO_CUR_DELAY_MS, &abuf_delay);
+    if(ret < 0){
+        CODEC_PRINT("[%s]ioctl failed %d\n", __FUNCTION__, ret);
+	 return -1;	
+    }
+    if (pcodec->has_audio) {
+        adec_delay = audio_get_decoded_pcm_delay(pcodec->adec_priv);	
+	 if(adec_delay < 0)
+	 	adec_delay = 0;
+    }
+    *delay_ms = 	abuf_delay+adec_delay;
+    return ret;	
+}	
+  
 
 
 /* --------------------------------------------------------------------------*/
@@ -2293,3 +2312,75 @@ int codec_get_dsp_apts(codec_para_t* pcodec, unsigned int * apts)
 {
   return audio_get_pts(pcodec->adec_priv, apts);
 }
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_get_cntl_vpts  Get the vpts in trickmode
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+*
+* @return     Video pts or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_get_cntl_vpts(codec_para_t *pcodec)
+{
+    int cntl_vpts, r;
+
+    if (pcodec->cntl_handle == 0) {
+        CODEC_PRINT("no control handler\n");
+        return 0;
+    }
+
+    r = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_GET_TRICK_VPTS, (unsigned long)&cntl_vpts);
+    if (r < 0) {
+        return system_error_to_codec_error(r);
+    } else {
+        return cntl_vpts;
+    }
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  codec_disalbe_slowsync  Set the slowsync disable or enable
+*
+* @param[in]  pcodec  Pointer of codec parameter structure
+* @param[in]  disalbe_slowsync  disable slowsync or not
+*
+* @return     0 or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_disalbe_slowsync(codec_para_t *pcodec, int disable_slowsync)
+{
+    int cntl_vpts, r;
+
+    if (pcodec->cntl_handle == 0) {
+        CODEC_PRINT("no control handler\n");
+        return 0;
+    }
+
+    r = codec_h_control(pcodec->cntl_handle, AMSTREAM_IOC_DISABLE_SLOW_SYNC, (unsigned long)disable_slowsync);
+    if (r < 0) {
+        return system_error_to_codec_error(r);
+    } else {
+        return 0;
+    }
+}
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief  add video position setting for  xbmc APK
+*
+* @param[in]  osd position value
+* @param[in]  rotation angle
+*
+* @return     0  success or fail error type
+*/
+/* --------------------------------------------------------------------------*/
+int codec_utils_set_video_position(int x, int y, int w, int h, int rotation){
+	amvideo_utils_set_virtual_position(x,  y, w,  h, rotation);
+    return 0;
+
+}
+
+
+

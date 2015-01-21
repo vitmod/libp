@@ -492,6 +492,12 @@ static int check_frame_size(pcm_read_ctl_t *pcm_read_ctl,aml_audio_dec_t *audec 
 
 }
 
+static inline int16_t av_clip_int16(int a)
+{
+    if ((a+32768) & ~65535) return (a>>31) ^ 32767;
+    else                    return a;
+}
+
 static int pcm_decode_frame(pcm_read_ctl_t *pcm_read_ctl,unsigned char *buf, int len, aml_audio_dec_t *audec)
 {
     short *sample;
@@ -513,11 +519,12 @@ static int pcm_decode_frame(pcm_read_ctl_t *pcm_read_ctl,unsigned char *buf, int
 
     if(audec->format == AFORMAT_PCM_BLURAY){
         int i,j;
-        short tmp_buf[10];
+        int tmp_buf[10]={0};
         if(!pPcm_priv_data->frame_size_check_flag){
             frame_size=check_frame_size(pcm_read_ctl,audec,&bps);
             if(frame_size<0)
                return 0;
+            if(bps>0) pPcm_priv_data->bit_per_sample=bps;
         }else{
             if(pPcm_priv_data->jump_read_head_flag==1)
             {
@@ -569,24 +576,7 @@ static int pcm_decode_frame(pcm_read_ctl_t *pcm_read_ctl,unsigned char *buf, int
             }
         }
 
-        if(pPcm_priv_data->bit_per_sample == 24){
-            if(pPcm_priv_data->pcm_channels == 6){
-                for(i=0,j=0; i<frame_size; ){
-                    //short L, R, C, LS, RS, N;
-                    *(tmp_buf)   = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3;  //L
-                    *(tmp_buf+1) = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3;  //R    
-                    *(tmp_buf+2) = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3;   //C
-                    i+=9;
-                    sample[j++] = (*(tmp_buf)>>1) + ((*(tmp_buf+2))>>1);
-                    sample[j++] = (*(tmp_buf+1)>>1) + ((*(tmp_buf+2))>>1);
-                }
-            }else if(pPcm_priv_data->pcm_channels == 2){
-                for(i=0,j=0; i<frame_size; ){
-                    sample[j++] = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3;
-                    sample[j++] = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3;
-                }
-            }
-        }else if(pPcm_priv_data->bit_per_sample == 16){
+        if(pPcm_priv_data->bit_per_sample == 16){
             if(pPcm_priv_data->pcm_channels == 1){
                 for(i=0,j=0; i<frame_size; ){
                     sample[j+1] = sample[j] = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; 
@@ -598,32 +588,48 @@ static int pcm_decode_frame(pcm_read_ctl_t *pcm_read_ctl,unsigned char *buf, int
                     sample[j++] = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=2;
                     sample[j++] = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=2;
                 }
-            }else if(pPcm_priv_data->pcm_channels== 6){
+            }else if(pPcm_priv_data->pcm_channels>2&& pPcm_priv_data->pcm_channels<=8){
+                int k;
+                memset(tmp_buf,0,sizeof(tmp_buf));
                 for(i=0,j=0; i<frame_size; ){
-                    *(tmp_buf)   = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=2;              //L
-                    *(tmp_buf+1) = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=2;       //R    
-
-                    *(tmp_buf+2) =(pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1];  i+=2;       //C
-                    i+=6;
-                    sample[j++] = (*(tmp_buf)>>1)  + (*(tmp_buf+2)  >> 1);
-                    sample[j++] = (*(tmp_buf+1)>>1)  + (*(tmp_buf+2)  >> 1);
+                    for(k=0; k<pPcm_priv_data->pcm_channels;k++){
+                        tmp_buf[k]=(int16_t)((pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]); 
+                        i+=2;
+                    }
+                    //LoRo downmix:L R C Ls Rs LFE  Lsr Rsr
+                    sample[j++] =av_clip_int16(tmp_buf[0]+ 0.707f*tmp_buf[2]+ 0.707f*(tmp_buf[3]+tmp_buf[6]));//Lo=L+0.707C+0.707 (Ls+Lsr)
+                    sample[j++] =av_clip_int16(tmp_buf[1]+ 0.707f*tmp_buf[2]+ 0.707f*(tmp_buf[4]+tmp_buf[7]));//Ro=R+0.707C+0.707(Rs+Rsr)
                 }
-            }
-            else if(pPcm_priv_data->pcm_channels== 8){
+            } 
+        }else if(pPcm_priv_data->bit_per_sample==24 || pPcm_priv_data->bit_per_sample== 20){
+            int k;
+            memset(tmp_buf,0,sizeof(tmp_buf));
+            if(pPcm_priv_data->pcm_channels==1){
                 for(i=0,j=0; i<frame_size; ){
-                    *(tmp_buf)   = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=2;                           //L
-                    *(tmp_buf+1) = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=2;                       //R                 
-                    *(tmp_buf+2) = (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=2;                         //C
-                    i+=10;
-                    sample[j++] = (*(tmp_buf)>>1)  + (*(tmp_buf+2)  >> 1);
-                    sample[j++] = (*(tmp_buf+1)>>1) + (*(tmp_buf+2)  >> 1);
+                   sample[j++]= (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3; 
+                }
+            }else if(pPcm_priv_data->pcm_channels==2){
+                for(i=0,j=0; i<frame_size; ){
+                   sample[j++]= (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3; 
+                   sample[j++]= (pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; i+=3; 
+                }
+            }else if(pPcm_priv_data->pcm_channels>=2 && pPcm_priv_data->pcm_channels<=8){
+                int k;
+                memset(tmp_buf,0,sizeof(tmp_buf));
+                for(i=0,j=0; i<frame_size; ){
+                    for(k=0;k<pPcm_priv_data->pcm_channels;k++){
+                        tmp_buf[k]=(int16_t)(pPcm_priv_data->pcm_buffer[i]<<8)|pPcm_priv_data->pcm_buffer[i+1]; 
+                        i+=3;
+                    }
+                    //LoRo downmix:L R C Ls Rs LFE  Lsr Rsr
+                    sample[j++] =av_clip_int16(tmp_buf[0]+ 0.707f*tmp_buf[2]+ 0.707f*(tmp_buf[3]+tmp_buf[6]));//Lo=L+0.707C+0.707 (Ls+Lsr)
+                    sample[j++] =av_clip_int16(tmp_buf[1]+ 0.707f*tmp_buf[2]+ 0.707f*(tmp_buf[4]+tmp_buf[7]));//Ro=R+0.707C+0.707(Rs+Rsr)
                 }
             }
         }else{
-            PRINTF("[%s %d]blueray pcm is 20bps, don't process now\n",__FUNCTION__,__LINE__);
+            PRINTF("[%s %d]blueray pcm is %d bps, don't process now\n",__FUNCTION__,__LINE__,pPcm_priv_data->bit_per_sample);
             return 0;
         }
-        
         return j*2;
     }
     else if (audec->format == AFORMAT_PCM_WIFIDISPLAY)
