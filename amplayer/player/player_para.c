@@ -1892,21 +1892,22 @@ int player_decoder_init(play_para_t *p_para)
         p_para->codec = p_para->vcodec;
         log_print("[%s:%d]para->codec pointer to vcodec!\n", __FUNCTION__, __LINE__);
     }
-	if(p_para->playctrl_info.lowbuffermode_flag && !am_getconfig_bool("media.libplayer.wfd")) {
-		if(p_para->playctrl_info.buf_limited_time_ms<=0)	/*wfd not need blocked write.*/
-			p_para->playctrl_info.buf_limited_time_ms=1000;
-	}else{
-	    if (p_para->vstream_info.has_video && p_para->astream_info.has_audio && (p_para->astream_num > 1)) {	    
-	    p_para->playctrl_info.buf_limited_time_ms=am_getconfig_float_def("media.libplayer.limittime",2000);
-	    log_print("[%s:%d]multiple audio switch, set buffer time to %d ms\n", __FUNCTION__, __LINE__,p_para->playctrl_info.buf_limited_time_ms);     
-        } else {
-		    p_para->playctrl_info.buf_limited_time_ms=0;/*0 is not limited.*/
-        }
+    if (p_para->playctrl_info.lowbuffermode_flag && !am_getconfig_bool("media.libplayer.wfd")) {
+        if (p_para->playctrl_info.buf_limited_time_ms <= 0) /*wfd not need blocked write.*/
+            p_para->playctrl_info.buf_limited_time_ms=1000;
+        }else{
+            if (p_para->vstream_info.has_video && p_para->astream_info.has_audio && (p_para->astream_num>1) && (p_para->state.full_time>0))
+            {
+                p_para->playctrl_info.buf_limited_time_ms = am_getconfig_float_def("media.libplayer.limittime",2000);
+                log_print("[%s:%d]multiple audio switch, set buffer time to %d ms\n",__FUNCTION__,__LINE__,p_para->playctrl_info.buf_limited_time_ms);
+            } else {
+                p_para->playctrl_info.buf_limited_time_ms=0;/*0 is not limited.*/
+            }
 	}
-	if(p_para->buffering_enable && p_para->playctrl_info.buf_limited_time_ms > 0 && 
+	if(p_para->buffering_enable && p_para->playctrl_info.buf_limited_time_ms > 0 &&
 	   p_para->buffering_exit_time_s * 1000 > (p_para->playctrl_info.buf_limited_time_ms - 100)){
 	   p_para->playctrl_info.buf_limited_time_ms = p_para->buffering_exit_time_s * 1000 + 100;
-	   log_print("[%s] changed buf_limited_time_ms to %d,when buffering enable\n", __FUNCTION__, p_para->playctrl_info.buf_limited_time_ms);
+	   log_print("[%s] changed buf_limited_time_ms to %d,when buffering enable\n",__FUNCTION__,p_para->playctrl_info.buf_limited_time_ms);
 	}
 	{
 		log_print("[%s] set buf_limited_time_ms to %d\n", __FUNCTION__, p_para->playctrl_info.buf_limited_time_ms);
