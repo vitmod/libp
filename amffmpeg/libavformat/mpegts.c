@@ -2083,7 +2083,12 @@ static int read_packet(AVFormatContext *s, uint8_t *buf, int raw_packet_size)
         total = 0;
 RETRY:
         len = avio_read(pb, buf, pkt_size);
-        if ((len == AVERROR_EOF) || (len == AVERROR_EXIT) || (retry_count >= RETRY_MAX)) {
+        if (len <= 0 && ((len == AVERROR_EOF)
+            || (len == AVERROR_EXIT)
+            || (len == AVERROR(EIO))
+            || (len == AVERROR(EINTR))
+            || (len == AVERROR(EAGAIN))
+            || (retry_count >= RETRY_MAX))) {
             av_log(s, AV_LOG_ERROR, "avio read error, retry_cout = %d!, len = %x\n", retry_count, len);
             return len < 0 ? len : AVERROR_EOF;
         }
