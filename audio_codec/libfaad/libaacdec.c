@@ -300,6 +300,7 @@ static int audio_decoder_init(
     inbuf_size = inlen;
     int nReadLen=0;
     FaadContext *gFaadCxt  =	(FaadContext*)adec_ops->pdecoder;
+    int islatm = 0;
     if(!in_buf || !inbuf_size ||!outbuf){
 		audio_codec_print(" input/output buffer null or input len is 0 \n");
    } 
@@ -307,6 +308,7 @@ retry:
 //fixed to LATM aac frame header sync to speed up seek speed
 #if  1
    if(adec_ops->nAudioDecoderType == ACODEC_FMT_AAC_LATM){
+	islatm = 1;
 	int nSeekNum = AACFindLATMSyncWord(in_buf,inbuf_size);
 	if(nSeekNum == (inbuf_size-2)){
 		audio_codec_print("[%s]%d bytes data not found latm sync header \n",__FUNCTION__,nSeekNum);	
@@ -330,7 +332,7 @@ retry:
     config->useOldADTSFormat = 0;
     //config->dontUpSampleImplicitSBR = 1;
     NeAACDecSetConfiguration(gFaadCxt->hDecoder, config);
-    if ((ret = NeAACDecInit(gFaadCxt->hDecoder, in_buf,inbuf_size, &samplerate, &channels)) < 0)
+    if ((ret = NeAACDecInit(gFaadCxt->hDecoder, in_buf,inbuf_size, &samplerate, &channels,islatm)) < 0)
     {
     		in_buf += RSYNC_SKIP_BYTES;
 		inbuf_size -= RSYNC_SKIP_BYTES;

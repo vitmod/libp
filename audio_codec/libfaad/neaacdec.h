@@ -214,7 +214,8 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hDecoder,
                               unsigned char *buffer,
                               unsigned long buffer_size,
                               unsigned long *samplerate,
-                              unsigned char *channels);
+                              unsigned char *channels,
+                              int is_latm_external);
 
 /* Init the library using a DecoderSpecificInfo */
 int NEAACDECAPI NeAACDecInit2(NeAACDecHandle hDecoder,

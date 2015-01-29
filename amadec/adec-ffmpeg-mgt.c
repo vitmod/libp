@@ -1148,7 +1148,8 @@ void *audio_decode_loop(void *args)
     nAudioFormat=audec->format;
     g_bst->format = audec->format;
     inlen=0;
-    nNextFrameSize=adec_ops->nInBufSize;    
+    nNextFrameSize = adec_ops->nInBufSize;
+    adec_ops->nAudioDecoderType = audec->format;
     while (1){
 exit_decode_loop:
 

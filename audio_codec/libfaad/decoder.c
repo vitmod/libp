@@ -838,7 +838,8 @@ long NEAACDECAPI NeAACDecInit(NeAACDecHandle hpDecoder,
                               unsigned char *buffer,
                               unsigned long buffer_size,
                               unsigned long *samplerate,
-                              unsigned char *channels)
+                              unsigned char *channels,
+                              int is_latm_external)
 {
     uint32_t bits = 0;
     bitfile ld;
@@ -921,6 +922,7 @@ NEXT_CHECK:
 	//parse the playload of one real LOAS aac frame
 	i_frame_size = LOASParse(pbuffer, i_frame_size,p_sys);
 	if(i_frame_size <= 0){
+		LATM_LOG("[%s %d]invalid i_frame_size/%d ,go on next check!...\n",__FUNCTION__,__LINE__,i_frame_size);
 		goto NEXT_CHECK;
 	}
 	else {
@@ -932,11 +934,14 @@ exit_check:
 	if(m->i_streams > 0)
 		st = &m->stream[m->i_streams-1];
 	memset(l, 0, sizeof(latm_header));
-	if(st && st->i_extra){
+	if (st && st->i_extra || is_latm_external) {
 		    int32_t x;
 
 		hDecoder->latm_header_present = 1;
-		x = NeAACDecInit2(hDecoder, st->extra, st->i_extra, samplerate, channels);
+		if (st && st->i_extra)
+		     x = NeAACDecInit2(hDecoder, st->extra, st->i_extra, samplerate, channels);
+		else
+		     x = -1;
             if(x!=0)
                 hDecoder->latm_header_present = 0;
  #ifdef USE_HELIX_AAC_DECODER
