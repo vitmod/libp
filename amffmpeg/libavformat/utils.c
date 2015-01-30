@@ -863,9 +863,9 @@ static int init_input(AVFormatContext *s, const char *filename,const char * head
         		flags |= AVIO_FLAG_CACHE;
     	 	
         	if (options && *options)
-                    ret = avio_open_h2(&s->pb, filename, AVIO_FLAG_READ, headers, options);
+                    ret = avio_open_h2(&s->pb, filename, flags, headers, options);
                 else
-                    ret = avio_open_h(&s->pb, filename, AVIO_FLAG_READ, headers);
+                    ret = avio_open_h(&s->pb, filename, flags, headers);
                 if (ret < 0)
                     return ret;
 
