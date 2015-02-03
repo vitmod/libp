@@ -217,6 +217,8 @@ typedef struct play_para {
 
 	int retry_cnt;	// -1: means retry forever; >0 mean the retry cnt
     int force_enter_buffering;
+
+    int pre_seek_flag; // seekto comming prior to start
 } play_para_t;
 
 typedef struct media_type_t {

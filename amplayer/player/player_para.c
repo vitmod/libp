@@ -1801,10 +1801,16 @@ int player_offset_init(play_para_t *p_para)
             ret = time_search(p_para,AVSEEK_FLAG_BACKWARD);
         else
             ret = time_search(p_para,AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);/*if seek to 0,don't care whether keyframe. */
-        
-        set_player_state(p_para, PLAYER_SEARCHOK);
-        update_player_states(p_para, 1);
 
+        if(!p_para->pre_seek_flag)
+        {
+            set_player_state(p_para, PLAYER_SEARCHOK);
+            update_player_states(p_para, 1);
+        }
+        else
+        {
+            p_para->pre_seek_flag = 0;
+        }
         if (ret != PLAYER_SUCCESS) {
             set_player_state(p_para, PLAYER_ERROR);
             ret = PLAYER_SEEK_FAILED;

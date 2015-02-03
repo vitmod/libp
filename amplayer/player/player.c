@@ -810,8 +810,14 @@ static int check_start_cmd(play_para_t *player)
             flag = 1;
         }
         if (msg->ctrl_cmd & CMD_SEARCH) {
-            if (msg->f_param < player->state.full_time && msg->f_param >= 0) {
+            if( (msg->f_param < player->state.full_time && msg->f_param >= 0) ||
+                (msg->f_param >= 0 && player->start_param->is_livemode == 1)
+              )
+            {
                 player->playctrl_info.time_point = msg->f_param;
+                set_player_state(player, PLAYER_SEARCHOK);
+                update_player_states(player, 1);
+                player->pre_seek_flag = 1;
                 log_print("pid[%d]::seek before start, set time_point to %f\n", player->player_id, player->playctrl_info.time_point);
                 player->playctrl_info.end_flag = 0;
                 message_free(msg);
