@@ -1214,11 +1214,19 @@ int audio_set_lrvolume(int pid, float lvol, float rvol)
         log_print("player ID is NULL!\n");
         return -1;
     }
-    if(player_para->acodec == NULL){
+    if (player_para->stream_type == STREAM_ES || player_para->stream_type == STREAM_AUDIO) {
+        if(player_para->acodec == NULL){
+            log_print("codec is not ready!\n");
+            return -1;
+        }
+        return codec_set_lrvolume(player_para->acodec, lvol, rvol);
+    }
+
+    if(player_para->codec == NULL){
         log_print("codec is not ready!\n");
         return -1;
     }
-    return codec_set_lrvolume(player_para->acodec, lvol, rvol);
+    return codec_set_lrvolume(player_para->codec, lvol, rvol);
 }
 
 /* --------------------------------------------------------------------------*/
