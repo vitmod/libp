@@ -3591,15 +3591,16 @@ int av_find_stream_info(AVFormatContext *ic)
             }
        		//av_log(NULL, AV_LOG_INFO, "parse_mode=%d\n",parse_mode);
             st->codec->durcount=st->info->duration_count;
+            av_log(ic, AV_LOG_DEBUG, "[%s:%d]on pos=%lld,stream.index=%d\n",__FUNCTION__,__LINE__, avio_tell(ic->pb),i);
 
             if (!has_codec_parameters_ex(st->codec,parse_mode)){
                 break;
             }else{
                 stream_parser_count =i+1;
             }
-            
-	     if(ic->pb &&ic->pb->fastdetectedinfo)	
-		continue;
+            av_log(ic, AV_LOG_DEBUG, "[%s:%d]on pos=%lld,stream.index=%d\n",__FUNCTION__,__LINE__, avio_tell(ic->pb),i);
+            if (ic->pb &&ic->pb->fastdetectedinfo)
+                continue;
             /* if the timebase is coarse (like the usual millisecond precision
                of mkv), we need to analyze more frames to reliably arrive at
                the correct fps */
@@ -3608,15 +3609,17 @@ int av_find_stream_info(AVFormatContext *ic)
             if (ic->fps_probe_size >= 0)
                 fps_analyze_framecount = ic->fps_probe_size;
             /* variable fps and no guess at the real fps */
-				
-            if(!fast_switch && tb_unreliable(st->codec) && !(st->r_frame_rate.num && st->avg_frame_rate.num)
+            if (!fast_switch && tb_unreliable(st->codec) && !(st->r_frame_rate.num && st->avg_frame_rate.num)
                && st->info->duration_count < fps_analyze_framecount
                && st->codec->codec_type == AVMEDIA_TYPE_VIDEO)
                 break;
-            if(st->parser && st->parser->parser->split && !st->codec->extradata)
+            av_log(ic, AV_LOG_DEBUG, "[%s:%d]on pos=%lld,stream.index=%d\n",__FUNCTION__,__LINE__, avio_tell(ic->pb),i);
+            if (strcmp(ic->iformat->name, "mpegts") && st->parser && st->parser->parser->split && !st->codec->extradata) //not ts.ts needn't extradata.
                 break;
+            av_log(ic, AV_LOG_DEBUG, "[%s:%d]on pos=%lld,stream.index=%d\n",__FUNCTION__,__LINE__, avio_tell(ic->pb),i);
             if(!fast_switch &&  st->first_dts == AV_NOPTS_VALUE)
                 break;
+            av_log(ic, AV_LOG_DEBUG, "[%s:%d]on pos=%lld,stream.index=%d\n",__FUNCTION__,__LINE__, avio_tell(ic->pb),i);
         }
         if (i == ic->nb_streams) {
             /* NOTE: if the format has no header, then we need to read
