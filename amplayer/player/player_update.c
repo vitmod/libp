@@ -1300,10 +1300,10 @@ static int  update_buffering_states(play_para_t *p_para,
             if(p_para->div_buf_time > 1)
                 p_para->div_buf_time--;
         } else if ((get_player_state(p_para) == PLAYER_BUFFERING) &&
-                (discontinue_flag || (!discontinue_flag && (avdelayms - p_para->last_buffering_av_delay_ms > 5000))) && //buffering at least 5s for iptv
+                (((discontinue_flag || (!discontinue_flag && (avdelayms - p_para->last_buffering_av_delay_ms > 5000))) && //buffering at least 5s for iptv
                    ((!discontinue_flag && (avdelayms > p_para->buffering_exit_time_s*1000/((p_para->div_buf_time>2)?(p_para->div_buf_time>>1):1)) && minlevel > p_para->buffering_threshhold_middle*2/3 )  ||
                     (minlevel > p_para->buffering_threshhold_middle)  ||
-                    (p_para->force_enter_buffering == 1)  ||
+                    (p_para->force_enter_buffering == 1)))  ||
                     (maxlevel > p_para->buffering_threshhold_max) ||
                     p_para->playctrl_info.read_end_flag)) {
             codec_resume(p_para->codec);
