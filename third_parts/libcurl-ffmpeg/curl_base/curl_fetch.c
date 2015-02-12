@@ -102,7 +102,6 @@ CFContext * curl_fetch_init(const char * uri, const char * headers, int flags)
     handle->http_code = 0;
     handle->filesize = -1;
     handle->seekable = 0;
-    //handle->is_seeking = 0;
     handle->relocation = NULL;
     handle->headers = NULL;
     handle->interrupt = NULL;
@@ -219,6 +218,7 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
         CLOGE("CFContext invalid\n");
         return ret;
     }
+    h->cwc_h->ignore_interrupt = 0;
     curl_wrapper_set_to_quit(h->cwc_h, NULL);
     if (curl_fetch_waitthreadquit(h, 5000 * 1000)) {
         return ret;
@@ -255,9 +255,9 @@ int curl_fetch_http_keepalive_open(CFContext * h, const char * uri)
     h->http_code = 0;
     h->filesize = -1;
     h->seekable = 0;
-    //h->is_seeking = 0;
     h->cwd->size = 0;
 
+    h->cwc_h->ignore_interrupt = 1;
     curl_fetch_start_local_run(h);
 
 #if 0
@@ -445,7 +445,7 @@ int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
         return -2;
     }
     int ret = -1;
-    //h->is_seeking = 1;
+    h->cwc_h->ignore_interrupt = 0;
     curl_wrapper_set_to_quit(h->cwc_h, NULL);
     if (curl_fetch_waitthreadquit(h, 5000 * 1000)) {
         return -1;
@@ -471,6 +471,7 @@ int64_t curl_fetch_seek(CFContext * h, int64_t off, int whence)
         curl_wrapper_set_para(h->cwh_h, (void *)h->cwd, C_HEADERS, 0, NULL);
     }
 #endif
+    h->cwc_h->ignore_interrupt = 1;
     ret = curl_fetch_start_local_run(h);
     if (ret) {
         CLOGE("curl_fetch_start_local_run failed\n");
@@ -486,6 +487,7 @@ int curl_fetch_close(CFContext * h)
         CLOGE("CFContext invalid\n");
         return -1;
     }
+    h->cwc_h->ignore_interrupt = 0;
     curl_wrapper_set_to_quit(h->cwc_h, NULL);
     pthread_join(h->pid, NULL);
     curl_wrapper_clean_after_perform(h->cwc_h);

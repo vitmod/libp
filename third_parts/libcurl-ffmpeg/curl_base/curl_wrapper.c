@@ -140,8 +140,8 @@ static size_t curl_dl_chunkdata_callback(void *ptr, size_t size, size_t nmemb, v
             pthread_mutex_unlock(&mem->handle->fifo_mutex);
             return -1;
         }
-        if(mem->handle->interrupt) {
-            if((*(mem->handle->interrupt))()) {
+        if (mem->handle->interrupt) {
+            if ((*(mem->handle->interrupt))() && !mem->ctx->ignore_interrupt) {
                 CLOGI("curl_dl_chunkdata_callback interrupted\n");
                 pthread_mutex_unlock(&mem->handle->fifo_mutex);
                 return -1;
@@ -502,6 +502,7 @@ static int curl_wrapper_open_cnx(CURLWContext *con, CURLWHandle *h, Curl_Data *b
     con->chunked = 0;
     con->connected = 0;
     con->open_fail = 0;
+    con->ignore_interrupt = 0;
     h->quited = 0;
     h->open_quited = 0;
     h->seekable = 0;
@@ -526,6 +527,7 @@ int curl_wrapper_http_keepalive_open(CURLWContext *con, CURLWHandle *h, const ch
     con->chunked = 0;
     con->connected = 0;
     con->open_fail = 0;
+    con->ignore_interrupt = 0;
     h->quited = 0;
     h->open_quited = 0;
     h->seekable = 0;
@@ -559,8 +561,8 @@ int curl_wrapper_perform(CURLWContext *con)
         }
     }
 
-    if(con->interrupt) {
-        if((*(con->interrupt))()) {
+    if (con->interrupt) {
+        if ((*(con->interrupt))() && !con->ignore_interrupt) {
             CLOGI("curl_wrapper_perform interrupted when multi perform\n");
             return C_ERROR_OK; // prevent read fail.
         }
@@ -588,8 +590,8 @@ RETRY:
             CLOGI("curl_wrapper_perform quited when multi perform\n");
             break;
         }
-        if(con->interrupt) {
-            if((*(con->interrupt))()) {
+        if (con->interrupt) {
+            if ((*(con->interrupt))() && !con->ignore_interrupt) {
                 CLOGI("curl_wrapper_perform interrupted when multi perform\n");
                 break;
             }

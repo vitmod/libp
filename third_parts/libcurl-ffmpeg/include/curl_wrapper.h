@@ -52,6 +52,7 @@ typedef struct _CURLWContext {
     int curl_h_num;
     int chunked;
     int connected;
+    int ignore_interrupt;
     int (*interrupt)(void);
     CURLM *multi_curl;
     CURLWHandle * curl_handle;
