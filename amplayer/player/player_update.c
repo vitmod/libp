@@ -1647,7 +1647,7 @@ int check_audio_ready_time(int *first_time)
         *first_time = new_time_mseconds;
     }
 
-    if (new_time_mseconds - *first_time > 3000) {// 3s watchdog
+    if (new_time_mseconds - *first_time > 25000) {// 25s watchdog
         return 1;
     }
 
