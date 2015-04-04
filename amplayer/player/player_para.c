@@ -816,8 +816,8 @@ static void get_stream_info(play_para_t *p_para)
         }
         log_print("[%s:%d]real offset %lld\n", __FUNCTION__, __LINE__, p_para->data_offset);
 
-        if (p_para->vstream_info.video_height*p_para->vstream_info.video_width > 1280* 720) {
-            log_print("[%s:%d]real video_height=%d, exceed 720 not support!\n", __FUNCTION__, __LINE__, p_para->vstream_info.video_height);
+        if (p_para->vstream_info.video_height * p_para->vstream_info.video_width > 1920 * 1088) {
+            log_print("[%s:%d]real video_height=%d, exceed 1080p not support!\n", __FUNCTION__, __LINE__, p_para->vstream_info.video_height);
             p_para->vstream_info.has_video = 0;
         }
     } else {
