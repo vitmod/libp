@@ -47,6 +47,11 @@ static void vcodec_info_init(play_para_t *p_para, codec_para_t *v_codec)
         if (((vinfo->video_format == VFORMAT_H264) || (vinfo->video_format == VFORMAT_H264MVC) || (vinfo->video_format == VFORMAT_H264_4K2K)) && (p_para->file_type == AVI_FILE)) {
             v_codec->am_sysinfo.param     = (void *)(EXTERNAL_PTS | SYNC_OUTSIDE);
         }
+        if ((vinfo->video_format == VFORMAT_H264) && (p_para->file_type == MKV_FILE)) {
+            if ((vinfo->video_rate == 4004 /*23.97fps*/) || (vinfo->video_rate == 3203 /*29.97fps*/)) {
+                v_codec->am_sysinfo.param = (void *)(UNSTABLE_PTS | (int)v_codec->am_sysinfo.param);
+            }
+        }
         if ((vinfo->video_format == VFORMAT_H264) || (vinfo->video_format == VFORMAT_H264MVC) || (vinfo->video_format == VFORMAT_H264_4K2K)) {
             if (memcmp(p_para->pFormatCtx->iformat->name,"mpegts",6) == 0) {
                 /* ts slow media, use idr framerate */
