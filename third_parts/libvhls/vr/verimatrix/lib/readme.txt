@@ -1,0 +1,1 @@
+Place your own libViewRightWebClient.so under this  directory (packages\amlogic\LibPlayer\third_parts\libvhls\vr\verimatrix\lib\libViewRightWebClient.so)
