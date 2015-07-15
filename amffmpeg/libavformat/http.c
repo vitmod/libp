@@ -765,7 +765,7 @@ static int get_cookies(HTTPContext *s, char **cookies, const char *path,
         }
 
         // check if the request path matches the cookie path
-        if (av_strncasecmp(path, cpath, strlen(cpath)))
+        if (av_strncasecmp(path, cpath, strlen(cpath)) && am_getconfig_float_def("media.player.forcecookies",0) == 0)
             goto done_cookie;
 
         // the domain should be at least the size of our cookie domain
@@ -841,7 +841,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
                 if (!pos) {
                     if (s->cookies = av_malloc(strlen(index + 8))) {
                         av_strlcpy(s->cookies, index + 8, strlen(index + 8));
-                        s->cookies[strlen(index + 8) - 1] = '\0';
+                        s->cookies[strlen(index + 8) - 2] = '\0';
                     }
                     *index = '\0';
                 } else {
@@ -919,7 +919,7 @@ static int http_connect(URLContext *h, const char *path, const char *hoststr,
              post && s->chunksize >= 0 ? "Transfer-Encoding: chunked\r\n" : "",
              headers,
              authstr ? authstr : "");
-	av_log(NULL,AV_LOG_DEBUG,"HTTP[%s]\n",s->buffer);
+    av_log(NULL, AV_LOG_DEBUG, "HTTP[%s]\n", s->buffer);
     av_freep(&authstr);
     if ((err=ffurl_write(s->hd, s->buffer, strlen(s->buffer)) )< 0){
 		av_log(h, AV_LOG_INFO, "process_line:ffurl_write failed,%d\n",err);

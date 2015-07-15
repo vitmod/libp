@@ -29,6 +29,7 @@
 #include "curl_log.h"
 
 typedef struct _CURLFFContext {
+    const AVClass *class;
     char uri[MAX_CURL_URI_SIZE];
     int read_retry;
     int64_t read_waittime_s;
@@ -270,6 +271,6 @@ URLProtocol ff_curl_protocol = {
     .url_getinfo            = curl_ffmpeg_get_info,
     .url_get_file_handle    = NULL,
     .url_check          = NULL,
-    //.priv_data_size       = sizeof(CURLFFContext),
-    //.priv_data_class      = &curlffmpeg_class,
+    .priv_data_size       = 0,
+    .priv_data_class      = NULL,
 };

@@ -31,6 +31,7 @@ typedef struct threadpool_thread_data {
     pthread_mutex_t pthread_mutex;
     pthread_cond_t pthread_cond;
     int on_requred_exit;
+    int thread_inited;
 } threadpool_thread_data_t;
 #define POOL_OF_ITEM(item) ((threadpool_t *)(item)->extdata[0])
 #define THREAD_OF_ITEM(item) ((threadpool_thread_data_t *)(item)->extdata[0])
@@ -151,6 +152,34 @@ static int64_t amthreadpool_gettime(void)
     return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
+int amthreadpool_thread_usleep_in_monotonic(int us)
+{
+    pthread_t pid = pthread_self();
+    struct timespec pthread_ts,tnow;
+    int64_t us64=us;
+    threadpool_thread_data_t *t = amthreadpool_findthead_thread_data(pid);
+    int ret = 0;
+
+    if (!t) {
+        ///ALOGE("%lu thread sleep data not found!!!\n", pid);
+        usleep(us);//for not deadlock.
+        return 0;
+    }
+    if (t->on_requred_exit > 1) {
+        if (us64 < 100*1000)
+            us64 = 100*1000;
+        t->on_requred_exit--; /*if on_requred_exit,do less sleep till 1.*/
+    }
+    clock_gettime(CLOCK_MONOTONIC, &tnow);
+    pthread_ts.tv_sec =tnow.tv_sec + (us64 + tnow.tv_nsec/1000) / 1000000;
+    pthread_ts.tv_nsec = (us64 * 1000 + tnow.tv_nsec)%1000000000;
+    pthread_mutex_lock(&t->pthread_mutex);
+    ret = pthread_cond_timedwait_monotonic_np(&t->pthread_cond, &t->pthread_mutex, &pthread_ts);
+    pthread_mutex_unlock(&t->pthread_mutex);
+    return ret;
+
+}
+
 
 int amthreadpool_thread_usleep_in(int us)
 {
@@ -185,9 +214,14 @@ int amthreadpool_thread_usleep_debug(int us,const char *func,int line)
     int64_t starttime=amthreadpool_gettime();
     int64_t endtime;
 	int ret;
+
+#ifdef AMTHREADPOOL_SLEEP_US_MONOTONIC
+	ret=amthreadpool_thread_usleep_in_monotonic(us);
+#else
 	ret=amthreadpool_thread_usleep_in(us);
+#endif
 	endtime = amthreadpool_gettime();
-    if((us>10000 && ((endtime-starttime)/100)/(1+us/1000) > 12) || (us < 10000 && ((endtime-starttime)/100)/(1+us/1000) > 30))
+    if ((endtime - starttime - us) > 100*1000)
         ALOGE("***amthreadpool_thread_usleep wast more time wait %d us, real %lld us\n",us,(int64_t)(endtime-starttime));
     return ret;
 }
@@ -292,10 +326,12 @@ void * amthreadpool_start_thread(void *arg)
             t->pool = pool;
 
         }
-        pthread_mutex_init(&t->pthread_mutex, NULL);
-        pthread_cond_init(&t->pthread_cond, NULL);
         amthreadpool_pool_add_thread(pool, t->pid, t);
     }
+    pthread_mutex_lock(&t->pthread_mutex);
+    t->thread_inited = 1;
+    pthread_cond_signal(&t->pthread_cond);
+    pthread_mutex_unlock(&t->pthread_mutex);
     ret = t->start_routine(t->arg);
     return ret;
 }
@@ -318,12 +354,19 @@ int amthreadpool_pthread_create_name(pthread_t * newthread,
     t->start_routine = start_routine;
     t->arg = arg;
     t->ppid[0] = pid;
+    t->thread_inited = 0;
+    pthread_mutex_init(&t->pthread_mutex, NULL);
+    pthread_cond_init(&t->pthread_cond, NULL);
     ret = pthread_create(&subpid, attr, amthreadpool_start_thread, (void *)t);
     if (ret == 0) {
         *newthread = subpid;
         if (name) {
             pthread_setname_np(pid, name);
         }
+        pthread_mutex_lock(&t->pthread_mutex);
+        if (t->thread_inited == 0)
+            pthread_cond_wait(&t->pthread_cond, &t->pthread_mutex);
+        pthread_mutex_unlock(&t->pthread_mutex);
     }
     return ret;
 }

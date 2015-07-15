@@ -38,7 +38,7 @@
 #endif
 
 extern void print_version_info();
-
+int auto_refresh_rate_enable = 0;
 /* --------------------------------------------------------------------------*/
 /**
  * @function    player_init
@@ -119,7 +119,7 @@ int player_start(play_control_t *ctrl_p, unsigned long  priv)
     } else if (!check_file_same(ctrl_p->file_name)) {
         set_black_policy(1);
     }
-
+    auto_refresh_rate_enable = get_auto_refresh_rate();
     pid = player_request_pid();
     if (pid < 0) {
         return PLAYER_NOT_VALID_PID;
@@ -226,7 +226,7 @@ int player_stop(int pid)
     if (player_para == NULL) {
         return PLAYER_NOT_VALID_PID;
     }
-
+    set_auto_refresh_rate(auto_refresh_rate_enable);
     sta = get_player_state(player_para);
     log_print("[player_stop]player_status=%x\n", sta);
     if (PLAYER_THREAD_IS_STOPPED(sta)) {

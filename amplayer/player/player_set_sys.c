@@ -94,6 +94,16 @@ int get_black_policy()
     return get_sysfs_int("/sys/class/video/blackout_policy") & 1;
 }
 
+int set_auto_refresh_rate(int enable)
+{
+    return set_sysfs_int("/sys/class/tv/policy_fr_auto", enable);
+}
+
+int get_auto_refresh_rate()
+{
+    return get_sysfs_int("/sys/class/tv/policy_fr_auto");
+}
+
 int check_audiodsp_fatal_err()
 {
     int fatal_err = 0;

@@ -2,9 +2,10 @@
 #define  AM_LIBPLAYER_THREAD_POOL
 #include <pthread.h>
 
+#define AMTHREADPOOL_SLEEP_US_MONOTONIC
 ///#define AMTHREADPOOL_DEBUG
 int amthreadpool_thread_usleep_in(int us);
-
+int amthreadpool_thread_usleep_in_monotonic(int us);
 int amthreadpool_thread_wake(pthread_t pid);
 int amthreadpool_pool_thread_cancel(pthread_t pid);
 int amthreadpool_pool_thread_uncancel(pthread_t pid);
@@ -28,11 +29,18 @@ int amthreadpool_on_requare_exit(pthread_t pid);
 
 
 #ifdef AMTHREADPOOL_DEBUG
+int amthreadpool_thread_usleep_debug(int us,const char *func,int line);
 #define amthreadpool_thread_usleep(us)\
 	amthreadpool_thread_usleep_debug(us,__FUNCTION__,__LINE__)
 #else
+
+#ifdef AMTHREADPOOL_SLEEP_US_MONOTONIC
 #define amthreadpool_thread_usleep(us)\
-	amthreadpool_thread_usleep_in(us)	
+	amthreadpool_thread_usleep_in_monotonic(us)
+#else
+#define amthreadpool_thread_usleep(us)\
+	amthreadpool_thread_usleep_in(us)
+#endif
 #endif
 #endif
 

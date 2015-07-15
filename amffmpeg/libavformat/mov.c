@@ -2669,12 +2669,22 @@ static AVIndexEntry *mov_find_next_sample(AVFormatContext *s, AVStream **st)
                 wantnew=1;
             }else if((s->pb->seekable && s->pb->is_slowmedia)){/*seekable network,seek is slow...*/
                 int64_t curentpos=avio_tell(s->pb); 
+                int reached_cnt = 0;
                 bit_rateKB = (s->bit_rate/(1024 * 8));
                 limit_sec = (float)LIMIT_BUFSIZE / (bit_rateKB * 1024);
-                if (limit_sec > 10){
-                   limit_sec = 10;
-                }  				
-                if((FFABS(best_dts - dts) < AV_TIME_BASE*limit_sec)&& beststream_readed_cnt > 10 && msc->readed_count> 10){/*not first parse.*/
+                /*add limit_sec and reached_cnt choose, avoid after seek only get audio or video data
+                  cause playback not smooth */
+                if (limit_sec >= 5) {
+                    limit_sec = 5;
+                    reached_cnt = 500;
+                }else if (limit_sec < 5 && limit_sec >= 3) {
+                    limit_sec = 3;
+                    reached_cnt = 400;
+                }else{
+                    limit_sec = 2;
+                    reached_cnt = 200;
+                }
+                if ((FFABS(best_dts - dts) < AV_TIME_BASE*limit_sec)&& beststream_readed_cnt > reached_cnt && msc->readed_count> reached_cnt) {/*not first parse.*/
                     if(FFABS(curentpos-current_sample->pos)<FFABS(curentpos-sample->pos)){
                         wantnew=1;
                     }
@@ -2928,6 +2938,8 @@ static int mov_read_seek(AVFormatContext *s, int stream_index, int64_t sample_ti
         sample_time = 0;
 
     st = s->streams[stream_index];
+    MOVStreamContext *msc = st->priv_data;
+    msc->readed_count = 0;  // clear readed_count before seek
     sample = mov_seek_stream(s, st, sample_time, flags);
     if (sample < 0)
         return -1;

@@ -107,8 +107,8 @@ static int rtmp_setupURL(RTMP *r, const char *uri)
         {
             char *pagerurl,*space;
             pagerurl = strstr(uri, "pageUrl=");
-            space = strchr(pagerurl + 1, ' ');
             if(pagerurl) {
+                space = strchr(pagerurl + 1, ' ');
                 pageUrl.av_val = pagerurl + 8;
                 if(space)
                     pageUrl.av_len = space - pageUrl.av_val;                    
@@ -302,8 +302,8 @@ static int rtmp_open(URLContext *s, const char *uri, int flags)
     }
 
     s->priv_data   = r;
-    s->is_streamed = 1;
-    s->is_slowmedia =1;
+    s->is_streamed = 0;
+    s->is_slowmedia = 1;
     av_log(NULL,AV_LOG_INFO,"rtmp open,url:%s\n",s->filename);		
     return 0;
 fail:

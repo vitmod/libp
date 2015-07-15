@@ -974,7 +974,7 @@ retry_open:
     }
 
     if (!strcmp(s->iformat->name, "flv")) {
-        if(!s->pb->is_streamed || !s->pb->is_slowmedia) {
+        if (!s->pb->is_streamed) {
             s->seekable = 1;
             s->support_seek = 1;
         }
@@ -1484,7 +1484,7 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
                 *pkt = st->cur_pkt; st->cur_pkt.data= NULL;
                 compute_pkt_fields(s, st, NULL, pkt);
                 s->cur_st = NULL;
-                if ((s->iformat->flags & AVFMT_GENERIC_INDEX) &&
+                if ((st->codec->codec_type == AVMEDIA_TYPE_VIDEO) && (s->iformat->flags & AVFMT_GENERIC_INDEX) &&
                     (pkt->flags & AV_PKT_FLAG_KEY) && pkt->dts != AV_NOPTS_VALUE) {
                     ff_reduce_index(s, st->index);
                     av_add_index_entry(st, pkt->pos, pkt->dts, 0, 0, AVINDEX_KEYFRAME);
@@ -1527,7 +1527,7 @@ static int av_read_frame_internal(AVFormatContext *s, AVPacket *pkt)
                         pkt->dts = old_dts;
                     }
 
-                    if((s->iformat->flags & AVFMT_GENERIC_INDEX) && pkt->flags & AV_PKT_FLAG_KEY){
+                    if ((st->codec->codec_type == AVMEDIA_TYPE_VIDEO) && (s->iformat->flags & AVFMT_GENERIC_INDEX) && pkt->flags & AV_PKT_FLAG_KEY) {
                         int64_t pos= (st->parser->flags & PARSER_FLAG_COMPLETE_FRAMES) ? pkt->pos : st->parser->frame_offset;
                         ff_reduce_index(s, st->index);
                         av_add_index_entry(st, pos, pkt->dts,
@@ -3169,6 +3169,7 @@ static int has_codec_parameters(AVCodecContext *enc)
 #define ASF_PARSE_MODE  8
 #define SPEED_PARSE_MODE 9
 #define WFD_PARSE_MODE  10
+#define TS_HASPMT_PLUS  128
 
 static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
 {
@@ -3227,7 +3228,7 @@ static int has_codec_parameters_ex(AVCodecContext *enc,int fastmode)
     if (WFD_PARSE_MODE == fastmode) {
         return val != 0;
     } else {
-        if(fastmode>(PARSE_MODE_BASE + 1)){	// only ts stream have pmt, can use the skip mode. add by le.yang@amlogic.com
+        if (fastmode>(PARSE_MODE_BASE + TS_HASPMT_PLUS)) {	// only ts stream have pmt, can use the skip mode. add by le.yang@amlogic.com
            if(enc->codec_type == AVMEDIA_TYPE_DATA || 
               enc->codec_type == AVMEDIA_TYPE_ATTACHMENT){
                return 1;
@@ -3578,7 +3579,7 @@ int av_find_stream_info(AVFormatContext *ic)
             int parse_mode = fast_switch;
             if(ic->pb && ic->pb->is_streamed ==1&&!strcmp(ic->iformat->name, "mpegts")){
             	if(ic->iformat!=NULL&&(ic->iformat->flags&AVFMT_TS_HASPMT))
-                	parse_mode = PARSE_MODE_BASE + 1 + fast_switch;
+                    parse_mode = PARSE_MODE_BASE + TS_HASPMT_PLUS + fast_switch;
             	else
             		parse_mode = PARSE_MODE_BASE + fast_switch;
             }

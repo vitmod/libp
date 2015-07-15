@@ -9,94 +9,86 @@
 
 namespace android {
 
+#define     DDPshort short
+#define     DDPerr   short
+#define     DDPushort unsigned short
+#define     BYTESPERWRD         2
+#define     BITSPERWRD          (BYTESPERWRD*8)
+#define     SYNCWRD             ((DDPshort)0x0b77)
+#define     MAXFSCOD            3
+#define     MAXDDDATARATE       38
+#define     BS_STD              8
+#define     ISDD(bsid)          ((bsid) <= BS_STD)
+#define     MAXCHANCFGS         8
+#define     BS_AXE            16
+#define     ISDDP(bsid)         ((bsid) <= BS_AXE && (bsid) > 10)
+#define     BS_BITOFFSET      40
+#define     PTR_HEAD_SIZE 7	//20
 
-#define     DSPshort short	
-#define     DSPerr   short	
-#define     DSPushort  unsigned short	                /*!< DSP unsigned integer */
-#define		GBL_BYTESPERWRD			2		            /*!< Bytes per packed word */
-#define		GBL_BITSPERWRD			(GBL_BYTESPERWRD*8)	/*!< Bytes per packed word */
-#define		GBL_SYNCWRD				((DSPshort)0x0b77)	/*!< AC-3 frame sync word */
-#define		GBL_MAXFSCOD			3		            /*!< Number of defined sample rates	*/
-#define		GBL_MAXDDDATARATE		38		            /*!< Number of defined data rates */
-#define		BSI_BSID_STD			8					/*!< Standard ATSC A/52 bit-stream ID */
-#define		BSI_ISDD(bsid)			((bsid) <= BSI_BSID_STD)
-#define		GBL_MAXCHANCFGS			8		            /*!< Maximum number of channel configs */
-#define		BSI_BSID_AXE			16					/*!< Annex E bitstream ID */
-#define		BSI_ISDDP(bsid)			((bsid) <= BSI_BSID_AXE && (bsid) > 10)
-#define		BSI_BSID_BITOFFSET		40		            /*!< Used to skip ahead to bit-stream ID */
-#define     PTR_HEAD_SIZE 7//20
+	typedef struct {
+		DDPshort *buf;
+		DDPshort bitptr;
+		DDPshort data;
+	} DDP_BSTRM;
 
+	typedef struct {
+		unsigned char rawbuf[6144];
+		int len;
+	} BUF_T;
 
-/*! \brief Bit Stream Operations module decode-side state variable structure */
-typedef struct
-{
-	DSPshort 	   *p_pkbuf;           /*!< Pointer to bitstream buffer */
-	DSPshort		pkbitptr;          /*!< Bit count within bitstream word */
-	DSPshort 		pkdata;            /*!< Current bitstream word */
-#if defined(DEBUG)
-	const DSPshort	*p_start_pkbuf;    /*!< Pointer to beginning of bitstream buffer */
-#endif /* defined(DEBUG) */
-} BSOD_BSTRM;
+	const DDPshort chanary[MAXCHANCFGS] = { 2, 1, 2, 3, 3, 4, 4, 5 };
+	enum { MODE11 = 0, MODE_RSVD = 0, MODE10, MODE20,
+		MODE30, MODE21, MODE31, MODE22, MODE32
+	};
 
-typedef struct{
-    unsigned char rawbuf[6144];
-    int len;
-} BUF_T; 
+	const DDPushort msktab[] = {
+		0x0000, 0x8000, 0xc000, 0xe000,
+		0xf000, 0xf800, 0xfc00, 0xfe00,
+		0xff00, 0xff80, 0xffc0, 0xffe0,
+		0xfff0, 0xfff8, 0xfffc, 0xfffe, 0xffff
+	};
 
-const DSPshort gbl_chanary[GBL_MAXCHANCFGS] = { 2, 1, 2, 3, 3, 4, 4, 5 };
-/* audio coding modes */
-enum { GBL_MODE11=0, GBL_MODE_RSVD=0, GBL_MODE10, GBL_MODE20,
-		GBL_MODE30, GBL_MODE21, GBL_MODE31, GBL_MODE22, GBL_MODE32 };
+	const DDPshort frmsizetab[MAXFSCOD][MAXDDDATARATE] = {
+		/* 48kHz */
+		{
+		 64, 64, 80, 80, 96, 96, 112, 112,
+		 128, 128, 160, 160, 192, 192, 224, 224,
+		 256, 256, 320, 320, 384, 384, 448, 448,
+		 512, 512, 640, 640, 768, 768, 896, 896,
+		 1024, 1024, 1152, 1152, 1280, 1280},
+		/* 44.1kHz */
+		{
+		 69, 70, 87, 88, 104, 105, 121, 122,
+		 139, 140, 174, 175, 208, 209, 243, 244,
+		 278, 279, 348, 349, 417, 418, 487, 488,
+		 557, 558, 696, 697, 835, 836, 975, 976,
+		 1114, 1115, 1253, 1254, 1393, 1394},
+		/* 32kHz */
+		{
+		 96, 96, 120, 120, 144, 144, 168, 168,
+		 192, 192, 240, 240, 288, 288, 336, 336,
+		 384, 384, 480, 480, 576, 576, 672, 672,
+		 768, 768, 960, 960, 1152, 1152, 1344, 1344,
+		 1536, 1536, 1728, 1728, 1920, 1920}
+	};
 
-const DSPushort gbl_msktab[] =
-{
-	0x0000, 0x8000, 0xc000, 0xe000,
-	0xf000, 0xf800, 0xfc00, 0xfe00,
-	0xff00, 0xff80, 0xffc0, 0xffe0,
-	0xfff0, 0xfff8, 0xfffc, 0xfffe, 0xffff
-};
+	typedef int (*fp_read_buffer) (unsigned char *, int);
 
+	class DDP_MediaSource:public AudioMediaSource {
+ public:
+		DDP_MediaSource(void *read_buffer);
 
-/*! Words per frame table based on sample rate and data rate codes */
-const DSPshort gbl_frmsizetab[GBL_MAXFSCOD][GBL_MAXDDDATARATE] =
-{
-	/* 48kHz */
-	{	64, 64, 80, 80, 96, 96, 112, 112,
-		128, 128, 160, 160, 192, 192, 224, 224,
-		256, 256, 320, 320, 384, 384, 448, 448,
-		512, 512, 640, 640, 768, 768, 896, 896,
-		1024, 1024, 1152, 1152, 1280, 1280 },
-	/* 44.1kHz */
-	{	69, 70, 87, 88, 104, 105, 121, 122,
-		139, 140, 174, 175, 208, 209, 243, 244,
-		278, 279, 348, 349, 417, 418, 487, 488,
-		557, 558, 696, 697, 835, 836, 975, 976,
-		1114, 1115, 1253, 1254, 1393, 1394 },
-	/* 32kHz */
-	{	96, 96, 120, 120, 144, 144, 168, 168,
-		192, 192, 240, 240, 288, 288, 336, 336,
-		384, 384, 480, 480, 576, 576, 672, 672,
-		768, 768, 960, 960, 1152, 1152, 1344, 1344,
-		1536, 1536, 1728, 1728, 1920, 1920 } 
-};
+		status_t start(MetaData * params = NULL);
+		status_t stop();
+		 sp < MetaData > getFormat();
+		status_t read(MediaBuffer ** buffer,
+			      const ReadOptions * options = NULL);
 
-typedef int (*fp_read_buffer)(unsigned char *,int);
-
-class DDP_MediaSource : public AudioMediaSource 
-{
-public:
-	DDP_MediaSource(void *read_buffer);
-	
-    status_t start(MetaData *params = NULL);
-    status_t stop();
-    sp<MetaData> getFormat();
-    status_t read(MediaBuffer **buffer, const ReadOptions *options = NULL);
-	
-	int GetReadedBytes();
-	int GetSampleRate();
-	int GetChNum();
-	virtual int GetChNumOriginal();
-	int* Get_pStop_ReadBuf_Flag();
+		int GetReadedBytes();
+		int GetSampleRate();
+		int GetChNum();
+		virtual int GetChNumOriginal();
+		int *Get_pStop_ReadBuf_Flag();
 	int Set_pStop_ReadBuf_Flag(int *pStop);
 
 	int SetReadedBytes(int size);
@@ -104,14 +96,16 @@ public:
 	
 	fp_read_buffer fpread_buffer;
 	
-    //----------------------------------------
-    DSPerr	bsod_init(DSPshort *	p_pkbuf, DSPshort pkbitptr,BSOD_BSTRM *p_bstrm);
-    DSPerr  bsod_unprj(BSOD_BSTRM	*p_bstrm,DSPshort *p_data,  DSPshort numbits);	
-    int Get_ChNum_DD(void *buf);
-	int Get_ChNum_DDP(void *buf);
-	DSPerr bsod_skip(	BSOD_BSTRM 	*p_bstrm, DSPshort	numbits);
-	DSPerr bsid_getbsid(BSOD_BSTRM *p_inbstrm,	DSPshort *p_bsid);
-	int Get_ChNum_AC3_Frame(void *buf);
+		//----------------------------------------
+		DDPerr ddbs_init(DDPshort * buf, DDPshort bitptr,
+				 DDP_BSTRM * p_bstrm);
+		DDPerr ddbs_unprj(DDP_BSTRM * p_bstrm, DDPshort * p_data,
+				  DDPshort numbits);
+		int Get_ChNum_DD(void *buf);
+		int Get_ChNum_DDP(void *buf);
+		DDPerr ddbs_skip(DDP_BSTRM * p_bstrm, DDPshort numbits);
+		DDPerr ddbs_getbsid(DDP_BSTRM * p_inbstrm, DDPshort * p_bsid);
+		int Get_ChNum_AC3_Frame(void *buf);
 	//---------------------------------------
 	
 	int sample_rate;

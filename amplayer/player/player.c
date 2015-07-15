@@ -1195,11 +1195,14 @@ void *player_thread(play_para_t *player)
                 	player->retry_cnt=0;
                 
                 ret = set_header_info(player);
-                if (ret != PLAYER_SUCCESS) {
-                    log_error("pid[%d]::set_header_info failed! ret=%x\n", player->player_id, -ret);
-                    set_player_state(player, PLAYER_ERROR);
-                    goto release;
-                }
+                 if (pkt->avpkt->size > 0) {
+                     ret = set_header_info(player);
+                     if (ret != PLAYER_SUCCESS) {
+                         log_error("pid[%d]::set_header_info failed! ret=%x\n", player->player_id, -ret);
+                         set_player_state(player, PLAYER_ERROR);
+                         goto release;
+                     }
+                 }
             } else {
                 /*low level buf is full ,do buffering or just do wait.*/
                 if (player->enable_rw_on_pause) { /*enabled buffing on paused...*/
@@ -1427,6 +1430,7 @@ write_packet:
             break;
         } else {
             if (get_player_state(player) != PLAYER_SEARCHING) {
+                set_auto_refresh_rate(0);
                 set_player_state(player, PLAYER_SEARCHING);
                 update_playing_info(player);
                 update_player_states(player, 1);
@@ -1448,7 +1452,7 @@ write_packet:
                 update_playing_info(player);
                 update_player_states(player, 1);
                 //reset thes contrl var
-                player->div_buf_time = (int)am_getconfig_float_def("media.amplayer.divtime",10);
+                player->div_buf_time = (int)am_getconfig_float_def("media.amplayer.divtime", 1);
                 int force_buf_enable =  am_getconfig_bool_def("media.amplayer.force_buf_enable", 1);
                 if(player->pFormatCtx->pb == NULL || player->pFormatCtx->pb->local_playback == 0)
                 {

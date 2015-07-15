@@ -618,7 +618,7 @@ static void *alsa_playback_loop(void *args)
     while (!alsa_params->stop_flag) {
         if(hdmi_out == 0){
             adec_print("===dynmiac get hdmi plugin state===\n");
-            if(alsa_get_hdmi_state())
+            if(alsa_get_hdmi_state()==1)
             {
                 if(alsa_swtich_port(alsa_params, alsa_get_aml_card(), alsa_get_spdif_port()) == -1){
                     adec_print("switch to hdmi port failed.\n");
@@ -772,7 +772,7 @@ int alsa_init(struct aml_audio_dec* audec)
 	    adec_print("get aml card fail, use default \n");
     }
     
-    if(alsa_get_hdmi_state())
+    if(alsa_get_hdmi_state()==1)
     {
         sound_dev_id = alsa_get_spdif_port();
         if(sound_dev_id < 0)

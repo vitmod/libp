@@ -36,7 +36,7 @@
 #include "mathops.h"
 #include "mpegvideo.h"
 #include "config.h"
-#include "ac3dec.h"
+//#include "ac3dec.h"
 #include "vorbis.h"
 
 uint8_t ff_cropTbl[256 + 2 * MAX_NEG_CROP] = {0, };

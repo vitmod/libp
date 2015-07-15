@@ -996,16 +996,16 @@ static int _timeshift_refresh_playlist(M3ULiveSession* s, int bw_index, int flag
         strncpy(tmp1,s->last_timeshift_segment_url,compare-s->last_timeshift_segment_url);
         *(tmp1+(compare-s->last_timeshift_segment_url))='\0';
         char * reverse = in_strrstr(tmp1, "_");
-        char * tmp2 = malloc(reverse-tmp1+1);
-        strncpy(tmp2,tmp1,reverse-tmp1);
-        *(tmp2+(reverse-tmp1))='\0';
-        for(i=0;i<total_num;i++){
-            M3uBaseNode* node = m3u_get_node_by_index(new_playlist,i);
-            if(node){
-                if(strstr(node->fileUrl,tmp2)){
-                    s->cur_seq_num = firstSeqNumberInPlaylist+i+1;
-                    if(s->log_level >= HLS_SHOW_URL) {
-                        LOGV("find start segment in timeshift playlist, last url= %s\n", tmp2);
+        char * tmp2 = malloc(reverse - tmp1 + 1);
+        strncpy(tmp2, tmp1, reverse - tmp1);
+        *(tmp2 + (reverse - tmp1)) = '\0';
+        for (i = 0; i < total_num; i++) {
+            M3uBaseNode* node = m3u_get_node_by_index(new_playlist, i);
+            if (node) {
+                if (strstr(node->fileUrl, tmp1) != NULL) {
+                    s->cur_seq_num = firstSeqNumberInPlaylist + i + 1;
+                    if (s->log_level >= HLS_SHOW_URL) {
+                        LOGV("find start segment in timeshift playlist, last url= %s\n", tmp1);
                     }
                     break;
                 }

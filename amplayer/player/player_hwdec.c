@@ -1231,6 +1231,7 @@ int pre_header_feeding(play_para_t *para)
             }
         } else if ((CODEC_TAG_M4S2 == avcodec->codec_tag) ||
                    (CODEC_TAG_DX50 == avcodec->codec_tag) ||
+                   (CODEC_TAG_FMP4 == avcodec->codec_tag) ||
                    (CODEC_TAG_mp4v == avcodec->codec_tag)) {
             ret = m4s2_dx50_mp4v_write_header(para);
             if (ret != PLAYER_SUCCESS) {

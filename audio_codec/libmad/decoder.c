@@ -65,6 +65,9 @@
 #define audio_codec_print printf
 #endif
 
+#define  MUTE_S  0.08
+
+
 struct mad_decoder decoder;
 char *pcm_out_data;
 int *pcm_out_len;
@@ -77,6 +80,7 @@ struct mad_synth *synth;
 int result = 0;
 static int last_sr = -1;
 static int last_ch_num = -1;
+
 /*
 * This is a private message structure. A generic pointer to this structure
 * is passed to each of the callback functions. Put here any data you need
@@ -788,6 +792,16 @@ struct mad_pcm *pcm)
 	if(last_sr != pcm->samplerate)
 		last_sr = pcm->samplerate;
 	*pcm_out_len += pcm->length*2*(header->mode>0?2:1);;
+
+	if (stream->muted_samples == 0) {
+		stream->muted_samples = pcm->samplerate * pcm->channels * MUTE_S;
+	}
+	if (stream->muted_count < stream->muted_samples) {
+		memset(pcm_out_data,0,2*nsamples);
+		stream->muted_count += nsamples;
+		goto output1;
+	}
+
 	while (nsamples--) {
 		signed int sample_l;
 		signed int sample_r;
@@ -808,9 +822,10 @@ struct mad_pcm *pcm)
         		pcm_out_data[1] = sample_r >> 8;
         		pcm_out_data += 2;
 		}
-		
-	}	
-	stream->this_frame = stream->next_frame;	
+
+	}
+output1:
+	stream->this_frame = stream->next_frame;
 	return MAD_FLOW_STOP;
 	//return MAD_FLOW_CONTINUE;
 }
@@ -934,11 +949,14 @@ int audio_dec_init(
 	mad_synth_init(synth);
 
 	mad_stream_options(stream, decoder.options);
-    
+
 #ifndef _WIN32
-    adec_ops->nInBufSize = 5*1024;
-    adec_ops->nOutBufSize = 64*1024;
+	adec_ops->nInBufSize = 5*1024;
+	adec_ops->nOutBufSize = 64*1024;
 #endif
+
+	stream->muted_samples = 0;
+	stream->muted_count = 0;
 	audio_codec_print("libmad init ok!\n");
 
 	return 0;
@@ -946,7 +964,7 @@ int audio_dec_init(
 
 #ifndef _WIN32
 int audio_dec_getinfo(audio_decoder_operations_t *adec_ops, void *pAudioInfo)
-{   
+{
     if(last_ch_num <= 0 ||last_sr <= 0)
 		return 0;
     ((AudioInfo *)pAudioInfo)->channels = last_ch_num;
@@ -971,6 +989,9 @@ int audio_dec_release(
 	free(decoder.sync);
 
 	mad_decoder_finish(&decoder);
+
+	stream->muted_samples = 0;
+	stream->muted_count = 0;
 
 	audio_codec_print("libmad release ok!\n");
 

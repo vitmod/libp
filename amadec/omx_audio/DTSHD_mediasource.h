@@ -7,21 +7,22 @@
 #include  "MetaData.h"
 #include  "audio_mediasource.h"
 
-namespace android {
+namespace android
+{
 
-#define DTSHD_INPUT_DATA_LEN_PTIME               (40*1024)
-#define DTSHD_OMX_DECODER_NUMBUF    2
-#define DTSDEMUX_SYNCWORD_CORE_16M          0x7ffe8001
-#define DTSDEMUX_SYNCWORD_CORE_14M          0x1fffe800
-#define DTSDEMUX_SYNCWORD_CORE_24M          0xfe80007f    
-#define DTSDEMUX_SYNCWORD_CORE_16             0xfe7f0180
-#define DTSDEMUX_SYNCWORD_CORE_14             0xff1f00e8
-#define DTSDEMUX_SYNCWORD_CORE_24             0x80fe7f01
-#define DTSDEMUX_SYNCWORD_SUBSTREAM_M    0x64582025
-#define DTSDEMUX_SYNCWORD_SUBSTREAM         0x58642520
+#define AML_DCA_INPUT_DATA_LEN_PTIME               (40*1024)
+#define AML_DCA_OMX_DECODER_NUMBUF    2
+#define AML_DCA_SW_CORE_16M          0x7ffe8001
+#define AML_DCA_SW_CORE_14M          0x1fffe800
+#define AML_DCA_SW_CORE_24M          0xfe80007f
+#define AML_DCA_SW_CORE_16             0xfe7f0180
+#define AML_DCA_SW_CORE_14             0xff1f00e8
+#define AML_DCA_SW_CORE_24             0x80fe7f01
+#define AML_DCA_SW_SUBSTREAM_M    0x64582025
+#define AML_DCA_SW_SUBSTREAM         0x58642520
 
-typedef int (*fp_read_buffer)(unsigned char *,int);
-class Dtshd_MediaSource : public AudioMediaSource 
+typedef int (*fp_read_buffer)(unsigned char *, int);
+class Dtshd_MediaSource : public AudioMediaSource
 {
 public:
 	Dtshd_MediaSource(void *read_buffer);

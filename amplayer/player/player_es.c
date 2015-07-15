@@ -44,9 +44,20 @@ static void vcodec_info_init(play_para_t *p_para, codec_para_t *v_codec)
         || (vinfo->video_format == VFORMAT_H264MVC)
         || (vinfo->video_format == VFORMAT_H264_4K2K)
         || (vinfo->video_format == VFORMAT_HEVC)) {
-        v_codec->am_sysinfo.param = (void *)EXTERNAL_PTS;
         if (((vinfo->video_format == VFORMAT_H264) || (vinfo->video_format == VFORMAT_H264MVC) || (vinfo->video_format == VFORMAT_H264_4K2K)) && (p_para->file_type == AVI_FILE)) {
             v_codec->am_sysinfo.param     = (void *)(EXTERNAL_PTS | SYNC_OUTSIDE);
+        }
+        if ((vinfo->video_format == VFORMAT_H264) && (p_para->file_type == MKV_FILE)) {
+            if ((vinfo->video_rate == 4004 /*23.97fps*/) || (vinfo->video_rate == 3203 /*29.97fps*/)) {
+                v_codec->am_sysinfo.param = (void *)(UNSTABLE_PTS | (int)v_codec->am_sysinfo.param);
+            }
+        }
+        if ((vinfo->video_format == VFORMAT_H264) || (vinfo->video_format == VFORMAT_H264MVC) || (vinfo->video_format == VFORMAT_H264_4K2K)) {
+            if (memcmp(p_para->pFormatCtx->iformat->name,"mpegts",6) == 0) {
+                /* ts slow media, use idr framerate */
+                log_print("[%s:%d]Slow media detected for ts,used USE_IDR_FRAMERATE\n", __FUNCTION__, __LINE__);
+                v_codec->am_sysinfo.param = (void *) USE_IDR_FRAMERATE;
+            }
         }
         if ((vinfo->video_format == VFORMAT_H264) && p_para->playctrl_info.iponly_flag) {
             v_codec->am_sysinfo.param = (void *)(IPONLY_MODE | (int)v_codec->am_sysinfo.param);

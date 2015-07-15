@@ -14,181 +14,110 @@ extern "C" int read_buffer(unsigned char *buffer,int size);
 namespace android {
 
 
-//#####################################################
 
-typedef enum ddp_downmix_config_t {
-    DDP_OUTMIX_AUTO,
-    DDP_OUTMIX_LTRT,
-    DDP_OUTMIX_LORO,
-    DDP_OUTMIX_EXTERNAL,
-    DDP_OUTMIX_STREAM
-} ddp_downmix_config_t;
-
-
-/* compression mode */
-enum { GBL_COMP_CUSTOM_0=0, GBL_COMP_CUSTOM_1, GBL_COMP_LINE, GBL_COMP_RF };
-
-#define DOLBY_DDPDEC_51_MULTICHANNEL_ENDPOINT 
-
-
-#ifdef DOLBY_DDPDEC51_MULTICHANNEL_GENERIC
-
-static char cMaxChansProp[]="media.tegra.max.out.channels";
-static char cChanMapProp[]="media.tegra.out.channel.map";
-
-#elif defined DOLBY_DDPDEC_51_MULTICHANNEL_ENDPOINT
-
-#ifndef DOLBY_DS1_UDC
-static char cEndpointProp[]="media.multich.support.info";
-#else
-static char cEndpointProp[]="dolby.audio.sink.info";
-#endif
-static char cInfoFrameByte[]="dolby.audio.sink.channel.allocation";
-
-const char* endpoints[] = { "hdmi2",
-                            "hdmi6",
-                            "hdmi8",
-                            "headset",
-                            "speaker",
-                            //"bluetooth",//or other supported audio output device
-                            "invalid" //this is the default value we will get if not set
-                          };
-const int EndpointConfig[][4] = {{DDP_OUTMIX_LTRT, GBL_COMP_LINE, 0, 2},        //HDMI2
-                                  {DDP_OUTMIX_STREAM, GBL_COMP_LINE, 0, 6},      //HDMI6
-                                  {DDP_OUTMIX_STREAM, GBL_COMP_LINE, 0, 6},      //HDMI8//as ddpdec51 supports max 6 ch.
-                                  {DDP_OUTMIX_LTRT, GBL_COMP_RF, 1, 2},          //HEADSET
-                                  {DDP_OUTMIX_LTRT, GBL_COMP_RF, 1, 2},          //SPEAKER
-                                  //{DDP_OUTMIX_LTRT, GBL_COMP_RF, 1, 2},          //BLUETOOTH or other audio device setting
-                                  {DDP_OUTMIX_LTRT, GBL_COMP_RF, 1, 2},          //INVALID/DEFAULT
-                                 };
-#endif 
-
-DSPerr	DDP_MediaSource::bsod_init(DSPshort *	p_pkbuf, DSPshort pkbitptr,BSOD_BSTRM *p_bstrm)
+DDPerr DDP_MediaSource::ddbs_init(DDPshort * buf, DDPshort bitptr,DDP_BSTRM *p_bstrm)
 {
-	p_bstrm->p_pkbuf = p_pkbuf;
-	p_bstrm->pkbitptr = pkbitptr;
-	p_bstrm->pkdata = *p_pkbuf;
-#if defined(DEBUG)
-	p_bstrm->p_start_pkbuf = p_pkbuf;
-#endif /* defined(DEBUG) */
-	return 0;
+    p_bstrm->buf = buf;
+    p_bstrm->bitptr = bitptr;
+    p_bstrm->data = *buf;
+    return 0;
 }
 
 
- DSPerr DDP_MediaSource::bsod_unprj(BSOD_BSTRM	*p_bstrm,DSPshort *p_data,  DSPshort numbits)	
+DDPerr DDP_MediaSource::ddbs_unprj(DDP_BSTRM    *p_bstrm,DDPshort *p_data,  DDPshort numbits)
 {
-	/* declare local variables */
-	DSPushort data;
-	*p_data = (DSPshort)((p_bstrm->pkdata << p_bstrm->pkbitptr) & gbl_msktab[numbits]);
-	p_bstrm->pkbitptr += numbits;
-	if (p_bstrm->pkbitptr >= GBL_BITSPERWRD)
-	{
-		p_bstrm->p_pkbuf++;
-		p_bstrm->pkdata = *p_bstrm->p_pkbuf;
-		p_bstrm->pkbitptr -= GBL_BITSPERWRD;
-		data = (DSPushort)p_bstrm->pkdata;
-		*p_data |= ((data >> (numbits - p_bstrm->pkbitptr)) & gbl_msktab[numbits]);
-	}
-	*p_data = (DSPshort)((DSPushort)(*p_data) >> (GBL_BITSPERWRD - numbits));
-	return 0;
+    DDPushort data;
+    *p_data = (DDPshort)((p_bstrm->data << p_bstrm->bitptr) & msktab[numbits]);
+    p_bstrm->bitptr += numbits;
+    if (p_bstrm->bitptr >= BITSPERWRD)
+    {
+        p_bstrm->buf++;
+        p_bstrm->data = *p_bstrm->buf;
+        p_bstrm->bitptr -= BITSPERWRD;
+        data = (DDPushort)p_bstrm->data;
+        *p_data |= ((data >> (numbits - p_bstrm->bitptr)) & msktab[numbits]);
+    }
+    *p_data = (DDPshort)((DDPushort)(*p_data) >> (BITSPERWRD - numbits));
+    return 0;
 }
 
 
 int DDP_MediaSource::Get_ChNum_DD(void *buf)//at least need:56bit(=7 bytes)
 {
     int numch=0;
-	BSOD_BSTRM bstrm={0};
-	BSOD_BSTRM *p_bstrm=&bstrm;
-	short tmp=0,acmod,lfeon,fscod,frmsizecod;
-	bsod_init((short*)buf,0,p_bstrm);
-	
-   /* Unpack bsi fields */
-	bsod_unprj(p_bstrm, &tmp, 16);
-	if (tmp!= GBL_SYNCWRD)
-	{
-		ALOGI("Invalid synchronization word");
-		return 0;
-	}
-	bsod_unprj(p_bstrm, &tmp, 16);
-	bsod_unprj(p_bstrm, &fscod, 2);
-	if (fscod == GBL_MAXFSCOD)
-	{
-		ALOGI("Invalid sampling rate code");
-		return 0;
-	}
+    DDP_BSTRM bstrm={0};
+    DDP_BSTRM *p_bstrm=&bstrm;
+    short tmp=0,acmod,lfeon,fscod,frmsizecod;
+    ddbs_init((short*)buf,0,p_bstrm);
+
+    ddbs_unprj(p_bstrm, &tmp, 16);
+    if (tmp!= SYNCWRD)
+    {
+        ALOGI("Invalid synchronization word");
+        return 0;
+    }
+    ddbs_unprj(p_bstrm, &tmp, 16);
+    ddbs_unprj(p_bstrm, &fscod, 2);
+    if (fscod == MAXFSCOD)
+    {
+        ALOGI("Invalid sampling rate code");
+        return 0;
+    }
 
     if (fscod == 0)      sample_rate = 48000;
     else if (fscod == 1) sample_rate = 44100;
     else if (fscod == 2) sample_rate = 32000;
-	
-	bsod_unprj(p_bstrm, &frmsizecod, 6);
-	if (frmsizecod >= GBL_MAXDDDATARATE)
-	{
-		ALOGI("Invalid frame size code");
-		return 0;
+
+    ddbs_unprj(p_bstrm, &frmsizecod, 6);
+    if (frmsizecod >= MAXDDDATARATE)
+    {
+        ALOGI("Invalid frame size code");
+        return 0;
 	}
 
-    frame_size=gbl_frmsizetab[fscod][frmsizecod];
-	
-	bsod_unprj(p_bstrm, &tmp, 5);
-	if (!BSI_ISDD(tmp))
-	{
-		ALOGI("Unsupported bitstream id");
-		return 0;
-	}
+    frame_size=frmsizetab[fscod][frmsizecod];
 
-	bsod_unprj(p_bstrm, &tmp, 3);
-	bsod_unprj(p_bstrm, &acmod, 3);
+    ddbs_unprj(p_bstrm, &tmp, 5);
+    if (!ISDD(tmp))
+    {
+        ALOGI("Unsupported bitstream id");
+        return 0;
+    }
 
-	if ((acmod!= GBL_MODE10) && (acmod& 0x1))
-	{
-		bsod_unprj(p_bstrm, &tmp, 2);
-	}
-	if (acmod& 0x4)
-	{
-		bsod_unprj(p_bstrm, &tmp, 2);
-	}
-	
-	if (acmod == GBL_MODE20)
-	{
-		bsod_unprj(p_bstrm,&tmp, 2);
-	}
-	bsod_unprj(p_bstrm, &lfeon, 1);
+    ddbs_unprj(p_bstrm, &tmp, 3);
+    ddbs_unprj(p_bstrm, &acmod, 3);
+
+    if ((acmod!= MODE10) && (acmod& 0x1))
+    {
+        ddbs_unprj(p_bstrm, &tmp, 2);
+    }
+    if (acmod& 0x4)
+    {
+        ddbs_unprj(p_bstrm, &tmp, 2);
+    }
+
+    if (acmod == MODE20)
+    {
+        ddbs_unprj(p_bstrm,&tmp, 2);
+    }
+    ddbs_unprj(p_bstrm, &lfeon, 1);
 
 
-	/* Set up p_bsi->bse_acmod and lfe on derived variables */
-	numch = gbl_chanary[acmod];
-	//numch+=lfeon;
-
-	char cEndpoint[256/*PROPERTY_VALUE_MAX*/]={0};
-	property_get(cEndpointProp, cEndpoint, "invalid");
-	const int nEndpoints = sizeof(endpoints)/sizeof(*endpoints);
-	int activeEndpoint = (nEndpoints - 1); //default to invalid
-		
-	for(int i=0; i < nEndpoints; i++)
-	{
-		if( strcmp( cEndpoint, endpoints[i]) == 0 ) 
-		{
-			activeEndpoint = i;
-			break;
-		}
-	}
-	
-	if (activeEndpoint == (nEndpoints - 1))
-	{
-		//ALOGI("Active Endpoint not defined - using default");
-	}
-	ChNumOriginal=numch;
-	if(DDP_OUTMIX_STREAM == (ddp_downmix_config_t)EndpointConfig[activeEndpoint][0])
-	{
-       	if(numch >= 3)  numch = 8;
-	    else    	     numch = 2;
-	}else{
-		numch = 2;
-	}
-	ChNum=numch;
-	//ALOGI("DEBUG:numch=%d sample_rate=%d %p [%s %d]",ChNum,sample_rate,this,__FUNCTION__,__LINE__);
-	return numch;
+    numch = chanary[acmod];
+    //numch+=lfeon;
+    ChNumOriginal=numch;
+    if (0)
+    {
+        if (numch >= 3)
+            numch = 8;
+        else
+            numch = 2;
+    }else{
+        numch = 2;
+    }
+    ChNum=numch;
+    //ALOGI("DEBUG:numch=%d sample_rate=%d %p [%s %d]",ChNum,sample_rate,this,__FUNCTION__,__LINE__);
+    return numch;
 
 }
 
@@ -197,159 +126,133 @@ int DDP_MediaSource::Get_ChNum_DDP(void *buf)//at least need:40bit(=5 bytes)
 {
 
     int numch=0;
-	BSOD_BSTRM bstrm={0};
-	BSOD_BSTRM *p_bstrm=&bstrm;
-	short tmp=0,acmod,lfeon,strmtyp;
-	
-	bsod_init((short*)buf,0,p_bstrm);
-	
-	/* Unpack bsi fields */
-	bsod_unprj(p_bstrm, &tmp, 16);
-	if (tmp!= GBL_SYNCWRD)
-	{
-		ALOGI("Invalid synchronization word");
-		return 0;
-	}
+    DDP_BSTRM bstrm={0};
+    DDP_BSTRM *p_bstrm=&bstrm;
+    short tmp=0,acmod,lfeon,strmtyp;
 
-	bsod_unprj(p_bstrm, &strmtyp, 2);
-	bsod_unprj(p_bstrm, &tmp, 3);
-	bsod_unprj(p_bstrm, &tmp, 11);
-	frame_size=tmp+1;
-	//---------------------------
-	if(strmtyp!=0 && strmtyp!=2){
-		return 0;
-	}
-	//---------------------------
-	bsod_unprj(p_bstrm, &tmp, 2);
+    ddbs_init((short*)buf,0,p_bstrm);
 
-	if (tmp== 0x3)
-	{
-		ALOGI("Half sample rate unsupported");
-		return 0;
-	}else{
-	    if (tmp == 0)     sample_rate = 48000;
+    ddbs_unprj(p_bstrm, &tmp, 16);
+    if (tmp!= SYNCWRD)
+    {
+        ALOGI("Invalid synchronization word");
+        return 0;
+    }
+
+    ddbs_unprj(p_bstrm, &strmtyp, 2);
+    ddbs_unprj(p_bstrm, &tmp, 3);
+    ddbs_unprj(p_bstrm, &tmp, 11);
+    frame_size=tmp+1;
+    //---------------------------
+    if (strmtyp != 0 && strmtyp != 2)
+    {
+        return 0;
+    }
+    //---------------------------
+    ddbs_unprj(p_bstrm, &tmp, 2);
+
+    if (tmp== 0x3)
+    {
+        ALOGI("Half sample rate unsupported");
+        return 0;
+    }else{
+        if (tmp == 0)     sample_rate = 48000;
         else if (tmp == 1) sample_rate = 44100;
         else if (tmp == 2) sample_rate = 32000;
-		
-		bsod_unprj(p_bstrm, &tmp, 2);
-	}
 
-	bsod_unprj(p_bstrm, &acmod, 3);
-	bsod_unprj(p_bstrm, &lfeon, 1);
+        ddbs_unprj(p_bstrm, &tmp, 2);
+    }
 
-	/* Set up p_bsi->bse_acmod and lfe on derived variables */
-	numch = gbl_chanary[acmod];
-	//numch+=lfeon;
-	
-	char cEndpoint[256/*PROPERTY_VALUE_MAX*/]={0};
-	property_get(cEndpointProp, cEndpoint, "invalid");
-	const int nEndpoints = sizeof(endpoints)/sizeof(*endpoints);
-	int activeEndpoint = (nEndpoints - 1); //default to invalid
-		
-	for(int i=0; i < nEndpoints; i++)
-	{
-		if( strcmp( cEndpoint, endpoints[i]) == 0 ) 
-		{
-			activeEndpoint = i;
-			break;
-		}
-	}
-	
-	if (activeEndpoint == (nEndpoints - 1))
-	{
-		//ALOGI("Active Endpoint not defined - using default");
-	}
-	ChNumOriginal=numch;
-	if(DDP_OUTMIX_STREAM == (ddp_downmix_config_t)EndpointConfig[activeEndpoint][0])
-	{
-       	if(numch >= 3)  numch = 8;
-	    else    	     numch = 2;
-	}else{
-		numch = 2;
-	}
-	ChNum=numch;
-	//ALOGI("DEBUG:numch=%d sample_rate=%d %p [%s %d]",ChNum,sample_rate,this,__FUNCTION__,__LINE__);
-	return numch;
+    ddbs_unprj(p_bstrm, &acmod, 3);
+    ddbs_unprj(p_bstrm, &lfeon, 1);
+
+    numch = chanary[acmod];
+    //numch+=lfeon;
+
+    ChNumOriginal=numch;
+    if (0)
+    {
+        if (numch >= 3)
+            numch = 8;
+        else
+            numch = 2;
+    }else{
+        numch = 2;
+    }
+    ChNum=numch;
+    //ALOGI("DEBUG:numch=%d sample_rate=%d %p [%s %d]",ChNum,sample_rate,this,__FUNCTION__,__LINE__);
+    return numch;
 
 }
 
 
-DSPerr DDP_MediaSource::bsod_skip(	BSOD_BSTRM 	*p_bstrm, DSPshort	numbits)
+DDPerr DDP_MediaSource::ddbs_skip(    DDP_BSTRM     *p_bstrm, DDPshort    numbits)
 {
-	/* check input arguments */
-	p_bstrm->pkbitptr += numbits;
-	while (p_bstrm->pkbitptr >= GBL_BITSPERWRD)
-	{
-		p_bstrm->p_pkbuf++;
-		p_bstrm->pkdata = *p_bstrm->p_pkbuf;
-		p_bstrm->pkbitptr -= GBL_BITSPERWRD;
-	}
-	
-	return 0;
+    p_bstrm->bitptr += numbits;
+    while (p_bstrm->bitptr >= BITSPERWRD)
+    {
+        p_bstrm->buf++;
+        p_bstrm->data = *p_bstrm->buf;
+        p_bstrm->bitptr -= BITSPERWRD;
+    }
+
+    return 0;
 }
 
 
-DSPerr DDP_MediaSource::bsid_getbsid(BSOD_BSTRM *p_inbstrm,	DSPshort *p_bsid)	
+DDPerr DDP_MediaSource::ddbs_getbsid(DDP_BSTRM *p_inbstrm,    DDPshort *p_bsid)
 {
-	/* Declare local variables */
-	BSOD_BSTRM	bstrm;
+    DDP_BSTRM    bstrm;
 
-	/* Initialize local bitstream using input bitstream */
-	bsod_init(p_inbstrm->p_pkbuf, p_inbstrm->pkbitptr, &bstrm);
+    ddbs_init(p_inbstrm->buf, p_inbstrm->bitptr, &bstrm);
+    ddbs_skip(&bstrm, BS_BITOFFSET);
+    ddbs_unprj(&bstrm, p_bsid, 5);
+    if (!ISDDP(*p_bsid) && !ISDD(*p_bsid))
+    {
+        ALOGI("Unsupported bitstream id");
+    }
 
-	/* Skip ahead to bitstream-id */
-	bsod_skip(&bstrm, BSI_BSID_BITOFFSET);
-
-	/* Unpack bitstream-id */
-	bsod_unprj(&bstrm, p_bsid, 5);
-
-	/* If not a DD+ bitstream and not a DD bitstream, return error */
-	if (!BSI_ISDDP(*p_bsid) && !BSI_ISDD(*p_bsid))
-	{
-		ALOGI("Unsupported bitstream id");
-	}
-
-	return 0;
+    return 0;
 }
 
 
 int DDP_MediaSource::Get_ChNum_AC3_Frame(void *buf)
-{  
-   	BSOD_BSTRM bstrm={0};
-	BSOD_BSTRM *p_bstrm=&bstrm;
-	DSPshort	bsid;
-	int chnum=0;
+{
+    DDP_BSTRM bstrm={0};
+    DDP_BSTRM *p_bstrm=&bstrm;
+    DDPshort    bsid;
+    int chnum=0;
     uint8_t ptr8[PTR_HEAD_SIZE];
-	
-	memcpy(ptr8,buf,PTR_HEAD_SIZE);
 
-	
-	//ALOGI("LZG->ptr_head:0x%x 0x%x 0x%x 0x%x 0x%x 0x%x \n",
-	//	   ptr8[0],ptr8[1],ptr8[2], ptr8[3],ptr8[4],ptr8[5] );
-	if((ptr8[0]==0x0b) && (ptr8[1]==0x77) )
-	{
-	   int i;
-	   uint8_t tmp;
-	   for(i=0;i<PTR_HEAD_SIZE;i+=2)
-	   {
-	      tmp=ptr8[i];
-		  ptr8[i]=ptr8[i+1];
-		  ptr8[i+1]=tmp;
-	   }
-	}
-    
-	
-    bsod_init((short*)ptr8,0,p_bstrm);
-	bsid_getbsid(p_bstrm, &bsid);
-	//ALOGI("LZG->bsid=%d \n", bsid );
-	if (BSI_ISDDP(bsid))
-	{
-		Get_ChNum_DDP(ptr8);
-	}else if (BSI_ISDD(bsid)){
-		Get_ChNum_DD(ptr8);
-	}
-	
-	return chnum;
+    memcpy(ptr8,buf,PTR_HEAD_SIZE);
+
+
+    //ALOGI("LZG->ptr_head:0x%x 0x%x 0x%x 0x%x 0x%x 0x%x \n",
+    //       ptr8[0],ptr8[1],ptr8[2], ptr8[3],ptr8[4],ptr8[5] );
+    if ((ptr8[0] == 0x0b) && (ptr8[1] == 0x77))
+    {
+       int i;
+       uint8_t tmp;
+       for (i = 0; i < PTR_HEAD_SIZE; i += 2)
+       {
+          tmp=ptr8[i];
+          ptr8[i]=ptr8[i+1];
+          ptr8[i+1]=tmp;
+       }
+    }
+
+
+    ddbs_init((short*)ptr8,0,p_bstrm);
+    ddbs_getbsid(p_bstrm, &bsid);
+    //ALOGI("LZG->bsid=%d \n", bsid );
+    if (ISDDP(bsid))
+    {
+        Get_ChNum_DDP(ptr8);
+    }else if (ISDD(bsid)){
+        Get_ChNum_DD(ptr8);
+    }
+
+    return chnum;
 }
 
 //#####################################################

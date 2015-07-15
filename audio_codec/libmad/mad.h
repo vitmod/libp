@@ -715,6 +715,8 @@ struct mad_stream {
 
   int options;				/* decoding options (see below) */
   enum mad_error error;			/* error code (see above) */
+  unsigned int muted_samples;
+  unsigned int muted_count;
 };
 
 enum {
